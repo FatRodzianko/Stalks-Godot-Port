@@ -22,7 +22,15 @@ func after_each() -> void:
 	_session = null
 
 
-func _make_session(max_years: int = 10, loans: bool = false, seed_value: int = 4242) -> LocalSession:
+## A match opens at Year 0 with trading closed, which is the original's opening
+## position. Most tests here care about trading, so this readies up once to reach
+## Year 1 unless asked not to.
+func _make_session(
+	max_years: int = 10,
+	loans: bool = false,
+	seed_value: int = 4242,
+	open_trading: bool = true,
+) -> LocalSession:
 	var settings: GameSettings = GameSettings.new()
 	settings.max_years = max_years
 	settings.player_count = 1
@@ -30,14 +38,25 @@ func _make_session(max_years: int = 10, loans: bool = false, seed_value: int = 4
 	settings.rng_seed = seed_value
 	var session: LocalSession = LocalSession.create(settings, _library)
 	add_child_autofree(session)
+	if open_trading:
+		session.set_ready(&"p0", true)
 	return session
 
 
 # -------------------------------------------------------------------- start-up
 
-func test_a_new_session_starts_in_year_one_with_trading_open() -> void:
-	assert_eq(_session.state().year, 1,
-		"year 0 is the opening position; play begins in year 1")
+func test_a_new_match_opens_at_year_zero_with_trading_closed() -> void:
+	# The original's opening position: every price at its starting value and no
+	# buying until everyone readies up. See docs/game-rules.md §4.
+	var fresh: LocalSession = _make_session(10, false, 4242, false)
+	assert_eq(fresh.state().year, 0)
+	assert_false(fresh.state().is_trading_open())
+	for stalk: StalkState in fresh.state().stalks:
+		assert_eq(stalk.price, 100, "%s should still be at its opening price" % stalk.id)
+
+
+func test_readying_up_opens_trading_in_year_one() -> void:
+	assert_eq(_session.state().year, 1)
 	assert_true(_session.state().is_trading_open())
 
 

@@ -87,7 +87,7 @@ func _render() -> void:
 			continue
 		var row: RankingRow = RankingRowScene.instantiate()
 		_ranking_list.add_child(row)
-		row.display(index, player, player.id == _local_player_id)
+		row.display(player, player.id == _local_player_id, true)
 
 
 # ------------------------------------------------------------------- for tests

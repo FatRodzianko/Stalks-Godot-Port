@@ -82,6 +82,7 @@ price_change = 15
 script = ExtResource("2_srju3")
 id = &"mafia"
 display_name = "Mafia HUD Scam"
+ticker = &"MAFIA"
 bear_change = Vector2i(5, 25)
 bull_change = Vector2i(5, 15)
 bear_dividend = 1

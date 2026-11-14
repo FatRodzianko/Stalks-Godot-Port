@@ -50,9 +50,10 @@ static func create(
 		library.build_event_pool(),
 	)
 
-	# Year 0 is the opening position with trading closed. Advancing once puts the
-	# match into year 1, which is where play actually begins.
-	session._resolver.advance_year(session._state, session._rng)
+	# The match opens at **Year 0**: every price at its starting value, trading
+	# closed, waiting for players to ready up. That is the original's opening
+	# state and what docs/game-rules.md §4 describes, so the session starts there
+	# rather than skipping ahead.
 	return session
 
 

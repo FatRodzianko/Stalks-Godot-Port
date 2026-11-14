@@ -5,215 +5,252 @@
 
 [node name="GameplayScreen" type="MarginContainer"]
 theme = ExtResource("2_theme")
-theme_override_constants/margin_left = 14
-theme_override_constants/margin_top = 14
-theme_override_constants/margin_right = 14
-theme_override_constants/margin_bottom = 14
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
 script = ExtResource("1_screen")
 
 [node name="MessageTimer" type="Timer" parent="."]
 unique_name_in_owner = true
 one_shot = true
-wait_time = 4.0
+wait_time = 5.0
 
 [node name="Root" type="VBoxContainer" parent="."]
 layout_mode = 2
 
-[node name="TopBar" type="PanelContainer" parent="Root"]
+[node name="TopBar" type="HBoxContainer" parent="Root"]
 layout_mode = 2
 
-[node name="Bar" type="HBoxContainer" parent="Root/TopBar"]
+[node name="YearPanel" type="PanelContainer" parent="Root/TopBar"]
 layout_mode = 2
 
-[node name="YearLabel" type="Label" parent="Root/TopBar/Bar"]
+[node name="YearBox" type="VBoxContainer" parent="Root/TopBar/YearPanel"]
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="YearLabel" type="Label" parent="Root/TopBar/YearPanel/YearBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"SubHeading"
-text = "Year 1 of 10"
+theme_type_variation = &"Heading"
+text = "Year: 0/10"
 
-[node name="MoodLabel" type="Label" parent="Root/TopBar/Bar"]
+[node name="MoodLabel" type="Label" parent="Root/TopBar/YearPanel/YearBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(96, 0)
 layout_mode = 2
-theme_type_variation = &"SubHeading"
 text = ""
+horizontal_alignment = 1
 
-[node name="SeedLabel" type="Label" parent="Root/TopBar/Bar"]
+[node name="EventPanel" type="PanelContainer" parent="Root/TopBar"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = &"Faint"
-text = ""
-tooltip_text = "The random seed for this match. The same seed always plays out identically."
-mouse_filter = 0
 
-[node name="LoanBox" type="VBoxContainer" parent="Root/TopBar/Bar"]
-unique_name_in_owner = true
-visible = false
+[node name="EventBox" type="VBoxContainer" parent="Root/TopBar/EventPanel"]
 layout_mode = 2
 theme_type_variation = &"TightVBox"
 
-[node name="LoanCaption" type="Label" parent="Root/TopBar/Bar/LoanBox"]
-layout_mode = 2
-theme_type_variation = &"Faint"
-text = "LOAN OWED"
-horizontal_alignment = 2
-
-[node name="LoanOwedLabel" type="Label" parent="Root/TopBar/Bar/LoanBox"]
+[node name="EventFlavour" type="Label" parent="Root/TopBar/EventPanel/EventBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"NumericLarge"
-text = "$0"
-horizontal_alignment = 2
-
-[node name="CashBox" type="VBoxContainer" parent="Root/TopBar/Bar"]
-layout_mode = 2
-theme_type_variation = &"TightVBox"
-
-[node name="CashCaption" type="Label" parent="Root/TopBar/Bar/CashBox"]
-layout_mode = 2
-theme_type_variation = &"Faint"
-text = "CASH ON HAND"
-horizontal_alignment = 2
-
-[node name="CashLabel" type="Label" parent="Root/TopBar/Bar/CashBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"NumericLarge"
-text = "$0"
-horizontal_alignment = 2
-
-[node name="NetBox" type="VBoxContainer" parent="Root/TopBar/Bar"]
-custom_minimum_size = Vector2(120, 0)
-layout_mode = 2
-theme_type_variation = &"TightVBox"
-
-[node name="NetCaption" type="Label" parent="Root/TopBar/Bar/NetBox"]
-layout_mode = 2
-theme_type_variation = &"Faint"
-text = "NET WORTH"
-horizontal_alignment = 2
-
-[node name="NetWorthLabel" type="Label" parent="Root/TopBar/Bar/NetBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"NumericLarge"
-text = "$0"
-horizontal_alignment = 2
-
-[node name="EventPanel" type="PanelContainer" parent="Root"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 78)
-layout_mode = 2
-
-[node name="EventBox" type="VBoxContainer" parent="Root/EventPanel"]
-layout_mode = 2
-theme_type_variation = &"TightVBox"
-
-[node name="EventFlavour" type="Label" parent="Root/EventPanel/EventBox"]
-unique_name_in_owner = true
-layout_mode = 2
+size_flags_vertical = 3
 theme_type_variation = &"EventFlavour"
 text = ""
 autowrap_mode = 3
 text_overrun_behavior = 3
 max_lines_visible = 2
 
-[node name="EventEffect" type="Label" parent="Root/EventPanel/EventBox"]
+[node name="EventEffect" type="Label" parent="Root/TopBar/EventPanel/EventBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
+text_overrun_behavior = 3
 
-[node name="YearSummary" type="Label" parent="Root/EventPanel/EventBox"]
+[node name="YeehawPanel" type="PanelContainer" parent="Root/TopBar"]
+layout_mode = 2
+
+[node name="YeehawBox" type="VBoxContainer" parent="Root/TopBar/YeehawPanel"]
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="YeehawButton" type="Button" parent="Root/TopBar/YeehawPanel/YeehawBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"Muted"
-text = ""
-autowrap_mode = 3
-max_lines_visible = 2
+size_flags_vertical = 3
+text = "Can I Get a Yeehaw?"
+
+[node name="YeehawNote" type="Label" parent="Root/TopBar/YeehawPanel/YeehawBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "needs other players"
+horizontal_alignment = 1
 
 [node name="Boards" type="HBoxContainer" parent="Root"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Left" type="VBoxContainer" parent="Root/Boards"]
+[node name="AvailableStalks" type="VBoxContainer" parent="Root/Boards"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.45
+size_flags_stretch_ratio = 1.7
 theme_type_variation = &"TightVBox"
 
-[node name="BoardTitle" type="Label" parent="Root/Boards/Left"]
+[node name="Title" type="Label" parent="Root/Boards/AvailableStalks"]
 layout_mode = 2
 theme_type_variation = &"SubHeading"
 text = "Available Stalks"
+horizontal_alignment = 1
 
-[node name="BoardHeaderSlot" type="MarginContainer" parent="Root/Boards/Left"]
+[node name="BoardHeaderSlot" type="MarginContainer" parent="Root/Boards/AvailableStalks"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="StalkScroll" type="ScrollContainer" parent="Root/Boards/Left"]
+[node name="StalkScroll" type="ScrollContainer" parent="Root/Boards/AvailableStalks"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 
-[node name="StalkList" type="VBoxContainer" parent="Root/Boards/Left/StalkScroll"]
+[node name="StalkList" type="VBoxContainer" parent="Root/Boards/AvailableStalks/StalkScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"TightVBox"
 
-[node name="Right" type="VBoxContainer" parent="Root/Boards"]
+[node name="YourStalks" type="VBoxContainer" parent="Root/Boards"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.25
 theme_type_variation = &"TightVBox"
 
-[node name="HoldingsTitle" type="Label" parent="Root/Boards/Right"]
+[node name="StatsTitle" type="Label" parent="Root/Boards/YourStalks"]
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "Your Stats"
+horizontal_alignment = 1
+
+[node name="StatsPanel" type="PanelContainer" parent="Root/Boards/YourStalks"]
+layout_mode = 2
+
+[node name="StatsBox" type="VBoxContainer" parent="Root/Boards/YourStalks/StatsPanel"]
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="CashRow" type="HBoxContainer" parent="Root/Boards/YourStalks/StatsPanel/StatsBox"]
+layout_mode = 2
+
+[node name="CashCaption" type="Label" parent="Root/Boards/YourStalks/StatsPanel/StatsBox/CashRow"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "CASH"
+
+[node name="CashLabel" type="Label" parent="Root/Boards/YourStalks/StatsPanel/StatsBox/CashRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Numeric"
+text = "0"
+horizontal_alignment = 2
+
+[node name="NetRow" type="HBoxContainer" parent="Root/Boards/YourStalks/StatsPanel/StatsBox"]
+layout_mode = 2
+
+[node name="NetCaption" type="Label" parent="Root/Boards/YourStalks/StatsPanel/StatsBox/NetRow"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "NET"
+
+[node name="NetWorthLabel" type="Label" parent="Root/Boards/YourStalks/StatsPanel/StatsBox/NetRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Numeric"
+text = "0"
+horizontal_alignment = 2
+
+[node name="LoanRow" type="HBoxContainer" parent="Root/Boards/YourStalks/StatsPanel/StatsBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="LoanCaption" type="Label" parent="Root/Boards/YourStalks/StatsPanel/StatsBox/LoanRow"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "LOAN"
+
+[node name="LoanOwedLabel" type="Label" parent="Root/Boards/YourStalks/StatsPanel/StatsBox/LoanRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Bear"
+text = "0"
+horizontal_alignment = 2
+
+[node name="StalksTitle" type="Label" parent="Root/Boards/YourStalks"]
 layout_mode = 2
 theme_type_variation = &"SubHeading"
 text = "Your Stalks"
+horizontal_alignment = 1
 
-[node name="HoldingsHeaderSlot" type="MarginContainer" parent="Root/Boards/Right"]
+[node name="HoldingsHeaderSlot" type="MarginContainer" parent="Root/Boards/YourStalks"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="HoldingScroll" type="ScrollContainer" parent="Root/Boards/Right"]
+[node name="HoldingScroll" type="ScrollContainer" parent="Root/Boards/YourStalks"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 
-[node name="HoldingBox" type="VBoxContainer" parent="Root/Boards/Right/HoldingScroll"]
+[node name="HoldingBox" type="VBoxContainer" parent="Root/Boards/YourStalks/HoldingScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"TightVBox"
 
-[node name="HoldingsEmpty" type="Label" parent="Root/Boards/Right/HoldingScroll/HoldingBox"]
+[node name="HoldingsEmpty" type="Label" parent="Root/Boards/YourStalks/HoldingScroll/HoldingBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Faint"
-text = "Nothing owned yet. Buy from the board on the left."
+text = "You own no stalks."
 autowrap_mode = 3
 
-[node name="HoldingList" type="VBoxContainer" parent="Root/Boards/Right/HoldingScroll/HoldingBox"]
+[node name="HoldingList" type="VBoxContainer" parent="Root/Boards/YourStalks/HoldingScroll/HoldingBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"TightVBox"
 
-[node name="StandingsTitle" type="Label" parent="Root/Boards/Right"]
+[node name="Rankings" type="VBoxContainer" parent="Root/Boards"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.85
+theme_type_variation = &"TightVBox"
+
+[node name="Title" type="Label" parent="Root/Boards/Rankings"]
 layout_mode = 2
 theme_type_variation = &"SubHeading"
-text = "Standings"
+text = "Player Rankings"
+horizontal_alignment = 1
 
-[node name="RankingScroll" type="ScrollContainer" parent="Root/Boards/Right"]
-custom_minimum_size = Vector2(0, 92)
+[node name="RankingHeaderSlot" type="MarginContainer" parent="Root/Boards/Rankings"]
+unique_name_in_owner = true
 layout_mode = 2
-horizontal_scroll_mode = 0
 
-[node name="RankingList" type="VBoxContainer" parent="Root/Boards/Right/RankingScroll"]
+[node name="RankingScroll" type="ScrollContainer" parent="Root/Boards/Rankings"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="RankingList" type="VBoxContainer" parent="Root/Boards/Rankings/RankingScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -228,21 +265,41 @@ layout_mode = 2
 [node name="LoanButton" type="Button" parent="Root/BottomBar/Bar"]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
-text = "Loans…"
+size_flags_vertical = 4
+text = "LOANS"
 
-[node name="MessageLabel" type="Label" parent="Root/BottomBar/Bar"]
-unique_name_in_owner = true
+[node name="Messages" type="VBoxContainer" parent="Root/BottomBar/Bar"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="LoanNag" type="Label" parent="Root/BottomBar/Bar/Messages"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"Bear"
+text = "Don't forget to pay your loan!"
+text_overrun_behavior = 3
+
+[node name="InfoLabel" type="Label" parent="Root/BottomBar/Bar/Messages"]
+unique_name_in_owner = true
+layout_mode = 2
 text = ""
 autowrap_mode = 3
 max_lines_visible = 2
 
+[node name="ErrorLabel" type="Label" parent="Root/BottomBar/Bar/Messages"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Danger"
+text = ""
+autowrap_mode = 3
+max_lines_visible = 1
+
 [node name="ReadyButton" type="Button" parent="Root/BottomBar/Bar"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(190, 0)
 layout_mode = 2
+size_flags_vertical = 4
 theme_type_variation = &"PrimaryButton"
 text = "Ready for New Year"

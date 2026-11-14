@@ -43,6 +43,7 @@ fixing.
 | [porting-plan.md](porting-plan.md) | The seven phases, what each delivers, and the pass/fail criteria for each | You want to know status, or what to do next |
 | [godot-editor-guide.md](godot-editor-guide.md) | A first-time walkthrough of the Godot editor for this project, written for a complete beginner | You have never opened Godot |
 | [glossary.md](glossary.md) | Domain and technical terms used throughout | Something is unexplained |
+| [ui-reference.md](ui-reference.md) | The pixel grid, and the original's layout read from its scenes | You are building or changing a screen |
 
 There is also **[../CLAUDE.md](../CLAUDE.md)** in the repository root. It holds the
 coding standards and conventions. It is addressed to an AI assistant, but the

@@ -82,6 +82,7 @@ price_change = 5
 script = ExtResource("2_x1m6p")
 id = &"pgenron"
 display_name = "PG&Enron"
+ticker = &"PGEN"
 bear_change = Vector2i(10, 35)
 bull_change = Vector2i(5, 15)
 bull_dividend = 4

@@ -82,6 +82,7 @@ price_change = 10
 script = ExtResource("2_jxek0")
 id = &"monorail"
 display_name = "North Haverbrook MONORAIL"
+ticker = &"MONO"
 bear_change = Vector2i(5, 30)
 bull_change = Vector2i(0, 20)
 bear_dividend = 1

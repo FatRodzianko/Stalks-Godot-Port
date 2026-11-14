@@ -1,15 +1,9 @@
 class_name HoldingRow
 extends PanelContainer
-## One of the player's positions on the Your Stalks board: how many shares, what
-## they are worth now, and a sell control.
+## One of the player's positions on the Your Stalks board.
 ##
-## Same contract as StalkRow, including `configure_as_header()` — the holdings
-## header is this scene in header mode, so its columns cannot drift out of
-## alignment with the rows.
-##
-## The current price is deliberately NOT repeated here; it is already on the
-## market board to the left. Showing it twice cost a column the layout could not
-## spare.
+## Columns match the original: name of stalk, number owned, and the sell control.
+## The price is not repeated here — it is on the Available Stalks board.
 
 
 signal sell_requested(stalk_id: StringName, shares: int)
@@ -18,8 +12,7 @@ signal sell_all_requested(stalk_id: StringName)
 
 
 @onready var _name_label: Label = %Name
-@onready var _shares_label: Label = %Shares
-@onready var _value_label: Label = %Value
+@onready var _owned_label: Label = %Owned
 @onready var _amount_field: LineEdit = %Amount
 @onready var _sell_button: Button = %SellButton
 @onready var _sell_all_button: Button = %SellAllButton
@@ -39,37 +32,38 @@ func configure_as_header() -> void:
 	_is_header = true
 	theme_type_variation = &"HeaderCard"
 
-	_name_label.text = "STALK"
-	_shares_label.text = "SHARES"
-	_value_label.text = "VALUE"
-	for label: Label in [_name_label, _shares_label, _value_label]:
+	_name_label.text = "NAME"
+	_owned_label.text = "OWNED"
+	for label: Label in [_name_label, _owned_label]:
 		label.theme_type_variation = &"Faint"
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD
 
 	_amount_field.editable = false
 	_amount_field.text = ""
-	_amount_field.placeholder_text = "AMOUNT"
+	_amount_field.placeholder_text = ""
 	_amount_field.theme_type_variation = &"HeaderField"
 	_sell_button.disabled = true
 	_sell_button.text = "SELL"
 	_sell_button.focus_mode = Control.FOCUS_NONE
-	_sell_all_button.disabled = true
-	_sell_all_button.text = "ALL"
-	_sell_all_button.focus_mode = Control.FOCUS_NONE
-	_sell_all_button.tooltip_text = ""
+	_sell_all_button.visible = false
 
 
 func display(stalk: StalkState, shares_held: int) -> void:
 	if _is_header:
 		return
-
 	_stalk_id = stalk.id
-	_name_label.text = stalk.definition.display_name
+	_name_label.text = stalk.definition.board_symbol()
 	_name_label.tooltip_text = stalk.definition.display_name
-	_shares_label.text = str(shares_held)
-	_value_label.text = (
-		Palette.format_money(stalk.price * shares_held) if stalk.has_value() else "—"
-	)
+	_owned_label.text = str(shares_held)
 	_amount_field.placeholder_text = "max %d" % shares_held
+
+
+func set_trading_open(is_open: bool) -> void:
+	if _is_header:
+		return
+	_amount_field.editable = is_open
+	_sell_button.disabled = not is_open
+	_sell_all_button.disabled = not is_open
 
 
 func set_sell_blocked(reason: String) -> void:

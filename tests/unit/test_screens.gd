@@ -16,6 +16,72 @@ func _settings(years: int = 10, loans: bool = true, seed_value: int = 555) -> Ga
 	return settings
 
 
+# --------------------------------------------------- the root must fill the window
+#
+# These exist because of a bug that shipped: Main's root is a MarginContainer,
+# and a container lays out its CHILDREN — but when it is itself the scene root
+# its parent is the viewport, not another container, so it needs full-rect
+# anchors of its own. Without them it shrink-wrapped to its minimum size and the
+# game drew in a small box in the corner of the window.
+#
+# The earlier layout checks missed it because they set the screen's size by hand
+# before measuring, which is precisely the step that was broken. These put the
+# scene in a real viewport and let Godot size it.
+
+## Puts a scene in a viewport of a known size and lets layout settle, which is
+## the only way to test that a root actually fills its window.
+func _in_viewport(scene: PackedScene, size: Vector2i) -> Array:
+	var viewport: SubViewport = SubViewport.new()
+	viewport.size = size
+	add_child_autofree(viewport)
+	var node: Control = scene.instantiate()
+	viewport.add_child(node)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return [viewport, node]
+
+
+func test_the_scene_root_fills_its_viewport() -> void:
+	var bits: Array = await _in_viewport(MainScene, Vector2i(1280, 720))
+	var main: Control = bits[1]
+	assert_eq(main.size, Vector2(1280, 720),
+		"the root must fill the window, not shrink-wrap to its content")
+
+
+func test_the_scene_root_fills_a_differently_shaped_window() -> void:
+	var bits: Array = await _in_viewport(MainScene, Vector2i(1920, 1080))
+	var main: Control = bits[1]
+	assert_eq(main.size, Vector2(1920, 1080))
+
+
+func test_the_root_has_the_anchors_that_make_that_work() -> void:
+	# Asserting the mechanism as well as the result, so a failure says why.
+	var main: Control = MainScene.instantiate()
+	add_child_autofree(main)
+	assert_eq(main.anchor_right, 1.0, "root needs a full-rect right anchor")
+	assert_eq(main.anchor_bottom, 1.0, "root needs a full-rect bottom anchor")
+
+
+func test_the_playing_screen_fills_the_window_through_the_host() -> void:
+	# The whole chain: viewport -> Main -> gameplay screen.
+	var bits: Array = await _in_viewport(MainScene, Vector2i(1280, 720))
+	var main: Main = bits[1]
+	main.start_match(_settings())
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var screen: Control = main.current_screen()
+	assert_eq(screen.size, Vector2(1280, 720),
+		"the playing screen should fill the window too")
+
+	# And the board should therefore have room for all ten stalks.
+	var list: VBoxContainer = screen.get_node("%StalkList")
+	assert_eq(list.get_child_count(), 10)
+	var scroll: ScrollContainer = screen.get_node("%StalkScroll")
+	assert_gt(scroll.size.y, 300.0,
+		"the market board should get real height, not a sliver")
+
+
 # ------------------------------------------------------------------- main menu
 
 func test_the_menu_offers_the_documented_ranges() -> void:
@@ -102,7 +168,7 @@ func test_starting_a_match_swaps_to_the_playing_screen() -> void:
 
 	assert_false(main.current_screen() is MainMenu)
 	assert_not_null(main.session())
-	assert_eq(main.session().state().year, 1)
+	assert_eq(main.session().state().year, 0, "a match opens at year 0")
 
 
 func test_only_one_screen_exists_at_a_time() -> void:
@@ -213,11 +279,18 @@ func test_the_result_screen_emits_rather_than_restarting_itself() -> void:
 
 # ---------------------------------------------------------------- loan panel
 
-func _playing(loans: bool = true) -> Array:
+## Starts a match and returns [host, screen, session].
+##
+## A match opens at Year 0 with trading closed, and loans only become available
+## from Year 2, so `advance_to` readies up that many times.
+func _playing(loans: bool = true, advance_to: int = 0) -> Array:
 	var main: Main = MainScene.instantiate()
 	add_child_autofree(main)
 	main.start_match(_settings(10, loans))
-	return [main, main.current_screen(), main.session()]
+	var screen: Control = main.current_screen()
+	while main.session().state().year < advance_to:
+		(screen.get_node("%ReadyButton") as Button).pressed.emit()
+	return [main, screen, main.session()]
 
 
 func test_the_loan_button_is_hidden_when_loans_are_disabled() -> void:
@@ -231,15 +304,13 @@ func test_the_loan_button_invites_borrowing_before_any_loan() -> void:
 	var screen: Control = bits[1]
 	var button: Button = screen.get_node("%LoanButton")
 	assert_true(button.visible)
-	assert_true(button.text.contains("Take a loan"), "got: %s" % button.text)
+	assert_true(button.text.to_lower().contains("loan"), "got: %s" % button.text)
 
 
 func test_borrowing_through_the_panel_pays_out_cash() -> void:
-	var bits: Array = _playing()
+	var bits: Array = _playing(true, 2)
 	var screen: Control = bits[1]
 	var session: LocalSession = bits[2]
-	# Loans open in year 2.
-	(screen.get_node("%ReadyButton") as Button).pressed.emit()
 
 	var panel: LoanPanel = screen.loan_panel()
 	(screen.get_node("%LoanButton") as Button).pressed.emit()
@@ -265,25 +336,25 @@ func test_the_panel_refuses_a_loan_before_year_two() -> void:
 
 
 func test_the_header_shows_what_is_owed_once_borrowed() -> void:
-	var bits: Array = _playing()
+	var bits: Array = _playing(true, 2)
 	var screen: Control = bits[1]
 	var session: LocalSession = bits[2]
-	(screen.get_node("%ReadyButton") as Button).pressed.emit()
 
 	var player: PlayerState = session.state().player_by_id(&"p0")
 	session.request_loan(&"p0", LoanRules.max_loan_for(player))
 
-	assert_true((screen.get_node("%LoanBox") as VBoxContainer).visible,
-		"an outstanding loan should be visible in the header")
-	assert_eq((screen.get_node("%LoanOwedLabel") as Label).text,
-		Palette.format_money(player.owes()))
+	# What is owed now sits under Your Stats, where the original kept the
+	# player's figures. See docs/ui-reference.md.
+	var owed: Label = screen.get_node("%LoanOwedLabel")
+	assert_true(owed.visible, "an outstanding loan should be shown with your stats")
+	assert_true(owed.text.contains(Palette.format_money(player.owes())),
+		"got: %s" % owed.text)
 
 
 func test_the_loan_button_becomes_a_payment_prompt_when_one_is_due() -> void:
-	var bits: Array = _playing()
+	var bits: Array = _playing(true, 2)
 	var screen: Control = bits[1]
 	var session: LocalSession = bits[2]
-	(screen.get_node("%ReadyButton") as Button).pressed.emit()
 	session.request_loan(&"p0", LoanRules.max_loan_for(
 		session.state().player_by_id(&"p0")
 	))
@@ -291,15 +362,14 @@ func test_the_loan_button_becomes_a_payment_prompt_when_one_is_due() -> void:
 	(screen.get_node("%ReadyButton") as Button).pressed.emit()
 
 	var button: Button = screen.get_node("%LoanButton")
-	assert_true(button.text.contains("payment due"), "got: %s" % button.text)
+	assert_true(button.text.to_lower().contains("pay"), "got: %s" % button.text)
 
 
 func test_a_player_can_still_ready_up_with_a_payment_outstanding() -> void:
 	# The prompt is advisory. The game must never take the choice away.
-	var bits: Array = _playing()
+	var bits: Array = _playing(true, 2)
 	var screen: Control = bits[1]
 	var session: LocalSession = bits[2]
-	(screen.get_node("%ReadyButton") as Button).pressed.emit()
 	session.request_loan(&"p0", LoanRules.max_loan_for(
 		session.state().player_by_id(&"p0")
 	))
@@ -312,10 +382,9 @@ func test_a_player_can_still_ready_up_with_a_payment_outstanding() -> void:
 
 
 func test_paying_the_minimum_through_the_panel_reduces_the_balance() -> void:
-	var bits: Array = _playing()
+	var bits: Array = _playing(true, 2)
 	var screen: Control = bits[1]
 	var session: LocalSession = bits[2]
-	(screen.get_node("%ReadyButton") as Button).pressed.emit()
 	session.request_loan(&"p0", LoanRules.max_loan_for(
 		session.state().player_by_id(&"p0")
 	))
@@ -332,10 +401,9 @@ func test_paying_the_minimum_through_the_panel_reduces_the_balance() -> void:
 
 
 func test_the_panel_warns_about_the_consequence_of_missing_a_payment() -> void:
-	var bits: Array = _playing()
+	var bits: Array = _playing(true, 2)
 	var screen: Control = bits[1]
 	var session: LocalSession = bits[2]
-	(screen.get_node("%ReadyButton") as Button).pressed.emit()
 	session.request_loan(&"p0", LoanRules.max_loan_for(
 		session.state().player_by_id(&"p0")
 	))

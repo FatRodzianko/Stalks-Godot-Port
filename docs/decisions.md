@@ -636,6 +636,52 @@ typed a seed to reproduce something can type it again from the menu; someone pre
 *Play again* wants another go. The finished seed stays on the result screen so it can
 be noted first.
 
+### D39 — Follow the original's layout, not its construction
+**2026-11-14 · Accepted**
+
+The port copies the original's *layout decisions* — what information exists, how it
+is grouped, what sits next to what — and rebuilds *how* it is made.
+
+**Why.** Those two were conflated for several rounds, at real cost. Where things go
+came from designing and playing the game, and reinventing it solved a problem that
+did not exist. How it was built — managers reaching into text fields, prefabs wired
+by dragging, UI state duplicated from game state — is exactly what the port exists to
+avoid.
+
+`docs/ui-reference.md` records the original's structure, read out of its scenes and
+prefabs, and is the answer to "what goes where". Consult it instead of guessing.
+
+Three places deliberately diverge: the layout is container-driven so it survives
+resizing, rejected actions always say why, and the UI holds no state of its own.
+
+### D40 — A 640×360 pixel grid with Terminus
+**2026-11-14 · Accepted**
+
+Reference resolution **640×360**, `stretch/mode = viewport`, `scale_mode = integer`,
+and **Terminus TTF** at size 12 giving an exact 6×12 cell.
+
+**Why 640×360.** It scales by whole numbers to every common 16:9 resolution (×2 to
+720p, ×3 to 1080p, ×4 to 1440p, ×6 to 4K), so pixels are never resampled. The
+previously used 768×432 only lands cleanly on 4K — at 1080p it needs ×2.5.
+
+**Why Terminus.** It is monospace, it is OFL 1.1 so it can live in the repository, it
+is pixel-exact at size 12 (6×12) and 24 (12×24), and it ships box-drawing glyphs and
+arrows, which a terminal UI wants for panel rules and direction indicators.
+
+**Why a grid at all.** The target is a pixel-art Bloomberg terminal. A character grid
+turns every layout question into "how many characters", which is what makes the thing
+buildable; a proportional layout at arbitrary pixel widths is what made the earlier
+attempts churn.
+
+**Rules out.** Fractional sizes anywhere in the UI, and proportional fonts. Godot
+needs no addon for any of this — `scale_mode = integer` plus nearest-neighbour
+filtering and the font import settings (antialiasing, hinting and subpixel
+positioning all off) is the whole setup.
+
+**Note on the earlier font.** Quadlet was considered and rejected on licence grounds:
+it forbids placing the font files in a public repository. Terminus has no such
+restriction.
+
 ---
 
 ## Still open

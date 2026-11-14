@@ -7,6 +7,7 @@
 script = ExtResource("2_eo70k")
 id = &"berry_bonds"
 display_name = "BERRY BONDS FROM DIE HARD"
+ticker = &"BERRY"
 bear_dividend = 3
 bull_dividend = 3
 is_price_static = true

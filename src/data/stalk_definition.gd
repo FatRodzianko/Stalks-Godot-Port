@@ -15,6 +15,14 @@ extends Resource
 
 @export var display_name: String = ""
 
+## Short board symbol, the way a terminal lists an instrument.
+##
+## At the reference resolution the board's name column holds roughly five
+## characters, so this is what appears there. The full `display_name` stays
+## available on hover and, later, as a scrolling marquee — the joke names are
+## half the point of the game, so they must not be lost.
+@export var ticker: StringName = &""
+
 @export var starting_price: int = 100
 
 ## Magnitude of the normal yearly change in a BEAR year, as (min, max).
@@ -63,6 +71,12 @@ func all_events() -> Array[SpecialEventDefinition]:
 	combined.append_array(bull_events)
 	combined.append_array(bear_events)
 	return combined
+
+
+## What the board shows in its name column: the ticker when one is authored,
+## otherwise the display name.
+func board_symbol() -> String:
+	return String(ticker) if ticker != &"" else display_name
 
 
 func _to_string() -> String:

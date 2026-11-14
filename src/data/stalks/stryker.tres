@@ -82,6 +82,7 @@ price_change = 20
 script = ExtResource("2_1wrqu")
 id = &"stryker"
 display_name = "strYker!!!"
+ticker = &"STRYK"
 bear_change = Vector2i(15, 50)
 bull_change = Vector2i(13, 42)
 bull_events = Array[ExtResource("1_8btsd")]([SubResource("Resource_hnosg"), SubResource("Resource_npobv"), SubResource("Resource_qnkcw"), SubResource("Resource_resms"), SubResource("Resource_x7f2f")])

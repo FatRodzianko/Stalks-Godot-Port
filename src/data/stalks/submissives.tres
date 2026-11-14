@@ -82,6 +82,7 @@ price_change = 5
 script = ExtResource("2_p1f8n")
 id = &"submissives"
 display_name = "Unionized Submissives LLC"
+ticker = &"SUBS"
 bear_change = Vector2i(0, 25)
 bull_change = Vector2i(5, 20)
 bull_dividend = 2

@@ -4,6 +4,11 @@
 [ext_resource type="Theme" path="res://assets/themes/stalks_theme.tres" id="2_theme"]
 
 [node name="Main" type="MarginContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme = ExtResource("2_theme")
 script = ExtResource("1_main")
 

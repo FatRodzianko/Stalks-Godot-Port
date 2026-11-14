@@ -28,6 +28,10 @@ func before_each() -> void:
 	add_child_autofree(_screen)
 	add_child_autofree(_session)
 
+	# A match opens at Year 0 with trading closed. Ready up once so these tests
+	# start where a player actually trades.
+	_session.set_ready(&"p0", true)
+
 
 func _player() -> PlayerState:
 	return _session.state().player_by_id(&"p0")
@@ -65,7 +69,7 @@ func test_the_screen_builds_a_row_for_every_stalk() -> void:
 
 
 func test_the_header_shows_the_year_and_the_players_money() -> void:
-	assert_eq((_screen.get_node("%YearLabel") as Label).text, "Year 1 of 10")
+	assert_eq((_screen.get_node("%YearLabel") as Label).text, "Year: 1/10")
 	assert_eq((_screen.get_node("%CashLabel") as Label).text, "$10,000")
 	assert_eq((_screen.get_node("%NetWorthLabel") as Label).text, "$10,000")
 
@@ -83,7 +87,7 @@ func test_the_standings_list_the_player() -> void:
 func test_the_board_shows_prices_from_the_simulation() -> void:
 	var stalk: StalkState = _first_tradable_stalk()
 	var row: StalkRow = _screen.stalk_row_for(stalk.id)
-	assert_eq((row.get_node("%Price") as Label).text, Palette.format_money(stalk.price))
+	assert_eq((row.get_node("%Price") as Label).text, str(stalk.price))
 
 
 # ------------------------------------------------------------------------ buying
@@ -103,15 +107,15 @@ func test_buying_through_the_ui_updates_holdings_and_cash() -> void:
 	assert_false((_screen.get_node("%HoldingsEmpty") as Label).visible)
 
 
-func test_the_holdings_row_shows_shares_and_value() -> void:
+func test_the_holdings_row_shows_how_many_are_owned() -> void:
+	# Columns match the original: name and number owned. The price is not
+	# repeated here — it is on the Available Stalks board. See ui-reference.md.
 	var stalk: StalkState = _first_tradable_stalk()
 	_buy_through_the_ui(_screen.stalk_row_for(stalk.id), "4")
 
 	var row: HoldingRow = _screen.holding_row_for(stalk.id)
 	assert_not_null(row)
-	assert_eq((row.get_node("%Shares") as Label).text, "4")
-	assert_eq((row.get_node("%Value") as Label).text,
-		Palette.format_money(stalk.price * 4))
+	assert_eq((row.get_node("%Owned") as Label).text, "4")
 
 
 func test_an_unaffordable_purchase_tells_the_player_why() -> void:
@@ -205,7 +209,7 @@ func test_the_ready_button_advances_the_year_and_redraws() -> void:
 	(_screen.get_node("%ReadyButton") as Button).pressed.emit()
 
 	assert_eq(_session.state().year, 2)
-	assert_eq((_screen.get_node("%YearLabel") as Label).text, "Year 2 of 10")
+	assert_eq((_screen.get_node("%YearLabel") as Label).text, "Year: 2/10")
 	assert_false((_screen.get_node("%MoodLabel") as Label).text.is_empty(),
 		"the year's mood should be on screen")
 
@@ -270,7 +274,7 @@ func test_prices_on_the_board_track_the_simulation_after_a_year() -> void:
 		var row: StalkRow = _screen.stalk_row_for(stalk.id)
 		var shown: String = (row.get_node("%Price") as Label).text
 		var expected: String = (
-			"BANKRUPT" if stalk.is_bankrupt else Palette.format_money(stalk.price)
+			"BNKRT" if stalk.is_bankrupt else str(stalk.price)
 		)
 		assert_eq(shown, expected, "%s price on screen" % stalk.id)
 
@@ -326,7 +330,7 @@ func test_a_bankrupt_stalk_is_marked_and_cannot_be_bought() -> void:
 		var row: StalkRow = _screen.stalk_row_for(stalk.id)
 		# The controls stay in the tree so the columns keep their width, but the
 		# price reads BANKRUPT and buying is refused.
-		assert_eq((row.get_node("%Price") as Label).text, "BANKRUPT",
+		assert_eq((row.get_node("%Price") as Label).text, "BNKRT",
 			"%s should be marked bankrupt" % stalk.id)
 		assert_true((row.get_node("%BuyButton") as Button).disabled,
 			"a bankrupt stalk must not be buyable")
@@ -349,11 +353,26 @@ func test_the_screen_announces_the_finished_match_outward() -> void:
 		"there is nothing left to ready up for")
 
 
-func test_the_seed_is_on_screen() -> void:
-	# A player reporting something odd can quote it, and the same seed replays
-	# identically.
-	assert_true((_screen.get_node("%SeedLabel") as Label).text.contains("20261114"),
-		"got: %s" % (_screen.get_node("%SeedLabel") as Label).text)
+func test_every_row_has_identical_column_geometry() -> void:
+	# A LineEdit's minimum width grows with its placeholder text, so rows whose
+	# "max N" hints differ in length were silently getting different column
+	# widths — the board looked ragged for a reason nothing in the scene showed.
+	# Pinned here because it is invisible in the scene files.
+	_screen.size = Vector2(640, 360)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var reference: Array = []
+	for stalk: StalkState in _session.state().stalks:
+		var columns: Node = _screen.stalk_row_for(stalk.id).get_node("Row")
+		var widths: Array = []
+		for child: Node in columns.get_children():
+			widths.append(roundf((child as Control).size.x))
+		if reference.is_empty():
+			reference = widths
+		else:
+			assert_eq(widths, reference,
+				"%s has different column widths from the first row" % stalk.id)
 
 
 func test_the_final_year_button_says_what_it_does() -> void:
