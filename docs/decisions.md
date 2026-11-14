@@ -578,6 +578,64 @@ is also what lets the scene tests drive it with a fixed seed.
 **Revisit when.** The main menu lands in increment 2 and becomes the main scene.
 `GameplayScreen.setup()` already exists for the menu to call.
 
+### D35 — Screens are container-rooted, with no anchors anywhere
+**2026-11-14 · Accepted** (supersedes part of D34)
+
+Every screen's root node is a `MarginContainer`, not an anchored `Control`. The only
+anchored nodes left in the project are inside the loan panel's full-screen overlay.
+
+**Why.** The first version of the playing screen anchored a `Control` and nested an
+anchored `MarginContainer` inside it, and produced dead space at the top and bottom of
+the window. A container root is laid out by Godot against the viewport automatically,
+so there are no anchors, offsets or `layout_mode` values to get wrong. Verified by
+measuring the computed layout at 1024×600, 1280×720 and 1920×1080 — all three now fill
+exactly.
+
+**Rules out.** Free-positioned UI. Everything on screen is placed by a container,
+which is also what makes the layout survive window resizing.
+
+### D36 — A board's column header IS the row widget
+**2026-11-14 · Accepted**
+
+`StalkRow.configure_as_header()` and `HoldingRow.configure_as_header()` turn a row
+into the header above its list, instead of a separately built header.
+
+**Why.** The hand-built header had six children where the row had seven, so the row
+lost 10px more to separations and **every column sat 20px out of alignment**. Sharing
+the scene makes that class of bug impossible: the columns cannot drift because they
+are literally the same columns.
+
+A second cause had to be handled too. The header sits *outside* the scroll container
+so it stays put while the list scrolls, which means it is not narrowed by the
+scrollbar the list reserves — producing an 8px offset whenever a scrollbar was
+present, and none when it was not. Both scrolls therefore show their vertical bar
+permanently and each header is inset by exactly that width.
+
+**Lives in.** `src/ui/widgets/stalk_row.gd`, `holding_row.gd`,
+`gameplay_screen.gd::_inset_header_for_scrollbar()`. A scene test asserts the
+alignment so neither cause can regress.
+
+### D37 — The year panel always holds its space
+**2026-11-14 · Accepted**
+
+The special-event panel is always visible, with a placeholder when no event fired.
+
+**Why.** Showing and hiding it reflowed the whole screen, so everything below jumped
+down whenever an event occurred. Reserving the space costs one line of text and the
+layout becomes stable. It also gave somewhere to put the year summary — dividends,
+splits and bankruptcies — which previously happened invisibly and made a doubled
+share count look like a bug.
+
+### D38 — "Play again" is a new market, not a replay
+**2026-11-14 · Accepted**
+
+The result screen's *Play again* reuses the chosen settings but clears the seed.
+
+**Why.** Replaying an identical market is a debugging feature, not a game. Someone who
+typed a seed to reproduce something can type it again from the menu; someone pressing
+*Play again* wants another go. The finished seed stays on the result screen so it can
+be noted first.
+
 ---
 
 ## Still open

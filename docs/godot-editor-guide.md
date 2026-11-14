@@ -64,9 +64,11 @@ Open `src` and you will find `data`, `sim`, `net`, `autoload` and `ui`. The `net
 ## 3. Run the game
 
 1. Press **F5**, or click the **▶ play** button at the top-right of the window.
-2. A window opens on the playing screen: the market board on the left, your
-   holdings and the standings on the right, cash and net worth along the top.
-3. Close the window, or press **F8**.
+2. The **main menu** opens. Choose the number of years, your starting cash, whether
+   loans are enabled, and optionally a seed. Press **Start**.
+3. The playing screen appears: the market board on the left, your holdings and the
+   standings on the right, cash and net worth along the top.
+4. Close the window, or press **F8**.
 
 **You can actually play it.** Type a number into a stalk's amount box and press
 **Buy**; the position appears under *Your Stalks* and your cash drops. Press **Ready
@@ -84,15 +86,19 @@ Things worth trying, because they are the parts most likely to be wrong:
 - **Watch for a bankruptcy.** A stalk whose price hits zero shows **BANKRUPT!!!** and
   loses its buy control, and any shares you held in it are gone.
 
+- **Take a loan.** From year 2 the button at the bottom-left opens the loan panel.
+  Borrow, then skip a payment and watch the warnings escalate. You can always ready
+  up with a payment outstanding — that is deliberate.
+- **Note the seed.** It is in the top bar and on the result screen. Typing it into
+  the menu replays the identical market, which is how to reproduce anything odd.
+
 > The throwaway smoke-test screen from earlier phases has been deleted now that
-> there is a real screen to run.
+> there is a real game to run.
 
 ### Not there yet
 
-There is no main menu, so the game starts straight into a ten-year solo match with
-default settings, and no way to change them in the UI. Loans are switched off because
-the loan panel does not exist yet. Splits and dividends happen correctly but are not
-yet called out on screen. Those are the remainder of Phase 4 — see
+No sound, no pause menu during play, and a year advance changes the numbers without
+any animation. Multiplayer and Steam are Phases 5 and 6. See
 [porting-plan.md](porting-plan.md).
 
 ---

@@ -107,7 +107,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-184 tests, 13,440 asserts, about 2.2 seconds.
+214 tests, 13,524 asserts, about 3.3 seconds.
 
 | File | Covers | Tests |
 |---|---|---|
@@ -119,7 +119,8 @@ several; the point of this suite is that the port does not.
 | `test_loan_rules.gd` | Annuity arithmetic, eligibility, the full ten-payment schedule, penalties and default, overpayment, one-loan-per-game, pipeline integration | 40 |
 | `test_content_library.gd` | The shipped content loads and validates clean, stat blocks match the documented table, 45/45 pools, deterministic order, a full match played from real content, and every validator rule rejecting bad content | 29 |
 | `test_local_session.gd` | Session start-up, seed recording, trading and its rejections, pre-checks agreeing with enforcement, ready-up and year advance, a two-player wait, a full match, loans through the session | 25 |
-| `test_gameplay_screen.gd` | **Scene tests** driving the real screen: rows built, header figures, buying and selling through actual controls, live validation disabling the Buy button, bankrupt presentation, event display, game over, and the UI matching a headless run of the same seed | 22 |
+| `test_gameplay_screen.gd` | **Scene tests** driving the real screen: rows built, header figures, buying and selling through actual controls, live validation disabling the Buy button, bankrupt presentation, event and year-summary display, header/row column alignment, ellipsis on long names, and the UI matching a headless run of the same seed | 27 |
+| `test_screens.gd` | **Scene tests** for the menu (ranges, defaults, seed handling), the screen host (one screen at a time, session ownership, play-again), the result screen, and the loan panel (borrowing, paying the minimum, the escalating warnings, and that a player may still ready up with a payment due) | 25 |
 
 Counts above are read from a suite run, not estimated. If you add tests, re-run and
 update them — a stale number here is a small lie that erodes trust in the rest.
@@ -164,5 +165,13 @@ The acceptance test to keep an eye on is
 whole match through the UI, plays the same seed headlessly, and compares every stalk
 price and the final net worth. It is what proves the UI invents nothing.
 
-**Not yet covered:** the main menu, game-over screen and loan panel (none exist
-yet), and anything networked (Phase 5).
+Two of these tests exist specifically because a layout bug regressed once and would
+not announce itself: `test_the_board_header_columns_line_up_with_the_rows` compares
+every header column's position and width against the row's, and
+`test_long_stalk_names_are_not_hard_clipped` checks the ellipsis behaviour and the
+tooltip. Both need a real frame, so they `await get_tree().process_frame` before
+measuring.
+
+**Not yet covered:** anything networked (Phase 5), sound, and the visual *appearance*
+of a screen. Tests can prove a column is 325px wide and aligned; they cannot say
+whether it looks right. That still needs a human pressing F5.

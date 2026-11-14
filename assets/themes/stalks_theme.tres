@@ -111,6 +111,20 @@ corner_radius_bottom_left = 5
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_braxb"]
 color = Color(0.16470589, 0.22745098, 0.19607843, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_braxb"]
+content_margin_left = 10.0
+content_margin_top = 2.0
+content_margin_right = 10.0
+content_margin_bottom = 4.0
+bg_color = Color(0, 0, 0, 0)
+draw_center = false
+border_width_bottom = 1
+border_color = Color(0.16470589, 0.22745098, 0.19607843, 1)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_g55ww"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_fws6u"]
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_g55ww"]
 content_margin_left = 6.0
 content_margin_top = 4.0
@@ -344,6 +358,13 @@ GridContainer/constants/h_separation = 10
 GridContainer/constants/v_separation = 6
 HBoxContainer/constants/separation = 10
 HSeparator/styles/separator = SubResource("StyleBoxLine_braxb")
+HeaderCard/base_type = &"PanelContainer"
+HeaderCard/styles/panel = SubResource("StyleBoxFlat_braxb")
+HeaderField/base_type = &"LineEdit"
+HeaderField/colors/font_placeholder_color = Color(0.43137255, 0.5058824, 0.4627451, 1)
+HeaderField/styles/focus = SubResource("StyleBoxEmpty_g55ww")
+HeaderField/styles/normal = SubResource("StyleBoxEmpty_fws6u")
+HeaderField/styles/read_only = SubResource("StyleBoxEmpty_fws6u")
 Heading/base_type = &"Label"
 Heading/colors/font_color = Color(0.90588236, 0.93333334, 0.9137255, 1)
 Heading/font_sizes/font_size = 26

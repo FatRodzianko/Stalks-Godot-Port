@@ -331,6 +331,22 @@ Steam is deferred to a late phase.
 
 All `Control` nodes, laid out with containers — never hardcoded pixel positions.
 
+### The screen host
+
+`Main` (`src/ui/screens/main/`) holds exactly one screen at a time and moves between
+them: menu → play → result → menu or play again. It also **owns the session**, so a
+finished match's state outlives the screen that displayed it long enough for the
+result screen to read it.
+
+This exists so screens stay ignorant of each other. The menu emits
+`start_requested(settings)`; the playing screen emits `match_finished(winners)`; the
+result screen emits `play_again_requested` or `menu_requested`. None of them knows
+what comes next.
+
+**Every screen's root is a container**, not an anchored `Control` — see
+decisions.md D35. The first version anchored a Control and produced dead space at the
+top and bottom of the window.
+
 - **Screens** in `src/ui/screens/<name>/`, scene and script together.
 - **Widgets** in `src/ui/widgets/` — one reusable scene per repeated row (stalk
   board row, holdings row, ranking row, lobby member). Instantiated into containers,
@@ -367,6 +383,26 @@ for child: Node in container.get_children():
 
 This was caught by a scene test asserting the board after a sale, not by reading the
 code.
+
+### A second one: scroll containers and column alignment
+
+A list's column header has to sit **outside** its `ScrollContainer` to stay put while
+the list scrolls — which also means it is not narrowed by the scrollbar the list
+reserves. The result is a header that lines up only when no scrollbar is showing.
+
+Two things fix it together: both scrolls show their vertical bar permanently
+(`vertical_scroll_mode = 2`), and each header is inset on the right by exactly that
+bar's width, read from `scroll.get_v_scroll_bar()` at runtime rather than guessed.
+
+Related, and the reason this was worth solving properly: a hand-built header will
+drift out of alignment with its rows the moment a column changes. The headers here
+*are* the row widgets in header mode, so the columns are literally the same columns.
+See decisions.md D36.
+
+**Diagnose layout by measuring it, not by reading it.** Both of these were found by
+a throwaway script that instantiated the screen headlessly, forced a size, and printed
+every node's computed rect at 1024×600, 1280×720 and 1920×1080. That turned "the
+layout looks wrong" into "the name column has 199px and needs 289px" in one run.
 
 ---
 

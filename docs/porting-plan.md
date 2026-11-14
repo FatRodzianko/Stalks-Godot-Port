@@ -178,13 +178,16 @@ from the authored content.
 
 ---
 
-## Phase 4 — Single-player UI 🟡 In progress
+## Phase 4 — Single-player UI ✅ Complete
 
 First visible game. Still **no networking at all** — driven by `LocalSession`.
 
-**Increment 1 delivered.** The game is playable: a ten-year solo match can be played
-start to finish from the playing screen. 47 new tests take the suite to **184 tests /
-13,440 asserts in about 2.2 seconds**.
+**Delivered across two increments.** A complete solo game plays end to end from the
+main menu, and the numbers on screen are asserted to match a headless run of the same
+seed. 77 new tests take the suite to **214 tests / 13,524 asserts in about 3.3
+seconds**.
+
+### Increment 1
 
 - `GameSession` (the interface the UI talks to) and `LocalSession` (offline,
   authoritative in-process) — `src/net/`
@@ -196,16 +199,39 @@ start to finish from the playing screen. 47 new tests take the suite to **184 te
 - The throwaway smoke-test scene is deleted; the gameplay screen is now
   `main_scene`
 
-**Increment 2 — still to do:**
+### Increment 2
 
-- [ ] Main menu with game settings (starting cash, years, players, loans on/off)
-- [ ] A dedicated game-over screen with final standings, rather than a status line
-- [ ] Loan panel: terms, maximum, minimum payment, and the advisory (never
-      blocking) prompt. **Loans are switched off in the default game until this
-      exists** — better absent than present and unreachable
-- [ ] Split and dividend presentation. Both happen correctly and are carried in
-      `YearResult`, but only the special event and bankruptcies are surfaced so far
-- [ ] A way to see the match seed, which is what makes a game reproducible
+- Main menu with game settings: years (2–99), starting cash, loans on/off, and an
+  optional seed. Player count is deliberately absent — meaningless solo, and it
+  belongs to the Phase 5 lobby
+- `Main`, a screen host that owns the session and moves between menu, play and
+  result, so screens stay ignorant of each other
+- Game-over screen: winner (or tie), final standings, how the player did against
+  their starting cash, and the seed
+- Loan panel: terms, maximum, status, borrow and pay controls, the escalating
+  missed-payment warnings, and an **advisory, never blocking** payment prompt.
+  Loans are now **on by default**
+- Year summary line reporting dividends, splits, bankruptcies and loan interest —
+  all of which previously happened invisibly
+- The match seed on screen, in the header and on the result screen
+
+### Layout fixes
+
+The first increment's screen was reported as having five distinct layout faults. All
+five were diagnosed by measuring the computed layout headlessly rather than by eye,
+and all five are fixed with a scene test guarding the two that can regress silently:
+
+| Reported | Cause | Fix |
+|---|---|---|
+| Text on stalks cut off | Name column got 199px; the longest name needs 289px | Fewer, narrower columns; dividends merged into one; ellipsis plus a tooltip (D36) |
+| Everything shifts left when you buy | Board minimum widths totalled 1198 of 1248, so the stretch ratio could not apply and content changes moved the split | Minimums cut to 510/483; the ratio now governs |
+| Rankings unreachable with several players | Standings had no scroll and no reserved height | Own scroll container with a minimum height |
+| Special events push everything down | The panel was shown and hidden, reflowing the screen | Always visible with a placeholder (D37) |
+| Dead space at top and bottom | An anchored `Control` root with a nested anchored `MarginContainer` | Container-rooted screens, no anchors (D35) |
+
+A sixth fault was found while measuring and had not been reported: the board header
+was misaligned from its rows by 20px, and by a further 8px whenever a scrollbar
+appeared. See D36.
 
 **Build:**
 - Shared `Theme` resource; all colours and fonts in one place
@@ -224,10 +250,14 @@ start to finish from the playing screen. 47 new tests take the suite to **184 te
 menu, with no Steam and no network peer, and the numbers on screen match what a
 headless simulation with the same seed produces.
 
-The second half of that is **already met and asserted**: a test plays a full match
-through the real controls, then plays the same seed headlessly and compares every
-stalk price and the final net worth. The UI invents nothing. The "from the main menu"
-part waits on increment 2.
+✅ **Met.** A test plays a full match through the real controls, then plays the same
+seed headlessly and compares every stalk price and the final net worth — the UI
+invents nothing. Another starts from the menu, plays to the end, and checks the result
+screen takes over.
+
+**Known rough edges, deliberately left:** no sound, no pause or settings menu during
+play, and no animation on a year advance — prices simply change. Sound and polish are
+Phase 7.
 
 🖱️ Heaviest editor phase. I'll write the scenes as text where the node tree is
 regular, and give numbered click-by-click steps for theme authoring and any fiddly

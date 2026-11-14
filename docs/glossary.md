@@ -171,8 +171,21 @@ every figure on screen is written the same way.
 things without per-node colour overrides.
 
 **Widget** — a small reusable UI scene under `src/ui/widgets/`: one board row, one
-holdings row, one standings row. A widget displays what it is given and emits intent
-outward; it knows nothing about the session or the screen holding it.
+holdings row, one standings row, the loan panel. A widget displays what it is given
+and emits intent outward; it knows nothing about the session or the screen holding it.
+
+**Screen host** — `Main`, the node that holds exactly one screen at a time and moves
+between the menu, the playing screen and the result screen. It owns the session, so a
+finished match's state outlives the screen that displayed it. Screens emit intent and
+know nothing about each other.
+
+**Header mode** — a row widget configured by `configure_as_header()` to be the column
+header above its own list. Sharing the scene is what guarantees the header's columns
+cannot drift out of alignment with the rows'.
+
+**Year summary** — the one-line digest under the special event reporting dividends,
+splits, bankruptcies and loan interest. These all happen in the simulation and were
+invisible until Phase 4, which made a doubled share count look like a bug.
 
 **Host-authoritative** — the design where one machine owns the simulation and decides
 every number. Clients request actions and receive results; they never compute

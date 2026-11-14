@@ -210,22 +210,57 @@ func test_the_ready_button_advances_the_year_and_redraws() -> void:
 		"the year's mood should be on screen")
 
 
-func test_a_special_event_is_shown_when_one_fires() -> void:
+func test_the_event_panel_always_holds_its_space() -> void:
+	# It stays visible whether or not an event fired, so the rest of the screen
+	# does not jump down when one does. That jumping was a reported bug.
 	var panel: PanelContainer = _screen.get_node("%EventPanel")
-	assert_false(panel.visible, "no event before the first advance")
+	assert_true(panel.visible, "the panel should be present before any advance")
+	assert_false((_screen.get_node("%EventEffect") as Label).text.is_empty(),
+		"it should say something rather than sit blank")
 
-	# Advance until an event fires; with 45 events per pool this is immediate in
-	# practice, but loop rather than assume.
+	for i: int in 3:
+		(_screen.get_node("%ReadyButton") as Button).pressed.emit()
+		assert_true(panel.visible, "the panel should never disappear")
+
+
+func test_a_special_event_is_shown_when_one_fires() -> void:
+	var flavour: Label = _screen.get_node("%EventFlavour")
+	var effect: Label = _screen.get_node("%EventEffect")
+
+	# With 45 events per pool one fires almost every year, but loop rather than
+	# assume.
+	var fired: bool = false
 	var guard: int = 0
-	while not panel.visible and guard < 9:
+	while not fired and guard < 9:
 		(_screen.get_node("%ReadyButton") as Button).pressed.emit()
 		guard += 1
+		fired = not flavour.text.is_empty()
 
-	assert_true(panel.visible, "an event should have fired within nine years")
-	assert_false((_screen.get_node("%EventFlavour") as Label).text.is_empty())
-	assert_false((_screen.get_node("%EventEffect") as Label).text.is_empty())
-	assert_true((_screen.get_node("%EventEffect") as Label).text.contains("by"),
-		"the effect line should name the movement")
+	assert_true(fired, "an event should have fired within nine years")
+	assert_true(effect.text.contains("by"),
+		"the effect line should name the movement, got: %s" % effect.text)
+
+
+func test_the_year_summary_reports_dividends_splits_and_bankruptcies() -> void:
+	# These all happen in the simulation and used to be invisible, which made a
+	# doubled share count look like a bug.
+	var stalk: StalkState = _first_tradable_stalk()
+	_buy_through_the_ui(_screen.stalk_row_for(stalk.id), "20")
+
+	var mentioned: bool = false
+	var guard: int = 0
+	while not mentioned and guard < 10:
+		(_screen.get_node("%ReadyButton") as Button).pressed.emit()
+		guard += 1
+		var summary: String = _screen.year_summary_text()
+		mentioned = (
+			summary.contains("Dividends")
+			or summary.contains("Split")
+			or summary.contains("Bankrupt")
+		)
+
+	assert_true(mentioned,
+		"ten years with a position should have produced something to report")
 
 
 func test_prices_on_the_board_track_the_simulation_after_a_year() -> void:
@@ -234,8 +269,48 @@ func test_prices_on_the_board_track_the_simulation_after_a_year() -> void:
 	for stalk: StalkState in _session.state().stalks:
 		var row: StalkRow = _screen.stalk_row_for(stalk.id)
 		var shown: String = (row.get_node("%Price") as Label).text
-		var expected: String = "—" if stalk.is_bankrupt else Palette.format_money(stalk.price)
+		var expected: String = (
+			"BANKRUPT" if stalk.is_bankrupt else Palette.format_money(stalk.price)
+		)
 		assert_eq(shown, expected, "%s price on screen" % stalk.id)
+
+
+func test_the_board_header_columns_line_up_with_the_rows() -> void:
+	# A reported bug: the header was built by hand and had one fewer child than
+	# the rows, so it lost less to separations and every column sat 20px off.
+	# The header is now the row widget in header mode, and the scrollbar width is
+	# compensated for. This test is what stops either regressing.
+	_screen.size = Vector2(1280, 720)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var header: StalkRow = (_screen.get_node("%BoardHeaderSlot") as Node).get_child(0)
+	var row: StalkRow = _screen.stalk_row_for(_session.state().stalks[0].id)
+	var header_cols: Node = header.get_node("Row")
+	var row_cols: Node = row.get_node("Row")
+
+	assert_eq(header_cols.get_child_count(), row_cols.get_child_count(),
+		"header and row must have the same columns")
+
+	for i: int in header_cols.get_child_count():
+		var h: Control = header_cols.get_child(i)
+		var r: Control = row_cols.get_child(i)
+		assert_almost_eq(h.position.x, r.position.x, 1.0,
+			"column %s is horizontally offset" % h.name)
+		assert_almost_eq(h.size.x, r.size.x, 1.0,
+			"column %s is a different width" % h.name)
+
+
+func test_long_stalk_names_are_not_hard_clipped() -> void:
+	# "My Pillow, Your Pillow, We're All Pillows!" overflowed its column and was
+	# simply cut. It now trims with an ellipsis and keeps the full name on hover.
+	for stalk: StalkState in _session.state().stalks:
+		var row: StalkRow = _screen.stalk_row_for(stalk.id)
+		var label: Label = row.get_node("%Name")
+		assert_eq(label.text_overrun_behavior, TextServer.OVERRUN_TRIM_ELLIPSIS,
+			"%s name should ellipsize rather than clip" % stalk.id)
+		assert_eq(label.tooltip_text, stalk.definition.display_name,
+			"the full name should always be available on hover")
 
 
 func test_a_bankrupt_stalk_is_marked_and_cannot_be_bought() -> void:
@@ -249,23 +324,36 @@ func test_a_bankrupt_stalk_is_marked_and_cannot_be_bought() -> void:
 			continue
 		found_bankrupt = true
 		var row: StalkRow = _screen.stalk_row_for(stalk.id)
-		assert_true((row.get_node("%BankruptBanner") as Label).visible,
-			"%s should show the bankrupt banner" % stalk.id)
-		assert_false((row.get_node("%BuyButton") as Button).visible,
-			"a bankrupt stalk should not offer a buy control")
+		# The controls stay in the tree so the columns keep their width, but the
+		# price reads BANKRUPT and buying is refused.
+		assert_eq((row.get_node("%Price") as Label).text, "BANKRUPT",
+			"%s should be marked bankrupt" % stalk.id)
+		assert_true((row.get_node("%BuyButton") as Button).disabled,
+			"a bankrupt stalk must not be buyable")
 
 	if not found_bankrupt:
 		pass_test("no stalk went bankrupt in this seed; nothing to assert")
 
 
-func test_the_game_over_message_names_the_winner() -> void:
+func test_the_screen_announces_the_finished_match_outward() -> void:
+	# The screen no longer writes a game-over line itself; it tells whoever owns
+	# it, which shows the result screen. Keeps the screens ignorant of each other.
+	watch_signals(_screen)
 	while not _session.state().is_over:
 		(_screen.get_node("%ReadyButton") as Button).pressed.emit()
 
-	assert_true(_screen.current_message().contains("Game over"),
-		"got: %s" % _screen.current_message())
+	assert_signal_emitted(_screen, "match_finished")
+	var params: Array = get_signal_parameters(_screen, "match_finished", 0)
+	assert_eq((params[0] as Array)[0], &"p0", "the only player wins")
 	assert_true((_screen.get_node("%ReadyButton") as Button).disabled,
 		"there is nothing left to ready up for")
+
+
+func test_the_seed_is_on_screen() -> void:
+	# A player reporting something odd can quote it, and the same seed replays
+	# identically.
+	assert_true((_screen.get_node("%SeedLabel") as Label).text.contains("20261114"),
+		"got: %s" % (_screen.get_node("%SeedLabel") as Label).text)
 
 
 func test_the_final_year_button_says_what_it_does() -> void:

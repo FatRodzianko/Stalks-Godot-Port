@@ -1,4 +1,4 @@
-extends Control
+extends MarginContainer
 ## The playing screen: the market board, the player's holdings, the standings,
 ## and the control that advances the year.
 ##
@@ -6,41 +6,63 @@ extends Control
 ## into `request_*` calls. Every number shown is computed by the simulation —
 ## see docs/architecture.md §6.
 ##
-## Tests inject a session with `setup()`. Run directly (as the project's main
-## scene) it builds a default solo game so the screen is never empty.
+## The root is a MarginContainer rather than an anchored Control, so every piece
+## of this screen is laid out by a container and there are no anchors to get
+## wrong. An earlier version anchored a Control and produced dead space at the
+## top and bottom of the window; see docs/decisions.md D35.
+##
+## Tests inject a session with `setup()`. Run directly it builds a default solo
+## game, so the screen is never empty.
 
 
 const StalkRowScene: PackedScene = preload("res://src/ui/widgets/stalk_row.tscn")
 const HoldingRowScene: PackedScene = preload("res://src/ui/widgets/holding_row.tscn")
 const RankingRowScene: PackedScene = preload("res://src/ui/widgets/ranking_row.tscn")
+const LoanPanelScene: PackedScene = preload("res://src/ui/widgets/loan_panel.tscn")
 
 ## How long a rejection message stays on screen.
 const MESSAGE_SECONDS: float = 4.0
 
+## Emitted when the match ends, so whoever owns this screen can move on.
+signal match_finished(winners: Array[StringName])
+
 @onready var _year_label: Label = %YearLabel
 @onready var _mood_label: Label = %MoodLabel
+@onready var _seed_label: Label = %SeedLabel
 @onready var _cash_label: Label = %CashLabel
 @onready var _net_worth_label: Label = %NetWorthLabel
+@onready var _loan_box: VBoxContainer = %LoanBox
+@onready var _loan_owed_label: Label = %LoanOwedLabel
 @onready var _event_panel: PanelContainer = %EventPanel
 @onready var _event_flavour: Label = %EventFlavour
 @onready var _event_effect: Label = %EventEffect
+@onready var _year_summary: Label = %YearSummary
+@onready var _board_header_slot: MarginContainer = %BoardHeaderSlot
+@onready var _holdings_header_slot: MarginContainer = %HoldingsHeaderSlot
+@onready var _stalk_scroll: ScrollContainer = %StalkScroll
+@onready var _holding_scroll: ScrollContainer = %HoldingScroll
 @onready var _stalk_list: VBoxContainer = %StalkList
 @onready var _holding_list: VBoxContainer = %HoldingList
 @onready var _holdings_empty: Label = %HoldingsEmpty
 @onready var _ranking_list: VBoxContainer = %RankingList
 @onready var _message_label: Label = %MessageLabel
 @onready var _ready_button: Button = %ReadyButton
+@onready var _loan_button: Button = %LoanButton
 @onready var _message_timer: Timer = %MessageTimer
 
 var _session: GameSession
 var _stalk_rows: Dictionary[StringName, StalkRow] = {}
+var _loan_panel: LoanPanel
 
 
 func _ready() -> void:
 	_ready_button.pressed.connect(_on_ready_pressed)
+	_loan_button.pressed.connect(_on_loan_button_pressed)
 	_message_timer.timeout.connect(_clear_message)
 	_message_timer.wait_time = MESSAGE_SECONDS
 	_message_timer.one_shot = true
+
+	_build_headers()
 
 	if _session == null:
 		_session = _build_default_session()
@@ -62,17 +84,13 @@ func session() -> GameSession:
 func _build_default_session() -> GameSession:
 	var library: ContentLibrary = ContentLibrary.load_from()
 	if not library.is_valid():
-		# Loud rather than silent: a content error means the game cannot be
-		# trusted, and the validator already said exactly what is wrong.
 		for error: String in library.errors:
 			push_error("Content error: %s" % error)
 
 	var settings: GameSettings = GameSettings.new()
 	settings.max_years = 10
 	settings.player_count = 1
-	# Loans stay off until the loan panel exists — better absent than present
-	# and unreachable.
-	settings.loans_enabled = false
+	settings.loans_enabled = true
 
 	var session: LocalSession = LocalSession.create(settings, library)
 	add_child(session)
@@ -89,11 +107,40 @@ func _attach(session: GameSession) -> void:
 		session.game_over.connect(_on_game_over)
 
 	_build_stalk_rows()
-	_event_panel.visible = false
+	_build_loan_panel()
+	_reset_year_panel()
 	refresh()
 
 
 # ----------------------------------------------------------------- construction
+
+## The column headers are the row widgets themselves, in header mode. A
+## separately built header drifts out of alignment the moment a column changes —
+## which it did. See StalkRow.
+func _build_headers() -> void:
+	var stalk_header: StalkRow = StalkRowScene.instantiate()
+	_board_header_slot.add_child(stalk_header)
+	stalk_header.configure_as_header()
+
+	var holding_header: HoldingRow = HoldingRowScene.instantiate()
+	_holdings_header_slot.add_child(holding_header)
+	holding_header.configure_as_header()
+
+	# The headers sit OUTSIDE their scroll containers so they stay put while the
+	# list scrolls — which means they are also not narrowed by the scrollbar the
+	# list reserves. Left alone, every column sat 8px off whenever a scrollbar
+	# was present, and lined up only when it was not. Both scrolls therefore show
+	# their vertical bar permanently, and each header is inset by exactly that
+	# width.
+	_inset_header_for_scrollbar(_board_header_slot, _stalk_scroll)
+	_inset_header_for_scrollbar(_holdings_header_slot, _holding_scroll)
+
+
+func _inset_header_for_scrollbar(slot: MarginContainer, scroll: ScrollContainer) -> void:
+	var bar: VScrollBar = scroll.get_v_scroll_bar()
+	var width: int = int(bar.get_combined_minimum_size().x) if bar != null else 0
+	slot.add_theme_constant_override("margin_right", width)
+
 
 ## The market board is built once — ten rows that persist for the whole match —
 ## so a half-typed amount survives a refresh.
@@ -110,13 +157,23 @@ func _build_stalk_rows() -> void:
 		_stalk_rows[stalk.id] = row
 
 
+func _build_loan_panel() -> void:
+	if _loan_panel != null:
+		return
+	_loan_panel = LoanPanelScene.instantiate()
+	add_child(_loan_panel)
+	_loan_panel.setup(_session)
+	_loan_panel.borrow_requested.connect(_on_borrow_requested)
+	_loan_panel.payment_requested.connect(_on_payment_requested)
+	_loan_panel.hide_panel()
+
+
 ## Empties a container **synchronously**.
 ##
 ## `queue_free()` alone is not enough: it defers until the end of the frame, so a
 ## freed row is still a child immediately afterwards. Anything that then counts
 ## or searches the container sees rows that are logically gone — a sold-out
-## position would still appear on the board until the next frame. Removing from
-## the tree first makes the container correct the instant this returns.
+## position would still appear on the board until the next frame.
 func _clear_children(container: Node) -> void:
 	for child: Node in container.get_children():
 		container.remove_child(child)
@@ -140,6 +197,7 @@ func refresh() -> void:
 	_refresh_holdings(game, player)
 	_refresh_standings(game)
 	_refresh_ready_button(game)
+	_refresh_loan_controls(game, player)
 
 
 func _refresh_header(game: GameState, player: PlayerState) -> void:
@@ -152,8 +210,17 @@ func _refresh_header(game: GameState, player: PlayerState) -> void:
 	else:
 		_mood_label.text = ""
 
+	# The seed is what makes a match reproducible, so it is worth being able to
+	# read off the screen when something looks wrong.
+	_seed_label.text = "seed %d" % game.settings.rng_seed
+
 	_cash_label.text = Palette.format_money(player.cash)
 	_net_worth_label.text = Palette.format_money(player.net_worth)
+
+	var owed: int = player.owes()
+	_loan_box.visible = owed > 0
+	_loan_owed_label.text = Palette.format_money(owed)
+	_loan_owed_label.add_theme_color_override("font_color", Palette.BEAR)
 
 
 func _refresh_board(game: GameState, player: PlayerState) -> void:
@@ -163,8 +230,6 @@ func _refresh_board(game: GameState, player: PlayerState) -> void:
 			continue
 		row.display(stalk)
 		row.set_affordable_hint(TradeRules.max_affordable(player, stalk))
-		# Re-validate whatever is currently typed, so a figure that was
-		# affordable last year and is not now turns red immediately.
 		_validate_buy_row(row, row.shares_entered())
 
 
@@ -218,11 +283,35 @@ func _refresh_ready_button(game: GameState) -> void:
 	)
 
 
+func _refresh_loan_controls(game: GameState, player: PlayerState) -> void:
+	var loans_on: bool = game.settings != null and game.settings.loans_enabled
+	_loan_button.visible = loans_on and not game.is_over
+
+	if not loans_on:
+		return
+
+	# The prompt is advisory, never blocking: a player may ready up with a
+	# payment outstanding and take the penalty. See docs/game-rules.md §9.5.
+	if player.has_outstanding_loan() and not player.loan.paid_this_year:
+		_loan_button.text = "Loan payment due: %s" % Palette.format_money(
+			player.loan.min_payment
+		)
+		_loan_button.theme_type_variation = &"PrimaryButton"
+	elif player.has_outstanding_loan():
+		_loan_button.text = "Loan (paid this year)"
+		_loan_button.theme_type_variation = &""
+	else:
+		_loan_button.text = "Take a loan…"
+		_loan_button.theme_type_variation = &""
+
+	if _loan_panel != null and _loan_panel.is_showing():
+		_loan_panel.refresh()
+
+
 # --------------------------------------------------------------- live validation
 
 func _validate_buy_row(row: StalkRow, shares: int) -> void:
-	if shares <= 0:
-		# Nothing typed yet is not an error; do not shout at a blank field.
+	if shares <= 0 or row.is_bankrupt_row():
 		row.set_buy_blocked("")
 		return
 	row.set_buy_blocked(
@@ -276,6 +365,19 @@ func _on_ready_pressed() -> void:
 	_session.set_ready(_session.local_player_id(), true)
 
 
+func _on_loan_button_pressed() -> void:
+	if _loan_panel != null:
+		_loan_panel.show_panel()
+
+
+func _on_borrow_requested(amount: int) -> void:
+	_session.request_loan(_session.local_player_id(), amount)
+
+
+func _on_payment_requested(amount: int) -> void:
+	_session.pay_loan(_session.local_player_id(), amount)
+
+
 # -------------------------------------------------------------- session handlers
 
 func _on_player_changed(_player_id: StringName) -> void:
@@ -283,11 +385,13 @@ func _on_player_changed(_player_id: StringName) -> void:
 	for row: StalkRow in _stalk_rows.values():
 		row.clear_amount()
 	refresh()
+	if _loan_panel != null and _loan_panel.is_showing():
+		_loan_panel.refresh()
 
 
 func _on_year_resolved(result: YearResult) -> void:
 	_clear_message()
-	_show_event(result)
+	_show_year_panel(result)
 	refresh()
 
 
@@ -296,45 +400,89 @@ func _on_action_rejected(_player_id: StringName, reason: String) -> void:
 
 
 func _on_game_over(winners: Array[StringName]) -> void:
-	var game: GameState = _session.state()
-	var names: PackedStringArray = PackedStringArray()
-	for winner_id: StringName in winners:
-		var player: PlayerState = game.player_by_id(winner_id)
-		if player != null:
-			names.append(player.display_name)
-
-	var text: String = (
-		"Game over — %s wins!" % names[0]
-		if names.size() == 1
-		else "Game over — a tie between %s!" % ", ".join(names)
-	)
-	_message_label.text = text
-	_message_label.theme_type_variation = &"Bull"
-	_message_timer.stop()
+	if _loan_panel != null:
+		_loan_panel.hide_panel()
+	match_finished.emit(winners)
 
 
 # ------------------------------------------------------------------ presentation
 
-func _show_event(result: YearResult) -> void:
+func _reset_year_panel() -> void:
+	# The panel keeps its space whether or not an event fired, so the rest of the
+	# screen does not jump when one does.
+	_event_flavour.text = ""
+	_event_effect.text = "The market opens. Buy and sell, then ready up."
+	_event_effect.remove_theme_color_override("font_color")
+	_year_summary.text = ""
+
+
+func _show_year_panel(result: YearResult) -> void:
 	if result.event == null:
-		_event_panel.visible = false
-		return
+		_event_flavour.text = ""
+		_event_effect.text = "No special event this year."
+		_event_effect.remove_theme_color_override("font_color")
+	else:
+		var target: StalkState = _session.state().stalk_by_id(result.event.target_stalk_id)
+		var target_name: String = (
+			target.definition.display_name
+			if target != null
+			else String(result.event.target_stalk_id)
+		)
+		_event_flavour.text = result.event.flavour_text
+		_event_effect.text = "%s %s by %d" % [
+			target_name,
+			"rose" if result.event.price_change > 0 else "fell",
+			absi(result.event.price_change),
+		]
+		_event_effect.add_theme_color_override(
+			"font_color", Palette.for_change(result.event.price_change)
+		)
 
-	var target: StalkState = _session.state().stalk_by_id(result.event.target_stalk_id)
-	var target_name: String = (
-		target.definition.display_name if target != null else String(result.event.target_stalk_id)
-	)
+	_year_summary.text = _summarise(result)
 
-	_event_panel.visible = true
-	_event_flavour.text = result.event.flavour_text
-	_event_effect.text = "%s %s by %d" % [
-		target_name,
-		"rose" if result.event.price_change > 0 else "fell",
-		absi(result.event.price_change),
-	]
-	_event_effect.add_theme_color_override(
-		"font_color", Palette.for_change(result.event.price_change)
-	)
+
+## The one-line digest of what else happened: dividends, splits, bankruptcies and
+## any loan activity. These all happen in the simulation and were previously
+## invisible, which made a doubled share count look like a bug.
+func _summarise(result: YearResult) -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	var me: StringName = _session.local_player_id()
+
+	var dividend: int = result.dividends.get(me, 0)
+	if dividend > 0:
+		parts.append("Dividends %s" % Palette.format_money(dividend))
+
+	var splits: Array[StringName] = result.split_ids()
+	if not splits.is_empty():
+		parts.append("Split: %s" % ", ".join(_display_names(splits)))
+
+	var bankruptcies: Array[StringName] = result.bankrupt_ids()
+	if not bankruptcies.is_empty():
+		parts.append("Bankrupt: %s" % ", ".join(_display_names(bankruptcies)))
+
+	var loan_change: LoanYearChange = result.loan_change_for(me)
+	if loan_change != null:
+		if loan_change.defaulted:
+			parts.append("LOAN DEFAULTED — assets seized")
+		else:
+			if loan_change.penalty_added > 0:
+				parts.append("Missed payment penalty %s" % Palette.format_money(
+					loan_change.penalty_added
+				))
+			if loan_change.interest_added > 0:
+				parts.append("Loan interest %s" % Palette.format_money(
+					loan_change.interest_added
+				))
+
+	return " · ".join(parts)
+
+
+func _display_names(ids: Array[StringName]) -> PackedStringArray:
+	var names: PackedStringArray = PackedStringArray()
+	for stalk_id: StringName in ids:
+		var stalk: StalkState = _session.state().stalk_by_id(stalk_id)
+		names.append(stalk.definition.display_name if stalk != null else String(stalk_id))
+	return names
 
 
 func _show_message(text: String) -> void:
@@ -348,18 +496,20 @@ func _clear_message() -> void:
 	_message_timer.stop()
 
 
-## For tests: whatever the player is currently being told.
+# ------------------------------------------------------------------- for tests
+
 func current_message() -> String:
 	return _message_label.text
 
 
-## For tests: the board row for a stalk, so a test can drive the real control
-## rather than calling into the session directly.
+func year_summary_text() -> String:
+	return _year_summary.text
+
+
 func stalk_row_for(stalk_id: StringName) -> StalkRow:
 	return _stalk_rows.get(stalk_id)
 
 
-## For tests: the holdings row for a stalk, or null if nothing is held.
 func holding_row_for(stalk_id: StringName) -> HoldingRow:
 	for child: Node in _holding_list.get_children():
 		var row: HoldingRow = child as HoldingRow
@@ -368,10 +518,13 @@ func holding_row_for(stalk_id: StringName) -> HoldingRow:
 	return null
 
 
-## For tests: how many positions the holdings board is showing.
 func holding_row_count() -> int:
 	var count: int = 0
 	for child: Node in _holding_list.get_children():
 		if child is HoldingRow:
 			count += 1
 	return count
+
+
+func loan_panel() -> LoanPanel:
+	return _loan_panel

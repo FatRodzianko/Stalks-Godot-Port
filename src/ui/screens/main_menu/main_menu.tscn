@@ -1,0 +1,107 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/screens/main_menu/main_menu.gd" id="1_menu"]
+[ext_resource type="Theme" path="res://assets/themes/stalks_theme.tres" id="2_theme"]
+
+[node name="MainMenu" type="MarginContainer"]
+theme = ExtResource("2_theme")
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+script = ExtResource("1_menu")
+
+[node name="Centre" type="CenterContainer" parent="."]
+layout_mode = 2
+
+[node name="Card" type="PanelContainer" parent="Centre"]
+custom_minimum_size = Vector2(460, 0)
+layout_mode = 2
+
+[node name="Body" type="VBoxContainer" parent="Centre/Card"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Centre/Card/Body"]
+layout_mode = 2
+theme_type_variation = &"Heading"
+text = "STALKS STALKS STALKS"
+horizontal_alignment = 1
+
+[node name="Tagline" type="Label" parent="Centre/Card/Body"]
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "Buy low. Sell high. Try not to go bankrupt."
+horizontal_alignment = 1
+
+[node name="Divider" type="HSeparator" parent="Centre/Card/Body"]
+layout_mode = 2
+
+[node name="Settings" type="GridContainer" parent="Centre/Card/Body"]
+layout_mode = 2
+columns = 2
+
+[node name="YearsLabel" type="Label" parent="Centre/Card/Body/Settings"]
+layout_mode = 2
+text = "Years"
+
+[node name="YearsSpin" type="SpinBox" parent="Centre/Card/Body/Settings"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 2.0
+max_value = 99.0
+value = 10.0
+
+[node name="CashLabel" type="Label" parent="Centre/Card/Body/Settings"]
+layout_mode = 2
+text = "Starting cash"
+
+[node name="CashSpin" type="SpinBox" parent="Centre/Card/Body/Settings"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 100.0
+max_value = 1000000.0
+step = 100.0
+value = 10000.0
+
+[node name="LoansLabel" type="Label" parent="Centre/Card/Body/Settings"]
+layout_mode = 2
+text = "Loans"
+
+[node name="LoansCheck" type="CheckBox" parent="Centre/Card/Body/Settings"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Enabled from year 2"
+
+[node name="SeedLabel" type="Label" parent="Centre/Card/Body/Settings"]
+layout_mode = 2
+text = "Seed"
+
+[node name="SeedField" type="LineEdit" parent="Centre/Card/Body/Settings"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "blank for random"
+
+[node name="ContentWarning" type="Label" parent="Centre/Card/Body"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"Danger"
+text = ""
+autowrap_mode = 3
+
+[node name="StartButton" type="Button" parent="Centre/Card/Body"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "Start"
+
+[node name="Note" type="Label" parent="Centre/Card/Body"]
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "Single player. Multiplayer over Steam comes later."
+horizontal_alignment = 1

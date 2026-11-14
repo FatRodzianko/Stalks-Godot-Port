@@ -32,17 +32,16 @@ project, access to anyone who worked on this, or an AI assistant to continue the
 
 ## Status
 
-**Phases 1–3 complete, Phase 4 in progress — and it is playable.** Press F5 and you
-can play a ten-year solo match: buy and sell stalks, watch prices move, see splits,
-bankruptcies and special events, and get a winner at the end.
+**Phases 1–4 of 7 complete. The single-player game is finished and playable.** Press
+F5: set up a match in the menu, buy and sell stalks, take a loan, watch prices move
+through splits, bankruptcies and special events, and get a result screen with the
+final standings.
 
 | | |
 |---|---|
-| Tests | 184 tests, 13,440 asserts, about 2.2 seconds |
-| Built | The economy, loans, the ten stalks with their ninety events, and a playable single-player screen |
-| Missing | Main menu and game settings, game-over screen, loan panel (loans are off by default until it exists), split and dividend call-outs, multiplayer, Steam, sound |
-
-See [porting-plan.md](docs/porting-plan.md) for exactly what remains in Phase 4.
+| Tests | 214 tests, 13,524 asserts, about 3.3 seconds |
+| Built | The economy, loans, the ten stalks with their ninety events, and the complete single-player game: menu, play, loans, result |
+| Next | Multiplayer over ENet (Phase 5), then Steam (Phase 6), then sound and polish (Phase 7) |
 
 The current `main_scene` is a throwaway smoke-test screen that proves the toolchain
 works. It is deleted in Phase 4.

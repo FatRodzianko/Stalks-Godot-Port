@@ -1,0 +1,89 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/screens/game_over/game_over_screen.gd" id="1_over"]
+[ext_resource type="Theme" path="res://assets/themes/stalks_theme.tres" id="2_theme"]
+
+[node name="GameOverScreen" type="MarginContainer"]
+theme = ExtResource("2_theme")
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+script = ExtResource("1_over")
+
+[node name="Centre" type="CenterContainer" parent="."]
+layout_mode = 2
+
+[node name="Card" type="PanelContainer" parent="Centre"]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 2
+
+[node name="Body" type="VBoxContainer" parent="Centre/Card"]
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="Centre/Card/Body"]
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "FINAL YEAR"
+horizontal_alignment = 1
+
+[node name="Verdict" type="Label" parent="Centre/Card/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Heading"
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Detail" type="Label" parent="Centre/Card/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Numeric"
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Divider" type="HSeparator" parent="Centre/Card/Body"]
+layout_mode = 2
+
+[node name="StandingsTitle" type="Label" parent="Centre/Card/Body"]
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "FINAL STANDINGS"
+
+[node name="RankingScroll" type="ScrollContainer" parent="Centre/Card/Body"]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="FinalRankings" type="VBoxContainer" parent="Centre/Card/Body/RankingScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="SeedLabel" type="Label" parent="Centre/Card/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Buttons" type="HBoxContainer" parent="Centre/Card/Body"]
+layout_mode = 2
+
+[node name="MenuButton" type="Button" parent="Centre/Card/Body/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Main menu"
+
+[node name="PlayAgainButton" type="Button" parent="Centre/Card/Body/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PrimaryButton"
+text = "Play again"
