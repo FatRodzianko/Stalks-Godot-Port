@@ -15,10 +15,13 @@ var cash: int = 0
 ## is held in zero quantity; nothing distinguishes "zero" from "never owned".
 var holdings: Dictionary[StringName, int] = {}
 
-## Outstanding loan balance, subtracted from net worth. 0 means no loan.
-## Phase 2 replaces this with a full LoanState; it exists now so net worth is
-## correct from the start rather than needing a later fix-up.
-var loan_balance: int = 0
+## This player's loan, or null if they have never taken one.
+##
+## Note that a non-null loan does NOT mean money is currently owed — it may be
+## paid off or defaulted. A player may only ever take **one** loan per game, so
+## the presence of this object is also what blocks a second. Use `owes()` for the
+## amount outstanding. See LoanState and docs/game-rules.md §9.
+var loan: LoanState = null
 
 ## Last value computed by the year resolver. Never derive gameplay from this —
 ## recompute with TradeRules.net_worth() when the answer must be current.
@@ -36,6 +39,17 @@ func _init(player_id: StringName = &"", name_to_show: String = "", starting_cash
 	display_name = name_to_show
 	cash = starting_cash
 	net_worth = starting_cash
+
+
+## The loan balance currently subtracted from net worth. Zero when there is no
+## loan, or when it has been paid off or written off by a default.
+func owes() -> int:
+	return loan.amount_owed() if loan != null else 0
+
+
+## Whether this player currently has money outstanding on a loan.
+func has_outstanding_loan() -> bool:
+	return loan != null and not loan.is_settled()
 
 
 func shares_of(stalk_id: StringName) -> int:

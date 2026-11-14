@@ -85,8 +85,9 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> YearResult:
 	# 7. Dividends, on post-split share counts.
 	_pay_dividends(state, result)
 
-	# 8. Loans — Phase 2 inserts missed-payment penalties and interest here,
-	#    before net worth is computed. See docs/porting-plan.md.
+	# 8. Loans — missed-payment penalties, then interest. Must run before net
+	#    worth, since an outstanding balance is subtracted from it.
+	_process_loans(state, result)
 
 	# 9. Net worth and standings.
 	for player: PlayerState in state.players:
@@ -155,6 +156,21 @@ func _apply_splits(
 			var held: int = player.shares_of(stalk.id)
 			if held > 0:
 				player.set_shares(stalk.id, held * 2)
+
+
+## Runs the year-end loan assessment for every player who owes money.
+##
+## Skipped entirely when loans are disabled for the match, matching the original,
+## which wrapped its whole loan pass in that check. Note that a player can be
+## bankrupted here, which is why this runs before net worth is recomputed.
+func _process_loans(state: GameState, result: YearResult) -> void:
+	if state.settings == null or not state.settings.loans_enabled:
+		return
+
+	for player: PlayerState in state.players:
+		var change: LoanYearChange = LoanRules.process_year_end(player)
+		if change != null:
+			result.loan_changes.append(change)
 
 
 ## Pays each player a fixed per-share dividend for every stalk they hold that

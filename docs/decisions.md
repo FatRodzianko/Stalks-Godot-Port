@@ -401,6 +401,58 @@ string for "allowed" or a reason string.
 
 ---
 
+## Phase 2 — loans
+
+These reproduce surprising original behaviour rather than diverging from it. They are
+recorded because each one looks like a bug and a future maintainer would otherwise
+"fix" it.
+
+### D27 — One loan per player for the whole game
+**2026-11-14 · Accepted**
+
+A player who has taken a loan can never take another, even after paying it off in
+full.
+
+**Why.** This is what the original does. `doesPlayerHaveLoan` is set `true` when a
+loan is issued and is **never** set back to `false` — the only line that would reset
+it is commented out, and the UI gates the borrow button on `!doesPlayerHaveLoan`.
+Verified across every assignment to that flag.
+
+It looks like an oversight rather than a design choice. It is reproduced anyway,
+because the port's job is to ship the game that existed, and changing it would alter
+the strategy of a long match substantially: a player could otherwise borrow, repay,
+and borrow again at a higher net worth, compounding leverage.
+
+**Rules out.** Treating a settled loan as freeing the slot. In the port the presence
+of a `LoanState` on a player means "has ever borrowed", so `PlayerState.owes()`
+exists separately to answer "currently owes money".
+
+**Revisit if.** The owner decides this was unintended and wants it changed. It is a
+one-line change in `LoanRules.validate_take_loan`, and worth considering for the
+planned advanced mode.
+
+### D28 — Term counter starts at 11, and the first year is interest-only
+**2026-11-14 · Accepted**
+
+A new loan is created with `years_remaining = 11` while its opening minimum payment
+is amortised over **10** years, and with `paid_this_year = true`.
+
+**Why.** Both are the original's values. The year-end pass decrements the counter
+before assessing anything, so the extra year is consumed immediately; and the
+already-paid flag is how "your first payment is next year" avoids counting an instant
+miss. Together they produce the clean result that the advertised ten-year term really
+is ten payments, landing exactly on zero — see game-rules.md §9.2.1.
+
+**Why it is recorded.** Starting the counter at 10 looks obviously correct and is
+wrong: every payment figure comes out different, and the schedule stops landing on
+zero. An earlier draft of game-rules.md documented a trace built that way, and the
+error was only caught when the implementation was traced against the real source.
+
+**Rules out.** Any "tidying" of these two initial values without re-deriving the whole
+schedule and updating the test fixture.
+
+---
+
 ## Still open
 
 Not yet decided. Resolve one by replacing it with an entry above.

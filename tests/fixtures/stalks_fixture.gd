@@ -110,6 +110,30 @@ static func make_state(
 	return state
 
 
+## Attaches a loan directly, bypassing eligibility checks, so a test can set up
+## a loan position without first engineering a qualifying net worth. Mirrors what
+## LoanRules.take_loan() produces, including the 11-year counter and the
+## already-paid flag.
+static func give_loan(player: PlayerState, amount: int) -> LoanState:
+	var loan: LoanState = LoanState.new()
+	loan.balance = amount
+	loan.min_payment = LoanRules.minimum_payment(amount, LoanRules.TERM_YEARS)
+	loan.years_remaining = LoanRules.TERM_YEARS + 1
+	loan.paid_this_year = true
+	player.loan = loan
+	return loan
+
+
+## A state with loans switched on, which they are not by default.
+static func make_state_with_loans(
+	max_years: int = 10,
+	player_count: int = 1,
+) -> GameState:
+	var state: GameState = make_state(max_years, player_count)
+	state.settings.loans_enabled = true
+	return state
+
+
 static func rng(seed_value: int) -> RandomNumberGenerator:
 	var generator: RandomNumberGenerator = RandomNumberGenerator.new()
 	generator.seed = seed_value

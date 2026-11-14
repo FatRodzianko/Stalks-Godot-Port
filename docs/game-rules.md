@@ -271,8 +271,15 @@ pay nothing, because the bankruptcy pass has already zeroed the share count.
 
 ## 9. Loans
 
-Only when loans are enabled, and only from **Year 2** onward. **One loan at a time**
-per player.
+Only when loans are enabled, and only from **Year 2** onward.
+
+**One loan per player for the entire game** — not one at a time. The original sets a
+"has a loan" flag when a loan is issued and **never clears it**; the only line that
+would reset it is commented out. So once a player has borrowed, they can never borrow
+again, even after paying the loan off in full. Verified in
+`GamePlayer.CmdRequestLoan` and every assignment to `doesPlayerHaveLoan`. This looks
+more like an oversight than a design choice, but it is what shipped, and the port
+reproduces it. See decisions.md D27.
 
 ### 9.1 Terms
 
@@ -280,9 +287,25 @@ per player.
 |---|---|
 | Maximum principal | 25% of current net worth (`(int)(netWorth * 0.25)`) |
 | Minimum principal | 100 |
-| Term | 10 years |
+| Term | 10 years (10 payments) |
 | Interest | 6%, **compound, annual** |
 | First payment due | the **following** year |
+| Loans per player | **One, for the whole game** |
+
+### 9.1.1 Two implementation details that change the maths
+
+Both come straight from `GamePlayer.CmdRequestLoan` and are easy to get wrong:
+
+- **The term counter starts at 11, not 10.** A new loan is created with
+  `yearsRemaining = 11`, while its opening minimum payment is amortised over **10**.
+  The year-end pass decrements the counter before assessing anything, so the extra
+  year is consumed immediately. Start it at 10 and every payment figure comes out
+  wrong.
+- **A new loan is flagged as already paid for the current year.** `paidThisYear` is
+  set `true` on creation. That is how "your first payment is next year" is
+  implemented: the first year-end sees the loan as paid, counts no miss, and simply
+  charges interest. A player *may* still pay in the year they borrow, which is legal
+  but produces a different (longer, cheaper-per-payment) schedule.
 
 ### 9.2 Minimum payment — standard annuity amortisation
 
@@ -307,45 +330,71 @@ A 2,500 loan (the max for a player worth 10,000) gives a minimum payment of **33
 This settles the open question: **interest is compound, and the scheme is a proper
 amortisation**, not simple interest.
 
-### 9.2.1 Verified reference trace
+### 9.2.1 The canonical schedule
 
-Run in Godot 4.7.2 against a faithful model of the original's full path
-(pay → re-amortise over `yearsRemaining − 1` → decrement years → apply 6% interest,
-with the payment clamped to the outstanding balance). **Use this as the fixture for
-the Phase 2 tests.**
+> **This section was corrected during Phase 2.** An earlier version of this document
+> gave a trace built from a model that started the term counter at 10 and omitted the
+> interest-only first year. Both were wrong (see §9.1.1), so its figures were wrong
+> too. The trace below is taken from the implemented `LoanRules` and is asserted
+> year-by-year in `tests/unit/test_loan_rules.gd`.
+
+A 2,500 loan — the maximum for a player worth 10,000 — where the player pays nothing
+in the year they borrow (which is explicitly not a miss) and then pays the minimum
+every year:
 
 ```
-start: balance 2500, years 10, min payment 339
-  year  1: paid  339 -> balance  2290, next min  317
-  year  2: paid  317 -> balance  2091, next min  317
-  year  3: paid  317 -> balance  1880, next min  317
-  year  4: paid  317 -> balance  1656, next min  317
-  year  5: paid  317 -> balance  1419, next min  317
-  year  6: paid  317 -> balance  1168, next min  318
-  year  7: paid  318 -> balance   901, next min  317
-  year  8: paid  317 -> balance   619, next min  318
-  year  9: paid  318 -> balance   319, next min  319
-  year 10: paid  319 -> balance     0
-PAID OFF after 10 years
+taken:  balance 2500, min payment 339, years_remaining 11, paid_this_year true
+
+  yr  1: paid    0  (not a miss)      +interest 150  -> 2650
+  yr  2: paid  339  -> 2311           +interest 138  -> 2449
+  yr  3: paid  339  -> 2110           +interest 126  -> 2236
+  yr  4: paid  339  -> 1897           +interest 113  -> 2010
+  yr  5: paid  339  -> 1671           +interest 100  -> 1771
+  yr  6: paid  339  -> 1432           +interest  85  -> 1517
+  yr  7: paid  339  -> 1178           +interest  70  -> 1248
+  yr  8: paid  339  ->  909           +interest  54  ->  963
+  yr  9: paid  340  ->  623           +interest  37  ->  660
+  yr 10: paid  339  ->  321           +interest  19  ->  340
+  yr 11: paid  340  ->    0                          ->    0   PAID OFF
+
+settled after exactly 10 payments. Total paid 3,392 on 2,500 borrowed.
 ```
 
-Three things this confirms:
+Four things this establishes:
 
-1. **It lands exactly on 0 in exactly 10 years.** Clean amortisation.
-2. **The annual re-amortisation is load-bearing, not cosmetic.** With the payment
-   held fixed at 339 for all ten years, truncation makes the player underpay slightly
-   each year and the schedule overshoots — the balance is still 87 after year 9. The
-   re-amortisation in `CmdPayLoan` is what keeps the schedule honest.
-3. **The ±1 drift is reproducible** — 317, 317, 317, 317, 317, 318, 317, 318, 319 —
-   exactly the behaviour the write-up describes. It is integer truncation, not a bug,
-   and the port must preserve it.
+1. **Exactly ten payments, landing precisely on zero.** The advertised "10 year"
+   term is real: one interest-only year, then ten payments in years 2–11.
+2. **The payment holds at 339 throughout**, drifting to 340 twice. That is the ±1
+   integer-truncation drift the write-up describes, and the port preserves it rather
+   than "fixing" it.
+3. **Interest is charged before the player's first opportunity to pay**, taking the
+   balance from 2,500 to 2,650. A borrower never owes less than they borrowed.
+4. **Total interest over the term is 892** on 2,500, which is what compound 6% over
+   ten amortised years should cost.
 
-Note the minimum **drops** from 339 to 317 after the first payment, because the
-initial figure is amortised over 10 years while the first re-amortisation is over 9
-years on an already-reduced balance. Faithful, if slightly odd-looking.
+**Correction to a claim made earlier:** a previous version of this document asserted
+that holding the payment fixed instead of re-amortising would leave a residue, and
+the porting plan listed a guard test for it. That was an artefact of the wrong term
+counter. With the correct setup the minimum barely moves, so holding it fixed is
+nearly identical and no such guard test is meaningful. The re-amortisation still
+matters for *overpayment* (§9.4), where it visibly lowers the next minimum.
 
 Other verified minimum payments at the 10-year term: principal 100 → **13**,
-1,000 → **135**, 10,000 → **1,358**.
+1,000 → **135**, 10,000 → **1,358**. The annuity factor is `a(10, 6%) ≈ 7.360087`.
+
+### 9.2.2 Never paying: the default schedule
+
+Same loan, player never pays:
+
+```
+  yr  1: no miss (first year is free)   +interest 150  -> 2650
+  yr  2: miss 1   penalty +265 (10%)    +interest 174  -> 3089
+  yr  3: miss 2   penalty +463 (15%)    +interest 213  -> 3765
+  yr  4: miss 3   ->  DEFAULT: cash 0, net worth 0, all holdings seized
+```
+
+Note the default lands on the **fourth** year-end, not the third, because the year
+the loan is taken is free.
 
 ### 9.3 Yearly loan processing (`AdjustLoans`)
 

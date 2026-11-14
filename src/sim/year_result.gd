@@ -25,6 +25,10 @@ var stalk_changes: Array[StalkYearChange] = []
 ## still present, with 0.
 var dividends: Dictionary[StringName, int] = {}
 
+## One entry per player who had an outstanding loan processed this year. Players
+## without a loan are absent entirely, so this is usually empty.
+var loan_changes: Array[LoanYearChange] = []
+
 ## Net worth after everything settled, keyed by player id.
 var net_worths: Dictionary[StringName, int] = {}
 
@@ -59,6 +63,23 @@ func bankrupt_ids() -> Array[StringName]:
 	for change: StalkYearChange in stalk_changes:
 		if change.went_bankrupt:
 			ids.append(change.stalk_id)
+	return ids
+
+
+## Loan record for one player this year, or null if they had none processed.
+func loan_change_for(player_id: StringName) -> LoanYearChange:
+	for change: LoanYearChange in loan_changes:
+		if change.player_id == player_id:
+			return change
+	return null
+
+
+## Players wiped out by a third missed loan payment this year.
+func defaulted_player_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for change: LoanYearChange in loan_changes:
+		if change.defaulted:
+			ids.append(change.player_id)
 	return ids
 
 

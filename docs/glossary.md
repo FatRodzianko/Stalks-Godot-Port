@@ -58,6 +58,37 @@ outstanding loan. The score the game is won on.
 not run away: above 19 years and again above 49 years. Undocumented in the original's
 public write-up but present in its code. See [game-rules.md §4.4](game-rules.md).
 
+**Loan** — optional borrowing, available from Year 2 when enabled. Up to 25% of net
+worth, minimum 100, 10 years at 6% compound, paid out as cash immediately. **One per
+player for the entire game**, even after repayment. See
+[game-rules.md §9](game-rules.md).
+
+**Minimum payment** — the yearly amount due on a loan, calculated as
+`principal / a(n, 6%)` and truncated to an integer. It is recalculated every year and
+after every payment, which makes it drift by about ±1 — expected behaviour, not a
+bug.
+
+**Annuity factor** — written `a(n, i)`, the standard present-value figure that turns a
+principal into a level yearly payment. For the 10-year term at 6% it is about
+7.360087. Dividing a balance by it gives the payment that clears the balance over n
+years.
+
+**Re-amortisation** — recalculating the minimum payment from the current balance over
+the years remaining. Happens after every payment and after every penalty. It is what
+makes overpaying visibly reduce next year's minimum.
+
+**Interest-only first year** — the year a loan is taken charges interest but counts no
+missed payment, because the loan is created already flagged as paid. This implements
+"your first payment is next year", and it is why a ten-year term runs to eleven
+year-ends.
+
+**Missed payment** — failing to pay the minimum during a year. First miss adds 10% to
+the balance, second adds 15%, third is a **default**.
+
+**Default** — a third missed payment. The player's cash, net worth and all holdings
+are seized and they are bankrupt. Lands on the fourth year-end after borrowing, since
+the first year is free.
+
 **Yeehaw** — a purely social gesture. A player asks for one; any *other* player may
 give it; all players then hear a "YeeHaw!" sound effect. No mechanical effect
 whatsoever. Impossible in a one-player game, since you cannot give yourself one.

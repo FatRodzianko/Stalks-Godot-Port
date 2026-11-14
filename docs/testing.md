@@ -107,16 +107,27 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-65 tests, ~11,600 asserts, about 2.4 seconds.
+108 tests, ~12,750 asserts, about 2.9 seconds.
 
-| File | Covers |
-|---|---|
-| `test_market_mood.gd` | 7/12 bull weighting, labels, degenerate weights |
-| `test_random_range_price_model.gd` | Contrarian rate, inclusive range endpoints, softening thresholds, truncation direction, static stalks |
-| `test_event_pool.gd` | Pool sizes 45/45, no repeats within a cycle, refill on exhaustion, bankrupt-target skipping without consuming |
-| `test_trade_rules.gd` | Buy/sell validation and rejection reasons, max affordable, net worth with holdings and loans, ranking and tie-breaking |
-| `test_year_resolver.gd` | Split rounding, threshold boundary, both bankruptcy passes, dividend sequencing, displayed yearly change, game length, determinism |
+| File | Covers | Tests |
+|---|---|---|
+| `test_market_mood.gd` | 7/12 bull weighting, labels, degenerate weights | 5 |
+| `test_random_range_price_model.gd` | Contrarian rate, inclusive range endpoints, softening thresholds, truncation direction, static stalks | 8 |
+| `test_event_pool.gd` | Pool sizes 45/45, no repeats within a cycle, refill on exhaustion, bankrupt-target skipping without consuming | 9 |
+| `test_trade_rules.gd` | Buy/sell validation and rejection reasons, max affordable, net worth with holdings and loans, ranking and tie-breaking | 25 |
+| `test_year_resolver.gd` | Split rounding, threshold boundary, both bankruptcy passes, dividend sequencing, displayed yearly change, 10- and 99-year matches, determinism | 21 |
+| `test_loan_rules.gd` | Annuity arithmetic, eligibility, the full ten-payment schedule, penalties and default, overpayment, one-loan-per-game, pipeline integration | 40 |
 
-**Not yet covered:** loans (Phase 2), content validation (Phase 3), and anything
-scene-dependent (Phase 4 onward). Scene behaviour will be tested through GUT's
-scene-tree tests, not asserted from a script running outside the tree.
+Counts above are read from a suite run, not estimated. If you add tests, re-run and
+update them — a stale number here is a small lie that erodes trust in the rest.
+
+The loan schedule test is worth knowing about: it asserts the whole ten-year
+amortisation **year by year** against the reference trace in
+[game-rules.md §9.2.1](game-rules.md) — payment due and resulting balance for each
+year, the exact total paid, and that it lands on zero. That table caught a real
+transcription error during Phase 2, which is the point of pinning a schedule rather
+than spot-checking a couple of figures.
+
+**Not yet covered:** content validation (Phase 3) and anything scene-dependent
+(Phase 4 onward). Scene behaviour will be tested through GUT's scene-tree tests, not
+asserted from a script running outside the tree.

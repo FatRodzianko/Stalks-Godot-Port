@@ -123,13 +123,20 @@ func test_net_worth_excludes_bankrupt_holdings() -> void:
 
 
 func test_net_worth_subtracts_an_outstanding_loan() -> void:
-	_player.loan_balance = 2500
+	StalksFixture.give_loan(_player, 2500)
 	assert_eq(TradeRules.net_worth(_player, _state), 7500)
+
+
+func test_net_worth_ignores_a_settled_loan() -> void:
+	var loan: LoanState = StalksFixture.give_loan(_player, 2500)
+	loan.is_paid_off = true
+	assert_eq(TradeRules.net_worth(_player, _state), 10000,
+		"a paid-off loan should no longer reduce net worth")
 
 
 func test_holdings_value_excludes_cash_and_loans() -> void:
 	TradeRules.apply_buy(_player, _stryker, 10)
-	_player.loan_balance = 5000
+	StalksFixture.give_loan(_player, 5000)
 	assert_eq(TradeRules.holdings_value(_player, _state), 1000)
 
 

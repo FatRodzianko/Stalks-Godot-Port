@@ -97,9 +97,19 @@ step was needed after all.
 
 ---
 
-## Phase 2 — Loans
+## Phase 2 — Loans ✅ Complete
 
 Still pure, still headless.
+
+**Delivered:** `LoanState`, `LoanRules`, `LoanYearChange`, wired into step 8 of the
+year pipeline, with **41 new tests** (40 in `test_loan_rules.gd`, 1 added to
+`test_trade_rules.gd`) taking the suite to **108 tests / 12,754 asserts in about 2.8
+seconds**.
+
+Two details recovered from the original that changed the maths — the 11-year term
+counter and the interest-only first year — are recorded in decisions.md D28, and the
+reference schedule in game-rules.md §9.2.1 was **corrected** as a result. One-loan-
+per-game is D27.
 
 **Build:**
 - `LoanState`
@@ -113,20 +123,31 @@ Still pure, still headless.
 - Loan balance subtracted from net worth
 - Player bankruptcy: cash 0, net worth 0, holdings cleared
 
-**Tests:**
+**Tests:** ✅ all passing
 - `a(10, 6%)` payment: a 2,500 loan gives a minimum payment of 339; also 100 → 13,
   1,000 → 135, 10,000 → 1,358
-- **The full ten-year schedule matches the verified trace in `game-rules.md`
-  §9.2.1 year by year**, ending at exactly 0 after year 10
-- Holding the payment fixed instead of re-amortising leaves a residue — a guard test
-  proving the annual re-amortisation is actually doing work
-- First miss, second miss, third miss (bankruptcy) in sequence
-- Minimum payment drifts by ±1 across years from truncation — asserted, not "fixed"
-- Overpayment lowers the subsequent minimum
-- Partial payment rejected; payment above cash rejected
-- Loan deducted from net worth, including in the final year
+- **The full schedule matches game-rules.md §9.2.1 year by year** — ten payments,
+  landing at exactly 0, totalling 3,392 on 2,500 borrowed
+- The first year is interest-only and counts no miss
+- First miss (+10%), second miss (+15%), third miss (default) in sequence, with the
+  default landing on the fourth year-end because the first year is free
+- A penalty raises the minimum payment
+- Minimum payment drifts by ±1 from truncation — asserted, not "fixed"
+- Overpayment is clamped to the balance and lowers the subsequent minimum
+- Partial payment rejected; payment above cash rejected; payment on a settled loan
+  rejected
+- One loan per game, even after payoff
+- Loan deducted from net worth; a settled or defaulted loan is not
+- The pipeline processes loans, reports defaults, and skips loans entirely when
+  disabled
 
-**Done when:** every loan rule in `game-rules.md` §9 has a passing test.
+~~Holding the payment fixed instead of re-amortising leaves a residue — a guard test
+proving the annual re-amortisation is actually doing work~~ — **dropped.** This
+criterion was based on the incorrect schedule noted above. With the correct term
+counter the minimum barely moves, so the test would prove nothing. Re-amortisation
+still matters for overpayment, which is covered.
+
+**Done when:** every loan rule in `game-rules.md` §9 has a passing test. ✅ Met.
 
 ---
 

@@ -97,12 +97,21 @@ State objects are plain `RefCounted`: no nodes, no signals to UI, no awaits.
 GameState
  ├── settings: GameSettings
  ├── year: int
+ ├── history: Array[YearResult]     # every year so far, from Year 0
  ├── stalks:  Array[StalkState]     # id, price, last_change, is_bankrupt, did_split
  └── players: Array[PlayerState]    # id, cash, holdings, loan, net_worth
                                     #   holdings: Dictionary[StringName, int]
+                                    #   loan: LoanState or null
 LoanState                           # balance, min_payment, years_remaining,
-                                    #   missed_payments, paid_this_year
+                                    #   missed_payments, paid_this_year,
+                                    #   is_paid_off, is_defaulted
 ```
+
+A note on `PlayerState.loan`: a non-null loan means the player **has ever borrowed**,
+not that they currently owe money — a player may only take one loan per game, so the
+object's presence is what blocks a second (decisions.md D27). Use
+`PlayerState.owes()` for the amount outstanding, which is zero once the loan is paid
+off or written off by a default.
 
 ### The year advance is one function
 

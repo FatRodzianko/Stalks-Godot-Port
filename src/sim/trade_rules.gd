@@ -101,7 +101,7 @@ static func net_worth(player: PlayerState, state: GameState) -> int:
 		if not stalk.has_value():
 			continue
 		total += stalk.price * player.shares_of(stalk.id)
-	total -= player.loan_balance
+	total -= player.owes()
 	return total
 
 
