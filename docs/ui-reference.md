@@ -24,13 +24,21 @@ pixels?"*, which removes the whole class of proportional-width fitting problems.
 most are multiples of 6. A `custom_minimum_size` of 30 is five characters. When
 changing a column, think in characters and multiply by 6.
 
-### Stalks are listed by ticker
+### Stalk names scroll rather than abbreviate
 
-The name column holds about twelve characters, so the board shows a short symbol —
-`BERRY`, `STRYK`, `PGEN` — with the full joke name on hover. That is the terminal
-convention and it is why `StalkDefinition` has a `ticker` field alongside
-`display_name`. The names are half the point of the game, so they are never
-discarded, only abbreviated on the board.
+The name column holds about twelve characters and eight of the ten names are longer
+than that. The board still shows the **full name**: the names are the funniest thing
+in the game, so they are not abbreviated away.
+
+A name that does not fit **scrolls on hover**, and **clicking pins the scroll** so it
+can be read without holding the mouse still. Clicking again releases it. A name that
+fits never moves, so most of the board is still. This is `MarqueeLabel`
+(`src/ui/widgets/marquee_label.gd`), and it scrolls by whole characters — authentic
+to a ticker display, and exact on a monospace grid with no sub-pixel blur.
+
+`StalkDefinition` also carries a **`ticker`** field (`BERRY`, `STRYK`, `PGEN`) which
+nothing currently displays. It is there for a future compact view, where a dense
+board of symbols would suit the terminal look. Populated for all ten stalks.
 
 ---
 

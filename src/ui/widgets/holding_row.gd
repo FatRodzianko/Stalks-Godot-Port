@@ -11,7 +11,7 @@ signal amount_changed(stalk_id: StringName, shares: int)
 signal sell_all_requested(stalk_id: StringName)
 
 
-@onready var _name_label: Label = %Name
+@onready var _name_label: MarqueeLabel = %Name
 @onready var _owned_label: Label = %Owned
 @onready var _amount_field: LineEdit = %Amount
 @onready var _sell_button: Button = %SellButton
@@ -32,7 +32,7 @@ func configure_as_header() -> void:
 	_is_header = true
 	theme_type_variation = &"HeaderCard"
 
-	_name_label.text = "NAME"
+	_name_label.set_full_text("NAME")
 	_owned_label.text = "OWNED"
 	for label: Label in [_name_label, _owned_label]:
 		label.theme_type_variation = &"Faint"
@@ -52,8 +52,8 @@ func display(stalk: StalkState, shares_held: int) -> void:
 	if _is_header:
 		return
 	_stalk_id = stalk.id
-	_name_label.text = stalk.definition.board_symbol()
-	_name_label.tooltip_text = stalk.definition.display_name
+	# The full name is shown, and scrolls on hover when it does not fit.
+	_name_label.set_full_text(stalk.definition.display_name)
 	_owned_label.text = str(shares_held)
 	_amount_field.placeholder_text = "max %d" % shares_held
 

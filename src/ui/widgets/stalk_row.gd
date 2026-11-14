@@ -14,7 +14,7 @@ signal buy_requested(stalk_id: StringName, shares: int)
 signal amount_changed(stalk_id: StringName, shares: int)
 
 
-@onready var _name_label: Label = %Name
+@onready var _name_label: MarqueeLabel = %Name
 @onready var _price_label: Label = %Price
 @onready var _bull_label: Label = %BullDividend
 @onready var _bear_label: Label = %BearDividend
@@ -37,7 +37,7 @@ func configure_as_header() -> void:
 	_is_header = true
 	theme_type_variation = &"HeaderCard"
 
-	_name_label.text = "NAME"
+	_name_label.set_full_text("NAME")
 	_price_label.text = "PRICE"
 	_bull_label.text = "BULL"
 	_bear_label.text = "BEAR"
@@ -64,8 +64,8 @@ func display(stalk: StalkState) -> void:
 	_stalk_id = stalk.id
 	_is_bankrupt = stalk.is_bankrupt
 
-	_name_label.text = stalk.definition.board_symbol()
-	_name_label.tooltip_text = stalk.definition.display_name
+	# The full name is shown, and scrolls on hover when it does not fit.
+	_name_label.set_full_text(stalk.definition.display_name)
 	_bull_label.text = str(stalk.definition.bull_dividend)
 	_bear_label.text = str(stalk.definition.bear_dividend)
 

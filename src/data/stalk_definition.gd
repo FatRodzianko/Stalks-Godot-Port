@@ -17,10 +17,10 @@ extends Resource
 
 ## Short board symbol, the way a terminal lists an instrument.
 ##
-## At the reference resolution the board's name column holds roughly five
-## characters, so this is what appears there. The full `display_name` stays
-## available on hover and, later, as a scrolling marquee — the joke names are
-## half the point of the game, so they must not be lost.
+## Nothing displays this yet: the board shows the full `display_name` and scrolls
+## it when it does not fit, because the joke names are half the point of the
+## game. This is here for a future compact view, where a dense board of symbols
+## would suit the terminal look. See docs/ui-reference.md.
 @export var ticker: StringName = &""
 
 @export var starting_price: int = 100
