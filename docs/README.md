@@ -1,0 +1,78 @@
+# Documentation
+
+Everything written down about **Stalks Stalks Stalks**, a port of a Unity
+stock-trading game to Godot 4.7.
+
+These documents are written to stand alone. You do not need the original Unity
+project, access to anyone who worked on this, or an AI assistant to continue the
+work. If you find a place where that is not true, that is a documentation bug worth
+fixing.
+
+---
+
+## Start here
+
+**New to the project?** Read in this order:
+
+1. **[game-rules.md](game-rules.md)** — what the game actually is. Start here even if
+   you only care about the code; the rules explain why the code is shaped as it is.
+2. **[architecture.md](architecture.md)** — how the code is organised, and the one
+   rule that everything else follows from.
+3. **[decisions.md](decisions.md)** — *why* it is organised that way. Read this
+   before changing anything structural, or you will undo a deliberate choice.
+4. **[development.md](development.md)** — get the toolchain working and run the
+   tests.
+5. **[porting-plan.md](porting-plan.md)** — what is done, what is next.
+
+**Never used Godot before?** Read
+**[godot-editor-guide.md](godot-editor-guide.md)** after step 4.
+
+**Hit an unfamiliar word?** **[glossary.md](glossary.md)**.
+
+---
+
+## The documents
+
+| Document | What it is | Read it when |
+|---|---|---|
+| [game-rules.md](game-rules.md) | The authoritative game specification. Every rule, every number, every formula, plus the bugs in the original and what was decided about them. | You need to know what the game does, or are implementing any rule |
+| [architecture.md](architecture.md) | The four layers, the simulation's internals, the year pipeline, the network design, and the determinism contract | You are writing or reading code |
+| [decisions.md](decisions.md) | A dated log of every significant decision, with the reasoning and what it rules out | You are about to change something structural, or wondering "why on earth is it like this" |
+| [development.md](development.md) | Toolchain setup on a fresh machine, the verification loop, how to add content, and project conventions | You are setting up, or doing the work |
+| [testing.md](testing.md) | How to run the suite, how it is organised, testing conventions, and current coverage | You are writing or running tests |
+| [porting-plan.md](porting-plan.md) | The seven phases, what each delivers, and the pass/fail criteria for each | You want to know status, or what to do next |
+| [godot-editor-guide.md](godot-editor-guide.md) | A first-time walkthrough of the Godot editor for this project, written for a complete beginner | You have never opened Godot |
+| [glossary.md](glossary.md) | Domain and technical terms used throughout | Something is unexplained |
+
+There is also **[../CLAUDE.md](../CLAUDE.md)** in the repository root. It holds the
+coding standards and conventions. It is addressed to an AI assistant, but the
+standards in it apply to anyone working on this project, so read it as a style guide
+regardless of whether you use AI.
+
+---
+
+## How this documentation is maintained
+
+A phase is not complete until its documentation is updated. The checklist is in
+[../CLAUDE.md](../CLAUDE.md) under "Documentation", and
+[porting-plan.md](porting-plan.md) repeats it as a gate on each phase.
+
+The markdown in this folder is the **authoritative** copy — it versions with the code
+and is what a successor will actually read. Visual code maps published as shareable
+pages are useful summaries, but they are derived from these files, not the other way
+round.
+
+---
+
+## Conventions used in these documents
+
+- **`<godot>`** means the Godot 4.7.2 console executable. Where it comes from is in
+  [development.md](development.md).
+- Rules are cited by section, e.g. *game-rules.md §4.1*, so references stay valid as
+  documents grow.
+- **[OPEN]** marks something genuinely undecided. If you resolve one, replace it with
+  the decision and add an entry to [decisions.md](decisions.md).
+- Original Unity source files are sometimes cited (e.g. `StalkManager.cs`) to show
+  where a value came from. **That project is not in this repository** and you do not
+  need it — every extracted value is reproduced here. The citations exist so the
+  provenance of a number is traceable, not because the source is a dependency.

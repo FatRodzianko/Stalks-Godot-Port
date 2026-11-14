@@ -6,9 +6,14 @@ code and the [itch.io write-up](https://rodzianko.itch.io/stalksstalksstalks)
 disagree, the **code wins** — it is what players actually experienced — and the
 disagreement is noted.
 
-Source files cited are in
-`C:\Users\murph\Desktop\Unity-gamedev-stuff\StalksStalksStalks\Assets\`.
-They are **reference for rules only**; the port reimplements behaviour, not structure.
+Original Unity source files are cited by name (e.g. `StalkManager.cs`) so the
+provenance of each number is traceable. **That project is not in this repository and
+you do not need it** — every value extracted from it is reproduced in this document.
+The citations are for provenance, not a dependency. Where it exists on the original
+author's machine, its location is noted in [development.md §2](development.md).
+
+The original is **reference for rules only**; the port reimplements behaviour, not
+structure.
 
 Anything still open is marked **[OPEN]**.
 

@@ -16,6 +16,31 @@ Legend: 🖱️ = needs the owner's hands in the Godot editor. ❓ = needs a dec
 
 ---
 
+## The documentation gate
+
+**No phase is complete until its documentation is updated.** This applies to every
+phase below, in addition to its own stated criteria, and is not optional — see
+decisions.md D20.
+
+The bar: someone with no access to the original authors, no copy of the Unity source,
+and **no AI assistance** must be able to read `docs/` and continue the work.
+
+At each phase boundary, update:
+
+- [ ] `porting-plan.md` — mark the phase done, record what was actually delivered
+- [ ] `architecture.md` — any new layer, system or seam, and how it connects
+- [ ] `decisions.md` — every decision taken, with its reasoning
+- [ ] `game-rules.md` — any rule confirmed, changed, or still open
+- [ ] `testing.md` — new coverage, and what remains untested
+- [ ] `development.md` — any change to setup or workflow
+- [ ] `glossary.md` — any new term
+- [ ] `README.md` (in `docs/`) — the index, if documents were added
+
+A refreshed visual code map is also worth publishing at each boundary, but the
+markdown in `docs/` is the authoritative copy.
+
+---
+
 ## Phase 0 — Scaffold ✅ Complete
 
 Repo, `project.godot`, folder structure, `.gitignore`, strict-typing gate, docs,

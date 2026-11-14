@@ -21,7 +21,8 @@ Godot **4.7.2 stable** (`4.7.2.stable.official.ed1daf0bf`). Pin this exact versi
 do not assume a newer or older minor release behaves the same.
 
 `godot` is **not on PATH**. The engine lives in an extracted folder next to this
-project:
+project. The paths below are **this machine's setup** — for a fresh clone on another
+computer, see `docs/development.md`:
 
 - GUI editor:
   `C:\Users\murph\Desktop\dev-projects\Godot_v4.7.2-stable_win64\Godot_v4.7.2-stable_win64.exe`
@@ -262,6 +263,51 @@ Tests live in `tests/unit/` (scanned by GUT) with shared helpers in
 - Add a regression test for every rule bug found during the port.
 
 ---
+
+## Documentation (a release gate, not an afterthought)
+
+**The bar: this project must survive losing everyone who worked on it.** Someone who
+has never seen the codebase, has no access to the original Unity source, and is
+working **without any AI assistance** must be able to read `docs/`, understand both
+the game and the code, and continue the work. Documentation that only makes sense to
+someone who can ask follow-up questions does not meet the bar.
+
+Practical consequences:
+
+- **Write down the "why", not just the "what".** A successor who does not know why a
+  decision was made will undo it. Every non-obvious choice goes in
+  `docs/decisions.md` with its reasoning and what it rules out.
+- **No machine-specific paths** in documentation meant for a reader, except in
+  `docs/development.md`, where they are clearly labelled as one machine's setup.
+  Anything else must work on a fresh clone on an unfamiliar computer.
+- **No external dependency for understanding.** The original Unity project is *not*
+  in this repository and a successor will not have it. Every value extracted from it
+  is already written into `docs/game-rules.md`; keep it that way, so the docs stand
+  alone.
+- **Explain domain terms.** "Stalk", "mood", "the bag", "a static stalk", "yeehaw"
+  mean nothing to a newcomer. They belong in `docs/glossary.md`.
+- **Prefer prose that explains to comments that label.** A file header saying what a
+  file is *for* and pointing at the relevant rules section is worth more than a
+  comment on every line.
+
+### The per-phase gate
+
+**A phase in `docs/porting-plan.md` is not complete until its documentation is
+updated.** Treat this as part of the phase, in the same way tests are. At minimum,
+each phase completion updates:
+
+1. `docs/porting-plan.md` — mark the phase done, record what was actually delivered,
+   and note anything that changed scope.
+2. `docs/architecture.md` — any new layer, system, or seam, and how it connects.
+3. `docs/decisions.md` — every decision taken during the phase, with reasoning.
+4. `docs/game-rules.md` — any rule confirmed, changed, or still open.
+5. `docs/testing.md` — the new coverage, and what is still untested.
+6. `docs/glossary.md` — any new term.
+7. `docs/README.md` — the index, if documents were added or reorganised.
+
+A visual code map (the kind published as a shareable page) is also worth refreshing
+at each phase boundary, but the markdown in `docs/` is the authoritative copy — it is
+what lives and versions with the code.
 
 ## Git Hygiene
 
