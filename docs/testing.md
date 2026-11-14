@@ -36,9 +36,27 @@ Useful ad-hoc flags:
 | `-glog=2` | More verbose output |
 | `-gexit` | Exit when finished (already the default via config) |
 
-The editor also has a GUT panel at the bottom of the window once the plugin is
-enabled, which it is in `project.godot`. Headless CLI runs do **not** require the
-plugin to be enabled.
+### The editor panel needs a one-time setup
+
+The editor also has a GUT panel at the bottom of the window, since the plugin is
+enabled in `project.godot`. Headless CLI runs do **not** require the plugin.
+
+**Important:** `.gutconfig.json` configures the **command-line runner only**. The
+editor panel keeps its own separate settings in
+`user://gut_temp_directory/gut_editor_config.json`, which is in each person's own
+Godot user folder, *outside this repository*. It therefore cannot be committed, and
+every contributor has to set it once:
+
+> GUT panel → **Settings** → **Test Directories** → type `res://tests/unit` into row
+> `0` → **tick the checkbox on that row**.
+
+Until that is done, *Run All* reports *"You do not have any directories set"*. The
+checkbox is the part people miss — typing the path alone only lists the directory
+without enabling it.
+
+The command line needs none of this and works immediately on a fresh clone, which is
+why it is the recommended way to run the suite and the only way a build server should
+do it.
 
 ---
 

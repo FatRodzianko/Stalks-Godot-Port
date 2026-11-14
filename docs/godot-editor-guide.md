@@ -88,11 +88,49 @@ It gets deleted in Phase 4 when a real main menu replaces it.
 
 This is where the work so far is actually visible.
 
+### 4a. One-time setup (you must do this once)
+
+**The first time you open the GUT panel it does not know where the tests are**, and
+clicking *Run All* gives you:
+
+```
+Cannot run tests, you have a configuration error:
+*  You do not have any directories set.
+Check your settings ----->
+```
+
+That is expected on a fresh machine, and it is not a problem with the project. The
+repository's `.gutconfig.json` configures the **command-line** runner only; the
+editor panel keeps its own separate settings, stored outside the repository in your
+own Godot user folder. That is why this cannot be committed and has to be set once per
+person, per machine.
+
+To set it:
+
 1. Along the **very bottom edge** of the window, find the row of tabs:
    *Output*, *Debugger*, *Audio*, *Animation*, *Shader Editor*, **GUT**.
-2. Click **GUT**. The panel opens. (If there is no GUT tab, see troubleshooting
+2. Click **GUT**. The panel opens. (If there is no GUT tab at all, see troubleshooting
    below.)
-3. In the GUT panel, click **Run All**.
+3. Click the **Settings** button in the panel's own row of buttons (top-right area of
+   the panel, next to *Output* and *Run Results*).
+4. Scroll down the settings list to the **Test Directories** heading.
+5. In the first directory row — labelled **`0`** — type:
+
+   ```
+   res://tests/unit
+   ```
+
+6. **Tick the checkbox at the end of that row.** This is the step that is easy to
+   miss: typing the path only *lists* the directory, and the checkbox is what actually
+   enables it. Without the tick you will get the same error again.
+7. Optionally tick **Include Subdirs** just above the directory rows. Not required —
+   all the tests are directly in `tests/unit`.
+
+The setting is saved automatically and persists, so you only do this once.
+
+### 4b. Run them
+
+Click **Run All** in the GUT panel.
 
 The panel fills with test names and ends with a summary:
 
@@ -115,7 +153,14 @@ after a split; and the same seed reproduces an entire 20-year match identically.
 
 You can click any individual test file in the panel to run just that one.
 
-### Troubleshooting the GUT tab
+### Troubleshooting
+
+**"You do not have any directories set"** — the one-time setup in §4a has not been
+done, or the path was typed but its checkbox was not ticked. The tick is what enables
+it.
+
+**"Test directory res://… does not exist"** — a typo in the path. It is
+`res://tests/unit`, with the `res://` prefix.
 
 If there is no **GUT** tab at the bottom:
 
