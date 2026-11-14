@@ -235,8 +235,21 @@ visual here.
 
 ## Testing
 
-Framework: **GUT** (Godot Unit Test), installed to `addons/gut/`. Do not also
-install gdUnit4 — one framework only.
+Framework: **GUT 9.7.1**, installed at `addons/gut/`. Do not also install gdUnit4 —
+one framework only. Full detail in `docs/testing.md`.
+
+Run the suite (config is in `.gutconfig.json`, so no flags needed):
+
+```
+<godot> --headless --path . -s res://addons/gut/gut_cmdln.gd
+```
+
+GUT version compatibility is strict: **9.7.1 is the Godot 4.7.x release**, while
+GUT's `main` branch targets 4.6.x. Do not "upgrade to latest" without checking the
+table in GUT's README.
+
+Tests live in `tests/unit/` (scanned by GUT) with shared helpers in
+`tests/fixtures/` (not scanned).
 
 - Pure simulation logic gets real unit tests: price movement, splits above 150,
   bankruptcy at 0, dividend payout per mood, loan interest, missed-payment penalties

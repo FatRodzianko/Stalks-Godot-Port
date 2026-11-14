@@ -1,193 +1,498 @@
 # Game Rules
 
-**Source:** reconstructed from the original game's
-[itch.io write-up](https://rodzianko.itch.io/stalksstalksstalks).
+**Authoritative spec for the port.** Every value here was either confirmed by the
+project owner or read directly out of the original Unity source. Where the original
+code and the [itch.io write-up](https://rodzianko.itch.io/stalksstalksstalks)
+disagree, the **code wins** — it is what players actually experienced — and the
+disagreement is noted.
 
-**Status:** ⚠️ Draft, needs confirmation by the project owner. Items marked
-**[CONFIRM]** are unknown or ambiguous from the write-up alone and must be settled
-before the relevant feature is built. Where the original Unity source is the only
-authority, it is cited as reference only — behaviour is to be reimplemented, not
-copied.
+Source files cited are in
+`C:\Users\murph\Desktop\Unity-gamedev-stuff\StalksStalksStalks\Assets\`.
+They are **reference for rules only**; the port reimplements behaviour, not structure.
 
----
-
-## Objective
-
-Finish the final year with the highest **net worth**.
-
-```
-net worth = cash on hand + (for each holding: shares × current price per share)
-```
+Anything still open is marked **[OPEN]**.
 
 ---
 
-## Match setup (host options)
+## 1. Objective
 
-| Option | Range | Notes |
+```
+net worth = cash on hand
+          + sum over holdings of (price per share × shares held)   [only while price > 0]
+          - outstanding loan balance
+```
+
+Highest net worth after the final year wins.
+
+**Tie-breaking:** highest net worth, then highest cash on hand; if still tied, all
+tied players win.
+
+---
+
+## 2. Game settings
+
+Called "lobby settings" in the original, since every game ran through a Steam lobby.
+The port renames these **game settings**, because it must support true single-player
+with no Steam dependency at all.
+
+| Setting | Range | Default |
 |---|---|---|
-| Lobby name | — | Defaults to the host's Steam profile name |
-| Number of years | 2–99 | |
-| Number of players | 1–10 | Host may start without filling the lobby |
-| Enable loans | on/off | Loans become available from Year 2 |
-| Invite only | on/off | Hides the lobby from the browser; Steam invites only |
-
-Starting cash: **[CONFIRM]** — not stated in the write-up. The original lobby
-metadata carried a `startingWealth` field, so it was configurable; the default value
-needs confirming.
-
-### Joining
-
-Players browse or search lobbies by name, or accept a Steam invite. Every joiner
-must **ready up**; the host can start once all lobby members are ready.
+| Starting cash | — | **10,000** |
+| Number of years | 2–99 | — |
+| Number of players | 1–10 | — |
+| Loans enabled | on/off | — |
+| Invite only | on/off | (Steam only; meaningless offline) |
 
 ---
 
-## Year structure
+## 3. The stalks
 
-The game opens at **Year 0**: every stalk is priced at **100**, and no buying or
-selling is allowed. When all players press *Ready for New Year*, play advances to
-Year 1.
+Ten stalks, all starting at **price 100**. Bear ranges are stored as positive
+magnitudes and negated when applied.
 
-During a normal year players may buy and sell freely:
+| Stalk | Bear range | Bull range | Bear div | Bull div |
+|---|---|---|---|---|
+| BERRY BONDS FROM DIE HARD | 0 – 0 | 0 – 0 | 3 | 3 |
+| My Mutuals and Me Inc. | 0 – 10 | 0 – 5 | 2 | 3 |
+| Springfield Nuclear Power | 10 – 20 | 0 – 15 | 0 | 5 |
+| My Pillow, Your Pillow, We're All Pillows! | 5 – 25 | 0 – 15 | 1 | 1 |
+| Mafia HUD Scam | 5 – 25 | 5 – 15 | 1 | 3 |
+| Unionized Submissives LLC | 0 – 25 | 5 – 20 | 0 | 2 |
+| North Haverbrook MONORAIL | 5 – 30 | 0 – 20 | 1 | 4 |
+| PG&Enron | 10 – 35 | 5 – 15 | 0 | 4 |
+| Teamsters Pension Fund | 15 – 40 | 0 – 15 | 0 | 8 |
+| strYker!!! | 15 – 50 | 13 – 42 | 0 | 0 |
 
-- **Buying** — from the *Available Stalks* board. Purchases are capped by cash on
-  hand; if total cost exceeds cash, the purchase fails. **[CONFIRM]** whether this
-  fails silently, shows an error, or clamps to the affordable amount.
-- **Selling** — from *Your Stalks*. Proceeds are `shares sold × current price`.
+Source: `Resources/Prefabs/StalkPrefabs/*.prefab`.
 
-### End-of-year sequence
+The design reads clearly: **BERRY BONDS** is the risk-free bond — it never moves and
+always pays 3. **strYker!!!** is the casino — the widest swings either way and no
+dividend at all. **Teamsters** pays a huge bull dividend (8) to compensate for a
+brutal bear range. **Mutuals** is the index-like safe-ish middle.
 
-Strictly ordered. Order matters and must be preserved:
+### BERRY BONDS is special-cased
 
-1. Pick **BEAR** or **BULL** for the year.
-2. Pick special events.
-3. Apply price changes from the bull/bear modifier **and** special events.
-4. **Split** any stalk priced above 150.
-5. **Bankrupt** any stalk whose price has reached 0.
-6. Pay **dividends**.
-7. Recalculate **net worth** for all players.
+It is excluded from price movement entirely by an explicit name check
+(`stalk.stalkName != "BERRY BONDS FROM DIE HARD"` in `AdjustStalksForNewYear`), and
+it has no special events. It cannot split and cannot go bankrupt.
 
-**[CONFIRM]** the probability of BULL vs BEAR, and whether it is a flat coin flip
-or weighted.
+> **Port note:** do not reproduce this as a name comparison. Give the stalk
+> definition a flag (e.g. `is_price_static`) and drive behaviour from data.
 
----
-
-## Price movement
-
-Each stalk carries, and displays on the board:
-
-- Name
-- Price per share
-- Dividend paid in **bull** years
-- Dividend paid in **bear** years
-- **Yearly change** in price — the bull/bear modifier only, *excluding* special events
-- A buy control
-
-Generally bear years push prices down and bull years push them up. A price may sit
-at 0.
-
-**[CONFIRM]** the exact per-stalk price-change formula — whether each stalk has a
-fixed step, a random range, or a volatility stat, and whether the roll is per-stalk
-or shared across the market.
-
-### Special events
-
-- **One** event is drawn per year, as long as stalks other than `BERRY BONDS` exist.
-- Event effects are applied **on top of** the yearly change, and are deliberately
-  **not** included in the displayed *Yearly Change* figure.
-- Presentation: flavour text in red, then the affected stalk and its price delta in
-  white (e.g. *Springfield Nuclear Power rose by 5*).
-
-**[CONFIRM]** the full event list, each event's magnitude, whether an event can
-target any stalk or only specific ones, and why `BERRY BONDS` is excluded (it reads
-like a bond — a stable, event-immune instrument).
-
-### Splits
-
-If a stalk's price is **above 150** after the yearly change and events:
-
-- Price is **halved**
-- Every holder's share count is **doubled**
-
-Example from the write-up: price 152 → 76; a holder of 10 shares ends with 20.
-
-**[CONFIRM]** rounding direction on an odd price (e.g. 153 → 76 or 77). Since all
-money is integer, this must be pinned down and tested.
-
-### Bankruptcy
-
-If a stalk's price falls to **0 or below**, the stalk goes bankrupt and all holders'
-shares in it drop to **0**. No compensation.
-
-**[CONFIRM]** whether a bankrupt stalk is removed from the board, replaced, or
-remains listed at 0.
+There is also an unused `StalkPrefab.prefab` template with all-zero stats — the
+original's "add a new stalk" starting point. The port replaces it with a documented
+`.tres` template.
 
 ---
 
-## Loans
+## 4. Year structure
 
-Only if *Enable Loans* was set, and only from **Year 2** onward.
+The game opens at **Year 0** with every price at 100 and buying and selling
+disabled. When all players press *Ready for New Year*, play advances to Year 1.
 
-Quoted terms from the write-up:
+During a normal year, players buy and sell freely, then ready up. When all players
+have readied, the end-of-year sequence runs.
 
-> You can take out a loan up 25% of your net worth. The minimum loan is $100. Terms
-> are 10 years and 6% interest.
+### 4.1 End-of-year sequence — the real order
+
+The write-up lists a different order from the code. This is what the code actually
+does, traced through `GameplayManager.GetBearOrBull()` →
+`StalkManager.AdjustStalksForNewYear()` → `GetYearEvent()` → `CheckForSplitStalks()`
+→ `PayDividendsToPlayers()` → `AdjustLoans()` → `CalculateNetWorth()`:
+
+1. **Decide bull or bear** for the year.
+2. **Apply the base price change** to every stalk except BERRY BONDS.
+3. **Bankruptcy pass 1** — any stalk now at ≤ 0 goes bankrupt.
+4. **Apply the one special event** to its single target stalk.
+5. **Bankruptcy pass 2** — the event can itself bankrupt a stalk.
+6. **Splits** — any stalk now above 150 splits.
+7. **Dividends** paid, based on the year's mood.
+8. **Loans** — missed-payment penalties, then interest.
+9. **Net worth** recalculated, rankings updated.
+10. If the year counter has passed the limit, **determine the winner**.
+
+Two consequences worth preserving deliberately:
+
+- **Splits are checked only once, after events.** A stalk pushed above 150 by its
+  base move and then knocked back under by a negative event does *not* split. That
+  is correct and intentional-looking.
+- **Dividends are paid after splits**, so a stalk that splits pays that year's
+  dividend on the *doubled* share count. Generous, but it is what shipped.
+
+> The write-up's ordering (events before price changes, bankruptcy before dividends
+> in a single pass) is wrong. Ignore it.
+
+### 4.2 Bull / bear odds
+
+Confirmed exactly. `GameplayManager` holds a 12-element array of 5 `"bear..."` and
+7 `"BULL!!!"` entries and picks one uniformly:
+
+- **Bull: 7/12 ≈ 58.3%**
+- **Bear: 5/12 ≈ 41.7%**
+
+The owner recalled "60/40 favouring bull", which is nearly right. Use the exact
+7/12 to start, and make it a tunable setting rather than a hardcoded array.
+
+### 4.3 Base price change
+
+Per stalk, independently rolled — not one roll shared across the market.
+
+```
+roll a 10-sided chance:
+  10% of the time  -> a contrarian move against the year's mood
+  90% of the time  -> a normal move with the year's mood, then long-game softening
+```
+
+| | Normal move (90%) | Contrarian move (10%) |
+|---|---|---|
+| Bear year | −maxChangeBear … −minChangeBear | **+0 … +5** |
+| Bull year | +minChangeBull … +maxChangeBull | **−10 … 0** |
+
+### 4.4 Long-game softening — undocumented mechanic
+
+Completely absent from the write-up, and important. The base move is scaled down in
+longer games so prices don't run away:
+
+| Game length | Bear multiplier | Bull multiplier |
+|---|---|---|
+| > 49 years | × 0.45 | × 0.50 |
+| > 19 years | × 0.70 | × 0.80 |
+| ≤ 19 years | × 1.0 | × 1.0 |
+
+Applied **only to the normal 90% move**, never to the contrarian 10% move. Truncated
+to `int` by a C# cast.
+
+### 4.5 ⚠️ Inclusive vs exclusive ranges — a trap in this port
+
+C# `Random.Next(min, max)` excludes `max`. Godot's `randi_range(min, max)`
+**includes** it. So a naive line-by-line port silently changes the maths: in the
+original, `strYker!!!` could gain 13–41 in a bull year and **never 42**, despite its
+stat block saying 42.
+
+The displayed stat block clearly *intends* an inclusive range, so the port should be
+inclusive — but this must be a **deliberate, documented decision**, not an accident,
+and the tests must pin the chosen behaviour.
+
+---
+
+## 5. Special events
+
+One event per year, drawn from a mood-specific pool. The event names its target
+stalk, so an event is data about a stalk, not a free-floating market shock.
+
+Each event carries: **target stalk name**, **flavour text**, **price change**.
+
+- **45 bull events** and **45 bear events** — 5 per stalk, for the 9 stalks that
+  aren't BERRY BONDS. Hardcoded in `StalkManager.CreateSpecialEvents()`.
+- Bull magnitudes run **+5 to +20**; bear magnitudes **−5 to −25**.
+- Applied **on top of** the base yearly change, and deliberately **excluded** from
+  the *Yearly Change* figure shown to players.
+- Presentation: flavour text in red, then target stalk and delta in white.
+
+### Known issues in the original's event handling
+
+- **Off-by-one, drops an event.** `BullEvents[rng.Next(BullEvents.Count - 1)]`
+  returns an index in `0 … Count-2`, so **the last event in each pool can never be
+  drawn**. Same bug in both pools. Fix in the port.
+- **Events repeat.** Nothing removes a drawn event from its pool, so the same event
+  can fire in consecutive years. The `else` branch logging *"No more yearly events
+  exist!"* is therefore dead code. **Decided: events must not repeat.** The port
+  draws without replacement from a shuffled bag per mood. When a bag empties it is
+  refilled and reshuffled, so an event cannot recur until every other event in its
+  pool has been seen. This matters because a 99-year game has roughly 58 bull years
+  against only 45 bull events, so exhaustion is reachable and needs defined
+  behaviour.
+- **Events can target dead stalks.** If the target went bankrupt and was removed, the
+  event is announced but changes nothing. **Decided: skip it and draw another.** A
+  skipped event returns to the bag rather than being consumed. If every candidate in
+  the bag targets a bankrupt stalk, the year simply has no event.
+
+  > Forward note for "StalkleHeads" mode: once events also move an industry or the
+  > wider market, an event whose target is bankrupt may still be worth firing for its
+  > sector effect. The rule above is specifically for the current model, where an
+  > event affects exactly one stalk and nothing else — so a dead target makes it a
+  > no-op. Keep the skip decision inside the event-selection strategy, not baked into
+  > the year pipeline, so the advanced mode can choose differently.
+
+---
+
+## 6. Splits
+
+If a stalk's price is **above 150** after the base change and the event:
+
+- Price is **halved, rounding up on an odd price** — `153 → 77`, not 76.
+- Every holder's shares are **doubled**.
+
+The live code is `CheckForSplitStalks()`:
+
+```csharp
+newPriceAfterSplit = price / 2;
+if (price % 2 != 0) newPriceAfterSplit++;
+```
+
+> The owner's instinct was that it *should* round up. It already does. Note that a
+> second, **dead** `SplitStalks()` function rounds *down*; it is commented out of the
+> call path. Use the round-up behaviour.
+
+There is no cap on how high a price can go before splitting, and no limit on the
+number of shares a player may hold.
+
+---
+
+## 7. Bankruptcy of a stalk
+
+If a price reaches **0 or below**, the stalk goes bankrupt:
+
+- Every holder's shares in it go to **0**. No compensation.
+- The board entry stays visible, overlaid with **BANKRUPT!!!**
+- A sound plays.
+
+BERRY BONDS can never go bankrupt (it never moves).
+
+---
+
+## 8. Dividends
+
+Paid per share, after splits, based on the year's mood:
+
+```
+payout = shares held × (bull year ? bullDividend : bearDividend)
+```
+
+Fixed per stalk — no randomness. Holdings in a stalk that went bankrupt this year
+pay nothing, because the bankruptcy pass has already zeroed the share count.
+
+---
+
+## 9. Loans
+
+Only when loans are enabled, and only from **Year 2** onward. **One loan at a time**
+per player.
+
+### 9.1 Terms
 
 | Rule | Value |
 |---|---|
-| Maximum principal | 25% of current net worth |
-| Minimum principal | $100 |
+| Maximum principal | 25% of current net worth (`(int)(netWorth * 0.25)`) |
+| Minimum principal | 100 |
 | Term | 10 years |
-| Interest | 6% |
-| First payment due | The **following** year |
+| Interest | 6%, **compound, annual** |
+| First payment due | the **following** year |
 
-- Any amount between the minimum and maximum may be borrowed. Cash is paid out
-  immediately.
-- **Missed payments** escalate:
-  1. First miss — loan balance +10%
-  2. Second miss — loan balance +15%
-  3. Third miss — **all assets seized, player bankrupt**
-- The minimum payment rises with the balance after a miss.
-- **Overpayment** is allowed if the player has the cash. **Partial payment is not** —
-  a payment must meet at least the minimum.
-- The minimum payment is recalculated every year, and integer rounding makes it
-  drift by roughly ±1 per year. Example from the write-up: a minimum of 657 falling
-  to 631 after an overpayment.
+### 9.2 Minimum payment — standard annuity amortisation
 
-**[CONFIRM]** whether interest is simple or compound, whether 6% is annual, the
-exact minimum-payment formula, whether multiple concurrent loans are allowed, and
-what happens to an outstanding loan at game end (deducted from net worth?).
+`GamePlayer.LoanMinimumPayment(loanAmount, years)` computes:
+
+```
+denominator = (1.06^years − 1) / (0.06 × 1.06^years)
+minPayment  = (int)(loanAmount / denominator)
+```
+
+That `denominator` is the **present-value annuity factor** at 6%. So this is the
+textbook amortising-loan payment, `principal / a(n, 6%)`, truncated to an integer.
+
+For the standard 10-year term, `a(10, 6%) ≈ 7.360087`, so:
+
+```
+minPayment ≈ loanAmount / 7.360087
+```
+
+A 2,500 loan (the max for a player worth 10,000) gives a minimum payment of **339**.
+
+This settles the open question: **interest is compound, and the scheme is a proper
+amortisation**, not simple interest.
+
+### 9.2.1 Verified reference trace
+
+Run in Godot 4.7.2 against a faithful model of the original's full path
+(pay → re-amortise over `yearsRemaining − 1` → decrement years → apply 6% interest,
+with the payment clamped to the outstanding balance). **Use this as the fixture for
+the Phase 2 tests.**
+
+```
+start: balance 2500, years 10, min payment 339
+  year  1: paid  339 -> balance  2290, next min  317
+  year  2: paid  317 -> balance  2091, next min  317
+  year  3: paid  317 -> balance  1880, next min  317
+  year  4: paid  317 -> balance  1656, next min  317
+  year  5: paid  317 -> balance  1419, next min  317
+  year  6: paid  317 -> balance  1168, next min  318
+  year  7: paid  318 -> balance   901, next min  317
+  year  8: paid  317 -> balance   619, next min  318
+  year  9: paid  318 -> balance   319, next min  319
+  year 10: paid  319 -> balance     0
+PAID OFF after 10 years
+```
+
+Three things this confirms:
+
+1. **It lands exactly on 0 in exactly 10 years.** Clean amortisation.
+2. **The annual re-amortisation is load-bearing, not cosmetic.** With the payment
+   held fixed at 339 for all ten years, truncation makes the player underpay slightly
+   each year and the schedule overshoots — the balance is still 87 after year 9. The
+   re-amortisation in `CmdPayLoan` is what keeps the schedule honest.
+3. **The ±1 drift is reproducible** — 317, 317, 317, 317, 317, 318, 317, 318, 319 —
+   exactly the behaviour the write-up describes. It is integer truncation, not a bug,
+   and the port must preserve it.
+
+Note the minimum **drops** from 339 to 317 after the first payment, because the
+initial figure is amortised over 10 years while the first re-amortisation is over 9
+years on an already-reduced balance. Faithful, if slightly odd-looking.
+
+Other verified minimum payments at the 10-year term: principal 100 → **13**,
+1,000 → **135**, 10,000 → **1,358**.
+
+### 9.3 Yearly loan processing (`AdjustLoans`)
+
+Per loan, in this order:
+
+1. `yearsRemaining` decrements.
+2. If the player **did not pay** this year, `missedPayments` increments and:
+   - **1st miss** — balance × 1.10, then minimum payment re-amortised over the
+     remaining years.
+   - **2nd miss** — balance × 1.15, then re-amortised.
+   - **3rd miss** — **player bankrupt**: cash set to 0, net worth set to 0, all
+     holdings removed, loan destroyed.
+3. If the player **did** pay, the paid-this-year flag resets.
+4. **Balance × 1.06** — interest applied unconditionally, after the payment.
+
+Because the payment is deducted before interest is applied, and the payment is the
+annuity amount, the balance amortises to zero over the term. The maths is sound.
+
+### 9.4 Making a payment (`CmdPayLoan`)
+
+Validated server-side, in order:
+
+- Payment must be **≥ the minimum**. Partial payments are rejected with an error.
+- Payment must be **≤ cash on hand**, else rejected with an error.
+- Payment is **clamped** down to the outstanding balance, so you cannot overpay into
+  a negative balance.
+- Overpayment **is** allowed, and then the minimum is re-amortised over
+  `yearsRemaining − 1`, which is why the owner saw a minimum drop from 657 to 631.
+- The ±1 year-to-year drift in the minimum is the `(int)` truncation in the annuity
+  formula. It is expected, and the port should reproduce it rather than "fix" it.
+- Paying the balance to 0 marks the loan paid off.
+
+### 9.5 Payment prompt is advisory, not blocking
+
+A player with a loan is **prompted** to pay the minimum before ending their turn,
+but is **never forced to**. This is a deliberate design choice by the owner: the
+player may choose to miss a payment and eat the penalty, but the game must never
+penalise them for something it *hid* from them. The prompt must be clearly visible
+and dismissible, never a silent default.
+
+### 9.6 At game end
+
+An outstanding loan balance is **subtracted from net worth**, and the balance is
+updated for the final year like any other.
 
 ---
 
-## Final year and winning
+## 10. Yeehaw
 
-In the last year players get one more round of buying and selling. The year then
-advances once more with the **full** end-of-year sequence, and the game ends.
+Purely social. No mechanical effect. The owner calls it **a critical feature**.
 
-Tie-breaking, in order:
+- Any player may **request** one: *"Can I get a yeehaw?"* All other players are
+  notified.
+- Any **other** player may **give** it. You cannot give one to yourself, so a
+  1-player game can neither give nor receive.
+- When given, **all players hear the "YeeHaw!" sound**.
 
-1. Highest net worth
-2. Highest cash on hand
-3. Still tied — **all tied players win**
+Implemented via `PlayerRequestOrGiveYeehaw` → `CmdRequestYeehaw` /
+`CmdGiveYeehaw` → `RpcYeehawRequested` / `RpcYeehawGiven`, with the sound broadcast
+through `RpcPlayBearOrBullSounds("yeehaw")`.
 
----
-
-## Yeehaw
-
-- Any player may **request** a Yeehaw at any time.
-- Any **other** player may then **give** it. You cannot give one to yourself,
-  so Yeehaws are impossible in a 1-player game.
-
-**[CONFIRM]** what a Yeehaw actually does. The write-up never says — it may be
-purely social/cosmetic, or it may be tied to a Steam achievement.
+> Because it is trivial logic that nonetheless requires a request, a broadcast, and
+> an authority check, Yeehaw makes an excellent **first networked feature** to build
+> and prove the RPC path with.
 
 ---
 
-## Platform notes
+## 11. Buying and selling
 
-- Original shipped Windows-only, ~18 MB, free, "In development".
-- Steam client must be running in the background; lobbies use Steam profile names
-  and Steam invites.
-- The original had Steam achievements (`SteamAchievementManager`).
-  **[CONFIRM]** the achievement list and whether it carries over to the port.
+- Bought from the *Available Stalks* board; sold from *Your Stalks*.
+- Proceeds on sale: `shares sold × current price`.
+- **No limit** on total shares a player may hold.
+- Purchases are validated against cash on hand server-side
+  (`StalkManager.GetPriceOfPurchase` / `PlayerBuyOrSellStalks`).
+
+### Failed purchase feedback — improve on the original
+
+The original **failed silently** when a purchase exceeded cash, showing only the
+maximum affordable as placeholder text in the input field
+(`GetMaxPlayerCanAfford` / `RpcMaxPlayerCanAfford`).
+
+The port must give real feedback. Agreed direction: an error state on the buy
+control — red text and/or a rejection sound — plus a clear affordable-maximum
+affordance. The exact treatment is a UI decision to make during that phase.
+
+---
+
+## 12. Final year and game end
+
+With a limit of N years, players play out year N normally, including buying and
+selling. After they ready up on year N:
+
+- One final year advance runs, with the **full** end-of-year sequence.
+- Players **cannot buy or sell** during it. Holdings can still change through splits
+  and bankruptcies.
+- Net worth is recalculated, the winner is declared, and the game ends.
+
+`CalculateNetWorth` triggers `DetermineWhoWonGame()` once
+`currentYear > maxNumberOfYears`.
+
+---
+
+## 13. Steam achievements
+
+25 achievement IDs exist in `SteamAchievementManager.cs`. The owner wants them
+carried over if possible.
+
+| Group | IDs |
+|---|---|
+| Wins | `SSS_WIN_ONE_GAME`, `SSS_WIN_TEN`, `SSS_WIN_HUNDRED`, `SSS_WINS_THOUSAND` |
+| Losses | `SSS_LOSE_ONE_GAME`, `SSS_LOSES_TEN`, `SSS_LOSES_HUNDRED`, `SSS_LOSES_THOUSAND` |
+| Net worth | `SSS_NETWORTH_FIFTY`, `SSS_NETWORTH_HUNDRED`, `SSS_ONE_MIL`, `SSS_ONE_BIL` |
+| Swings | `SSS_DOUBLED`, `SSS_HALVED`, `SSS_CENTURY`, `SSS_MORTGAGE` |
+| Loans | `SSS_TOOK_OUT_LOAN`, `SSS_PAID_LOAN`, `SSS_DEFAULT_LOAN` |
+| Events | `SSS_SPLIT`, `SSS_ALL_IN`, `SSS_BANKRUPT`, `SSS_DIVERSIFIED` |
+| Yeehaw | `SSS_YEEHAW_ONE`, `SSS_YEEHAW_HUNDRED` |
+
+Two confirmed trigger details:
+
+- **`SSS_DIVERSIFIED`** — own **≥ 10 shares of all 10 stalks** simultaneously
+  (checked in `CalculateNetWorth`).
+- **`SSS_SPLIT`** — awarded to every holder of a stalk that splits.
+
+⚠️ **Casing bug to avoid repeating.** The original sets both `"SSS_WIN_ONE_GAME"`
+and `"SSS_Win_One_Game"`, and both `"SSS_LOSE_ONE_GAME"` and `"SSS_Lose_One_Game"` —
+evidently uncertainty about which case Steam expected. Steam achievement API names
+are case-sensitive. The port should use one canonical spelling per achievement,
+verified against the Steam partner backend.
+
+**[OPEN]** — the exact thresholds and trigger conditions for the remaining
+achievements, and whether the port reuses the existing Steam App ID or registers a
+new one.
+
+---
+
+## 14. Confirmed bugs in the original
+
+Carried here so the port fixes them deliberately rather than inheriting them.
+
+| # | Issue | Decision |
+|---|---|---|
+| 1 | Last special event in each pool unreachable (`Count - 1`) | **Fix** |
+| 2 | `Random.Next` max-exclusive makes stat-block maximums unreachable | **Fix** — make ranges inclusive, and test it |
+| 3 | Dead `SplitStalks()` rounds down, live path rounds up | Keep **round up** |
+| 4 | Duplicate mixed-case Steam achievement IDs | Use one canonical casing |
+| 5 | Silent failure on unaffordable purchase | **Fix** — visible error |
+| 6 | BERRY BONDS special-cased by string comparison | **Fix** — data flag |
+
+---
+
+## 15. Still open
+
+- Achievement thresholds beyond the two confirmed above (§13).
+- Steam App ID reuse (§13).
+- Whether long-game softening thresholds stay hardcoded or become settings (§4.4).

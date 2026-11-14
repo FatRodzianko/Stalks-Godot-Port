@@ -40,6 +40,13 @@ window/size/window_height_override=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
+[editor_plugins]
+
+; GUT 9.7.1 — the release matching Godot 4.7.x (its `main` branch targets 4.6.x).
+; Headless CLI runs do not need the plugin enabled, but the editor's GUT panel
+; does. See docs/testing.md.
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

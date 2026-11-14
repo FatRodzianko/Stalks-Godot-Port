@@ -1,0 +1,323 @@
+# Architecture
+
+How the port is structured, and why. Rules live in `game-rules.md`; the phased
+schedule lives in `porting-plan.md`.
+
+The driving constraint: **the economy must be a pure, deterministic, testable
+simulation that knows nothing about nodes, networking, or Steam.** Everything else
+follows from that.
+
+---
+
+## 1. Layers
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  src/ui/          Control nodes. Presentation + input.  │
+│                   Reads state, emits intent. No rules.  │
+├─────────────────────────────────────────────────────────┤
+│  src/net/         Session + transport. Who is allowed   │
+│                   to do what, and how it travels.       │
+├─────────────────────────────────────────────────────────┤
+│  src/sim/         Pure simulation. RefCounted only.     │
+│                   No nodes. No RNG of its own. No I/O.  │
+├─────────────────────────────────────────────────────────┤
+│  src/data/        Resource definitions (.tres).         │
+│                   Content, not behaviour.               │
+└─────────────────────────────────────────────────────────┘
+```
+
+Dependencies point **downward only**. `sim` never references `net` or `ui`. `ui`
+never computes a rule. If a change would make `sim` depend on a node, the change is
+wrong — see `CLAUDE.md`.
+
+Why this matters here specifically: this game *is* its RNG. If the economy can only
+be exercised by clicking buttons in a window with two Steam clients running, it will
+never be properly tested, and subtle rule bugs (the kind the original shipped with)
+will survive the port.
+
+---
+
+## 2. Data layer — content as resources
+
+Authored as `.tres`, one file per stalk and one per event pool. No hardcoded arrays.
+
+```gdscript
+class_name StalkDefinition extends Resource
+
+@export var id: StringName                  # stable key — NEVER the display name
+@export var display_name: String
+@export var starting_price: int = 100
+@export var bear_change: Vector2i           # min/max magnitude, applied negative
+@export var bull_change: Vector2i
+@export var bear_dividend: int
+@export var bull_dividend: int
+@export var is_price_static: bool = false   # BERRY BONDS: never moves
+@export var industry: StringName = &""      # unused for now; see §7
+```
+
+```gdscript
+class_name SpecialEventDefinition extends Resource
+
+@export var target_stalk_id: StringName
+@export var mood: MarketMood.Value          # which pool it belongs to
+@export var flavour_text: String
+@export var price_change: int
+```
+
+Two deliberate choices:
+
+**Identity is an `id`, not a display name.** The original matched stalks by comparing
+display strings, which is why BERRY BONDS needed a hardcoded name check and why an
+event could silently fail to find its target. An `id` makes renaming safe and makes
+JSON-authored content possible.
+
+**Behaviour comes from flags, not special cases.** `is_price_static` replaces
+`stalkName != "BERRY BONDS FROM DIE HARD"`.
+
+```gdscript
+class_name GameSettings extends Resource
+
+@export var starting_cash: int = 10000
+@export var max_years: int = 10
+@export var player_count: int = 1
+@export var loans_enabled: bool = false
+@export var rng_seed: int = 0               # 0 = pick one and record it
+@export var bull_weight: int = 7            # 7/12 bull, 5/12 bear
+@export var bear_weight: int = 5
+```
+
+---
+
+## 3. Simulation layer — state and the year pipeline
+
+State objects are plain `RefCounted`: no nodes, no signals to UI, no awaits.
+
+```
+GameState
+ ├── settings: GameSettings
+ ├── year: int
+ ├── stalks:  Array[StalkState]     # id, price, last_change, is_bankrupt, did_split
+ └── players: Array[PlayerState]    # id, cash, holdings, loan, net_worth
+                                    #   holdings: Dictionary[StringName, int]
+LoanState                           # balance, min_payment, years_remaining,
+                                    #   missed_payments, paid_this_year
+```
+
+### The year advance is one function
+
+```gdscript
+func advance_year(state: GameState, rng: RandomNumberGenerator) -> YearResult:
+```
+
+It runs the ten steps in `game-rules.md` §4.1 in order, mutates `state`, and returns
+an **immutable record of everything that happened**:
+
+```gdscript
+class_name YearResult extends RefCounted
+
+var year: int
+var mood: MarketMood.Value
+var event: SpecialEventDefinition          # may be null
+var price_changes: Dictionary              # stalk id -> {before, base_delta,
+                                           #   event_delta, after}
+var splits: Array[StringName]
+var bankruptcies: Array[StringName]
+var dividends: Dictionary                  # player id -> amount
+var loan_events: Array                     # penalties, interest, defaults
+var net_worths: Dictionary                 # player id -> net worth
+var rankings: Array[StringName]
+```
+
+`YearResult` is the keystone of the design. It serves four jobs at once:
+
+1. **The UI animates from it** — it already knows what changed and in what order, so
+   presentation never has to re-derive or guess.
+2. **The network sends it** — the host resolves the year and broadcasts one result;
+   clients never compute economics.
+3. **Tests assert on it** — a year's entire outcome is one inspectable value.
+4. **Charts and history read a list of them** — see §7.
+
+### RNG is injected, never ambient
+
+`advance_year` takes an `RandomNumberGenerator`. Nothing in `sim` ever calls global
+`randi()`. The seed lives in `GameSettings` and is part of match state, so any game
+can be replayed exactly — which is what makes an RNG-driven game testable at all.
+
+---
+
+## 4. The price model — the main extensibility seam
+
+This is the single most important design decision for where the game is going.
+
+Price movement is **a strategy, not a hardcoded formula**:
+
+```gdscript
+class_name PriceModel extends RefCounted
+
+## Returns this year's base price delta for one stalk.
+## `market` is the whole market, read-only, so a model may consider other stalks.
+func next_change(
+    stalk: StalkState,
+    definition: StalkDefinition,
+    mood: MarketMood.Value,
+    market: GameState,
+    rng: RandomNumberGenerator,
+) -> int:
+    push_error("abstract")
+    return 0
+```
+
+Two implementations are planned:
+
+| Implementation | When | What it does |
+|---|---|---|
+| `RandomRangePriceModel` | Now — the faithful port | Per-stalk random range by mood, 10% contrarian roll, long-game softening |
+| `EarningsPriceModel` | "StalkleHeads" mode | Earnings reports, company profile stats, industry performance, momentum across years |
+
+Because `next_change` receives the **whole market**, a future model can do things the
+current one cannot — notably make *My Mutuals and Me Inc.* behave as a genuine index
+of the other stalks, which is on the wishlist.
+
+Getting this interface in on day one costs almost nothing. Retrofitting it after the
+rules are threaded through the UI and the network layer would be a rewrite.
+
+---
+
+## 5. Network layer — session abstraction
+
+The game must run **truly single-player with no Steam and no peer**, which the
+original could not do. So "who is playing" and "how messages travel" are separate
+from both the rules and each other.
+
+```gdscript
+class_name GameSession extends RefCounted   # interface
+
+signal year_resolved(result: YearResult)
+signal player_state_changed(player_id: StringName)
+signal action_rejected(player_id: StringName, reason: String)
+
+func request_buy(player_id: StringName, stalk_id: StringName, shares: int) -> void
+func request_sell(player_id: StringName, stalk_id: StringName, shares: int) -> void
+func request_loan(player_id: StringName, amount: int) -> void
+func pay_loan(player_id: StringName, amount: int) -> void
+func ready_for_new_year(player_id: StringName) -> void
+func request_yeehaw(player_id: StringName) -> void
+func give_yeehaw(player_id: StringName) -> void
+```
+
+| Implementation | Role |
+|---|---|
+| `LocalSession` | Single player. Owns the state, resolves years in-process. **No `MultiplayerAPI` at all.** |
+| `HostSession` | Authoritative. Validates every request, resolves the year, broadcasts `YearResult`. |
+| `ClientSession` | Sends requests as RPCs, applies received results. Computes nothing. |
+
+**Authority rule:** every `@rpc("any_peer", ...)` entry point re-validates server-side
+— sufficient cash, loan eligibility, correct phase, and that the caller owns the
+player they claim to act as. The original validated on the server too; the port keeps
+that and makes it explicit at every entry point.
+
+### 5.1 Responsiveness without prediction
+
+This game does not depend on reaction time. The only requirement is that clicking
+**Buy** or **Sell** never feels like the game ignored you. That is a UI-feedback
+problem, not a netcode problem, and it does **not** need client-side prediction,
+optimistic state mutation, or reconciliation.
+
+The host stays the only source of truth for every number. What the client does
+locally is cheap and does not touch state:
+
+1. **Acknowledge the input immediately** — the button reacts, a click sound plays,
+   and the control enters a brief in-flight state. This is what makes it feel
+   responsive, and it costs nothing.
+2. **Pre-check obviously invalid actions locally** and reject them on the spot: a
+   purchase the player cannot afford shows red feedback at once and **is never
+   sent**. No round trip, no waiting, and no state was changed.
+3. **Send valid requests** to the host, which validates authoritatively and
+   broadcasts the resulting state.
+4. **Apply the host's numbers when they arrive.** Over LAN or Steam relay that is
+   tens of milliseconds for a turn-based game — imperceptible once the click itself
+   has already been acknowledged.
+
+Deliberately **not** doing optimistic mutation buys a lot: no divergence between
+predicted and authoritative state, no rollback path, no reconciliation code, and no
+class of bug where a client briefly believes it owns shares it does not. The cost
+would only be worth paying in a game with real latency pressure, and this is not one.
+
+The local pre-check in step 2 is a **presentation** concern, not a second authority.
+It reuses the same validation function from `src/sim` that the host calls for
+enforcement, so the two can never disagree about what is legal — one implementation,
+called from two places. That reuse is a direct payoff of keeping rules out of the
+node layer.
+
+`LocalSession` needs none of this: it is already authoritative in-process, so
+single-player is instant by construction.
+
+### Transport is separate again
+
+`HostSession`/`ClientSession` talk through Godot's `MultiplayerAPI`. What carries it
+is swappable:
+
+- **Now:** `ENetMultiplayerPeer` — works offline, two windows on one machine, no
+  Steam, no accounts, fully scriptable in tests.
+- **Later:** GodotSteam's `SteamMultiplayerPeer` — lobbies, invites, relay.
+
+Because Godot's high-level multiplayer sits on top of a `MultiplayerPeer`, Steam is a
+transport swap plus a lobby UI, not a rewrite of game code. That is the whole reason
+Steam is deferred to a late phase.
+
+---
+
+## 6. UI layer
+
+All `Control` nodes, laid out with containers — never hardcoded pixel positions.
+
+- **Screens** in `src/ui/screens/<name>/`, scene and script together.
+- **Widgets** in `src/ui/widgets/` — one reusable scene per repeated row (stalk
+  board row, holdings row, ranking row, lobby member). Instantiated into containers,
+  never duplicated by hand.
+- A widget **emits intent outward** (`buy_requested(stalk_id, shares)`) and knows
+  nothing about the screen holding it, or about the session.
+- A screen translates widget signals into `GameSession` calls, and `YearResult` into
+  display updates.
+- All colours, fonts and styleboxes come from **one shared `Theme`** in
+  `assets/themes/`. No per-node colour overrides.
+- Currency formatting lives in one shared helper.
+
+---
+
+## 7. Designed for where the game is going
+
+The future ideas were read before fixing this structure. Four of them changed
+decisions that would be expensive to retrofit; the rest already fit.
+
+| Future feature | Plugs into | Decision taken **now** |
+|---|---|---|
+| StalkleHeads earnings model | New `PriceModel` | **`PriceModel` interface exists from day one** |
+| Mutual fund as a real index | `PriceModel` | **`next_change` receives the whole market, not just one stalk** |
+| Charts, YoY, P/E history | `YearResult` list | **Year history recorded from Year 0** — cheap now, impossible to backfill |
+| Custom stalks from JSON | `StalkDefinition` | **`id`-based identity, no engine-only types in definitions** |
+| Industries, sector performance | `StalkDefinition.industry` + year context | Field added now, unused; sector modifiers slot into the price model |
+| Momentum / earnings building over years | Price model reading history | History is available, so a model can be stateful across years |
+| Industry news hinting at events | Event pool selection | Events are data with a pluggable pool selector, not a hardcoded list |
+| Meme stalk / short squeeze | A price model + event type | Both are already data-driven seams |
+
+**Year history** deserves emphasis. Keeping `Array[YearResult]` from the first year
+costs one append per year and makes charts, year-over-year figures, replays and
+determinism checks all possible later. Not recording it would make every one of those
+features a retrofit.
+
+---
+
+## 8. Determinism contract
+
+Non-negotiable, and the thing most worth protecting:
+
+1. All money is `int`. Never `float` for cash, prices, dividends, or balances.
+2. All randomness comes from an injected `RandomNumberGenerator`.
+3. Given the same `GameSettings` (seed included), the same sequence of player
+   actions must produce an identical sequence of `YearResult`s.
+4. Integer rounding is specified, not incidental — splits round **up**, the loan
+   minimum payment **truncates**. Both are tested.
+5. Range endpoints are **inclusive**, a deliberate divergence from the original's
+   max-exclusive C# behaviour. See `game-rules.md` §4.5.
