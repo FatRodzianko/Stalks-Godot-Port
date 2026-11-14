@@ -278,5 +278,21 @@ now specifically so those features are additive later rather than a rewrite — 
 `PriceModel` interface, market-wide read access in the price model, year history from
 Year 0, and `id`-based content identity.
 
+### Questions deliberately deferred to that mode's design
+
+Not open questions for the port — settled for now, with the review scheduled:
+
+- **Should a player be able to take more than one loan per game?** The port
+  faithfully reproduces the original's one-loan-ever behaviour, which appears to be
+  an oversight on its part. Repeat borrowing would let a player compound leverage
+  across a long match, which suits a deeper financial model better than it suits the
+  faithful port. If both are wanted it should become a `GameSettings` toggle rather
+  than a code change. See decisions.md D27.
+- **Should an event still fire when its target stalk is already bankrupt?** Currently
+  skipped, because an event affects exactly one stalk and a dead target makes it a
+  no-op. Once events also move an industry or the wider market, firing it for the
+  sector effect may be right. The decision lives inside `EventPool` precisely so this
+  can change without touching the year pipeline. See decisions.md D24.
+
 The port ships the original game, faithfully and correctly, on a structure that can
 grow into the bigger one.

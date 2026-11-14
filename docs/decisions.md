@@ -427,9 +427,25 @@ and borrow again at a higher net worth, compounding leverage.
 of a `LoanState` on a player means "has ever borrowed", so `PlayerState.owes()`
 exists separately to answer "currently owes money".
 
-**Revisit if.** The owner decides this was unintended and wants it changed. It is a
-one-line change in `LoanRules.validate_take_loan`, and worth considering for the
-planned advanced mode.
+**Status: kept for the faithful port, with the review deferred.** The owner's
+decision (2026-11-14) is to keep this behaviour as it shipped and to decide whether
+to change it **when the advanced "StalkleHeads" mode is designed** — not before. So
+this is not an open question for the port; it is a settled choice with a scheduled
+review point.
+
+When that review happens, the things to weigh:
+
+- Allowing repeat borrowing lets a player borrow, repay, and borrow again against a
+  higher net worth, compounding leverage across a long match. That is a real strategic
+  change, not a tidy-up.
+- The advanced mode already intends more financial depth (earnings, industries,
+  indices), so repeat borrowing may fit it better than it fits the faithful port.
+- If both behaviours are wanted, it belongs in `GameSettings` as a toggle rather than
+  a code change, so the original mode stays faithful.
+
+The change itself is one condition in `LoanRules.validate_take_loan` — the
+`player.loan != null` check. Everything else already distinguishes "has borrowed"
+from "owes money", so nothing downstream assumes a single loan.
 
 ### D28 — Term counter starts at 11, and the first year is interest-only
 **2026-11-14 · Accepted**
