@@ -533,6 +533,53 @@ missing flavour text, and events attached to a static-price stalk.
 
 ---
 
+## Phase 4 — the user interface
+
+### D32 — `GameSession` is a Node, not a RefCounted
+**2026-11-14 · Accepted** (supersedes the shape sketched in architecture.md §5)
+
+The session base class extends `Node` and lives in the scene tree.
+
+**Why.** The later `HostSession` and `ClientSession` must issue `@rpc` calls, which
+requires being a Node with a `MultiplayerAPI`. An earlier draft of architecture.md
+described `GameSession` as a `RefCounted`, which would have forced a change to the
+UI's contract the moment multiplayer arrived. Making it a Node now costs nothing —
+`LocalSession` simply ignores the tree — and means the screens do not change in
+Phase 5.
+
+**Rules out.** Nothing practical. Note that `src/sim` is still node-free; this is the
+layer above, where nodes are allowed.
+
+### D33 — Loans stay off until the loan panel exists
+**2026-11-14 · Accepted**
+
+The default solo game sets `loans_enabled = false`.
+
+**Why.** Loans are fully implemented and tested, but there is no UI to take one,
+make a payment, or see the minimum due. A player given a game with loans enabled and
+no way to interact with them would simply accumulate missed payments and be
+bankrupted by a mechanic they never saw — the exact kind of thing the owner called
+out in the rules: the game must never penalise a player for something it hid from
+them (game-rules.md §9.5).
+
+Better absent than present and unreachable. Flipping the flag is a one-line change
+once the panel exists.
+
+### D34 — The playing screen is the main scene, for now
+**2026-11-14 · Accepted**
+
+`run/main_scene` points at `gameplay_screen.tscn`, which builds a default solo game
+if nothing injects a session.
+
+**Why.** It makes the game runnable and playable at the end of increment 1 rather
+than waiting for a menu. The screen taking an injected session *or* building its own
+is also what lets the scene tests drive it with a fixed seed.
+
+**Revisit when.** The main menu lands in increment 2 and becomes the main scene.
+`GameplayScreen.setup()` already exists for the menu to call.
+
+---
+
 ## Still open
 
 Not yet decided. Resolve one by replacing it with an entry above.

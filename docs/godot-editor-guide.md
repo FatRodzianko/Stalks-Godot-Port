@@ -61,26 +61,39 @@ Open `src` and you will find `data`, `sim`, `net`, `autoload` and `ui`. The `net
 
 ---
 
-## 3. Run the game (and see the placeholder)
+## 3. Run the game
 
 1. Press **F5**, or click the **▶ play** button at the top-right of the window.
-2. A small window opens showing three lines of text, centred:
+2. A window opens on the playing screen: the market board on the left, your
+   holdings and the standings on the right, cash and net worth along the top.
+3. Close the window, or press **F8**.
 
-```
-STALKS STALKS STALKS
-Godot 4.7.2-stable (official) — toolchain OK
-Seeded RNG (seed 12345): 57, 48, 42, 21, 7
-```
+**You can actually play it.** Type a number into a stalk's amount box and press
+**Buy**; the position appears under *Your Stalks* and your cash drops. Press **Ready
+for New Year** and the market moves — prices change, the year's mood appears as
+*BULL!!!* or *bear...*, and a special event is announced if one fired. Keep going to
+the end of year 10 and a winner is declared.
 
-3. Close that window, or press **F8**.
+Things worth trying, because they are the parts most likely to be wrong:
 
-That is the whole game right now. It is a deliberate throwaway called
-`smoke_test.tscn` that proves four things work: the project loads, a script runs, a
-scene displays, and a seeded random number generator produces the same five numbers
-every single time. That last property is what makes a game built on randomness
-testable, so it is worth proving on day one.
+- **Type an amount you cannot afford.** The Buy button should disable itself as you
+  type, and hovering it should explain why. The original game failed silently here,
+  so this is a deliberate fix.
+- **Watch for a split.** When a price goes above 150 it halves and your shares
+  double. The share count under *Your Stalks* should double in the same step.
+- **Watch for a bankruptcy.** A stalk whose price hits zero shows **BANKRUPT!!!** and
+  loses its buy control, and any shares you held in it are gone.
 
-It gets deleted in Phase 4 when a real main menu replaces it.
+> The throwaway smoke-test screen from earlier phases has been deleted now that
+> there is a real screen to run.
+
+### Not there yet
+
+There is no main menu, so the game starts straight into a ten-year solo match with
+default settings, and no way to change them in the UI. Loans are switched off because
+the loan panel does not exist yet. Splits and dividends happen correctly but are not
+yet called out on screen. Those are the remainder of Phase 4 — see
+[porting-plan.md](porting-plan.md).
 
 ---
 

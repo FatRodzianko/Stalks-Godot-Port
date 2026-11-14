@@ -1,0 +1,282 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/screens/gameplay/gameplay_screen.gd" id="1_screen"]
+[ext_resource type="Theme" path="res://assets/themes/stalks_theme.tres" id="2_theme"]
+
+[node name="GameplayScreen" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_screen")
+
+[node name="MessageTimer" type="Timer" parent="."]
+unique_name_in_owner = true
+one_shot = true
+wait_time = 4.0
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="Root" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+
+[node name="TopBar" type="PanelContainer" parent="Margin/Root"]
+layout_mode = 2
+
+[node name="Bar" type="HBoxContainer" parent="Margin/Root/TopBar"]
+layout_mode = 2
+
+[node name="YearLabel" type="Label" parent="Margin/Root/TopBar/Bar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "Year 1 of 10"
+
+[node name="MoodLabel" type="Label" parent="Margin/Root/TopBar/Bar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = ""
+
+[node name="Spacer" type="Control" parent="Margin/Root/TopBar/Bar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CashBox" type="VBoxContainer" parent="Margin/Root/TopBar/Bar"]
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="CashCaption" type="Label" parent="Margin/Root/TopBar/Bar/CashBox"]
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "CASH ON HAND"
+horizontal_alignment = 2
+
+[node name="CashLabel" type="Label" parent="Margin/Root/TopBar/Bar/CashBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"NumericLarge"
+text = "$0"
+horizontal_alignment = 2
+
+[node name="NetBox" type="VBoxContainer" parent="Margin/Root/TopBar/Bar"]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="NetCaption" type="Label" parent="Margin/Root/TopBar/Bar/NetBox"]
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "NET WORTH"
+horizontal_alignment = 2
+
+[node name="NetWorthLabel" type="Label" parent="Margin/Root/TopBar/Bar/NetBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"NumericLarge"
+text = "$0"
+horizontal_alignment = 2
+
+[node name="EventPanel" type="PanelContainer" parent="Margin/Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="EventBox" type="VBoxContainer" parent="Margin/Root/EventPanel"]
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="EventFlavour" type="Label" parent="Margin/Root/EventPanel/EventBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"EventFlavour"
+text = ""
+autowrap_mode = 3
+
+[node name="EventEffect" type="Label" parent="Margin/Root/EventPanel/EventBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+autowrap_mode = 3
+
+[node name="Boards" type="HBoxContainer" parent="Margin/Root"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Left" type="VBoxContainer" parent="Margin/Root/Boards"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.4
+
+[node name="BoardTitle" type="Label" parent="Margin/Root/Boards/Left"]
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "Available Stalks"
+
+[node name="BoardHeader" type="HBoxContainer" parent="Margin/Root/Boards/Left"]
+layout_mode = 2
+
+[node name="HName" type="Label" parent="Margin/Root/Boards/Left/BoardHeader"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Faint"
+text = "STALK"
+
+[node name="HPrice" type="Label" parent="Margin/Root/Boards/Left/BoardHeader"]
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "PRICE"
+horizontal_alignment = 2
+
+[node name="HChange" type="Label" parent="Margin/Root/Boards/Left/BoardHeader"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "CHANGE"
+horizontal_alignment = 2
+
+[node name="HBull" type="Label" parent="Margin/Root/Boards/Left/BoardHeader"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "BULL"
+horizontal_alignment = 1
+
+[node name="HBear" type="Label" parent="Margin/Root/Boards/Left/BoardHeader"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "BEAR"
+horizontal_alignment = 1
+
+[node name="HBuy" type="Label" parent="Margin/Root/Boards/Left/BoardHeader"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "BUY"
+horizontal_alignment = 1
+
+[node name="StalkScroll" type="ScrollContainer" parent="Margin/Root/Boards/Left"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="StalkList" type="VBoxContainer" parent="Margin/Root/Boards/Left/StalkScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="Right" type="VBoxContainer" parent="Margin/Root/Boards"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HoldingsTitle" type="Label" parent="Margin/Root/Boards/Right"]
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "Your Stalks"
+
+[node name="HoldingsHeader" type="HBoxContainer" parent="Margin/Root/Boards/Right"]
+layout_mode = 2
+
+[node name="HName" type="Label" parent="Margin/Root/Boards/Right/HoldingsHeader"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Faint"
+text = "STALK"
+
+[node name="HShares" type="Label" parent="Margin/Root/Boards/Right/HoldingsHeader"]
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "SHARES"
+horizontal_alignment = 2
+
+[node name="HPrice" type="Label" parent="Margin/Root/Boards/Right/HoldingsHeader"]
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "PRICE"
+horizontal_alignment = 2
+
+[node name="HValue" type="Label" parent="Margin/Root/Boards/Right/HoldingsHeader"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "VALUE"
+horizontal_alignment = 2
+
+[node name="HSell" type="Label" parent="Margin/Root/Boards/Right/HoldingsHeader"]
+custom_minimum_size = Vector2(184, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "SELL"
+horizontal_alignment = 1
+
+[node name="HoldingsEmpty" type="Label" parent="Margin/Root/Boards/Right"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "You own no stalks yet. Buy some from the board on the left."
+autowrap_mode = 3
+
+[node name="HoldingScroll" type="ScrollContainer" parent="Margin/Root/Boards/Right"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="HoldingList" type="VBoxContainer" parent="Margin/Root/Boards/Right/HoldingScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="StandingsSeparator" type="HSeparator" parent="Margin/Root/Boards/Right"]
+layout_mode = 2
+
+[node name="StandingsTitle" type="Label" parent="Margin/Root/Boards/Right"]
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "Standings"
+
+[node name="RankingList" type="VBoxContainer" parent="Margin/Root/Boards/Right"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="BottomBar" type="PanelContainer" parent="Margin/Root"]
+layout_mode = 2
+
+[node name="Bar" type="HBoxContainer" parent="Margin/Root/BottomBar"]
+layout_mode = 2
+
+[node name="MessageLabel" type="Label" parent="Margin/Root/BottomBar/Bar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+text = ""
+autowrap_mode = 3
+
+[node name="ReadyButton" type="Button" parent="Margin/Root/BottomBar/Bar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(190, 0)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "Ready for New Year"

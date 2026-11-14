@@ -152,9 +152,27 @@ money and taking all randomness from an injected generator. See
 created on the spot or taken from Godot's global functions. Non-negotiable: global
 `randi()` would make the game untestable.
 
-**Session** — the planned abstraction over "who is playing and how messages travel".
-`LocalSession` for offline single-player, `HostSession`/`ClientSession` for
-multiplayer. Not built yet; see [architecture.md §5](architecture.md).
+**Session** — the abstraction over "who is playing and who is allowed to do what", and
+the only thing the UI talks to. `LocalSession` is the offline implementation;
+`HostSession` and `ClientSession` arrive in Phase 5. A Node, because the networked
+ones need to issue RPCs. See [architecture.md §5](architecture.md).
+
+**Pre-check** — a `why_not_*` call on the session that the UI uses to grey out or
+red-flag a control *before* anything is sent. It runs the same validation function
+the authority runs, so it can never disagree with enforcement. Presentation only: a
+client is never a second source of truth.
+
+**Palette** — `src/ui/palette.gd`, the single source of truth for colour. The shared
+Theme is generated from it. Also holds the money and signed-change formatters, so
+every figure on screen is written the same way.
+
+**Theme type variation** — Godot's mechanism for naming a look (`Heading`, `Numeric`,
+`Bull`, `Card`, `PrimaryButton`) that a control opts into. How this project styles
+things without per-node colour overrides.
+
+**Widget** — a small reusable UI scene under `src/ui/widgets/`: one board row, one
+holdings row, one standings row. A widget displays what it is given and emits intent
+outward; it knows nothing about the session or the screen holding it.
 
 **Host-authoritative** — the design where one machine owns the simulation and decides
 every number. Clients request actions and receive results; they never compute

@@ -107,7 +107,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-137 tests, 13,302 asserts, about 3.3 seconds.
+184 tests, 13,440 asserts, about 2.2 seconds.
 
 | File | Covers | Tests |
 |---|---|---|
@@ -118,6 +118,8 @@ several; the point of this suite is that the port does not.
 | `test_year_resolver.gd` | Split rounding, threshold boundary, both bankruptcy passes, dividend sequencing, displayed yearly change, 10- and 99-year matches, determinism | 21 |
 | `test_loan_rules.gd` | Annuity arithmetic, eligibility, the full ten-payment schedule, penalties and default, overpayment, one-loan-per-game, pipeline integration | 40 |
 | `test_content_library.gd` | The shipped content loads and validates clean, stat blocks match the documented table, 45/45 pools, deterministic order, a full match played from real content, and every validator rule rejecting bad content | 29 |
+| `test_local_session.gd` | Session start-up, seed recording, trading and its rejections, pre-checks agreeing with enforcement, ready-up and year advance, a two-player wait, a full match, loans through the session | 25 |
+| `test_gameplay_screen.gd` | **Scene tests** driving the real screen: rows built, header figures, buying and selling through actual controls, live validation disabling the Buy button, bankrupt presentation, event display, game over, and the UI matching a headless run of the same seed | 22 |
 
 Counts above are read from a suite run, not estimated. If you add tests, re-run and
 update them — a stale number here is a small lie that erodes trust in the rest.
@@ -139,6 +141,28 @@ Two tests in `test_content_library.gd` are worth knowing about:
   one proves a specific check actually fires rather than relying on the real content
   happening to be correct.
 
-**Not yet covered:** anything scene-dependent (Phase 4 onward). Scene behaviour will
-be tested through GUT's scene-tree tests, not asserted from a script running outside
-the tree.
+### Scene tests
+
+`test_gameplay_screen.gd` instantiates the real `.tscn`, injects a session with a
+fixed seed, and interacts **through the actual controls** — setting a `LineEdit`'s
+text and emitting a `Button`'s `pressed` signal — rather than calling the session
+directly. That is the whole point: it proves the *wiring*, which no amount of
+simulation testing can.
+
+It has already earned its place. It caught a real bug where a sold-out position
+stayed on the holdings board, because `queue_free()` is deferred to the end of the
+frame and the row was still a child immediately afterwards. Reading the code would
+not have shown that. Fixing it also cut the suite from 14 seconds to 2, since the
+stale rows were accumulating.
+
+Note the helper pattern: setting `text` on a `LineEdit` in code does **not** emit
+`text_changed`, so a test that wants live-validation behaviour has to emit it by
+hand. The helpers at the top of that file do this.
+
+The acceptance test to keep an eye on is
+`test_what_is_on_screen_matches_a_headless_simulation_of_the_same_seed`: it plays a
+whole match through the UI, plays the same seed headlessly, and compares every stalk
+price and the final net worth. It is what proves the UI invents nothing.
+
+**Not yet covered:** the main menu, game-over screen and loan panel (none exist
+yet), and anything networked (Phase 5).

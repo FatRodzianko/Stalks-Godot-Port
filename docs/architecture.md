@@ -231,20 +231,39 @@ original could not do. So "who is playing" and "how messages travel" are separat
 from both the rules and each other.
 
 ```gdscript
-class_name GameSession extends RefCounted   # interface
+class_name GameSession extends Node          # interface
 
 signal year_resolved(result: YearResult)
-signal player_state_changed(player_id: StringName)
+signal player_changed(player_id: StringName)
 signal action_rejected(player_id: StringName, reason: String)
+signal ready_state_changed(player_id: StringName, is_ready: bool)
+signal game_over(winners: Array[StringName])
+
+func state() -> GameState                    # read to render; never write
+func local_player_id() -> StringName
+func controls(player_id: StringName) -> bool
 
 func request_buy(player_id: StringName, stalk_id: StringName, shares: int) -> void
 func request_sell(player_id: StringName, stalk_id: StringName, shares: int) -> void
 func request_loan(player_id: StringName, amount: int) -> void
 func pay_loan(player_id: StringName, amount: int) -> void
-func ready_for_new_year(player_id: StringName) -> void
-func request_yeehaw(player_id: StringName) -> void
-func give_yeehaw(player_id: StringName) -> void
+func set_ready(player_id: StringName, is_ready: bool) -> void
+
+# Pre-checks for live UI feedback. Presentation only — see §5.1.
+func why_not_buy(player_id: StringName, stalk_id: StringName, shares: int) -> String
+func why_not_sell(player_id: StringName, stalk_id: StringName, shares: int) -> String
+func why_not_loan(player_id: StringName, amount: int) -> String
+func max_affordable(player_id: StringName, stalk_id: StringName) -> int
 ```
+
+It is a **Node**, not a `RefCounted`: the later `HostSession` and `ClientSession` need
+to issue `@rpc` calls, which requires being in the scene tree. Making the base class a
+Node now means the UI's contract does not change when multiplayer arrives
+(decisions.md D32). `src/sim` remains node-free; this is the layer above, where nodes
+are allowed.
+
+Yeehaw is deliberately absent from this interface so far — it arrives in Phase 5 as
+the first networked feature.
 
 | Implementation | Role |
 |---|---|
@@ -321,8 +340,33 @@ All `Control` nodes, laid out with containers — never hardcoded pixel position
 - A screen translates widget signals into `GameSession` calls, and `YearResult` into
   display updates.
 - All colours, fonts and styleboxes come from **one shared `Theme`** in
-  `assets/themes/`. No per-node colour overrides.
-- Currency formatting lives in one shared helper.
+  `assets/themes/`, applied once at the screen root and inherited. Components pick a
+  look with `theme_type_variation` (`Heading`, `Numeric`, `Bull`, `Bear`, `Card`,
+  `PrimaryButton`, …) rather than setting their own colours.
+- `Palette` (`src/ui/palette.gd`) holds the colour constants and the Theme is
+  generated from them, so the two cannot drift. Scripts use `Palette` directly only
+  for genuinely **dynamic** colour — a price change is green or red depending on its
+  sign, which no stylebox can express. That is not the same thing as a per-node
+  override in a scene file, which stays banned.
+- Currency and signed-change formatting live in `Palette.format_money()` and
+  `format_change()`, so every figure on screen is written the same way.
+
+### A Godot gotcha worth knowing
+
+`queue_free()` is **deferred to the end of the frame**. Emptying a container with it
+alone leaves the freed nodes as children for the rest of the current call, so
+anything that then counts or searches that container sees rows which are logically
+gone — a sold-out position stayed visible on the holdings board because of exactly
+this. Remove from the tree first, then free:
+
+```gdscript
+for child: Node in container.get_children():
+    container.remove_child(child)
+    child.queue_free()
+```
+
+This was caught by a scene test asserting the board after a sale, not by reading the
+code.
 
 ---
 

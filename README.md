@@ -32,17 +32,17 @@ project, access to anyone who worked on this, or an AI assistant to continue the
 
 ## Status
 
-**Phases 1–3 of 7 complete.** The economy, loans and all the authored content are
-implemented and tested — a full 99-year, 10-player match plays start to finish from
-the real ten stalks and ninety events — but there is **no user interface yet**, so
-there is nothing to play. That ordering is deliberate; see
-[decisions.md D15](docs/decisions.md).
+**Phases 1–3 complete, Phase 4 in progress — and it is playable.** Press F5 and you
+can play a ten-year solo match: buy and sell stalks, watch prices move, see splits,
+bankruptcies and special events, and get a winner at the end.
 
 | | |
 |---|---|
-| Tests | 137 tests, 13,302 asserts, about 3.3 seconds |
-| Built | The economy (prices, events, splits, bankruptcies, dividends, net worth, rankings), loans, and the ten stalks with their ninety events |
-| Not built | Every screen, multiplayer, Steam, sound |
+| Tests | 184 tests, 13,440 asserts, about 2.2 seconds |
+| Built | The economy, loans, the ten stalks with their ninety events, and a playable single-player screen |
+| Missing | Main menu and game settings, game-over screen, loan panel (loans are off by default until it exists), split and dividend call-outs, multiplayer, Steam, sound |
+
+See [porting-plan.md](docs/porting-plan.md) for exactly what remains in Phase 4.
 
 The current `main_scene` is a throwaway smoke-test screen that proves the toolchain
 works. It is deleted in Phase 4.

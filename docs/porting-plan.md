@@ -178,9 +178,34 @@ from the authored content.
 
 ---
 
-## Phase 4 — Single-player UI
+## Phase 4 — Single-player UI 🟡 In progress
 
 First visible game. Still **no networking at all** — driven by `LocalSession`.
+
+**Increment 1 delivered.** The game is playable: a ten-year solo match can be played
+start to finish from the playing screen. 47 new tests take the suite to **184 tests /
+13,440 asserts in about 2.2 seconds**.
+
+- `GameSession` (the interface the UI talks to) and `LocalSession` (offline,
+  authoritative in-process) — `src/net/`
+- `Palette` and a generated shared `Theme` — all colour in one place
+- Widgets: `StalkRow`, `HoldingRow`, `RankingRow`
+- The gameplay screen: market board, holdings, standings, header with cash and net
+  worth, special-event panel, buy and sell with **live validation and visible
+  rejection**, ready-up, bankruptcy presentation, game-over message
+- The throwaway smoke-test scene is deleted; the gameplay screen is now
+  `main_scene`
+
+**Increment 2 — still to do:**
+
+- [ ] Main menu with game settings (starting cash, years, players, loans on/off)
+- [ ] A dedicated game-over screen with final standings, rather than a status line
+- [ ] Loan panel: terms, maximum, minimum payment, and the advisory (never
+      blocking) prompt. **Loans are switched off in the default game until this
+      exists** — better absent than present and unreachable
+- [ ] Split and dividend presentation. Both happen correctly and are carried in
+      `YearResult`, but only the special event and bankruptcies are surfaced so far
+- [ ] A way to see the match seed, which is what makes a game reproducible
 
 **Build:**
 - Shared `Theme` resource; all colours and fonts in one place
@@ -198,6 +223,11 @@ First visible game. Still **no networking at all** — driven by `LocalSession`.
 **Done when:** a complete 10-year solo game is playable end to end from the main
 menu, with no Steam and no network peer, and the numbers on screen match what a
 headless simulation with the same seed produces.
+
+The second half of that is **already met and asserted**: a test plays a full match
+through the real controls, then plays the same seed headlessly and compares every
+stalk price and the final net worth. The UI invents nothing. The "from the main menu"
+part waits on increment 2.
 
 🖱️ Heaviest editor phase. I'll write the scenes as text where the node tree is
 regular, and give numbered click-by-click steps for theme authoring and any fiddly
