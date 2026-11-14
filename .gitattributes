@@ -1,0 +1,33 @@
+# Normalise line endings so diffs stay clean across machines.
+# Godot reads LF fine on Windows.
+* text=auto eol=lf
+
+# Godot text formats — always LF, always diffable.
+*.gd      text eol=lf
+*.gdshader text eol=lf
+*.tscn    text eol=lf
+*.tres    text eol=lf
+*.godot   text eol=lf
+*.cfg     text eol=lf
+*.import  text eol=lf
+*.md      text eol=lf
+*.json    text eol=lf
+*.csv     text eol=lf
+
+# Binary assets — never line-ending-converted, never diffed.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.ico   binary
+*.ogg   binary
+*.wav   binary
+*.mp3   binary
+*.ttf   binary
+*.otf   binary
+*.exe   binary
+*.dll   binary
+*.so    binary
+*.dylib binary
+*.pck   binary
+*.zip   binary

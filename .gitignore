@@ -1,0 +1,59 @@
+# ---- Godot 4 ----
+# Generated import cache and editor state. Never commit.
+.godot/
+/android/
+
+# Legacy Godot 3 import folder, here only as a safety net.
+.import/
+
+# Export configuration can contain local paths and signing credentials.
+export.cfg
+export_presets.cfg
+
+# Auto-generated from CSV source files.
+*.translation
+
+# ---- Godot .NET / Mono (only if the project ever switches to C#) ----
+.mono/
+data_*/
+mono_crash.*.json
+/bin/
+/obj/
+*.sln.DotSettings.user
+
+# ---- Steamworks SDK ----
+# The Steamworks SDK is NOT redistributable. It must never be committed,
+# not even to a private repository. Download it per-machine from
+# partner.steamgames.com instead.
+/steam_sdk/
+/addons/godotsteam/sdk/
+steam_api*.dll
+steam_api*.so
+steam_api*.dylib
+libsteam_api*
+steam_appid.txt
+
+# ---- Build output ----
+/build/
+/builds/
+/export/
+*.pck
+*.exe
+*.zip
+*.dmg
+*.apk
+*.aab
+
+# ---- OS / editor cruft ----
+.DS_Store
+Thumbs.db
+desktop.ini
+.directory
+*~
+*.swp
+.vscode/
+.idea/
+
+# ---- Logs ----
+*.log
+logs/

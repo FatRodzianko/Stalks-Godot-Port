@@ -1,0 +1,47 @@
+; Engine configuration file.
+; Edited directly on purpose — see CLAUDE.md, "Working Agreement".
+; Godot rewrites this file when you change settings in the editor, so if you
+; edit it by hand while the editor is open, close the editor first.
+
+config_version=5
+
+[application]
+
+config/name="Stalks Stalks Stalks"
+config/description="A multiplayer stock-trading game. Buy and sell stalks, survive the market, finish the final year with the highest net worth."
+run/main_scene="res://src/ui/screens/smoke_test/smoke_test.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[debug]
+
+; 0 = ignore, 1 = warn (editor only), 2 = treat as error.
+;
+; untyped_declaration is 2 on purpose: it makes the "everything is typed" rule in
+; CLAUDE.md a real gate instead of a convention. `--check-only` reports level-2
+; warnings and stays silent about level-1 ones, so anything we actually want
+; enforced has to be 2. Inferred types (`var x := 5`) satisfy it.
+gdscript/warnings/untyped_declaration=2
+
+; Kept at 1: genuinely useful signal in the editor, but too noisy as errors
+; because many engine APIs legitimately return Variant.
+gdscript/warnings/unsafe_property_access=1
+gdscript/warnings/unsafe_method_access=1
+gdscript/warnings/unsafe_cast=1
+gdscript/warnings/unsafe_call_argument=1
+gdscript/warnings/return_value_discarded=1
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=0
