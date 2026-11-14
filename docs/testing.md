@@ -107,7 +107,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-108 tests, ~12,750 asserts, about 2.9 seconds.
+137 tests, 13,302 asserts, about 3.3 seconds.
 
 | File | Covers | Tests |
 |---|---|---|
@@ -117,6 +117,7 @@ several; the point of this suite is that the port does not.
 | `test_trade_rules.gd` | Buy/sell validation and rejection reasons, max affordable, net worth with holdings and loans, ranking and tie-breaking | 25 |
 | `test_year_resolver.gd` | Split rounding, threshold boundary, both bankruptcy passes, dividend sequencing, displayed yearly change, 10- and 99-year matches, determinism | 21 |
 | `test_loan_rules.gd` | Annuity arithmetic, eligibility, the full ten-payment schedule, penalties and default, overpayment, one-loan-per-game, pipeline integration | 40 |
+| `test_content_library.gd` | The shipped content loads and validates clean, stat blocks match the documented table, 45/45 pools, deterministic order, a full match played from real content, and every validator rule rejecting bad content | 29 |
 
 Counts above are read from a suite run, not estimated. If you add tests, re-run and
 update them — a stale number here is a small lie that erodes trust in the rest.
@@ -128,6 +129,16 @@ year, the exact total paid, and that it lands on zero. That table caught a real
 transcription error during Phase 2, which is the point of pinning a schedule rather
 than spot-checking a couple of figures.
 
-**Not yet covered:** content validation (Phase 3) and anything scene-dependent
-(Phase 4 onward). Scene behaviour will be tested through GUT's scene-tree tests, not
-asserted from a script running outside the tree.
+Two tests in `test_content_library.gd` are worth knowing about:
+
+- **The stat-block cross-check** compares the `.tres` files on disk against the table
+  encoded by hand in `StalksFixture`. That duplication is deliberate: it means a bad
+  edit to a `.tres`, or a mistake in the importer that produced them, fails a test
+  instead of quietly changing how the game plays.
+- **The validator tests work by breaking a good stalk one way at a time**, so each
+  one proves a specific check actually fires rather than relying on the real content
+  happening to be correct.
+
+**Not yet covered:** anything scene-dependent (Phase 4 onward). Scene behaviour will
+be tested through GUT's scene-tree tests, not asserted from a script running outside
+the tree.

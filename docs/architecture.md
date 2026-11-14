@@ -59,11 +59,42 @@ class_name StalkDefinition extends Resource
 ```gdscript
 class_name SpecialEventDefinition extends Resource
 
+@export var id: StringName
 @export var target_stalk_id: StringName
 @export var mood: MarketMood.Value          # which pool it belongs to
 @export var flavour_text: String
 @export var price_change: int
 ```
+
+Events are **bundled onto their stalk**, in `StalkDefinition.bull_events` and
+`bear_events`, rather than living in separate pool files. So one `.tres` per stalk
+holds the stalk and all ten of its events, and adding a stalk is a single-file change.
+That matches the planned custom-stalk feature, where a submitted stalk carries its own
+events (decisions.md D29).
+
+### Loading and validating
+
+```gdscript
+class_name ContentLibrary extends RefCounted
+
+static func load_from(dir_path := "res://src/data/stalks") -> ContentLibrary
+func is_valid() -> bool
+func validate() -> Array[String]
+func build_stalk_states() -> Array[StalkState]
+func build_event_pool() -> EventPool
+```
+
+`ContentLibrary` is the only thing that reads the content directory. It sorts by `id`
+so load order is identical on every machine (determinism, §8), validates everything,
+and hands back factories for a fresh market.
+
+It **always returns a library** — callers check `is_valid()` — and collects *every*
+problem rather than stopping at the first, so an author adding a stalk sees all their
+mistakes in one run.
+
+Validation is not ceremony. Ninety events reference ten stalks by id, and a single
+typo in a target id produces an event that can never fire and reports nothing. The
+original shipped with exactly that class of bug. See decisions.md D31.
 
 Two deliberate choices:
 

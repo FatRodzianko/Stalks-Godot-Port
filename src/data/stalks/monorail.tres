@@ -1,0 +1,90 @@
+[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+
+[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_2x7yb"]
+[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_jxek0"]
+
+[sub_resource type="Resource" id="Resource_ny6y7"]
+script = ExtResource("1_2x7yb")
+id = &"monorail_bear_0"
+target_stalk_id = &"monorail"
+mood = 1
+flavour_text = "At the townhall, a busybody citizen asks pointed questions about the details of the monorail project."
+price_change = -10
+
+[sub_resource type="Resource" id="Resource_7bi44"]
+script = ExtResource("1_2x7yb")
+id = &"monorail_bear_1"
+target_stalk_id = &"monorail"
+mood = 1
+flavour_text = "An intrepid citizen visits neighboring town to see the results of their monorail project."
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_r4wkd"]
+script = ExtResource("1_2x7yb")
+id = &"monorail_bear_2"
+target_stalk_id = &"monorail"
+mood = 1
+flavour_text = "Townsfolk confused by the PowerPoint slide defining what a monorail is."
+price_change = -5
+
+[sub_resource type="Resource" id="Resource_6ddhf"]
+script = ExtResource("1_2x7yb")
+id = &"monorail_bear_3"
+target_stalk_id = &"monorail"
+mood = 1
+flavour_text = "Monorail train cars installed with no brakes."
+price_change = -10
+
+[sub_resource type="Resource" id="Resource_e6sy7"]
+script = ExtResource("1_2x7yb")
+id = &"monorail_bear_4"
+target_stalk_id = &"monorail"
+mood = 1
+flavour_text = "Designer of the monorail train cars blows the whistle on shoddy contruction and cheap materials used to build the North Haverbrook MONORAIL."
+price_change = -10
+
+[sub_resource type="Resource" id="Resource_dp7pf"]
+script = ExtResource("1_2x7yb")
+id = &"monorail_bull_0"
+target_stalk_id = &"monorail"
+flavour_text = "The sweet smell of ozone permeates the air as the electrified third rail is powered on."
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_ya73f"]
+script = ExtResource("1_2x7yb")
+id = &"monorail_bull_1"
+target_stalk_id = &"monorail"
+flavour_text = "An anchor was conviently found on the runaway monorail train."
+price_change = 10
+
+[sub_resource type="Resource" id="Resource_khepy"]
+script = ExtResource("1_2x7yb")
+id = &"monorail_bull_2"
+target_stalk_id = &"monorail"
+flavour_text = "The citizens of the town come to their good senses, cast away all doubts about the monorail project, and purchase the monorail."
+price_change = 20
+
+[sub_resource type="Resource" id="Resource_thn1h"]
+script = ExtResource("1_2x7yb")
+id = &"monorail_bull_3"
+target_stalk_id = &"monorail"
+flavour_text = "No one in this one horse town has heard of, let alone seen, The Music Man."
+price_change = 15
+
+[sub_resource type="Resource" id="Resource_bbgty"]
+script = ExtResource("1_2x7yb")
+id = &"monorail_bull_4"
+target_stalk_id = &"monorail"
+flavour_text = "Groundbreaking of the MONORAIL with William Shatner is broadcast on local news."
+price_change = 10
+
+[resource]
+script = ExtResource("2_jxek0")
+id = &"monorail"
+display_name = "North Haverbrook MONORAIL"
+bear_change = Vector2i(5, 30)
+bull_change = Vector2i(0, 20)
+bear_dividend = 1
+bull_dividend = 4
+bull_events = Array[ExtResource("1_2x7yb")]([SubResource("Resource_dp7pf"), SubResource("Resource_ya73f"), SubResource("Resource_khepy"), SubResource("Resource_thn1h"), SubResource("Resource_bbgty")])
+bear_events = Array[ExtResource("1_2x7yb")]([SubResource("Resource_ny6y7"), SubResource("Resource_7bi44"), SubResource("Resource_r4wkd"), SubResource("Resource_6ddhf"), SubResource("Resource_e6sy7")])

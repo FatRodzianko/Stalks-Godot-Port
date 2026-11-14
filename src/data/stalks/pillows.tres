@@ -1,0 +1,90 @@
+[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+
+[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_m6int"]
+[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_y54ms"]
+
+[sub_resource type="Resource" id="Resource_g7s0t"]
+script = ExtResource("1_m6int")
+id = &"pillows_bear_0"
+target_stalk_id = &"pillows"
+mood = 1
+flavour_text = "My pillow, my pillow, what have ye done!"
+price_change = -5
+
+[sub_resource type="Resource" id="Resource_58scp"]
+script = ExtResource("1_m6int")
+id = &"pillows_bear_1"
+target_stalk_id = &"pillows"
+mood = 1
+flavour_text = "Founder and owner convinced by current US president that they should run for Senate."
+price_change = -10
+
+[sub_resource type="Resource" id="Resource_3ommw"]
+script = ExtResource("1_m6int")
+id = &"pillows_bear_2"
+target_stalk_id = &"pillows"
+mood = 1
+flavour_text = "Class action lawsuit after its discovered that new cost saving pillow fillings combust with greater intensitiy than gasoline."
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_4e717"]
+script = ExtResource("1_m6int")
+id = &"pillows_bear_3"
+target_stalk_id = &"pillows"
+mood = 1
+flavour_text = "Small manufacturing defect results in hundreds of infants becoming swallowed and trapped within 'My Pillow, Your Pillow, We're All Pillows!'"
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_xvihp"]
+script = ExtResource("1_m6int")
+id = &"pillows_bear_4"
+target_stalk_id = &"pillows"
+mood = 1
+flavour_text = "Factory in Laos forgot to install suicide nets outside the windows of the worker dormitories."
+price_change = -5
+
+[sub_resource type="Resource" id="Resource_8fxgq"]
+script = ExtResource("1_m6int")
+id = &"pillows_bull_0"
+target_stalk_id = &"pillows"
+flavour_text = "'My Pillow, Your Pillow, We're All Pillows!', the last manufacturer left in the U.S., moves factories to Laos to save on labor costs."
+price_change = 15
+
+[sub_resource type="Resource" id="Resource_fuc3i"]
+script = ExtResource("1_m6int")
+id = &"pillows_bull_1"
+target_stalk_id = &"pillows"
+flavour_text = "New cost saving pillow filling discovered."
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_k8gdi"]
+script = ExtResource("1_m6int")
+id = &"pillows_bull_2"
+target_stalk_id = &"pillows"
+flavour_text = "Following the pandemic cruiselines replace all former pillows with 'My Pillow, Your Pillow, We're All Pillows' after experiments show no living thing can survive more than five minutes on the pillow's surface."
+price_change = 10
+
+[sub_resource type="Resource" id="Resource_m47et"]
+script = ExtResource("1_m6int")
+id = &"pillows_bull_3"
+target_stalk_id = &"pillows"
+flavour_text = "Recovering meth addict and best friend of the founder and owner plants head lice on the pillows in every Motel 6 across the country."
+price_change = 10
+
+[sub_resource type="Resource" id="Resource_8skmg"]
+script = ExtResource("1_m6int")
+id = &"pillows_bull_4"
+target_stalk_id = &"pillows"
+flavour_text = "'My Pillow, Your Pillow, We're All Pillows!' featured in latest flat earth documentry."
+price_change = 5
+
+[resource]
+script = ExtResource("2_y54ms")
+id = &"pillows"
+display_name = "My Pillow, Your Pillow, We're All Pillows!"
+bear_change = Vector2i(5, 25)
+bull_change = Vector2i(0, 15)
+bear_dividend = 1
+bull_dividend = 1
+bull_events = Array[ExtResource("1_m6int")]([SubResource("Resource_8fxgq"), SubResource("Resource_fuc3i"), SubResource("Resource_k8gdi"), SubResource("Resource_m47et"), SubResource("Resource_8skmg")])
+bear_events = Array[ExtResource("1_m6int")]([SubResource("Resource_g7s0t"), SubResource("Resource_58scp"), SubResource("Resource_3ommw"), SubResource("Resource_4e717"), SubResource("Resource_xvihp")])

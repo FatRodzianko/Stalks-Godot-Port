@@ -32,17 +32,17 @@ project, access to anyone who worked on this, or an AI assistant to continue the
 
 ## Status
 
-**Phase 1 of 7 complete.** The game's entire economy is implemented and tested — it
-can play a full 99-year, 10-player match start to finish — but there is **no user
-interface yet**, so there is nothing to play. That ordering is deliberate; see
+**Phases 1–3 of 7 complete.** The economy, loans and all the authored content are
+implemented and tested — a full 99-year, 10-player match plays start to finish from
+the real ten stalks and ninety events — but there is **no user interface yet**, so
+there is nothing to play. That ordering is deliberate; see
 [decisions.md D15](docs/decisions.md).
 
 | | |
 |---|---|
-| Simulation code | 1,024 lines across 14 files |
-| Tests | 67 tests, ~12,600 asserts, 2.4 seconds |
-| Built | The economy: prices, events, splits, bankruptcies, dividends, net worth, rankings |
-| Not built | Loans, content files, every screen, multiplayer, Steam |
+| Tests | 137 tests, 13,302 asserts, about 3.3 seconds |
+| Built | The economy (prices, events, splits, bankruptcies, dividends, net worth, rankings), loans, and the ten stalks with their ninety events |
+| Not built | Every screen, multiplayer, Steam, sound |
 
 The current `main_scene` is a throwaway smoke-test screen that proves the toolchain
 works. It is deleted in Phase 4.

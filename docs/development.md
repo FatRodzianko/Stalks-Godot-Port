@@ -185,23 +185,46 @@ preference, it is what makes the game testable.
 
 ### Add a new stalk
 
-1. Create a `.tres` in `src/data/stalks/` based on `StalkDefinition`.
-2. Give it a unique `id` (a `StringName`, never the display name — decisions.md D9).
-3. Fill in `starting_price`, `bear_change`, `bull_change`, and the two dividends. The
-   shipped values for all ten existing stalks are in [game-rules.md §3](game-rules.md).
-4. Add five bull and five bear `SpecialEventDefinition` entries targeting its `id`,
-   unless it is a static-price instrument.
-5. Run the suite. The content validator (Phase 3) checks that every event's target
-   resolves and that no id is duplicated.
+A stalk and all its events are **one file**, so this is a single-file change
+(decisions.md D29). The easiest route is to copy an existing one.
+
+1. Copy any file in `src/data/stalks/` — `mafia.tres` is a good, ordinary example —
+   and rename it.
+2. Open it in the Godot editor (double-click it) and edit it in the Inspector, or
+   edit the text directly; `.tres` is plain text.
+3. Set a unique **`id`** (a `StringName`, never the display name — decisions.md D9)
+   and a `display_name`.
+4. Set `starting_price` (100 for every shipped stalk), `bear_change`, `bull_change`,
+   and the two dividends. `bear_change` and `bull_change` are `(min, max)` magnitudes
+   and are **always stored positive** — the bear one is applied negatively. The
+   shipped values for all ten existing stalks are in
+   [game-rules.md §3](game-rules.md).
+5. Under **Special Events**, fill in `bull_events` and `bear_events`. Each entry is a
+   `SpecialEventDefinition` with a unique `id`, a `target_stalk_id` **matching this
+   stalk's id**, the matching `mood`, `flavour_text`, and a non-zero `price_change`
+   (positive in the bull list, negative in the bear list by convention, though a
+   negative bull event is legal).
+6. For a static-price instrument like BERRY BONDS, set `is_price_static` and leave
+   both event lists empty — it cannot be moved by anything.
+7. Run the suite. `ContentLibrary` validates the whole directory and will name
+   anything wrong.
 
 No code change is needed. If you find yourself writing one, something has been
 hardcoded that should be data.
 
-### Add a special event
+**The validator is your friend here.** It catches the mistake that is otherwise
+invisible: an event whose `target_stalk_id` has a typo will never fire, and without
+validation nothing would tell you. It reports every problem in one run rather than
+stopping at the first, so you can fix a new stalk in one pass. See decisions.md D31
+for the full list of checks.
 
-Create a `SpecialEventDefinition` with a unique `id`, the `target_stalk_id` it hits,
-its `mood` (which pool it belongs to), the `flavour_text`, and the `price_change`
-(positive for bull, negative for bear).
+### Where the shipped content came from
+
+The ten stalks and ninety events were imported from the original Unity source by a
+one-off script that parsed `StalkManager.CreateSpecialEvents()` and wrote the `.tres`
+files via `ResourceSaver`, rather than being retyped. That importer has been deleted:
+the `.tres` files are the source of truth now. If you ever need to re-derive them,
+the method is in the git history for the Phase 3 commit.
 
 ### Add a test
 

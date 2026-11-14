@@ -1,0 +1,88 @@
+[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+
+[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_8btsd"]
+[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_1wrqu"]
+
+[sub_resource type="Resource" id="Resource_fl0ss"]
+script = ExtResource("1_8btsd")
+id = &"stryker_bear_0"
+target_stalk_id = &"stryker"
+mood = 1
+flavour_text = "You invite your son to go bowling with you. Things don't end \"well.\""
+price_change = -20
+
+[sub_resource type="Resource" id="Resource_lb7gr"]
+script = ExtResource("1_8btsd")
+id = &"stryker_bear_1"
+target_stalk_id = &"stryker"
+mood = 1
+flavour_text = "Coup in Venezuela failed. strYker's hand picked \"legitimate\" leader Otto Von Mengele gained zero popular support and was laughed out of the country."
+price_change = -10
+
+[sub_resource type="Resource" id="Resource_wdnpq"]
+script = ExtResource("1_8btsd")
+id = &"stryker_bear_2"
+target_stalk_id = &"stryker"
+mood = 1
+flavour_text = "New regulations in the U.S. restrict dumping oil directly into rivers."
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_8dlvm"]
+script = ExtResource("1_8btsd")
+id = &"stryker_bear_3"
+target_stalk_id = &"stryker"
+mood = 1
+flavour_text = "Hired former Head of Safety and Quality Assurance from BP to design new offshore oilrigs."
+price_change = -25
+
+[sub_resource type="Resource" id="Resource_n4sp5"]
+script = ExtResource("1_8btsd")
+id = &"stryker_bear_4"
+target_stalk_id = &"stryker"
+mood = 1
+flavour_text = "New policy enacted to allow oil tanker captains (1) cup of beer while on duty. All captains purchase gallon sized cup."
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_hnosg"]
+script = ExtResource("1_8btsd")
+id = &"stryker_bull_0"
+target_stalk_id = &"stryker"
+flavour_text = "The company has discovered a way to tap into a rival's oil reserves while they are none the wiser. Time to slurp it up."
+price_change = 15
+
+[sub_resource type="Resource" id="Resource_npobv"]
+script = ExtResource("1_8btsd")
+id = &"stryker_bull_1"
+target_stalk_id = &"stryker"
+flavour_text = "Papa John appointed as Administrator of the EPA."
+price_change = 10
+
+[sub_resource type="Resource" id="Resource_qnkcw"]
+script = ExtResource("1_8btsd")
+id = &"stryker_bull_2"
+target_stalk_id = &"stryker"
+flavour_text = "New oil deposists found beneath sacred Indian site. "
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_resms"]
+script = ExtResource("1_8btsd")
+id = &"stryker_bull_3"
+target_stalk_id = &"stryker"
+flavour_text = "Regulations on poisoning the water supply relaxed."
+price_change = 10
+
+[sub_resource type="Resource" id="Resource_x7f2f"]
+script = ExtResource("1_8btsd")
+id = &"stryker_bull_4"
+target_stalk_id = &"stryker"
+flavour_text = "Coup in Venezuela successful. Chicago Boys on first plane to Caracas to take over the finance ministry."
+price_change = 20
+
+[resource]
+script = ExtResource("2_1wrqu")
+id = &"stryker"
+display_name = "strYker!!!"
+bear_change = Vector2i(15, 50)
+bull_change = Vector2i(13, 42)
+bull_events = Array[ExtResource("1_8btsd")]([SubResource("Resource_hnosg"), SubResource("Resource_npobv"), SubResource("Resource_qnkcw"), SubResource("Resource_resms"), SubResource("Resource_x7f2f")])
+bear_events = Array[ExtResource("1_8btsd")]([SubResource("Resource_fl0ss"), SubResource("Resource_lb7gr"), SubResource("Resource_wdnpq"), SubResource("Resource_8dlvm"), SubResource("Resource_n4sp5")])

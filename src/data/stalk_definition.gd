@@ -43,6 +43,27 @@ extends Resource
 ## now so content authored today needs no migration later.
 @export var industry: StringName = &""
 
+@export_group("Special Events")
+## This stalk's special events, drawn in bull and bear years respectively.
+##
+## Events live on the stalk rather than in separate pool files so that a stalk and
+## everything about it is ONE authorable unit: adding a stalk means adding one
+## .tres, and nothing else needs editing. That also matches the planned
+## JSON-authored custom stalks, where a submitted stalk carries its own events.
+## See docs/decisions.md D29.
+##
+## A static-price stalk carries none — it cannot be moved by anything.
+@export var bull_events: Array[SpecialEventDefinition] = []
+@export var bear_events: Array[SpecialEventDefinition] = []
+
+
+## Every event on this stalk, both moods together.
+func all_events() -> Array[SpecialEventDefinition]:
+	var combined: Array[SpecialEventDefinition] = []
+	combined.append_array(bull_events)
+	combined.append_array(bear_events)
+	return combined
+
 
 func _to_string() -> String:
 	return "StalkDefinition(%s)" % id

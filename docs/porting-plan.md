@@ -151,22 +151,30 @@ still matters for overpayment, which is covered.
 
 ---
 
-## Phase 3 — Content
+## Phase 3 — Content ✅ Complete
 
-**Build:**
+**Delivered:** ten `.tres` stalk files, each carrying its own events, plus
+`ContentLibrary` (loader and validator) and **29 new tests** taking the suite to
+**137 tests / 13,302 asserts in about 3.3 seconds**.
+
 - Ten `StalkDefinition` `.tres` files with the exact stat blocks from
   `game-rules.md` §3
-- 90 `SpecialEventDefinition` entries (45 bull, 45 bear), ported verbatim including
-  flavour text
-- A documented template for authoring a new stalk
-- A loader that assembles the content set, plus a validation pass: every event's
-  `target_stalk_id` resolves, no duplicate ids, BERRY BONDS has no events
+- 90 `SpecialEventDefinition` entries (45 bull, 45 bear), ported **verbatim**
+  including flavour text, bundled onto their stalks (decisions.md D29)
+- `ContentLibrary` loads the directory in a deterministic order (D30) and validates
+  it, collecting every problem rather than the first (D31)
+- Authoring instructions in `development.md` §6
+
+The 90 events were imported by machine rather than retyped: the `SpecialEvent` lines
+were extracted from the original source, parsed (three contain escaped quotes), and
+the `.tres` files were written by `ResourceSaver`. The importer was then deleted — the
+`.tres` files are the source of truth from here. Retyping ninety strings by hand was
+exactly the risk worth avoiding.
 
 **Done when:** a headless test loads all content, validates it, and confirms pool
-sizes of 45/45 and ten stalks all starting at 100.
-
-❓ Decisions needed before this phase: the **event repeat policy**, and what happens
-when an event targets a **bankrupt stalk** (`game-rules.md` §5).
+sizes of 45/45 and ten stalks all starting at 100. ✅ Met, plus a cross-check that
+every shipped stat block matches the documented table, and an end-to-end match played
+from the authored content.
 
 ---
 

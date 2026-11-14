@@ -1,0 +1,89 @@
+[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+
+[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_ogvs3"]
+[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_01rrq"]
+
+[sub_resource type="Resource" id="Resource_xkbbd"]
+script = ExtResource("1_ogvs3")
+id = &"springfield_bear_0"
+target_stalk_id = &"springfield"
+mood = 1
+flavour_text = "Danke, sir, we're from Germany and here to make your power plant more efficient."
+price_change = -5
+
+[sub_resource type="Resource" id="Resource_wi6na"]
+script = ExtResource("1_ogvs3")
+id = &"springfield_bear_1"
+target_stalk_id = &"springfield"
+mood = 1
+flavour_text = "Two headed toads found in river downstream from the plant."
+price_change = -10
+
+[sub_resource type="Resource" id="Resource_y5gve"]
+script = ExtResource("1_ogvs3")
+id = &"springfield_bear_2"
+target_stalk_id = &"springfield"
+mood = 1
+flavour_text = "New, cheaper vending machines installed in the break room. Items get stuck in the machine more frequently compared to the older machines. Producivity plummets as an increasing number of employees get their arms stuck in the vending machines."
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_0yh3k"]
+script = ExtResource("1_ogvs3")
+id = &"springfield_bear_3"
+target_stalk_id = &"springfield"
+mood = 1
+flavour_text = "Your long lost, cherished childhood toy is found by an employee's child. You reluctantly agree to pay the family to feel something for the first time in a decade."
+price_change = -5
+
+[sub_resource type="Resource" id="Resource_14glk"]
+script = ExtResource("1_ogvs3")
+id = &"springfield_bear_4"
+target_stalk_id = &"springfield"
+mood = 1
+flavour_text = "Department of Energy Inspectors arrive at the plant."
+price_change = -10
+
+[sub_resource type="Resource" id="Resource_rsh84"]
+script = ExtResource("1_ogvs3")
+id = &"springfield_bull_0"
+target_stalk_id = &"springfield"
+flavour_text = "Mr CEO Man, time for your sponge bath!"
+price_change = 10
+
+[sub_resource type="Resource" id="Resource_h3k71"]
+script = ExtResource("1_ogvs3")
+id = &"springfield_bull_1"
+target_stalk_id = &"springfield"
+flavour_text = "New union contract specifies donuts to be provided each morning to every employee. Productivity increases 10%"
+price_change = 15
+
+[sub_resource type="Resource" id="Resource_ewgnb"]
+script = ExtResource("1_ogvs3")
+id = &"springfield_bull_2"
+target_stalk_id = &"springfield"
+flavour_text = "Reactor meltdown avoided after employee presses random button on the control panel."
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_mkdvc"]
+script = ExtResource("1_ogvs3")
+id = &"springfield_bull_3"
+target_stalk_id = &"springfield"
+flavour_text = "New chairs with added lumbar support provided to all control operators."
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_kyvre"]
+script = ExtResource("1_ogvs3")
+id = &"springfield_bull_4"
+target_stalk_id = &"springfield"
+flavour_text = "Worst performing employee quits to follow their dream of working at the bowling alley. We'll never see them again!"
+price_change = 10
+
+[resource]
+script = ExtResource("2_01rrq")
+id = &"springfield"
+display_name = "Springfield Nuclear Power"
+bear_change = Vector2i(10, 20)
+bull_change = Vector2i(0, 15)
+bull_dividend = 5
+bull_events = Array[ExtResource("1_ogvs3")]([SubResource("Resource_rsh84"), SubResource("Resource_h3k71"), SubResource("Resource_ewgnb"), SubResource("Resource_mkdvc"), SubResource("Resource_kyvre")])
+bear_events = Array[ExtResource("1_ogvs3")]([SubResource("Resource_xkbbd"), SubResource("Resource_wi6na"), SubResource("Resource_y5gve"), SubResource("Resource_0yh3k"), SubResource("Resource_14glk")])

@@ -1,0 +1,90 @@
+[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+
+[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_pb4jj"]
+[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_srju3"]
+
+[sub_resource type="Resource" id="Resource_q3xeg"]
+script = ExtResource("1_pb4jj")
+id = &"mafia_bear_0"
+target_stalk_id = &"mafia"
+mood = 1
+flavour_text = "Mafia don beats you with a belt after discovering your dalliance with a woman he once looked at."
+price_change = -10
+
+[sub_resource type="Resource" id="Resource_4vsoh"]
+script = ExtResource("1_pb4jj")
+id = &"mafia_bear_1"
+target_stalk_id = &"mafia"
+mood = 1
+flavour_text = "City Council member gets cold feet. You're forced to give them cement shoes. Scam on hold until you can blackmail another council member to play ball."
+price_change = -20
+
+[sub_resource type="Resource" id="Resource_cnxv3"]
+script = ExtResource("1_pb4jj")
+id = &"mafia_bear_2"
+target_stalk_id = &"mafia"
+mood = 1
+flavour_text = "A bright eyed idealist at HUD actually read your load application. Denied."
+price_change = -20
+
+[sub_resource type="Resource" id="Resource_s1h70"]
+script = ExtResource("1_pb4jj")
+id = &"mafia_bear_3"
+target_stalk_id = &"mafia"
+mood = 1
+flavour_text = "After a hard day's night working (drinking and playing cards in the back of a strip club), your tummy grumbles and you need to poo. It's the first poo in a week, and you've been eating nothing but cured meats during that time."
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_slr5v"]
+script = ExtResource("1_pb4jj")
+id = &"mafia_bear_4"
+target_stalk_id = &"mafia"
+mood = 1
+flavour_text = "\"What ever happened to the Gary Cooper types\" you say to yourself as you start to cry watching James Cagney beat his wife with a grapefruit in 'The Public enemy.'"
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_0l1ph"]
+script = ExtResource("1_pb4jj")
+id = &"mafia_bull_0"
+target_stalk_id = &"mafia"
+flavour_text = "This Old House has a lot of copper pipes. Bada-bing!"
+price_change = 10
+
+[sub_resource type="Resource" id="Resource_qu7wg"]
+script = ExtResource("1_pb4jj")
+id = &"mafia_bull_1"
+target_stalk_id = &"mafia"
+flavour_text = "Great meeting in the Russian bathhouse. You weren't even the fattest one there!"
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_wt5iw"]
+script = ExtResource("1_pb4jj")
+id = &"mafia_bull_2"
+target_stalk_id = &"mafia"
+flavour_text = "City Council member shows up at your underground casino. You spike their drinks and loan them $50k. They lose it all."
+price_change = 10
+
+[sub_resource type="Resource" id="Resource_qm82y"]
+script = ExtResource("1_pb4jj")
+id = &"mafia_bull_3"
+target_stalk_id = &"mafia"
+flavour_text = "After purchasing a block of dilapidated homes, Police Commissioner on the dole agrees to clear out the 'riffraff' living in the neighborhood."
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_000jd"]
+script = ExtResource("1_pb4jj")
+id = &"mafia_bull_4"
+target_stalk_id = &"mafia"
+flavour_text = "Head of the Urban League receives bill for daughter's college tuition. They agree to sign off on your scam."
+price_change = 15
+
+[resource]
+script = ExtResource("2_srju3")
+id = &"mafia"
+display_name = "Mafia HUD Scam"
+bear_change = Vector2i(5, 25)
+bull_change = Vector2i(5, 15)
+bear_dividend = 1
+bull_dividend = 3
+bull_events = Array[ExtResource("1_pb4jj")]([SubResource("Resource_0l1ph"), SubResource("Resource_qu7wg"), SubResource("Resource_wt5iw"), SubResource("Resource_qm82y"), SubResource("Resource_000jd")])
+bear_events = Array[ExtResource("1_pb4jj")]([SubResource("Resource_q3xeg"), SubResource("Resource_4vsoh"), SubResource("Resource_cnxv3"), SubResource("Resource_s1h70"), SubResource("Resource_slr5v")])

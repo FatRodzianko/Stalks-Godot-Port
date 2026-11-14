@@ -1,0 +1,90 @@
+[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+
+[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_h58ci"]
+[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_qd61r"]
+
+[sub_resource type="Resource" id="Resource_3h2y4"]
+script = ExtResource("1_h58ci")
+id = &"mutuals_bear_0"
+target_stalk_id = &"mutuals"
+mood = 1
+flavour_text = "You're not my mutual..."
+price_change = -5
+
+[sub_resource type="Resource" id="Resource_r2437"]
+script = ExtResource("1_h58ci")
+id = &"mutuals_bear_1"
+target_stalk_id = &"mutuals"
+mood = 1
+flavour_text = "All firms in the 'Small capital business with no slave labor in their supply chain' fund found to utilize slave labor. Fund dissolved."
+price_change = -5
+
+[sub_resource type="Resource" id="Resource_lwsgu"]
+script = ExtResource("1_h58ci")
+id = &"mutuals_bear_2"
+target_stalk_id = &"mutuals"
+mood = 1
+flavour_text = "The NON-STANDARD and RICH index fund found to be too pricey for small investors."
+price_change = -5
+
+[sub_resource type="Resource" id="Resource_gvon4"]
+script = ExtResource("1_h58ci")
+id = &"mutuals_bear_3"
+target_stalk_id = &"mutuals"
+mood = 1
+flavour_text = "New York Teacher's Pension Fund pulls out of My Mutals and Me to put all their money in the Roger Stone Hedge Fund."
+price_change = -5
+
+[sub_resource type="Resource" id="Resource_3xbm8"]
+script = ExtResource("1_h58ci")
+id = &"mutuals_bear_4"
+target_stalk_id = &"mutuals"
+mood = 1
+flavour_text = "Robinhood pre-installed on all new iPhones. Americans lose interest in putting their retirement savings in Mutual Funds."
+price_change = -5
+
+[sub_resource type="Resource" id="Resource_ufsmf"]
+script = ExtResource("1_h58ci")
+id = &"mutuals_bull_0"
+target_stalk_id = &"mutuals"
+flavour_text = "Hey, we're mutuals!"
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_3gkee"]
+script = ExtResource("1_h58ci")
+id = &"mutuals_bull_1"
+target_stalk_id = &"mutuals"
+flavour_text = "New mutual fund created: The NON-STANDARD and RICH 500."
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_4h1ml"]
+script = ExtResource("1_h58ci")
+id = &"mutuals_bull_2"
+target_stalk_id = &"mutuals"
+flavour_text = "New mutual fund created: Small capital business with no slave labor in their supply chain."
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_3wq1p"]
+script = ExtResource("1_h58ci")
+id = &"mutuals_bull_3"
+target_stalk_id = &"mutuals"
+flavour_text = "New mutual fund created: Crypto currency index fund."
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_wgh8b"]
+script = ExtResource("1_h58ci")
+id = &"mutuals_bull_4"
+target_stalk_id = &"mutuals"
+flavour_text = "New mutual fund created: Target retirement fund for naive Zoomers who think they'll ever be able to retire."
+price_change = 5
+
+[resource]
+script = ExtResource("2_qd61r")
+id = &"mutuals"
+display_name = "My Mutuals and Me Inc."
+bear_change = Vector2i(0, 10)
+bull_change = Vector2i(0, 5)
+bear_dividend = 2
+bull_dividend = 3
+bull_events = Array[ExtResource("1_h58ci")]([SubResource("Resource_ufsmf"), SubResource("Resource_3gkee"), SubResource("Resource_4h1ml"), SubResource("Resource_3wq1p"), SubResource("Resource_wgh8b")])
+bear_events = Array[ExtResource("1_h58ci")]([SubResource("Resource_3h2y4"), SubResource("Resource_r2437"), SubResource("Resource_lwsgu"), SubResource("Resource_gvon4"), SubResource("Resource_3xbm8")])

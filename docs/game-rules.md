@@ -68,7 +68,11 @@ magnitudes and negated when applied.
 | Teamsters Pension Fund | 15 – 40 | 0 – 15 | 0 | 8 |
 | strYker!!! | 15 – 50 | 13 – 42 | 0 | 0 |
 
-Source: `Resources/Prefabs/StalkPrefabs/*.prefab`.
+Source: `Resources/Prefabs/StalkPrefabs/*.prefab`. **In the port these values are
+authored** as one `.tres` per stalk in `src/data/stalks/`, each carrying its own
+special events. A test cross-checks the files on disk against this table, so if the
+two ever disagree the suite fails. To add or change a stalk, see
+[development.md §6](development.md).
 
 The design reads clearly: **BERRY BONDS** is the risk-free bond — it never moves and
 always pays 3. **strYker!!!** is the casino — the widest swings either way and no

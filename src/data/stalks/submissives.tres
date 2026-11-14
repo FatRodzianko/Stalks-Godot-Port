@@ -1,0 +1,89 @@
+[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+
+[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_rmv3m"]
+[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_p1f8n"]
+
+[sub_resource type="Resource" id="Resource_5ghhv"]
+script = ExtResource("1_rmv3m")
+id = &"submissives_bear_0"
+target_stalk_id = &"submissives"
+mood = 1
+flavour_text = "The chastity cage won't stay shut. Everything is just hanging free down there."
+price_change = -5
+
+[sub_resource type="Resource" id="Resource_nbtl6"]
+script = ExtResource("1_rmv3m")
+id = &"submissives_bear_1"
+target_stalk_id = &"submissives"
+mood = 1
+flavour_text = "If I could save the Union without ungagging any subs, I would do it!"
+price_change = -10
+
+[sub_resource type="Resource" id="Resource_3wvqw"]
+script = ExtResource("1_rmv3m")
+id = &"submissives_bear_2"
+target_stalk_id = &"submissives"
+mood = 1
+flavour_text = "The domme didn't have time to go on a run today. I can barely even smell their feet when they're stepping on my face."
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_j0la3"]
+script = ExtResource("1_rmv3m")
+id = &"submissives_bear_3"
+target_stalk_id = &"submissives"
+mood = 1
+flavour_text = "The tiktok teens tried to hex the moon again."
+price_change = -10
+
+[sub_resource type="Resource" id="Resource_6yica"]
+script = ExtResource("1_rmv3m")
+id = &"submissives_bear_4"
+target_stalk_id = &"submissives"
+mood = 1
+flavour_text = "The nipple jumper cables for the car battery are missing."
+price_change = -10
+
+[sub_resource type="Resource" id="Resource_50hrw"]
+script = ExtResource("1_rmv3m")
+id = &"submissives_bull_0"
+target_stalk_id = &"submissives"
+flavour_text = "The union makes us weaker (which makes us stronger submissives)!"
+price_change = 15
+
+[sub_resource type="Resource" id="Resource_k5lgh"]
+script = ExtResource("1_rmv3m")
+id = &"submissives_bull_1"
+target_stalk_id = &"submissives"
+flavour_text = "Whose side are you on? The boss's? No! We're on the beautiful and powerful domme's side!"
+price_change = 10
+
+[sub_resource type="Resource" id="Resource_r5ge4"]
+script = ExtResource("1_rmv3m")
+id = &"submissives_bull_2"
+target_stalk_id = &"submissives"
+flavour_text = "Submissives of the world, unite! You have nothing to gain but more whips and chains!"
+price_change = 15
+
+[sub_resource type="Resource" id="Resource_fteiq"]
+script = ExtResource("1_rmv3m")
+id = &"submissives_bull_3"
+target_stalk_id = &"submissives"
+flavour_text = "An owie to one is an owie to all and oh God do we love the owies. More owies please."
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_fvu0u"]
+script = ExtResource("1_rmv3m")
+id = &"submissives_bull_4"
+target_stalk_id = &"submissives"
+flavour_text = "All the armies of Europe and Asia combined, could not by force, take a drink from our Golden Streams!"
+price_change = 5
+
+[resource]
+script = ExtResource("2_p1f8n")
+id = &"submissives"
+display_name = "Unionized Submissives LLC"
+bear_change = Vector2i(0, 25)
+bull_change = Vector2i(5, 20)
+bull_dividend = 2
+bull_events = Array[ExtResource("1_rmv3m")]([SubResource("Resource_50hrw"), SubResource("Resource_k5lgh"), SubResource("Resource_r5ge4"), SubResource("Resource_fteiq"), SubResource("Resource_fvu0u")])
+bear_events = Array[ExtResource("1_rmv3m")]([SubResource("Resource_5ghhv"), SubResource("Resource_nbtl6"), SubResource("Resource_3wvqw"), SubResource("Resource_j0la3"), SubResource("Resource_6yica")])

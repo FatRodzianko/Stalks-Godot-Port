@@ -1,0 +1,89 @@
+[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+
+[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_3aqno"]
+[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_x1m6p"]
+
+[sub_resource type="Resource" id="Resource_unxrp"]
+script = ExtResource("1_3aqno")
+id = &"pgenron_bear_0"
+target_stalk_id = &"pgenron"
+mood = 1
+flavour_text = "Ah crap we forgot about maintainence for the 50th year in a row!"
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_p3e8d"]
+script = ExtResource("1_3aqno")
+id = &"pgenron_bear_1"
+target_stalk_id = &"pgenron"
+mood = 1
+flavour_text = "Former lead signer of the Dead Kennedys siezes the state capitol and nationalizes the power grid."
+price_change = -20
+
+[sub_resource type="Resource" id="Resource_rcwb4"]
+script = ExtResource("1_3aqno")
+id = &"pgenron_bear_2"
+target_stalk_id = &"pgenron"
+mood = 1
+flavour_text = "Accounts Payable fat fingered the bank account number for the new auditor. Our books are inspected for the first time in 20 years."
+price_change = -20
+
+[sub_resource type="Resource" id="Resource_glm1n"]
+script = ExtResource("1_3aqno")
+id = &"pgenron_bear_3"
+target_stalk_id = &"pgenron"
+mood = 1
+flavour_text = "Earthquake on the San Andreas fault sends half the coastline, and 90% of our customer base, into the Pacific Ocean."
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_3iu6e"]
+script = ExtResource("1_3aqno")
+id = &"pgenron_bear_4"
+target_stalk_id = &"pgenron"
+mood = 1
+flavour_text = "Another dry winter, another summer of wildfires sparked by faulty transformers. How could we have ever forseen this?"
+price_change = -25
+
+[sub_resource type="Resource" id="Resource_g0qoj"]
+script = ExtResource("1_3aqno")
+id = &"pgenron_bull_0"
+target_stalk_id = &"pgenron"
+flavour_text = "Planned blackouts going just as planned. AHHNOLD is sure to win the presidency now!"
+price_change = 10
+
+[sub_resource type="Resource" id="Resource_ynitu"]
+script = ExtResource("1_3aqno")
+id = &"pgenron_bull_1"
+target_stalk_id = &"pgenron"
+flavour_text = "Another year of cooked books and paid off auditors. We can't lose!"
+price_change = 10
+
+[sub_resource type="Resource" id="Resource_gflpk"]
+script = ExtResource("1_3aqno")
+id = &"pgenron_bull_2"
+target_stalk_id = &"pgenron"
+flavour_text = "It rained ALL WINTER! No need to worry about wildfires this summer! Put off those repairs for another year, baby!"
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_r3060"]
+script = ExtResource("1_3aqno")
+id = &"pgenron_bull_3"
+target_stalk_id = &"pgenron"
+flavour_text = "State legislators approve our 100% price increases!"
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_jncl1"]
+script = ExtResource("1_3aqno")
+id = &"pgenron_bull_4"
+target_stalk_id = &"pgenron"
+flavour_text = "Severe drought diverts attention away from us and toward the water companies and water subsidies provided to pistachio farmers."
+price_change = 5
+
+[resource]
+script = ExtResource("2_x1m6p")
+id = &"pgenron"
+display_name = "PG&Enron"
+bear_change = Vector2i(10, 35)
+bull_change = Vector2i(5, 15)
+bull_dividend = 4
+bull_events = Array[ExtResource("1_3aqno")]([SubResource("Resource_g0qoj"), SubResource("Resource_ynitu"), SubResource("Resource_gflpk"), SubResource("Resource_r3060"), SubResource("Resource_jncl1")])
+bear_events = Array[ExtResource("1_3aqno")]([SubResource("Resource_unxrp"), SubResource("Resource_p3e8d"), SubResource("Resource_rcwb4"), SubResource("Resource_glm1n"), SubResource("Resource_3iu6e")])

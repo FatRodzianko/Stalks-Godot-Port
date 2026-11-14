@@ -469,6 +469,70 @@ schedule and updating the test fixture.
 
 ---
 
+## Phase 3 — content
+
+### D29 — A stalk and its events are one authorable unit
+**2026-11-14 · Accepted**
+
+`StalkDefinition` carries `bull_events` and `bear_events` directly, so one `.tres`
+per stalk holds the stalk and all ten of its special events. There are no separate
+event-pool files.
+
+**Why.** The planned custom-stalk feature is explicitly described as "a template for
+a new stalk… would also contain the special events related to the stalk, if the user
+wants any", loaded from JSON. Bundling matches that shape exactly: adding a stalk is
+adding one file, and nothing else needs editing. It also keeps the file count at ten
+instead of ninety-plus, and makes a stalk removable without leaving orphaned events
+behind.
+
+The alternative — separate `bull_events.tres` / `bear_events.tres` collections —
+would have scattered a stalk's definition across three files and made the future JSON
+importer awkward.
+
+**Rules out.** Events that are not attached to a stalk. An event always names a target
+(`target_stalk_id`), which is now redundant with where it lives — deliberately, so
+the validator can catch a mismatch rather than the game silently firing an event that
+can never apply. See D31.
+
+**Lives in.** `src/data/stalk_definition.gd`, `src/data/stalks/*.tres`.
+
+### D30 — Content load order is sorted, not directory order
+**2026-11-14 · Accepted**
+
+`ContentLibrary` sorts loaded stalks by `id`.
+
+**Why.** `DirAccess.get_files()` order is not guaranteed across platforms or
+filesystems, and stalk order affects iteration inside the simulation. The determinism
+contract (D5, architecture.md §8) requires that the same seed produce the same match
+on any machine, which it would not if content loaded in a different order on Linux
+than on Windows.
+
+**Note.** This is load order, not display order. How the board is arranged on screen
+is a UI concern for Phase 4, and will likely want an explicit field rather than
+alphabetical ids.
+
+### D31 — The content validator refuses to vouch for bad content
+**2026-11-14 · Accepted**
+
+`ContentLibrary.load_from()` always returns a library; callers check `is_valid()`.
+Validation collects *every* problem rather than stopping at the first.
+
+**Why.** Content is the easiest part of this project to get quietly wrong: ninety
+events referencing ten stalks by id, where a single typo in a target id produces an
+event that can never fire and reports nothing. The original had exactly that class of
+bug — its event draw silently excluded the last event of each pool. Validation at
+load turns a silent content bug into a loud one.
+
+Collecting all errors rather than failing fast is for the author's benefit: someone
+adding a stalk sees everything wrong with it in one run.
+
+**What it checks.** Duplicate stalk and event ids, missing ids, missing display names,
+non-positive starting prices, inverted or negative ranges, events whose target does
+not match the stalk they live on, events in the wrong mood list, zero-change events,
+missing flavour text, and events attached to a static-price stalk.
+
+---
+
 ## Still open
 
 Not yet decided. Resolve one by replacing it with an entry above.

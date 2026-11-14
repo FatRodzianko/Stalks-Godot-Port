@@ -1,0 +1,89 @@
+[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+
+[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_210u2"]
+[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_pqjo0"]
+
+[sub_resource type="Resource" id="Resource_nmndn"]
+script = ExtResource("1_210u2")
+id = &"teamsters_bear_0"
+target_stalk_id = &"teamsters"
+mood = 1
+flavour_text = "Pension fund now managed by Goldman Sachs & Co. and Northern Trust Global Advisors fiduciaries. no more corruption!"
+price_change = -25
+
+[sub_resource type="Resource" id="Resource_c5nks"]
+script = ExtResource("1_210u2")
+id = &"teamsters_bear_1"
+target_stalk_id = &"teamsters"
+mood = 1
+flavour_text = "Motor Carrier Act passes congress."
+price_change = -20
+
+[sub_resource type="Resource" id="Resource_kushh"]
+script = ExtResource("1_210u2")
+id = &"teamsters_bear_2"
+target_stalk_id = &"teamsters"
+mood = 1
+flavour_text = "No one can find Jimmy."
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_an3jy"]
+script = ExtResource("1_210u2")
+id = &"teamsters_bear_3"
+target_stalk_id = &"teamsters"
+mood = 1
+flavour_text = "Strike broken. The 'man' won. Driver pay cut by 20%."
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_8q3oi"]
+script = ExtResource("1_210u2")
+id = &"teamsters_bear_4"
+target_stalk_id = &"teamsters"
+mood = 1
+flavour_text = "Vegas casinos convinced themselves that adding theme parks to their hotels will finally allow them to take money directly from children. All parks shuttered in early 2000's."
+price_change = -15
+
+[sub_resource type="Resource" id="Resource_kmr1t"]
+script = ExtResource("1_210u2")
+id = &"teamsters_bull_0"
+target_stalk_id = &"teamsters"
+flavour_text = "Ah Marone another hotel in Las Vegas needs our help. We're getting in on the ground floor!"
+price_change = 10
+
+[sub_resource type="Resource" id="Resource_s3wf1"]
+script = ExtResource("1_210u2")
+id = &"teamsters_bull_1"
+target_stalk_id = &"teamsters"
+flavour_text = "Bullets left on the doorsteps of union member dissidents day before leadership elections."
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_tugba"]
+script = ExtResource("1_210u2")
+id = &"teamsters_bull_2"
+target_stalk_id = &"teamsters"
+flavour_text = "Construction of casino complete. No one will ever find what's beneath the foundation. Vegas, baby!"
+price_change = 10
+
+[sub_resource type="Resource" id="Resource_x7ir5"]
+script = ExtResource("1_210u2")
+id = &"teamsters_bull_3"
+target_stalk_id = &"teamsters"
+flavour_text = "New union contract signed with FedEx. Nation wide strike ends!"
+price_change = 5
+
+[sub_resource type="Resource" id="Resource_gkux6"]
+script = ExtResource("1_210u2")
+id = &"teamsters_bull_4"
+target_stalk_id = &"teamsters"
+flavour_text = "An epidemic of goods falling off the back of trucks and right into the hands of our 'friends.'"
+price_change = 15
+
+[resource]
+script = ExtResource("2_pqjo0")
+id = &"teamsters"
+display_name = "Teamsters Pension Fund"
+bear_change = Vector2i(15, 40)
+bull_change = Vector2i(0, 15)
+bull_dividend = 8
+bull_events = Array[ExtResource("1_210u2")]([SubResource("Resource_kmr1t"), SubResource("Resource_s3wf1"), SubResource("Resource_tugba"), SubResource("Resource_x7ir5"), SubResource("Resource_gkux6")])
+bear_events = Array[ExtResource("1_210u2")]([SubResource("Resource_nmndn"), SubResource("Resource_c5nks"), SubResource("Resource_kushh"), SubResource("Resource_an3jy"), SubResource("Resource_8q3oi")])

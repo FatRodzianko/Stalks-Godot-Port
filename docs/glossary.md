@@ -118,6 +118,19 @@ in `YearResolver.advance_year()`. The order matters; see
 (`RandomRangePriceModel`) is the faithful port; the interface exists so an
 earnings-driven model can replace it later without touching the pipeline.
 
+**Content** — the authored game data: the ten stalks and their ninety events, stored
+as `.tres` resource files in `src/data/stalks/`. Distinct from code; a new stalk is
+new content, not a new feature.
+
+**Content library** — `ContentLibrary`, the only thing that reads the content
+directory. It loads every stalk in a deterministic order, validates the whole set, and
+builds a fresh market from it. Always returns a library; callers check `is_valid()`.
+
+**Validator** — the checks `ContentLibrary` runs on load: duplicate ids, missing
+fields, inverted ranges, events targeting the wrong stalk, events in the wrong mood
+list, events on a static stalk. It exists because a typo in an event's target id would
+otherwise produce an event that silently never fires.
+
 **The bag** — how special events are drawn. Each mood has a shuffled bag that is drawn
 from without replacement, refilled only once empty, so an event cannot repeat until
 every other event in its pool has been seen.
