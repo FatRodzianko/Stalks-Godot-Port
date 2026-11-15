@@ -906,6 +906,33 @@ the board.
 
 ---
 
+### D54 — Only a refusal is cleared by a state change, and only your own
+**2026-11-14 · Accepted**
+
+The board's message line keeps an informational message when state arrives; only
+a rejection is swept away, and only when the change was the local player's. The
+same rule governs clearing a half-typed quantity.
+
+**Why.** Reported from play: a client never saw "Host wants a yeehaw!", though
+it saw its own dividend messages. The board cleared its message on *any* state
+change, and the host follows every broadcast with a state push — so on a client
+the message was wiped in the same frame it appeared. Hosting hid it entirely,
+because the host never pushes state to itself.
+
+The second half was found while fixing the first: the amount fields were also
+reset on every state change, so a half-typed quantity vanished whenever anybody
+else traded.
+
+**What it rules out.** A rejection shown to one player now outlives another
+player's action, expiring on its own timer instead. That is the right trade: a
+message that disappears before it is read is worse than one that lingers.
+
+**The pattern, for the third time.** Host and client differ in *what arrives and
+in what order*, not in what the code says. Anything driven by a signal needs
+checking on the side that receives the most of them.
+
+---
+
 ### D53 — Ending a year with a loan payment due asks first
 **2026-11-14 · Accepted**
 

@@ -57,6 +57,10 @@ var _stalk_rows: Dictionary[StringName, StalkRow] = {}
 var _loan_panel: LoanPanel
 var _confirm_panel: ConfirmPanel
 
+## Whether the transient message line is currently showing a refusal rather than
+## a piece of news. Only a refusal is cleared by a state change.
+var _message_is_error: bool = false
+
 
 func _ready() -> void:
 	_ready_button.pressed.connect(_on_ready_pressed)
@@ -200,6 +204,9 @@ func _build_confirm_panel() -> void:
 	_confirm_panel = ConfirmPanelScene.instantiate()
 	add_child(_confirm_panel)
 	_confirm_panel.confirmed.connect(_on_ready_confirmed)
+	# Saying "pay first" should put the player where they can pay, not just
+	# close the question and leave them to find the button themselves.
+	_confirm_panel.cancelled.connect(_on_pay_first_chosen)
 
 
 func _build_loan_panel() -> void:
@@ -512,17 +519,27 @@ func _payment_is_due(player: PlayerState) -> bool:
 func _ask_about_the_unpaid_loan(player: PlayerState) -> void:
 	var missed_so_far: int = player.loan.missed_payments
 	var penalty: String = (
-		"That is your third miss: your stalks will be seized and you are out."
+		"That would be your third miss: your stalks are seized and you are out."
 		if missed_so_far >= LoanRules.MISSES_BEFORE_DEFAULT - 1
 		else "Your balance will grow by %d%%." % _penalty_percent_for(missed_so_far)
 	)
 	_confirm_panel.ask(
-		"You still owe %s on your loan this year. %s" % [
-			Palette.format_money(player.loan.min_payment), penalty,
+		"You still owe %s on your loan this year. %s%s" % [
+			Palette.format_money(player.loan.min_payment),
+			_misses_so_far(missed_so_far),
+			penalty,
 		],
 		"End the year anyway",
 		"Pay first",
 	)
+
+
+## How much rope is left. A bare percentage does not tell a player whether this
+## is a nuisance or the end of their game.
+func _misses_so_far(missed: int) -> String:
+	if missed == 0:
+		return ""
+	return "You have missed %d already. " % missed
 
 
 ## Derived from the multipliers rather than written out again, so the number the
@@ -539,6 +556,16 @@ func _penalty_percent_for(missed_so_far: int) -> int:
 ## The player chose to end the year with the payment outstanding.
 func _on_ready_confirmed() -> void:
 	_session.set_ready(_session.local_player_id(), true)
+
+
+## The player chose to pay instead. Opens the loan panel for them.
+##
+## Only when a payment is actually due: the panel also answers "no" to other
+## questions later, and opening the loan screen out of nowhere would be strange.
+func _on_pay_first_chosen() -> void:
+	var player: PlayerState = _session.state().player_by_id(_session.local_player_id())
+	if _payment_is_due(player) and _loan_panel != null:
+		_loan_panel.show_panel()
 
 
 func _on_ready_state_changed(_player_id: StringName, _is_ready: bool) -> void:
@@ -590,10 +617,21 @@ func _on_yeehaw_given(giver_id: StringName, receiver_id: StringName) -> void:
 	refresh()
 
 
-func _on_player_changed(_player_id: StringName) -> void:
-	_clear_error()
-	for row: StalkRow in _stalk_rows.values():
-		row.clear_amount()
+## Something changed about a player — usually a trade, on any machine.
+##
+## Only a stale *rejection* is swept away here, and only the local player's
+## typing is reset. Both used to happen on every change, which was invisible
+## while hosting and wrong on a client: the host follows each broadcast with a
+## state push, so a client's "Host wants a yeehaw!" was cleared in the same
+## frame it appeared, and a half-typed quantity vanished whenever somebody else
+## traded. See docs/decisions.md D54.
+func _on_player_changed(player_id: StringName) -> void:
+	var is_me: bool = player_id == _session.local_player_id()
+	if is_me and _message_is_error:
+		_clear_error()
+	if is_me:
+		for row: StalkRow in _stalk_rows.values():
+			row.clear_amount()
 	refresh()
 	if _loan_panel != null and _loan_panel.is_showing():
 		_loan_panel.refresh()
@@ -700,6 +738,7 @@ func _show_info(text: String) -> void:
 
 
 func _show_message(text: String, variation: StringName) -> void:
+	_message_is_error = variation == &"Danger"
 	_error_label.theme_type_variation = variation
 	_error_label.text = text
 	_message_timer.start()
@@ -707,6 +746,7 @@ func _show_message(text: String, variation: StringName) -> void:
 
 func _clear_error() -> void:
 	_error_label.text = ""
+	_message_is_error = false
 	_message_timer.stop()
 
 

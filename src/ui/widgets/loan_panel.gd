@@ -62,6 +62,15 @@ func is_showing() -> bool:
 	return visible
 
 
+## A loan taken this year, before any year-end has processed it.
+##
+## The counter starts at TERM_YEARS + 1 and is decremented by the first year-end
+## pass, so this is exactly "no year has closed since you borrowed". See
+## docs/decisions.md D28.
+static func _is_brand_new(loan: LoanState) -> bool:
+	return loan.years_remaining > LoanRules.TERM_YEARS
+
+
 ## Redraws from current state. The two halves are mutually exclusive: a player
 ## either has no loan and may borrow, or has one and may pay.
 func refresh() -> void:
@@ -104,16 +113,35 @@ func refresh() -> void:
 		_pay_field.placeholder_text = "min %d" % loan.min_payment
 		_pay_minimum_button.text = "Pay minimum (%s)" % Palette.format_money(loan.min_payment)
 		_pay_minimum_button.disabled = loan.paid_this_year
+		# Greyed out with no reason given reads as broken. Say which of the two
+		# reasons it is — a brand new loan, or one already paid this year — and
+		# that paying more is still allowed either way.
+		_pay_minimum_button.tooltip_text = (
+			"" if not loan.paid_this_year
+			else (
+				"Your first payment is due next year."
+				if _is_brand_new(loan)
+				else "Already paid for this year."
+			)
+		)
 
 		# Spell out the consequence rather than leaving it to be discovered.
-		if loan.missed_payments == 1:
+		if loan.paid_this_year and _is_brand_new(loan):
+			# The commonest confusion: the pay controls appear the instant you
+			# borrow, which looks like a demand for money you just received.
+			_warning_label.text = (
+				"Nothing is due yet — your first payment is next year. "
+				+ "You may still pay early, but never less than the minimum."
+			)
+		elif loan.missed_payments == 1:
 			_warning_label.text = "One payment missed. A second adds 15% to the balance."
 		elif loan.missed_payments == 2:
 			_warning_label.text = "Two payments missed. A third seizes everything you own."
 		elif not loan.paid_this_year:
 			_warning_label.text = "Missing this payment adds 10% to the balance."
 		else:
-			_warning_label.text = ""
+			_warning_label.text = "Paid for this year. You may still pay more."
+
 	elif ever_borrowed:
 		_status_label.text = "Your loan is settled. You cannot take another this game."
 		_warning_label.text = ""

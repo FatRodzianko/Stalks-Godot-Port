@@ -107,7 +107,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-378 tests, 14,086 asserts, about 27 seconds.
+389 tests, 14,101 asserts, about 28 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -193,6 +193,12 @@ possible are each easy to get wrong:
 3. **A non-default `MultiplayerAPI` is not polled by the engine.** The harness
    polls both by hand in `_process`. In the real game there is one API, the tree's
    own, and Godot polls it; this is a harness concern only.
+
+Ports are handed out sequentially from a random per-run base rather than picked
+at random per harness. Random picking collided often enough to redden a run, and
+a failed bind is not silent — ENet logs an engine error, which GUT counts
+against the test. A retry remains as a safety net for a socket left over from a
+previous run.
 
 **Only one `Main` can hold a peer per process.** `Main` uses the tree's default
 `MultiplayerAPI`, as a shipped game should, and a tree has exactly one of those,

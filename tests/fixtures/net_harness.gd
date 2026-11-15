@@ -37,6 +37,12 @@ const PORT_CEILING: int = 42999
 ## How many times to try a different port before giving up.
 const PORT_ATTEMPTS: int = 8
 
+## The next port to hand out. Chosen once per run from a random base and then
+## walked upwards, so two harnesses in the same run can never pick the same
+## number DASH random-per-harness collided often enough to redden a run, and a
+## failed bind is not silent: ENet logs an engine error that GUT counts.
+static var _next_port: int = 0
+
 ## How long `await_join` waits before giving up. Generous: a loaded CI machine is
 ## slower than a desktop, and a flaky networking test is worse than a slow one.
 const JOIN_TIMEOUT_SECONDS: float = 5.0
@@ -76,7 +82,7 @@ func start(
 	# collision is a matter of when, not if — it cost a red run once already.
 	var host_result: Dictionary = {}
 	for attempt: int in PORT_ATTEMPTS:
-		_port = randi_range(PORT_FLOOR, PORT_CEILING)
+		_port = _take_port()
 		host_result = HostSession.host(_port, settings, library, host_name)
 		if String(host_result["error"]).is_empty():
 			break
@@ -149,6 +155,18 @@ func begin_match(test: GutTest) -> void:
 		await settle(test)
 	host.start_match()
 	await settle(test)
+
+
+## The next free port, walking upwards from a per-run random base. The retry in
+## `start` remains as a safety net for a socket left over from a previous run.
+static func _take_port() -> int:
+	if _next_port == 0:
+		_next_port = randi_range(PORT_FLOOR, PORT_CEILING - PORT_ATTEMPTS)
+	var port: int = _next_port
+	_next_port += 1
+	if _next_port > PORT_CEILING:
+		_next_port = PORT_FLOOR
+	return port
 
 
 ## The port this harness bound, for a test that wants to connect a third peer.

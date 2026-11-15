@@ -432,3 +432,77 @@ func test_an_unanswered_request_does_not_outlive_the_year() -> void:
 	assert_eq(_harness.host.state().year, 1)
 	assert_false(_harness.host.state().is_yeehaw_pending(), "a new year clears it")
 	assert_false(_harness.client.state().is_yeehaw_pending(), "on both sides")
+
+
+# ------------------------------------------------- a client must see the news
+#
+# Reported: a client never saw "Host wants a yeehaw!", though it saw its own
+# dividend messages. The host follows every broadcast with a state push, and the
+# board cleared its message line on any state change DASH so on a client the
+# message was wiped in the same frame it appeared. Hosting hid it, because the
+# host never pushes state to itself.
+
+func test_a_client_sees_a_message_about_another_players_yeehaw() -> void:
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _client_board()
+
+	_harness.host.request_yeehaw(&"p0")
+	await _harness.settle(self)
+
+	assert_string_contains(board.current_message(), "Host")
+
+
+func test_a_client_sees_a_message_when_a_yeehaw_is_given() -> void:
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _client_board()
+
+	_harness.client.request_yeehaw(&"p1")
+	await _harness.settle(self)
+	_harness.host.give_yeehaw(&"p0")
+	await _harness.settle(self)
+
+	assert_string_contains(board.current_message().to_lower(), "yeehaw")
+
+
+func test_another_players_trade_does_not_clear_your_typing() -> void:
+	# The amount field was reset on every state change, so a half-typed quantity
+	# vanished whenever anybody else bought anything.
+	if not await _started_match():
+		return
+	_harness.client.set_ready(&"p1", true)
+	await _harness.settle(self)
+	_harness.host.set_ready(&"p0", true)
+	await _harness.settle(self)
+	var board: GameplayScreen = await _client_board()
+
+	var row: StalkRow = board.get_node("%StalkList").get_child(0)
+	var amount: LineEdit = row.get_node("%Amount")
+	amount.text = "3"
+	amount.text_changed.emit("3")
+
+	_harness.host.request_buy(&"p0", _harness.host.state().stalks[1].id, 1)
+	await _harness.settle(self)
+
+	assert_eq(amount.text, "3", "somebody else trading must not clear your field")
+
+
+func test_your_own_trade_does_clear_your_typing() -> void:
+	# The behaviour the clearing was there for in the first place.
+	if not await _started_match():
+		return
+	_harness.client.set_ready(&"p1", true)
+	await _harness.settle(self)
+	_harness.host.set_ready(&"p0", true)
+	await _harness.settle(self)
+	var board: GameplayScreen = await _client_board()
+
+	var row: StalkRow = board.get_node("%StalkList").get_child(0)
+	var amount: LineEdit = row.get_node("%Amount")
+	amount.text = "1"
+	amount.text_changed.emit("1")
+	row.get_node("%BuyButton").pressed.emit()
+	await _harness.settle(self)
+
+	assert_eq(amount.text, "", "your own purchase should clear the field")

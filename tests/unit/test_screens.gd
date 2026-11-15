@@ -473,3 +473,131 @@ func test_the_panel_warns_about_the_consequence_of_missing_a_payment() -> void:
 	panel.show_panel()
 	assert_true(panel.warning_text().contains("10%"),
 		"the first miss costs 10%%; got: %s" % panel.warning_text())
+
+
+# ------------------------------------------------- borrowing should not confuse
+#
+# Reported from play: "when you click borrow, you're immediately prompted about
+# paying your loan. It's not clear if you need to pay it back that year."
+
+func _with_a_fresh_loan() -> Array:
+	var bits: Array = _playing(true, 2)
+	var session: LocalSession = bits[2]
+	session.request_loan(&"p0", LoanRules.max_loan_for(
+		session.state().player_by_id(&"p0")
+	))
+	return bits
+
+
+func test_a_brand_new_loan_says_nothing_is_due_yet() -> void:
+	# The pay controls appear the moment you borrow, which reads as a demand for
+	# money you have only just received.
+	var bits: Array = _with_a_fresh_loan()
+	var screen: Control = bits[1]
+	screen.get_node("%LoanButton").pressed.emit()
+
+	var warning: String = screen.loan_panel().get_node("%Warning").text
+	assert_string_contains(warning.to_lower(), "next year")
+
+
+func test_the_greyed_pay_minimum_button_says_why() -> void:
+	# A disabled button with no reason given reads as broken.
+	var bits: Array = _with_a_fresh_loan()
+	var screen: Control = bits[1]
+	screen.get_node("%LoanButton").pressed.emit()
+
+	var button: Button = screen.loan_panel().get_node("%PayMinimumButton")
+	assert_true(button.disabled, "nothing is owed yet")
+	assert_string_contains(button.tooltip_text.to_lower(), "next year")
+
+
+func test_paying_early_is_still_allowed_on_a_fresh_loan() -> void:
+	# The minimum is already satisfied, but paying down the balance is not.
+	# This is why the manual field stays usable while the button is greyed.
+	var bits: Array = _with_a_fresh_loan()
+	var session: LocalSession = bits[2]
+	var loan: LoanState = session.state().player_by_id(&"p0").loan
+	var owed_before: int = loan.balance
+
+	# At least the minimum: partial payments are refused outright, which is why
+	# the field says "min N" rather than accepting any figure.
+	session.pay_loan(&"p0", loan.min_payment)
+
+	assert_lt(
+		session.state().player_by_id(&"p0").loan.balance, owed_before,
+		"an early payment should still reduce the balance",
+	)
+
+
+func test_a_payment_below_the_minimum_is_refused_with_a_reason() -> void:
+	# What the player sees if they type a small number into the field that stays
+	# usable while "Pay minimum" is greyed.
+	var bits: Array = _with_a_fresh_loan()
+	var session: LocalSession = bits[2]
+	var refusals: Array[String] = []
+	session.action_rejected.connect(
+		func(_id: StringName, reason: String) -> void: refusals.append(reason)
+	)
+
+	session.pay_loan(&"p0", 1)
+
+	assert_eq(refusals.size(), 1)
+	if refusals.size() == 1:
+		assert_string_contains(refusals[0].to_lower(), "minimum")
+
+
+# --------------------------------------------- the prompt should say where you are
+
+func test_the_prompt_counts_the_misses_already_on_record() -> void:
+	# A bare percentage does not tell a player whether this is a nuisance or the
+	# end of their game.
+	var bits: Array = _playing(true, 2)
+	var screen: Control = bits[1]
+	var session: LocalSession = bits[2]
+	session.request_loan(&"p0", LoanRules.max_loan_for(
+		session.state().player_by_id(&"p0")
+	))
+	var loan: LoanState = session.state().player_by_id(&"p0").loan
+	loan.paid_this_year = false
+	loan.missed_payments = 1
+
+	screen.get_node("%ReadyButton").pressed.emit()
+
+	var message: String = screen.confirm_panel().get_node("%Message").text
+	assert_string_contains(message.to_lower(), "missed 1")
+	assert_string_contains(message, "15%", "a second miss costs 15%")
+
+
+func test_the_prompt_warns_when_the_next_miss_ends_the_game() -> void:
+	var bits: Array = _playing(true, 2)
+	var screen: Control = bits[1]
+	var session: LocalSession = bits[2]
+	session.request_loan(&"p0", LoanRules.max_loan_for(
+		session.state().player_by_id(&"p0")
+	))
+	var loan: LoanState = session.state().player_by_id(&"p0").loan
+	loan.paid_this_year = false
+	loan.missed_payments = 2
+
+	screen.get_node("%ReadyButton").pressed.emit()
+
+	var message: String = screen.confirm_panel().get_node("%Message").text.to_lower()
+	assert_string_contains(message, "seized")
+
+
+func test_choosing_to_pay_first_opens_the_loan_panel() -> void:
+	# Closing the question and leaving the player to find the button themselves
+	# is most of the way to not asking at all.
+	var bits: Array = _playing(true, 2)
+	var screen: Control = bits[1]
+	var session: LocalSession = bits[2]
+	session.request_loan(&"p0", LoanRules.max_loan_for(
+		session.state().player_by_id(&"p0")
+	))
+	session.state().player_by_id(&"p0").loan.paid_this_year = false
+
+	screen.get_node("%ReadyButton").pressed.emit()
+	assert_true(screen.confirm_panel().is_open())
+	(screen.confirm_panel().get_node("%CancelButton") as Button).pressed.emit()
+
+	assert_true(screen.loan_panel().is_showing(), "it should take you there")
