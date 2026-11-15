@@ -97,24 +97,44 @@ next to the executable automatically. That includes `steam_api64.dll`.
 
 ## 3. Every time: export
 
-**From the editor:** Project → Export... → select the preset → **Export
-Project** → confirm the path.
+Godot's equivalent of Unity's **File → Build Settings** is **Project →
+Export...**. Use it.
 
-**From the command line**, which is faster and repeatable:
+1. Top menu bar → **Project** → **Export...**
+2. In the left-hand list, click **Windows Desktop**.
+3. Click **Export Project...** (bottom of the dialog).
+4. Check the path in the file dialog. It should already be
+   `stalks-build/StalksStalksStalks.exe`, beside the repository.
+5. **Mind the "Export With Debug" checkbox** at the bottom of that file
+   dialog. This is the one setting that matters:
+   - **Ticked** → debug build. `--host`, `--join` and the other development
+     flags work. **Use this for testing.**
+   - **Unticked** → release build. Those flags are silently ignored,
+     because `LaunchArgs` checks `OS.is_debug_build()`. A release build used
+     for testing looks exactly like the flags not existing.
+6. Click **Save**.
+
+Next time it is three clicks: the dialog remembers the preset.
+
+### "No presets found"
+
+The dialog reads `export_presets.cfg` when the **project** loads, not when the
+dialog opens. If the file was created or changed while the editor was running,
+the dialog will show nothing.
+
+**Project → Reload Current Project**, then open the export dialog again.
+
+### The command-line equivalent
+
+Only worth knowing if you ever want to build without opening the editor:
 
 ```
-& "C:\Users\murph\Desktop\dev-projects\Godot_v4.7.2-stable_win64\Godot_v4.7.2-stable_win64_console.exe" --headless --path . --export-release "Windows Desktop" "C:\Users\murph\Desktop\stalks-build\StalksStalksStalks.exe"
+& "C:\Users\murph\Desktop\dev-projects\Godot_v4.7.2-stable_win64\Godot_v4.7.2-stable_win64_console.exe" --headless --path . --export-debug "Windows Desktop" "..\stalks-build\StalksStalksStalks.exe"
 ```
 
-The preset name in quotes must match exactly what the dialog shows.
+`--export-release` instead of `--export-debug` for a release build. The preset
+name in quotes has to match the dialog exactly.
 
-Use `--export-debug` instead for a build that prints errors and allows the
-`--host` / `--join` development flags. **`--export-release` disables those
-flags**, because `LaunchArgs` checks `OS.is_debug_build()`
-([steam-integration.md](steam-integration.md), D-numbered notes aside). For
-testing on a second machine you almost always want **`--export-debug`**.
-
----
 
 ## 4. Copying to the second computer
 
