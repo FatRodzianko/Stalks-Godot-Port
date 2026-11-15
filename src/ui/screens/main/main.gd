@@ -28,7 +28,36 @@ var _listening_port: int = 0
 
 
 func _ready() -> void:
+	apply_launch_args(LaunchArgs.from_command_line())
+
+
+## Obeys `--host` / `--join` if they were given, otherwise shows the menu.
+##
+## Separate from `_ready` and taking its arguments explicitly so the behaviour can
+## be tested without a command line. `from_command_line()` returns MENU in a
+## release build, so a shipped game always lands here on the menu.
+func apply_launch_args(launch: LaunchArgs) -> void:
+	match launch.mode:
+		LaunchArgs.Mode.HOST:
+			_report_launch_problem(
+				host_match(launch.host_settings(), launch.resolved_name(), launch.port)
+			)
+		LaunchArgs.Mode.JOIN:
+			_report_launch_problem(
+				join_match(launch.address, launch.port, launch.resolved_name())
+			)
+		_:
+			show_menu()
+
+
+## A failed auto-host or auto-join falls back to the menu with the reason on it.
+## Leaving a blank screen would be a miserable way to discover that a port is
+## busy.
+func _report_launch_problem(problem: String) -> void:
+	if problem.is_empty():
+		return
 	show_menu()
+	_report_to_menu(problem)
 
 
 func show_menu() -> void:

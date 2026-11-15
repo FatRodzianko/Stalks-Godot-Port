@@ -278,6 +278,50 @@ Then, in one window click **HOST** and **Open a lobby**; in the other click
 **JOIN** and **Join**. The address and port are pre-filled for the same machine,
 so neither needs typing.
 
+### Skipping the menu with flags
+
+Clicking through the menu in two windows gets old fast, so the game reads a few
+command-line flags and goes straight into a match. In the **Customize Run
+Instances** dialog each instance has its own arguments field:
+
+- instance 1: `--host`
+- instance 2: `--join`
+
+Press **F5** and you are in a lobby with two players, nothing typed. The host is
+named "Host" and the joiner "Guest" so the windows are told apart at a glance.
+
+| Flag | Meaning |
+|---|---|
+| `--host` | Open a lobby immediately |
+| `--join` | Join `127.0.0.1` immediately |
+| `--join=<address>` | Join a specific host |
+| `--port=<n>` | Listen on, or connect to, this port (default 42420) |
+| `--name=<name>` | Play under this name |
+| `--seed=<n>` | Host with a fixed match seed, to reproduce a bug |
+
+They work from a terminal too, in either form:
+
+```
+<godot> --path . --host
+```
+
+```
+<godot> --path . -- --join --name=Murph
+```
+
+A flag-launched host turns **loans on** and uses a ten-year match. That is
+deliberately not the same as `GameSettings`' own defaults: these flags exist for
+testing the game, and the loan panel is part of it.
+
+If the auto-host or auto-join fails — a busy port, no host to connect to — the
+game falls back to the menu with the reason on it rather than sitting on a blank
+screen.
+
+**These are debug-build only.** `LaunchArgs.from_command_line()` returns "show
+the menu" in an exported release build, so a shipped game cannot be made to
+auto-host by a stray argument. The parsing itself is pure and always works, which
+is what makes it testable — see `tests/unit/test_launch_args.gd`.
+
 ### Without the editor
 
 Run the project twice from a terminal, from the project root:
