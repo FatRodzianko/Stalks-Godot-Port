@@ -312,6 +312,27 @@ node layer.
 `LocalSession` needs none of this: it is already authoritative in-process, so
 single-player is instant by construction.
 
+### 5.2 Testing two peers in one process
+
+Verified by spike before any of Phase 5 was built, because the whole testing
+approach depended on it: **a host and a client can run in a single headless
+process and exchange RPCs both ways.** Networked behaviour is therefore testable
+in the normal suite, with no second process and no manual two-window dance.
+
+Three things make it work, and all three are easy to get wrong:
+
+1. **Each side needs its own subtree and its own `MultiplayerAPI`**, registered
+   with `SceneTree.set_multiplayer(api, subtree_path)`. The nodes must already be
+   in the tree when that is called — doing it from `_initialize()` fails with
+   "Cannot get path of node as it is not in a scene tree".
+2. **The session node's path must be identical on both sides.** Godot resolves an
+   RPC by node path, so a host node at `HostWorld/Session` can only reach a client
+   node at `ClientWorld/Session` — the part below the subtree root has to match.
+   This is why the session node is named consistently rather than after its class.
+3. **A non-default `MultiplayerAPI` must be polled by hand.** In a real game there
+   is one API and Godot polls it; a test harness holding two must call `poll()` on
+   each itself.
+
 ### Transport is separate again
 
 `HostSession`/`ClientSession` talk through Godot's `MultiplayerAPI`. What carries it
