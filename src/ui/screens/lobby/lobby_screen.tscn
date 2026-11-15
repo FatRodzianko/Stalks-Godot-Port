@@ -1,0 +1,82 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/screens/lobby/lobby_screen.gd" id="1_lobby"]
+[ext_resource type="Theme" path="res://assets/themes/stalks_theme.tres" id="2_theme"]
+
+[node name="LobbyScreen" type="MarginContainer"]
+theme = ExtResource("2_theme")
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+script = ExtResource("1_lobby")
+
+[node name="Centre" type="CenterContainer" parent="."]
+layout_mode = 2
+
+[node name="Card" type="PanelContainer" parent="Centre"]
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+
+[node name="Body" type="VBoxContainer" parent="Centre/Card"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Centre/Card/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Heading"
+text = "LOBBY"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="Centre/Card/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = ""
+horizontal_alignment = 1
+
+[node name="Divider" type="HSeparator" parent="Centre/Card/Body"]
+layout_mode = 2
+
+[node name="ListScroll" type="ScrollContainer" parent="Centre/Card/Body"]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="PlayerList" type="VBoxContainer" parent="Centre/Card/Body/ListScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="Status" type="Label" parent="Centre/Card/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = ""
+autowrap_mode = 3
+max_lines_visible = 2
+
+[node name="Buttons" type="HBoxContainer" parent="Centre/Card/Body"]
+layout_mode = 2
+
+[node name="LeaveButton" type="Button" parent="Centre/Card/Body/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+text = "LEAVE"
+
+[node name="ReadyButton" type="Button" parent="Centre/Card/Body/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "READY"
+
+[node name="StartButton" type="Button" parent="Centre/Card/Body/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PrimaryButton"
+text = "START"

@@ -36,19 +36,21 @@ var _player_by_peer: Dictionary[int, StringName] = {}
 ## Reverse lookup, for sending a rejection back to one asker.
 var _peer_by_player: Dictionary[StringName, int] = {}
 
-## Player slots that exist in the match but have nobody connected to them. A
-## dropped player's slot goes back here so it can be reclaimed.
-var _free_player_ids: Array[StringName] = []
-
 ## Every slot's player, in roster order, for the whole match — including players
 ## whose peer has dropped. `state.players` is this list minus the vacated ones,
 ## so rebuilding it keeps the roster order stable rather than shuffling the
 ## rankings whenever somebody leaves or comes back.
 var _roster: Array[PlayerState] = []
 
-## Players whose peer has gone. Their PlayerState stays alive in `_roster` with
-## its cash and holdings intact, so reclaiming the slot resumes the portfolio
-## rather than starting a fresh player. See docs/decisions.md D47.
+## Players whose peer has gone mid-match. They are out of `state.players` — out
+## of the economy, the standings and the ready gate — but their PlayerState stays
+## alive in `_roster` with its cash and holdings.
+##
+## Nothing reads that retained position yet. It is kept because throwing it away
+## is irreversible and keeping it costs one array, and because both planned
+## successors need it: a bot taking over a vacant slot, and a real rejoin once
+## Steam identity makes "is this the same person" answerable. See
+## docs/decisions.md D47 and porting-plan Phase 8.
 var _vacated_player_ids: Array[StringName] = []
 
 ## True until the host presses Start. While open, an arriving peer is given a new
@@ -83,7 +85,6 @@ static func host(
 	# when the peer is attached, once there is a MultiplayerAPI to read the host's
 	# own peer id from.
 	session._roster = session._authority.state.players.duplicate()
-	session._free_player_ids.append(session._roster[0].id)
 
 	var peer: ENetMultiplayerPeer = ENetMultiplayerPeer.new()
 	var error: Error = peer.create_server(port, MAX_CLIENTS)
@@ -102,7 +103,7 @@ func attach_peer(peer: MultiplayerPeer) -> void:
 	if not multiplayer.peer_connected.is_connected(_on_peer_connected):
 		multiplayer.peer_connected.connect(_on_peer_connected)
 		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
-	_claim_slot(HOST_PEER_ID)
+	_seat(HOST_PEER_ID, _roster[0].id)
 
 
 ## Ten players maximum, host included. See docs/game-rules.md §2.
@@ -428,15 +429,16 @@ func _on_introduced(peer_id: int, player_name: String) -> void:
 	_broadcast_state(player_id)
 
 
-## Creates a player for an arriving peer, or an empty id if the match is full.
+## Creates a fresh player for an arriving peer, or an empty id if the match is
+## full.
 ##
-## A vacated slot is offered first, so somebody who dropped out of a running match
-## resumes their own position rather than being handed a new one (D47). Otherwise
-## a fresh slot is appended.
+## **A vacated slot is never handed out.** Resuming somebody else's position is
+## the rejoin feature, and rejoining needs identity to be safe — without it, any
+## arrival could claim a dropped player's portfolio. Deferred until Steam IDs
+## exist; see porting-plan Phase 8 and D47. In practice no arrival gets this far
+## once a match has started anyway, because `_on_introduced` turns latecomers
+## away.
 func _seat_new_player(peer_id: int, player_name: String) -> StringName:
-	if not _free_player_ids.is_empty():
-		return _claim_slot(peer_id)
-
 	if _roster.size() >= MAX_PLAYERS:
 		return &""
 
@@ -447,9 +449,9 @@ func _seat_new_player(peer_id: int, player_name: String) -> StringName:
 		_authority.state.settings.starting_cash,
 	)
 	_roster.append(player)
-	_free_player_ids.append(player.id)
 	_rebuild_active_players()
-	return _claim_slot(peer_id)
+	_seat(peer_id, player.id)
+	return player.id
 
 
 func _turn_away(peer_id: int, reason: String) -> void:
@@ -490,7 +492,6 @@ func _on_peer_disconnected(peer_id: int) -> void:
 		# remaining players keep consecutive ids and a tidy list.
 		_forget_player(player_id)
 	else:
-		_free_player_ids.append(player_id)
 		if not _vacated_player_ids.has(player_id):
 			_vacated_player_ids.append(player_id)
 		var player: PlayerState = _player_in_roster(player_id)
@@ -515,31 +516,14 @@ func _forget_player(player_id: StringName) -> void:
 		if _roster[index].id == player_id:
 			_roster.remove_at(index)
 			break
-	_free_player_ids.erase(player_id)
 	_vacated_player_ids.erase(player_id)
 	_rebuild_active_players()
 
 
-## Seats a peer in the first free slot, in roster order so that the host is always
-## player 0 and joiners are seated predictably.
-##
-## A slot vacated by a disconnect comes back with its portfolio. Without an
-## identity system the host cannot tell a reconnecting player from a stranger, and
-## among the handful of friends this game is played by, a peer claiming a vacated
-## slot is overwhelmingly the person who just dropped — so resuming is the better
-## guess. Steam identity in Phase 6 makes it checkable.
-func _claim_slot(peer_id: int) -> StringName:
-	if _free_player_ids.is_empty():
-		return &""
-	var player_id: StringName = _free_player_ids.pop_front()
+## Records which player a peer controls, both ways round.
+func _seat(peer_id: int, player_id: StringName) -> void:
 	_player_by_peer[peer_id] = player_id
 	_peer_by_player[player_id] = peer_id
-
-	if _vacated_player_ids.has(player_id):
-		_vacated_player_ids.erase(player_id)
-		_rebuild_active_players()
-
-	return player_id
 
 
 ## `state.players` is the roster minus whoever has dropped, rebuilt in roster

@@ -280,6 +280,14 @@ GameSession              interface; a Node, so the two networked sides can use @
 | `HostSession` | The same `MatchAuthority`, plus peer-to-player mapping and broadcast. |
 | `ClientSession` | Sends requests, applies snapshots. Holds no authority object at all. |
 
+The roster is built from arrivals rather than declared in advance: a host opens a
+lobby as the only player, each joiner is seated when it introduces itself with
+its chosen name, and the roster is fixed when the host presses Start. Declaring
+the size up front left unclaimed slots that the ready gate waited on forever
+(D48). One consequence worth knowing: **only one `Main` can hold a peer per
+process**, because `Main` uses the tree's single default `MultiplayerAPI` — two
+instances in one process overwrite each other's peer.
+
 ### The rules are not in the session
 
 `MatchAuthority` (`src/sim`, a `RefCounted`) is the single place a match may change.

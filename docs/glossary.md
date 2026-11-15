@@ -173,9 +173,19 @@ to one client. What keeps a replica current. See [architecture.md §5.3](archite
 cash, holdings and loan schedule are never put on the wire at all, so there is
 nothing private in the payload to leak.
 
-**Slot** — a player position in a networked match. Slots are created when the host
-starts the match and claimed by peers as they join; a peer that drops frees its slot
-and leaves its player in place with its cash and holdings. See decisions.md D46.
+**Slot** — a player position in a networked match. Slots are **created as players
+arrive**, not declared up front, and the roster is whoever is present when the host
+presses Start (decisions.md D48). A peer that drops before Start is forgotten; one
+that drops afterwards leaves the active roster while its cash and holdings are
+retained (D47).
+
+**Lobby** — the waiting room between the menu and the board. Shows who is here and
+who is ready; only the host gets a Start button. One screen serves both sides, since
+the difference is entirely about what you are allowed to do.
+
+**Introduction** — the first thing a joining client sends: the name the player typed.
+The host creates their slot when this arrives rather than when the socket connects,
+so a player never appears under a placeholder name.
 
 **Peer id** — the number Godot assigns each connected machine; the host is always 1.
 The host maps peer ids to slots, and derives *who is acting* from the sender's peer

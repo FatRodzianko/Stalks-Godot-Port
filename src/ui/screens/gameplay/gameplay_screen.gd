@@ -1,3 +1,4 @@
+class_name GameplayScreen
 extends MarginContainer
 ## The playing screen.
 ##

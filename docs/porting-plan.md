@@ -282,10 +282,10 @@ container layout.
 
 ## Phase 5 — Multiplayer over ENet
 
-**Status: increment 1 of 2 complete.** The whole networked layer is built and
-tested; what is missing is the UI to reach it — a host/join screen and a lobby.
-Until that lands, a networked match can be stood up from code and from the test
-suite, but not from the running game.
+**Status: both increments built, not yet played by two people.** The networked
+layer and the screens to reach it are done and tested. What has not happened is a
+human running two copies of the game and playing a match, which is the one
+condition below that automated tests cannot stand in for.
 
 ### Increment 1 — delivered
 
@@ -301,9 +301,10 @@ suite, but not from the running game.
 - `YeehawRules` plus the full request/notify/give/broadcast path — the first
   networked feature, working end to end in both directions.
 - A one-process test harness (`tests/fixtures/net_harness.gd`) and 48 new tests —
-  20 pure encoding tests and 28 with a real host and client over real ENet — taking
-  the suite to **281 tests / 13,870 asserts in about 13 seconds**. The networked
-  tests account for most of that time, since each opens a socket.
+  20 pure encoding tests and 28 with a real host and client over real ENet. With
+  increment 2's screen tests the suite stands at **320 tests / 13,960 asserts in
+  about 17 seconds**; the networked tests account for most of that time, since
+  each opens a socket.
 
 Two de-risking spikes ran before any of it was written, because the testing
 approach depended on the answer: two ENet peers *can* coexist in one process, and
@@ -317,16 +318,33 @@ leaves the active roster while their portfolio is retained for a later rejoin or
 bot takeover. See D46 (superseded) and D47, and the owner-requested direction under
 Phase 8 below.
 
-### Increment 2 — remaining
+### Increment 2 — delivered
 
-- Host/join screen: port, address, player name
-- Lobby screen: player list, ready-up, host starts the match
-- `Main` wiring so the menu can reach hosting and joining
-- Host handling of a full match — a joiner is currently just disconnected, with no
-  explanation sent
-- Showing a vacated slot in the lobby and in play ("Guest — disconnected"), which
-  `HostSession.roster()` and `is_vacated()` already expose
-- The yeehaw *sound* is Phase 7 work, with the rest of the audio
+- Menu with three paths: Solo, Host and Join. A joiner is not offered the match
+  settings, because the host owns them.
+- Lobby screen serving both sides: the player list with who you are and who is
+  hosting, ready-up, and a Start button only the host sees.
+- `Main` wiring — `host_match`, `join_match`, the lobby, and the swap into the
+  playing screen when the match begins. A busy port or an unreachable host is
+  shown on the menu rather than only logged.
+- Roster built from arrivals rather than declared up front (D48), which removed
+  the unclaimed-slot deadlock before it could be hit.
+- Latecomers and a full match are refused *with a reason*, sent before the
+  disconnect.
+- 27 new tests in `test_lobby_screen.gd`, driving the real controls.
+
+**Still open in Phase 5:** the yeehaw *sound* (Phase 7, with the rest of the
+audio), and a control for *giving* a yeehaw — the request path is wired to the
+button, but choosing who to give one to has no UI yet.
+
+**Worth knowing: only one `Main` can hold a peer per process.** `Main` uses the
+tree's default `MultiplayerAPI`, as a shipped game should, and a tree has exactly
+one of those — so two `Main` instances in one process overwrite each other's
+peer and both break. Two *sessions* in one process is what `NetHarness` does, and
+it works only because each side gets its own subtree and its own API. That is why
+the host-and-client handshake is tested at the session level while `Main` is
+tested one session at a time.
+
 
 **Build:**
 - `HostSession` / `ClientSession` behind the existing `GameSession` interface
@@ -348,8 +366,10 @@ the host rejects a malformed or unaffordable client request, and both clients sh
 identical market state after every year.
 
 Of those three: the rejection and the identical-market conditions are met and
-tested (`test_networked_session.gd`). Two *instances* playing together needs
-increment 2 — the layer underneath it is done and proven in one process.
+tested (`test_networked_session.gd`). Two instances playing together is now
+*possible* — menu, lobby and transport are all in place — but has not been
+done by a person, and the suite cannot prove it (see the note on one `Main` per
+process below). **That is the remaining gate on calling Phase 5 complete.**
 
 ---
 
@@ -431,14 +451,21 @@ one invented.
 A player who drops can reconnect and pick their own position back up — including
 taking over from a bot, if one was playing it.
 
-Partly working already, by accident of D47: a peer claiming a vacated slot resumes
-that portfolio. What is missing is **identity**. The host currently cannot tell a
-reconnecting player from a stranger, so anybody can claim a vacated slot. Phase 6
-brings Steam IDs, which is the natural point to make the claim checkable — match
-the reconnecting Steam ID against the one that vacated, and refuse otherwise.
+**Deferred until after Steam, by the owner's call on 2026-11-14.** None of it is
+implemented, and an earlier version of this plan wrongly said part of it worked:
+a latecomer is turned away once a match starts, so a vacated slot cannot be
+claimed at all.
 
-Until then this is a convenience that works among friends and should not be
-advertised as a feature.
+What is missing is **identity**. The host cannot tell a reconnecting player from a
+stranger, and handing a vacated slot to whoever turns up next would let any
+arrival claim a dropped player's portfolio. Phase 6 brings Steam IDs, which is
+what makes the claim checkable — match the reconnecting ID against the one that
+vacated, and refuse otherwise. That is the reason to wait for Steam rather than
+bolt something on now.
+
+The groundwork that does exist: a dropped player's `PlayerState` is retained in
+the host's roster with its cash and holdings (D47), so there is a position to
+resume. Nothing reads it yet.
 
 ---
 

@@ -843,13 +843,19 @@ So the player is set aside rather than deleted. That distinction is what makes
 both planned successors cheap: a bot taking over a vacant slot, and a
 disconnected player rejoining to resume their own position (porting-plan Phase 8).
 
-**The identity caveat.** Without an identity system the host cannot tell a
-reconnecting player from a stranger, so *anyone* claiming a vacated slot resumes
-that portfolio. Among the handful of friends this game is played by, a peer
-claiming a freshly vacated slot is overwhelmingly the person who just dropped, so
-resuming is the better guess — and the alternative (refusing) means a flaky
-connection ends your game permanently. Steam identity in Phase 6 makes this
-checkable, and that is when it should be checked.
+**Rejoining is not implemented, and the retained position is inert.** An earlier
+revision of this entry claimed a vacated slot could be reclaimed and the
+portfolio resumed. That was wrong twice over: nothing could reach it, because a
+latecomer is turned away once the match starts (D48), and handing a vacated slot
+to *whoever turns up next* would let any arrival claim a dropped player's
+portfolio, since the host has no way to tell a reconnecting player from a
+stranger. The slot-reclaim path has been removed rather than left as a trap.
+
+So nothing reads the retained position today. It is kept because discarding it is
+irreversible while keeping it costs one array, and because both planned
+successors need it — see porting-plan Phase 8. The owner's call on 2026-11-14
+was to defer rejoining until Steam, which is the right point: Steam IDs are what
+make "is this the same person" answerable.
 
 **What it rules out.** A player who drops loses their place in the standings for
 any year that resolves while they are away, including dividends they would have
@@ -859,6 +865,41 @@ to resolve — `_advance_if_everybody_is_ready()` is called from the disconnect 
 as well as the ready path, because a drop can be the last thing a year was waiting
 on.
 
-**Where it lives.** `HostSession._on_peer_disconnected`, `_claim_slot`,
+**Where it lives.** `HostSession._on_peer_disconnected`, `_forget_player`,
 `_rebuild_active_players`. Six tests in `test_networked_session.gd` cover it,
 including the deadlock itself.
+
+---
+
+### D48 — The roster is whoever is in the lobby at Start
+**2026-11-14 · Accepted**
+
+A host opens a lobby as the only player. Players are created as they arrive, and
+the roster is fixed when the host presses Start. Latecomers are turned away with
+a reason.
+
+**Why.** The first version sized the match up front from a list of names, leaving
+unclaimed slots waiting. That reproduced the D46 deadlock by a second route: the
+ready gate counts every player, so a match set up for four with two people
+present could never advance a year. Creating players on arrival removes the
+possibility rather than guarding against it — there is no such thing as an
+unclaimed slot.
+
+It also means the menu has no "number of players" control to get wrong, and that
+a solo host can simply press Start.
+
+**The handshake.** A slot is created when a peer *introduces itself*, not when
+the socket connects, because the player's chosen name arrives with the
+introduction. Creating it on connection would show a placeholder name for a frame
+and then rename it.
+
+**What it rules out.** Joining a match in progress, which was already ruled out
+by D42 — clients accumulate their own history and a latecomer would have none.
+Also any pre-arranged seating: player ids are assigned in arrival order, so `p1`
+means "second to arrive", not a particular person.
+
+**Readiness means two things**, either side of Start: "ready to begin" in the
+lobby and "advance the year" in the match. They share `PlayerState.is_ready`, so
+the year gate is disabled while the lobby is open and Start clears the flags.
+Without that, a lobby of ready players would resolve year 1 before anybody saw
+the board.
