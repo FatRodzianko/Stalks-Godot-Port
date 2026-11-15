@@ -11,41 +11,82 @@ machine or two machines over a direct connection are far faster — see
 
 ## 1. One-time: install the export templates
 
+**Already done on the author's machine** (2026-11-15, 4.7.2.stable). This
+section is for a fresh machine.
+
 Godot cannot export anything until it has the templates for its exact version.
-They are a separate download of roughly 1 GB and they are **version-matched** —
+They are a separate **1.28 GB** download and are strictly version-matched —
 4.7.2 templates for a 4.7.2 editor, no exceptions.
 
+**From the editor:**
+
 1. Open the project in the Godot editor.
-2. In the top menu bar, click **Editor**.
-3. Click **Manage Export Templates...**
-4. The dialog shows "Templates installed: No" if you have none. Click
-   **Download and Install**.
-5. Wait. It is a large download and the editor will look busy.
-6. When it finishes the dialog shows the version. Close it.
+2. Top menu bar — **Editor** — **Manage Export Templates...**
+3. If it says "Templates installed: No", click **Download and Install**.
+4. Wait. It is a large download and the editor will look frozen.
 
-If the download fails, the dialog offers mirrors, or you can fetch
-`Godot_v4.7.2-stable_export_templates.tpz` from the Godot website and use
-**Install from File** in the same dialog.
+**From a terminal**, if you would rather see progress:
 
----
+```
+Invoke-WebRequest -Uri "https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_export_templates.tpz" -OutFile "$env:TEMP\godot-templates.tpz"
+```
 
-## 2. One-time: create the export preset
+```
+Expand-Archive -Path "$env:TEMP\godot-templates.tpz" -DestinationPath "$env:TEMP\godot-templates" -Force
+```
 
-1. In the top menu bar, click **Project**.
-2. Click **Export...**
-3. Click **Add...** (top left of the dialog) and choose **Windows Desktop**.
-4. In **Export Path** (right-hand panel, near the top), click the folder icon
-   and choose a path **outside the repository** — for example
-   `C:\Users\murph\Desktop\stalks-build\StalksStalksStalks.exe`.
+```
+Copy-Item "$env:TEMP\godot-templates\templates\*" "$env:APPDATA\Godot\export_templates\4.7.2.stable\" -Recurse -Force
+```
 
-   Outside, because `/build/` and `*.exe` are gitignored but a stray path is
-   easy to get wrong, and a 100 MB binary committed by accident is annoying to
-   remove from history.
-5. Leave everything else at its defaults. Close the dialog.
+The `.tpz` is an ordinary zip whose `templates/` folder contents go into
+`%APPDATA%\Godot\export_templates\<version>\`. The version must match the
+`version.txt` inside the archive exactly, which is where the folder name comes
+from. Delete the download afterwards; it is 1.28 GB and the installed copy is
+all that matters.
 
-The preset is saved to `export_presets.cfg`, which is **gitignored** — it holds
-machine-specific paths, and signing credentials if you ever add them. Each
-machine makes its own.
+
+## 2. The export preset
+
+**Present on the author's machine, but gitignored — a fresh clone has to make
+its own.** It is three steps, below.
+
+`export_presets.cfg` defines one preset, **Windows Desktop**, which:
+
+- exports to `../stalks-build/StalksStalksStalks.exe` — a **relative** path, so
+  it lands beside the repository on any machine rather than inside it. `/build/`
+  and `*.exe` are gitignored, but keeping build output out of the repo entirely
+  is simpler than trusting a pattern.
+- excludes `tools/*` and `steam_appid.txt` from the packed content. The tools
+  are editor-and-source utilities, and Valve's guidance is that the App ID file
+  should not ship.
+- targets x86_64 and enables the console wrapper, so a build run from a
+  terminal prints its output.
+
+### Making one on a fresh clone
+
+1. Top menu bar — **Project** — **Export...**
+2. **Add...** — **Windows Desktop**.
+3. Set **Export Path** to `../stalks-build/StalksStalksStalks.exe`. Relative,
+   so it lands beside the repository rather than inside it.
+
+Defaults are fine for everything else. Optionally set **Resources — Filters to
+exclude** to `tools/*, steam_appid.txt`, which is what the author's copy does.
+
+To change any of it later: the same dialog, or edit the file directly — it is
+plain text and reads clearly.
+
+### Why it is not committed
+
+`.gitignore` excludes it on the general principle that export configuration
+carries local paths and signing credentials. Neither applies *yet* — the path
+is relative and nothing is signed — so committing it would genuinely save a
+successor these three steps.
+
+It is left out because the moment signing is set up, the file starts carrying
+credentials, and a file that was already committed is the easy one to forget
+about. Three steps now beats a leaked certificate later. Revisit deliberately
+if the balance changes.
 
 ### What about the Steam plugin?
 
@@ -53,7 +94,6 @@ Nothing to do. A GDExtension declares its own libraries per platform in
 `addons/godotsteam/godotsteam.gdextension`, and Godot copies the right ones
 next to the executable automatically. That includes `steam_api64.dll`.
 
----
 
 ## 3. Every time: export
 
@@ -110,7 +150,34 @@ ENet (decisions.md D56).
 
 ---
 
-## 5. Checking the build on the far machine
+## 5. What a build actually contains
+
+Confirmed by exporting one on 2026-11-15:
+
+```
+StalksStalksStalks.exe                              103 MB   the game
+StalksStalksStalks.console.exe                       72 KB   prints to a terminal
+StalksStalksStalks.pck                              5.4 MB   all the content
+libgodotsteam.windows.template_debug.x86_64.dll     4.3 MB   the GDExtension
+steam_api64.dll                                     319 KB   Valve's library
+```
+
+The last two are copied in **automatically** DASH nothing in the preset mentions
+them. The `.gdextension` file declares its libraries and dependencies per
+platform, and the exporter follows that.
+
+Run `StalksStalksStalks.console.exe` rather than the plain one when you want to
+see output; it is a small wrapper around the same game.
+
+**Verified on the exported debug build:** it runs, hosts, accepts a joining
+client, and honours `--host` DASH the port really does get bound. That last check
+matters because a *release* build would silently ignore the flag and show the
+menu instead, which looks like the flag not existing rather than being
+disabled.
+
+---
+
+## 6. Checking the build on the far machine
 
 The two tools ship inside the `.pck`, so they are not runnable from an exported
 build — they are editor-and-source tools. On the second machine, check by
