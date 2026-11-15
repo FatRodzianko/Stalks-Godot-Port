@@ -71,6 +71,13 @@ desktop.ini
 .vscode/
 .idea/
 
+# Windows writes these when it cannot replace a file that something has open.
+# Godot holds the GodotSteam DLLs open while the editor runs, so a reimport or
+# an export can leave a full-size copy behind -- two 4.3 MB ones were committed
+# by accident before this rule existed.
+*.TMP
+~*
+
 # ---- Logs ----
 *.log
 logs/
