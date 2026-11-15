@@ -699,6 +699,7 @@ Not yet decided. Resolve one by replacing it with an entry above.
 ---
 
 ### D41 — Nothing but built-in types crosses the wire
+**2026-11-14 · Accepted**
 
 Every network payload is a `Dictionary` of ints, bools, strings and arrays,
 encoded field by field in `StateSync`. No `Resource`, no `RefCounted`, no
@@ -718,6 +719,7 @@ rather than being silently dropped at runtime.
 ---
 
 ### D42 — Replicate whole snapshots, not deltas
+**2026-11-14 · Accepted**
 
 After any authoritative change, each client is sent a complete (redacted)
 snapshot of the match, rather than a description of what changed.
@@ -738,6 +740,7 @@ late joiner would have no history. The original did not support it either.
 ---
 
 ### D43 — The rules moved out of the session into `MatchAuthority`
+**2026-11-14 · Accepted**
 
 `LocalSession` used to validate and apply actions itself. That logic now lives in
 `MatchAuthority` (`src/sim`, a `RefCounted`), and both `LocalSession` and
@@ -758,6 +761,7 @@ since the public interface did not move.
 ---
 
 ### D44 — Both networked sides share one script for every `@rpc`
+**2026-11-14 · Accepted**
 
 `NetworkedSession` declares every remote method once. `HostSession` and
 `ClientSession` override ordinary, non-`@rpc` handler methods instead.
@@ -780,6 +784,7 @@ rather than an error, so a stray packet arriving during shutdown is harmless.
 ---
 
 ### D45 — A client-to-host RPC carries no player id
+**2026-11-14 · Accepted**
 
 Requests from a client name the stalk, the amount, the receiver of a yeehaw —
 never who is acting. The host derives that from
@@ -798,16 +803,62 @@ packets dropped rather than being treated as some default player.
 ---
 
 ### D46 — A disconnected player keeps their slot in the match
+**2026-11-14 · Superseded by D47, the same day**
 
 When a peer drops, its `PlayerState` stays in the match with its cash and
 holdings, and the slot becomes reclaimable.
 
-**Why.** Removing the player would change the economy for everyone still playing:
-net worth comparisons, dividend payouts and the all-players-ready gate all count
-players, so a disconnect would silently rewrite the match. Leaving the slot is the
-conservative choice.
+**Why it was chosen.** Removing the player would change the economy for everyone
+still playing: net worth comparisons, dividend payouts and the all-players-ready
+gate all count players, so a disconnect would silently rewrite the match. Leaving
+the slot looked like the conservative option.
 
-**What it rules out.** The year cannot advance while a slot is empty, because the
-ready gate waits for every player. That is a real limitation of this increment and
-is what the lobby work has to address — by letting the host fill or close a slot
-deliberately, which is a decision a human should make rather than a rule.
+**Why it was wrong.** It was conservative about the wrong thing. The ready gate
+counts every player, so a dropped player **deadlocked the year** — the remaining
+players could ready up forever and nothing would happen. Protecting the standings
+at the cost of the match being unplayable is the wrong trade, and the owner called
+it straight away. Kept here because the reasoning is still the reasoning behind
+*retaining the portfolio* in D47; only the roster part was mistaken.
+
+---
+
+### D47 — A dropped player leaves the roster but keeps their portfolio
+**2026-11-14 · Accepted** (supersedes D46)
+
+When a peer drops, its player is removed from `state.players` — out of the ready
+gate, the rankings, dividends and net worth comparisons. The `PlayerState` object
+itself stays alive in the host's `_roster`, holding its cash and holdings, and the
+slot can be reclaimed to resume it.
+
+**Why.** Two separate questions were conflated in D46, and they have different
+answers:
+
+- *Should they still block the year?* No. A match that cannot continue is worse
+  than a match whose standings changed. This is what fixes the deadlock.
+- *Should their position be destroyed?* No. Removal from the roster and
+  destruction of the portfolio are not the same act, and keeping the position
+  costs one array.
+
+So the player is set aside rather than deleted. That distinction is what makes
+both planned successors cheap: a bot taking over a vacant slot, and a
+disconnected player rejoining to resume their own position (porting-plan Phase 8).
+
+**The identity caveat.** Without an identity system the host cannot tell a
+reconnecting player from a stranger, so *anyone* claiming a vacated slot resumes
+that portfolio. Among the handful of friends this game is played by, a peer
+claiming a freshly vacated slot is overwhelmingly the person who just dropped, so
+resuming is the better guess — and the alternative (refusing) means a flaky
+connection ends your game permanently. Steam identity in Phase 6 makes this
+checkable, and that is when it should be checked.
+
+**What it rules out.** A player who drops loses their place in the standings for
+any year that resolves while they are away, including dividends they would have
+been paid. There is no way around that without pausing the match for everybody,
+which is the thing D46 got wrong. A departure is now also a trigger for the year
+to resolve — `_advance_if_everybody_is_ready()` is called from the disconnect path
+as well as the ready path, because a drop can be the last thing a year was waiting
+on.
+
+**Where it lives.** `HostSession._on_peer_disconnected`, `_claim_slot`,
+`_rebuild_active_players`. Six tests in `test_networked_session.gd` cover it,
+including the deadlock itself.

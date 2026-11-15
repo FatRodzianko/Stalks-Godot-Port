@@ -107,6 +107,20 @@ func settle(test: GutTest, frames: int = 6) -> void:
 	await test.wait_process_frames(frames)
 
 
+## Closes the client's socket and waits for the host to notice.
+##
+## Closing the peer is what a crash or a pulled cable looks like from the host's
+## side, which is the case worth testing — a clean "I am leaving" message does not
+## exist in this game yet.
+func drop_client(test: GutTest) -> bool:
+	if client != null:
+		client.close()
+	await test.wait_until(
+		func() -> bool: return host.is_vacated(&"p1"), JOIN_TIMEOUT_SECONDS
+	)
+	return host.is_vacated(&"p1")
+
+
 ## Both APIs are polled here because the engine only polls the tree's default one.
 func _process(_delta: float) -> void:
 	if _host_api != null:

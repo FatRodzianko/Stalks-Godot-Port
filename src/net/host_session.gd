@@ -33,8 +33,19 @@ var _player_by_peer: Dictionary[int, StringName] = {}
 var _peer_by_player: Dictionary[StringName, int] = {}
 
 ## Player slots that exist in the match but have nobody connected to them. A
-## dropped player's slot goes back here so they can reclaim it on reconnect.
+## dropped player's slot goes back here so it can be reclaimed.
 var _free_player_ids: Array[StringName] = []
+
+## Every slot's player, in roster order, for the whole match — including players
+## whose peer has dropped. `state.players` is this list minus the vacated ones,
+## so rebuilding it keeps the roster order stable rather than shuffling the
+## rankings whenever somebody leaves or comes back.
+var _roster: Array[PlayerState] = []
+
+## Players whose peer has gone. Their PlayerState stays alive in `_roster` with
+## its cash and holdings intact, so reclaiming the slot resumes the portfolio
+## rather than starting a fresh player. See docs/decisions.md D47.
+var _vacated_player_ids: Array[StringName] = []
 
 
 ## Starts listening on `port` and seats the host as the first player.
@@ -56,9 +67,10 @@ static func host(
 	session._library = library
 	session._authority = LocalSession.build_authority(settings, library, player_names)
 
-	# Every slot starts unclaimed; the host claims the first one in `_ready`,
-	# once it has a MultiplayerAPI to read its own peer id from.
-	for player: PlayerState in session._authority.state.players:
+	# Every slot starts unclaimed; the host claims the first one when its peer is
+	# attached, once there is a MultiplayerAPI to read its own peer id from.
+	session._roster = session._authority.state.players.duplicate()
+	for player: PlayerState in session._roster:
 		session._free_player_ids.append(player.id)
 
 	var peer: ENetMultiplayerPeer = ENetMultiplayerPeer.new()
@@ -97,6 +109,22 @@ func seed_value() -> int:
 ## tests; nothing in the economy consults it.
 func player_for_peer(peer_id: int) -> StringName:
 	return _player_by_peer.get(peer_id, &"")
+
+
+## Every slot's player in roster order, **including** those whose peer has
+## dropped, with their cash and holdings intact.
+##
+## This is what a lobby or a disconnect notice should show ("Guest —
+## disconnected"). The economy reads `state().players` instead, which is this
+## list minus the vacated ones.
+func roster() -> Array[PlayerState]:
+	return _roster
+
+
+## Whether this player's peer has gone. A vacated player is out of the economy
+## but not destroyed.
+func is_vacated(player_id: StringName) -> bool:
+	return _vacated_player_ids.has(player_id)
 
 
 # ------------------------------------------- the host's own requests (no wire)
@@ -205,9 +233,7 @@ func _apply_ready(player_id: StringName, is_ready: bool) -> void:
 
 	ready_state_changed.emit(player_id, is_ready)
 	_rpc_ready_changed.rpc(String(player_id), is_ready)
-
-	if _authority.state.all_players_ready():
-		_advance()
+	_advance_if_everybody_is_ready()
 
 
 func _apply_yeehaw_ask(player_id: StringName) -> void:
@@ -226,6 +252,16 @@ func _apply_yeehaw_give(giver_id: StringName, receiver_id: StringName) -> void:
 		return
 	yeehaw_given.emit(giver_id, receiver_id)
 	_rpc_yeehaw_given.rpc(String(giver_id), String(receiver_id))
+
+
+## The single gate. Called when somebody readies up and when somebody leaves,
+## because either can be the last thing the year was waiting for.
+##
+## `all_players_ready()` is false for an empty roster, so a match everybody has
+## left does not resolve years on its own.
+func _advance_if_everybody_is_ready() -> void:
+	if _authority.state.all_players_ready() and not _authority.state.is_over:
+		_advance()
 
 
 func _advance() -> void:
@@ -301,33 +337,81 @@ func _on_peer_connected(peer_id: int) -> void:
 	_broadcast_state(player_id)
 
 
-## A dropped peer's player **stays in the match**, holding its cash and holdings,
-## and its slot becomes reclaimable.
+## A dropped peer's player leaves the **active roster**, and their portfolio is
+## kept so that reclaiming the slot resumes it.
 ##
-## Removing the player instead would change the economy — net worth comparisons,
-## dividend payouts and the all-ready gate all count players — so a disconnect
-## would silently rewrite the game for everyone still playing. Leaving the slot
-## is the conservative choice; what it costs is that the year cannot advance until
-## somebody fills it, which the lobby work addresses.
+## Leaving the player in the match was tried first and is wrong: the all-ready gate
+## counts every player, so a disconnect deadlocked the year for everybody still
+## playing. A game that cannot continue is worse than a game whose standings
+## changed, so the player is removed from `state.players`.
+##
+## It is removal from the roster only. The `PlayerState` itself stays alive in
+## `_roster` with its cash and holdings, so this is not destruction — it is
+## setting them aside. See docs/decisions.md D47, and the two future directions
+## (a bot taking over, and a proper rejoin) in docs/porting-plan.md.
 func _on_peer_disconnected(peer_id: int) -> void:
 	var player_id: StringName = _player_by_peer.get(peer_id, &"")
 	if player_id.is_empty():
 		return
+
 	_player_by_peer.erase(peer_id)
 	_peer_by_player.erase(player_id)
 	_free_player_ids.append(player_id)
+
+	if not _vacated_player_ids.has(player_id):
+		_vacated_player_ids.append(player_id)
+	var player: PlayerState = _player_in_roster(player_id)
+	if player != null:
+		# Cleared so a resumed player is not already ready for a year they were
+		# not present for.
+		player.is_ready = false
+	_rebuild_active_players()
+
 	player_left.emit(player_id)
+	_broadcast_state(player_id)
+
+	# Their departure may be the last thing the year was waiting on.
+	_advance_if_everybody_is_ready()
 
 
 ## Seats a peer in the first free slot, in roster order so that the host is always
 ## player 0 and joiners are seated predictably.
+##
+## A slot vacated by a disconnect comes back with its portfolio. Without an
+## identity system the host cannot tell a reconnecting player from a stranger, and
+## among the handful of friends this game is played by, a peer claiming a vacated
+## slot is overwhelmingly the person who just dropped — so resuming is the better
+## guess. Steam identity in Phase 6 makes it checkable.
 func _claim_slot(peer_id: int) -> StringName:
 	if _free_player_ids.is_empty():
 		return &""
 	var player_id: StringName = _free_player_ids.pop_front()
 	_player_by_peer[peer_id] = player_id
 	_peer_by_player[player_id] = peer_id
+
+	if _vacated_player_ids.has(player_id):
+		_vacated_player_ids.erase(player_id)
+		_rebuild_active_players()
+
 	return player_id
+
+
+## `state.players` is the roster minus whoever has dropped, rebuilt in roster
+## order. The authority reads this list for the ready gate, dividends, net worth
+## and rankings, so removing somebody here is what takes them out of the economy.
+func _rebuild_active_players() -> void:
+	var active: Array[PlayerState] = []
+	for player: PlayerState in _roster:
+		if not _vacated_player_ids.has(player.id):
+			active.append(player)
+	_authority.state.players = active
+
+
+func _player_in_roster(player_id: StringName) -> PlayerState:
+	for player: PlayerState in _roster:
+		if player.id == player_id:
+			return player
+	return null
 
 
 ## The player a peer controls, or an empty id for a peer with no slot. Returning

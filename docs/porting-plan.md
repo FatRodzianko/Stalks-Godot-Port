@@ -300,9 +300,9 @@ suite, but not from the running game.
   rather than deltas (D42), per-recipient redaction (architecture §5.3).
 - `YeehawRules` plus the full request/notify/give/broadcast path — the first
   networked feature, working end to end in both directions.
-- A one-process test harness (`tests/fixtures/net_harness.gd`) and 42 new tests —
-  20 pure encoding tests and 22 with a real host and client over real ENet — taking
-  the suite to **275 tests / 13,849 asserts in about 13 seconds**. The networked
+- A one-process test harness (`tests/fixtures/net_harness.gd`) and 48 new tests —
+  20 pure encoding tests and 28 with a real host and client over real ENet — taking
+  the suite to **281 tests / 13,870 asserts in about 13 seconds**. The networked
   tests account for most of that time, since each opens a socket.
 
 Two de-risking spikes ran before any of it was written, because the testing
@@ -310,18 +310,22 @@ approach depended on the answer: two ENet peers *can* coexist in one process, an
 RPCs route both ways. The three non-obvious requirements that makes are recorded in
 [architecture.md §5.2](architecture.md) and in the harness itself.
 
-**Known limitation.** A disconnected player keeps their slot (D46), and the
-all-players-ready gate counts every player — so a match cannot advance a year while
-a slot sits empty. Filling or closing a slot is a decision for the host to make in
-the lobby, which is increment 2.
+**Disconnect handling, corrected in place.** The first attempt kept a dropped
+player in the match, which deadlocked the year: the all-ready gate counts every
+player, so the remaining players could ready up forever. A dropped player now
+leaves the active roster while their portfolio is retained for a later rejoin or
+bot takeover. See D46 (superseded) and D47, and the owner-requested direction under
+Phase 8 below.
 
 ### Increment 2 — remaining
 
 - Host/join screen: port, address, player name
 - Lobby screen: player list, ready-up, host starts the match
 - `Main` wiring so the menu can reach hosting and joining
-- Host handling of a full match (currently the peer is simply disconnected) and of
-  an empty slot blocking the year
+- Host handling of a full match — a joiner is currently just disconnected, with no
+  explanation sent
+- Showing a vacated slot in the lobby and in play ("Guest — disconnected"), which
+  `HostSession.roster()` and `is_vacated()` already expose
 - The yeehaw *sound* is Phase 7 work, with the rest of the audio
 
 **Build:**
@@ -381,6 +385,60 @@ achievements carry over; GodotSteam vs Foundation for Steamworks.
 - Error and edge-case presentation
 - Export presets and a Windows build
 - Year history retained and inspectable (groundwork already laid for charts)
+
+---
+
+## Phase 8 — Requested follow-ups, after the port ships
+
+Three things the owner has asked for that are **not** port work: the original did
+none of them. Recorded here with enough reasoning to act on, and deliberately not
+started, so the port ships first.
+
+### Public holdings — seeing who owns what
+
+Players should be able to see which stalks other players hold, and how much. The
+owner's suggested shapes, any of which would do:
+
+- a separate panel or menu listing holdings per player
+- hovering a player in the rankings
+- an eye symbol on a stalk row whose tooltip lists every holder and their amount
+
+**What it changes.** This reverses part of the privacy model in
+[architecture.md §5.3](architecture.md): holdings are currently redacted per
+recipient and never put on the wire. Making them public is a change to
+`StateSync.encode_player` — delete the redaction for `holdings` — plus the UI to
+show them. Cash and the loan schedule are a separate question and should stay
+private unless asked for.
+
+**Do it as a `GameSettings` toggle, not a code change.** "Open book" versus
+"hidden holdings" are genuinely different games, and the toggle costs almost
+nothing while the alternative is choosing for everybody. Note the redaction tests
+in `test_state_sync.gd` encode the current rule and will need to express both.
+
+### A bot takes over a vacant slot
+
+When a player drops, a bot plays their position rather than the slot sitting empty.
+
+Needs AI logic that does not exist yet — at minimum: decide whether to buy or sell,
+pick a stalk and an amount, and ready up. Note that a bot must go through
+`MatchAuthority` exactly as a human does, not mutate state directly, or it becomes
+a second source of truth. The groundwork is already in place: D47 keeps a dropped
+player's portfolio alive, so a bot has a position to take over rather than needing
+one invented.
+
+### A disconnected player rejoins and resumes
+
+A player who drops can reconnect and pick their own position back up — including
+taking over from a bot, if one was playing it.
+
+Partly working already, by accident of D47: a peer claiming a vacated slot resumes
+that portfolio. What is missing is **identity**. The host currently cannot tell a
+reconnecting player from a stranger, so anybody can claim a vacated slot. Phase 6
+brings Steam IDs, which is the natural point to make the claim checkable — match
+the reconnecting Steam ID against the one that vacated, and refuse otherwise.
+
+Until then this is a convenience that works among friends and should not be
+advertised as a feature.
 
 ---
 

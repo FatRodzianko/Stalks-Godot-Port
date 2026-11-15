@@ -381,6 +381,14 @@ Net worth is public because the rankings board exists to show it. Cash and
 holdings are not, because knowing exactly what a rival holds would change how the
 game is played.
 
+**This is expected to change.** The owner wants players to be able to see who owns
+what, in some form — a panel, a hover on the rankings, or a tooltip on a stalk row.
+That makes `holdings` public and is a deletion from `StateSync.encode_player`
+rather than a redesign, ideally behind a `GameSettings` toggle since open-book and
+hidden-holdings are different games. Cash and the loan schedule are a separate
+question. See porting-plan Phase 8 — and note that the tests in
+`test_state_sync.gd` encode today's rule, so they are the thing to update first.
+
 Two consequences worth knowing:
 
 - Applying a redacted entry **leaves the recipient's local values alone** rather

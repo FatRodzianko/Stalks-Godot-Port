@@ -447,3 +447,111 @@ func _advance_a_year() -> void:
 		_harness.host.state().year, year_before + 1,
 		"both ready should have advanced the year",
 	)
+
+
+# ------------------------------------------------------------------- disconnects
+#
+# Leaving a dropped player in the match deadlocked the year, because the
+# all-ready gate counts every player. These assert the fix and its limits.
+# See docs/decisions.md D47.
+
+func test_a_dropped_player_leaves_the_active_roster() -> void:
+	if not await _connect():
+		return
+	assert_eq(_harness.host.state().players.size(), 2)
+
+	assert_true(await _harness.drop_client(self), "the host should notice the drop")
+
+	assert_eq(
+		_harness.host.state().players.size(), 1,
+		"a dropped player should be out of the economy",
+	)
+	assert_null(_harness.host.state().player_by_id(&"p1"))
+
+
+func test_the_year_can_still_advance_after_a_player_drops() -> void:
+	# The deadlock this change exists to fix: with the dropped player still in the
+	# match, the host could ready up forever and nothing would happen.
+	if not await _connect():
+		return
+	if not await _harness.drop_client(self):
+		return
+
+	_harness.host.set_ready(&"p0", true)
+	await _harness.settle(self)
+
+	assert_eq(_harness.host.state().year, 1, "the remaining player should be enough")
+
+
+func test_a_drop_completes_a_year_the_departed_player_was_holding_up() -> void:
+	# The host is ready and waiting on the client. The client vanishes. That
+	# departure is the last thing the year was waiting for, so it should resolve
+	# rather than sit until somebody clicks again.
+	if not await _connect():
+		return
+
+	_harness.host.set_ready(&"p0", true)
+	await _harness.settle(self)
+	assert_eq(_harness.host.state().year, 0, "still waiting on the client")
+
+	if not await _harness.drop_client(self):
+		return
+
+	assert_eq(_harness.host.state().year, 1, "the drop should have released the year")
+
+
+func test_a_dropped_players_portfolio_is_kept_not_destroyed() -> void:
+	# Removal from the roster is not destruction. A bot taking over, or a proper
+	# rejoin, both need the position to still be there — see porting-plan Phase 8.
+	if not await _connect():
+		return
+	await _open_trading()
+
+	var stalk: StalkState = _harness.host.state().stalks[0]
+	_harness.client.request_buy(&"p1", stalk.id, 4)
+	await _harness.settle(self)
+	var cash_before: int = _harness.host.state().player_by_id(&"p1").cash
+
+	if not await _harness.drop_client(self):
+		return
+
+	var kept: PlayerState = null
+	for player: PlayerState in _harness.host.roster():
+		if player.id == &"p1":
+			kept = player
+	assert_not_null(kept, "the player should still be in the roster")
+	if kept == null:
+		return
+	assert_eq(kept.shares_of(stalk.id), 4, "their holdings should be intact")
+	assert_eq(kept.cash, cash_before, "and their cash")
+
+
+func test_a_dropped_player_is_not_left_marked_ready() -> void:
+	# Otherwise a resumed player would count as ready for a year they were not
+	# present for.
+	if not await _connect():
+		return
+
+	_harness.client.set_ready(&"p1", true)
+	await _harness.settle(self)
+	if not await _harness.drop_client(self):
+		return
+
+	var kept: PlayerState = null
+	for player: PlayerState in _harness.host.roster():
+		if player.id == &"p1":
+			kept = player
+	assert_not_null(kept)
+	if kept != null:
+		assert_false(kept.is_ready)
+
+
+func test_a_drop_does_not_advance_the_year_on_its_own() -> void:
+	# Only if the remaining players were already waiting. Nobody is ready here,
+	# so nothing should resolve.
+	if not await _connect():
+		return
+	if not await _harness.drop_client(self):
+		return
+
+	assert_eq(_harness.host.state().year, 0, "a drop is not a ready-up")
