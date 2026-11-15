@@ -121,10 +121,12 @@ func request_yeehaw(player_id: StringName) -> void:
 		action_rejected.emit(player_id, reason)
 		return
 	yeehaw_requested.emit(player_id)
+	player_changed.emit(player_id)
 
 
-func give_yeehaw(giver_id: StringName, receiver_id: StringName) -> void:
-	var reason: String = _authority.give_yeehaw(giver_id, receiver_id)
+func give_yeehaw(giver_id: StringName) -> void:
+	var receiver_id: StringName = _authority.receiver_of_yeehaw()
+	var reason: String = _authority.give_yeehaw(giver_id)
 	if not reason.is_empty():
 		action_rejected.emit(giver_id, reason)
 		return

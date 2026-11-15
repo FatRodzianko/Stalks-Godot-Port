@@ -148,10 +148,10 @@ func request_yeehaw(player_id: StringName) -> void:
 	_rpc_ask_yeehaw.rpc_id(HOST_PEER_ID)
 
 
-func give_yeehaw(giver_id: StringName, receiver_id: StringName) -> void:
+func give_yeehaw(giver_id: StringName) -> void:
 	if not _may_act(giver_id):
 		return
-	_rpc_give_yeehaw.rpc_id(HOST_PEER_ID, String(receiver_id))
+	_rpc_give_yeehaw.rpc_id(HOST_PEER_ID)
 
 
 # ------------------------------------------------------------- what the host says

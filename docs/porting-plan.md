@@ -259,20 +259,19 @@ screen takes over.
 play, and no animation on a year advance — prices simply change. Sound and polish are
 Phase 7.
 
-### Outstanding: confirm ending a turn with a loan payment due
+### Done in Phase 5: confirm ending a turn with a loan payment due
 
-Requested after play-testing, not yet built. Readying up with an unpaid loan should
-ask *"Are you sure you want to end your turn without paying your loan?"* before it
-goes through.
+Requested after play-testing in Phase 4, built during Phase 5 when it came up
+again. Readying up with an unpaid loan now asks before it goes through, naming
+the penalty it will cost.
 
-This is **not** a change to the advisory rule in game-rules.md §9.5 — it is how that
-rule should have been implemented. The rule is that the game must never penalise a
-player for something it hid from them, while never taking the choice away. A
-confirmation does both: it guarantees the player saw the consequence, and they can
-still decline and take the penalty. The current bottom-bar nag is easy to miss, which
-is exactly the failure the rule exists to prevent.
+This was **not** a change to the advisory rule in game-rules.md §9.5 — it is how
+that rule should have been implemented. The rule is that the game must never
+penalise a player for something it hid from them, while never taking the choice
+away. A confirmation does both: it guarantees the player saw the consequence, and
+they can still decline and take the penalty. The bottom-bar nag alone was easy to
+miss, which is exactly the failure the rule exists to prevent. See D53.
 
-Belongs with the Phase 7 polish pass unless it comes up sooner.
 
 🖱️ Heaviest editor phase. I'll write the scenes as text where the node tree is
 regular, and give numbered click-by-click steps for theme authoring and any fiddly
@@ -350,9 +349,12 @@ The lesson is recorded in D51: any control whose effect depends on another
 player needs a test with a real second peer, because solo play will never show
 the fault.
 
-**Still open in Phase 5:** the yeehaw *sound* (Phase 7, with the rest of the
-audio), and a control for *giving* a yeehaw — the request path is wired to the
-button, but choosing who to give one to has no UI yet.
+Yeehaw is now complete bar the sound (Phase 7, with the rest of the audio): one
+button asks or gives, a pending request is synced match state, and the asker
+cannot answer themselves. The confirmation before ending a year with a loan
+payment due — outstanding since Phase 4 — is also in (D53).
+
+**Still open in Phase 5:** the yeehaw *sound*.
 
 **Worth knowing: only one `Main` can hold a peer per process.** `Main` uses the
 tree's default `MultiplayerAPI`, as a shipped game should, and a tree has exactly

@@ -4,12 +4,16 @@ extends RefCounted
 ##
 ## A yeehaw has **no mechanical effect whatsoever** — no cash, no price, no
 ## standing changes. It is a social gesture, and the owner of the original game
-## calls it a critical feature. See docs/game-rules.md §10.
+## calls it a critical feature. See docs/game-rules.md 10.
 ##
 ## It still gets a rules file rather than an `if` in the session, for the same
 ## reason every other action has one: the authority and the UI's pre-check must
 ## call the *same* function, so a greyed-out button can never disagree with what
-## the host would have allowed. See docs/architecture.md §5.1.
+## the host would have allowed. See docs/architecture.md 5.1.
+##
+## **One request is pending at a time.** While somebody is asking, nobody else
+## may ask — their button is offering to *give* instead. That is the original's
+## design and it is what makes a single button work for both jobs.
 ##
 ## Validation returns an empty string for "allowed", or player-facing text saying
 ## why not.
@@ -28,23 +32,29 @@ static func validate_request(player_id: StringName, state: GameState) -> String:
 		return "Unknown player."
 	if state.players.size() < MIN_PLAYERS:
 		return "Yeehaws need other players."
+	if state.is_yeehaw_pending():
+		var asker: PlayerState = state.player_by_id(state.yeehaw_requested_by)
+		return (
+			"%s is already asking for one." % asker.display_name
+			if asker != null
+			else "Somebody is already asking for one."
+		)
 	return ""
 
 
-## Why `giver_id` cannot give a yeehaw to `receiver_id` right now.
+## Why `giver_id` cannot give a yeehaw right now.
 ##
-## The self-yeehaw check is the whole reason this is server-side: a client could
-## otherwise claim to have yeehawed itself, and the gesture only means anything
-## because it came from somebody else.
-static func validate_give(
-	giver_id: StringName,
-	receiver_id: StringName,
-	state: GameState,
-) -> String:
+## There is no receiver argument: a yeehaw is given to whoever is currently
+## asking. That is the original's shape, and it means a client cannot nominate
+## who receives one at all — combined with the giver coming from the sender's
+## peer id, neither end of the gesture is forgeable.
+static func validate_give(giver_id: StringName, state: GameState) -> String:
 	if state.is_over:
 		return "The game is over."
-	if state.player_by_id(giver_id) == null or state.player_by_id(receiver_id) == null:
+	if state.player_by_id(giver_id) == null:
 		return "Unknown player."
-	if giver_id == receiver_id:
+	if not state.is_yeehaw_pending():
+		return "Nobody is asking for a yeehaw."
+	if giver_id == state.yeehaw_requested_by:
 		return "You cannot give yourself a yeehaw."
 	return ""

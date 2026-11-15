@@ -78,9 +78,11 @@ func _rpc_ask_yeehaw() -> void:
 	_on_yeehaw_asked(_sender())
 
 
+## No arguments at all: the giver is the sender and the receiver is whoever is
+## asking, so there is nothing for a client to put in this packet.
 @rpc("any_peer", "call_remote", "reliable")
-func _rpc_give_yeehaw(receiver_id: String) -> void:
-	_on_yeehaw_offered(_sender(), StringName(receiver_id))
+func _rpc_give_yeehaw() -> void:
+	_on_yeehaw_offered(_sender())
 
 
 # ------------------------------------------------------- host → client (results)
@@ -166,7 +168,7 @@ func _on_yeehaw_asked(_peer: int) -> void:
 	pass
 
 
-func _on_yeehaw_offered(_peer: int, _receiver_id: StringName) -> void:
+func _on_yeehaw_offered(_peer: int) -> void:
 	pass
 
 

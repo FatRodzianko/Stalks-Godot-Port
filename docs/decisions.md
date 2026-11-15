@@ -906,6 +906,51 @@ the board.
 
 ---
 
+### D53 — Ending a year with a loan payment due asks first
+**2026-11-14 · Accepted**
+
+Pressing Ready with an outstanding payment opens a confirmation naming the
+penalty. Saying yes goes ahead.
+
+**Why.** The payment stays *advisory* — game-rules 9.5, and the game must never
+take the choice away. What was wrong was that the cost was invisible at the
+moment of choosing: the nag sat in the bottom bar, easy to miss, so a player
+could lose 10% of a loan balance without ever registering that there was a
+decision. Asking is not blocking; it is making the choice visible at the point
+it is made.
+
+The message names the actual consequence — 10%, 15%, or seizure on the third
+miss — because "are you sure?" without a consequence is noise. The percentages
+are derived from `LoanRules`' multipliers rather than written out again, so what
+the player is shown cannot drift from what they are charged.
+
+**Built as a widget, not `ConfirmationDialog`.** Godot's dialog opens a real OS
+popup window, which escapes the 640x360 viewport and breaks the pixel grid
+(D40). `ConfirmPanel` is an ordinary `Control` inside the game's own resolution,
+styled by the shared theme, following the overlay pattern the loan panel already
+uses.
+
+The safe button takes focus, so a stray Enter cannot commit to the costly
+option, and Escape dismisses.
+
+---
+
+### D52 — An unanswered yeehaw does not outlive the year
+**2026-11-14 · Accepted**
+
+A pending yeehaw request is cleared when the year advances.
+
+**Why.** The original never cleared it — the flag was set on request and
+unset only on give. So one ask that nobody answered left every player's button
+reading "Give Yeehaw" for the rest of the match, and nobody could ask again.
+That is a wart rather than a design, and a new year is the natural place to let
+a social gesture lapse.
+
+**What it rules out.** A request cannot span a year boundary, so "ask now,
+answer after the year resolves" does not work. Nobody wants that.
+
+---
+
 ### D51 — Readying up is reversible, and always visibly acknowledged
 **2026-11-14 · Accepted**
 

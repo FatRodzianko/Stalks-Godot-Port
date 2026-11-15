@@ -92,9 +92,10 @@ func request_yeehaw(_player_id: StringName) -> void:
 	push_error("GameSession.request_yeehaw is abstract")
 
 
-## Answers somebody's ask. `receiver_id` is who gets it; the giver cannot be the
-## receiver.
-func give_yeehaw(_giver_id: StringName, _receiver_id: StringName) -> void:
+## Answers whoever is currently asking. There is no receiver argument on
+## purpose: one request is pending at a time, so a giver cannot pick a target,
+## and a client therefore cannot forge either end of the gesture.
+func give_yeehaw(_giver_id: StringName) -> void:
 	push_error("GameSession.give_yeehaw is abstract")
 
 
@@ -145,11 +146,18 @@ func why_not_request_yeehaw(player_id: StringName) -> String:
 	return YeehawRules.validate_request(player_id, game)
 
 
-func why_not_give_yeehaw(giver_id: StringName, receiver_id: StringName) -> String:
+func why_not_give_yeehaw(giver_id: StringName) -> String:
 	var game: GameState = state()
 	if game == null:
 		return "No game in progress."
-	return YeehawRules.validate_give(giver_id, receiver_id, game)
+	return YeehawRules.validate_give(giver_id, game)
+
+
+## Who is currently asking for a yeehaw, or an empty id. The UI reads this to
+## decide whether its button asks for one or offers one.
+func yeehaw_requested_by() -> StringName:
+	var game: GameState = state()
+	return game.yeehaw_requested_by if game != null else &""
 
 
 ## The most shares of `stalk_id` that `player_id` could afford right now.

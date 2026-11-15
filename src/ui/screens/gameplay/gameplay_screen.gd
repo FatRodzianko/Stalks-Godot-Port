@@ -19,6 +19,7 @@ const StalkRowScene: PackedScene = preload("res://src/ui/widgets/stalk_row.tscn"
 const HoldingRowScene: PackedScene = preload("res://src/ui/widgets/holding_row.tscn")
 const RankingRowScene: PackedScene = preload("res://src/ui/widgets/ranking_row.tscn")
 const LoanPanelScene: PackedScene = preload("res://src/ui/widgets/loan_panel.tscn")
+const ConfirmPanelScene: PackedScene = preload("res://src/ui/widgets/confirm_panel.tscn")
 
 const MESSAGE_SECONDS: float = 5.0
 
@@ -54,6 +55,7 @@ signal match_finished(winners: Array[StringName])
 var _session: GameSession
 var _stalk_rows: Dictionary[StringName, StalkRow] = {}
 var _loan_panel: LoanPanel
+var _confirm_panel: ConfirmPanel
 
 
 func _ready() -> void:
@@ -114,6 +116,7 @@ func _attach(session: GameSession) -> void:
 
 	_build_stalk_rows()
 	_build_loan_panel()
+	_build_confirm_panel()
 	_reset_event_panel()
 	refresh()
 
@@ -187,6 +190,16 @@ func _build_stalk_rows() -> void:
 		row.buy_requested.connect(_on_buy_requested)
 		row.amount_changed.connect(_on_buy_amount_changed)
 		_stalk_rows[stalk.id] = row
+
+
+## The confirmation overlay, used for ending a year with a loan payment due.
+## Built once and reused; it holds no state of its own between questions.
+func _build_confirm_panel() -> void:
+	if _confirm_panel != null:
+		return
+	_confirm_panel = ConfirmPanelScene.instantiate()
+	add_child(_confirm_panel)
+	_confirm_panel.confirmed.connect(_on_ready_confirmed)
 
 
 func _build_loan_panel() -> void:
@@ -340,14 +353,46 @@ func _refresh_bottom_bar(game: GameState, player: PlayerState) -> void:
 			else "Everybody is ready. Starting the year..."
 		)
 
-	# Why the button is off comes from the same rule the authority enforces, so the
-	# greyed-out state can never disagree with it. See docs/architecture.md 5.1.
-	var no_yeehaw: String = _session.why_not_request_yeehaw(_session.local_player_id())
-	_yeehaw_button.disabled = not no_yeehaw.is_empty()
-	_yeehaw_button.tooltip_text = no_yeehaw
-	_yeehaw_note.visible = game.players.size() < YeehawRules.MIN_PLAYERS
+	_refresh_yeehaw(game)
 
 	_refresh_loan_controls(game, player)
+
+
+## One button, two jobs, exactly as the original had it: it asks for a yeehaw
+## until somebody is asking, and then offers to give one instead.
+##
+## Why the button is enabled or not comes from the same rule the authority
+## enforces, so the greyed-out state can never disagree with it
+## (docs/architecture.md 5.1).
+##
+## **One deviation from the original**, which hid the button entirely for the
+## player who asked. Hiding it would reflow the top bar every time somebody
+## asked, which is the fault D37 exists to prevent. It is disabled with a
+## tooltip instead, so the row keeps its shape and the reason is still available.
+func _refresh_yeehaw(game: GameState) -> void:
+	var me: StringName = _session.local_player_id()
+	var asker_id: StringName = game.yeehaw_requested_by
+
+	if game.is_yeehaw_pending():
+		var asker: PlayerState = game.player_by_id(asker_id)
+		var asker_name: String = asker.display_name if asker != null else "Somebody"
+		_yeehaw_button.text = "Give Yeehaw"
+		var no_give: String = _session.why_not_give_yeehaw(me)
+		_yeehaw_button.disabled = not no_give.is_empty()
+		_yeehaw_button.tooltip_text = no_give
+		_yeehaw_note.text = (
+			"You asked for one." if asker_id == me
+			else "%s wants a yeehaw!" % asker_name
+		)
+		_yeehaw_note.visible = true
+		return
+
+	_yeehaw_button.text = "Can I Get a Yeehaw?"
+	var no_ask: String = _session.why_not_request_yeehaw(me)
+	_yeehaw_button.disabled = not no_ask.is_empty()
+	_yeehaw_button.tooltip_text = no_ask
+	_yeehaw_note.text = "needs other players"
+	_yeehaw_note.visible = game.players.size() < YeehawRules.MIN_PLAYERS
 
 
 func _refresh_loan_controls(game: GameState, player: PlayerState) -> void:
@@ -438,10 +483,62 @@ func _on_sell_all_requested(stalk_id: StringName) -> void:
 ## A player who readies by accident in a networked match would otherwise be stuck
 ## waiting for a year they did not want to start, with no way back. The lobby
 ## already works this way.
+##
+## Readying up with a loan payment outstanding asks first. The payment itself
+## stays **advisory** — the player may still go ahead and take the penalty, which
+## is the rule in docs/game-rules.md 9.5. What was missing was that the cost was
+## invisible at the moment of choosing: the nag sat in the bottom bar and was
+## easy to miss, so a player could lose 10% of their net worth without ever
+## noticing there was a decision to make. See docs/decisions.md D53.
 func _on_ready_pressed() -> void:
 	var player: PlayerState = _session.state().player_by_id(_session.local_player_id())
 	var now_ready: bool = player == null or not player.is_ready
+
+	if now_ready and _payment_is_due(player):
+		_ask_about_the_unpaid_loan(player)
+		return
+
 	_session.set_ready(_session.local_player_id(), now_ready)
+
+
+func _payment_is_due(player: PlayerState) -> bool:
+	var game: GameState = _session.state()
+	if game.settings == null or not game.settings.loans_enabled:
+		return false
+	return player != null and player.has_outstanding_loan() and not player.loan.paid_this_year
+
+
+## Names the penalty, because "are you sure?" without a consequence is noise.
+func _ask_about_the_unpaid_loan(player: PlayerState) -> void:
+	var missed_so_far: int = player.loan.missed_payments
+	var penalty: String = (
+		"That is your third miss: your stalks will be seized and you are out."
+		if missed_so_far >= LoanRules.MISSES_BEFORE_DEFAULT - 1
+		else "Your balance will grow by %d%%." % _penalty_percent_for(missed_so_far)
+	)
+	_confirm_panel.ask(
+		"You still owe %s on your loan this year. %s" % [
+			Palette.format_money(player.loan.min_payment), penalty,
+		],
+		"End the year anyway",
+		"Pay first",
+	)
+
+
+## Derived from the multipliers rather than written out again, so the number the
+## player is shown cannot drift from the number they are charged.
+func _penalty_percent_for(missed_so_far: int) -> int:
+	var multiplier: float = (
+		LoanRules.FIRST_MISS_MULTIPLIER
+		if missed_so_far == 0
+		else LoanRules.SECOND_MISS_MULTIPLIER
+	)
+	return int(round((multiplier - 1.0) * 100.0))
+
+
+## The player chose to end the year with the payment outstanding.
+func _on_ready_confirmed() -> void:
+	_session.set_ready(_session.local_player_id(), true)
 
 
 func _on_ready_state_changed(_player_id: StringName, _is_ready: bool) -> void:
@@ -453,8 +550,12 @@ func _on_loan_button_pressed() -> void:
 		_loan_panel.show_panel()
 
 
+## Asks, or answers whoever is asking. The button's label already says which.
 func _on_yeehaw_pressed() -> void:
-	_session.request_yeehaw(_session.local_player_id())
+	if _session.state().is_yeehaw_pending():
+		_session.give_yeehaw(_session.local_player_id())
+	else:
+		_session.request_yeehaw(_session.local_player_id())
 
 
 func _on_borrow_requested(amount: int) -> void:
@@ -468,6 +569,7 @@ func _on_payment_requested(amount: int) -> void:
 # -------------------------------------------------------------- session handlers
 
 ## Somebody asked. Phase 7 adds the sound; for now the message carries it.
+## The button itself is updated by `refresh`, driven by the state change.
 func _on_yeehaw_requested(player_id: StringName) -> void:
 	var asker: PlayerState = _session.state().player_by_id(player_id)
 	if asker == null:
@@ -476,6 +578,7 @@ func _on_yeehaw_requested(player_id: StringName) -> void:
 		_show_info("You asked for a yeehaw.")
 	else:
 		_show_info("%s wants a yeehaw!" % asker.display_name)
+	refresh()
 
 
 func _on_yeehaw_given(giver_id: StringName, receiver_id: StringName) -> void:
@@ -484,6 +587,7 @@ func _on_yeehaw_given(giver_id: StringName, receiver_id: StringName) -> void:
 	if giver == null or receiver == null:
 		return
 	_show_info("%s gave %s a yeehaw!" % [giver.display_name, receiver.display_name])
+	refresh()
 
 
 func _on_player_changed(_player_id: StringName) -> void:
@@ -607,6 +711,12 @@ func _clear_error() -> void:
 
 
 # ------------------------------------------------------------------- for tests
+
+## The confirmation overlay, for tests and for anything that needs to know
+## whether a question is on screen.
+func confirm_panel() -> ConfirmPanel:
+	return _confirm_panel
+
 
 func current_message() -> String:
 	return _error_label.text

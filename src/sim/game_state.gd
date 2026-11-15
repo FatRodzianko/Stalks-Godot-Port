@@ -27,6 +27,13 @@ var history: Array[YearResult] = []
 
 var is_over: bool = false
 
+## Who is currently asking for a yeehaw, or empty when nobody is.
+##
+## **One at a time, and it is state rather than an event**, which is what lets
+## everybody else's button turn into "Give Yeehaw". The original kept exactly
+## this as a pair of synced fields; see docs/game-rules.md 10.
+var yeehaw_requested_by: StringName = &""
+
 
 func _init(game_settings: GameSettings = null) -> void:
 	settings = game_settings
@@ -81,6 +88,10 @@ func players_not_ready() -> Array[StringName]:
 		if not player.is_ready:
 			waiting.append(player.id)
 	return waiting
+
+
+func is_yeehaw_pending() -> bool:
+	return not yeehaw_requested_by.is_empty()
 
 
 func clear_ready_flags() -> void:

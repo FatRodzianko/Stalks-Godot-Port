@@ -111,16 +111,38 @@ func set_ready(player_id: StringName, is_ready: bool) -> String:
 	return ""
 
 
+## Records the request, so that everybody else's button can offer to answer it.
 func request_yeehaw(player_id: StringName) -> String:
-	return YeehawRules.validate_request(player_id, state)
+	var reason: String = YeehawRules.validate_request(player_id, state)
+	if not reason.is_empty():
+		return reason
+	state.yeehaw_requested_by = player_id
+	return ""
 
 
-func give_yeehaw(giver_id: StringName, receiver_id: StringName) -> String:
-	return YeehawRules.validate_give(giver_id, receiver_id, state)
+## Answers the pending request and clears it. `receiver_of_yeehaw()` says who it
+## went to; call it before this, or keep the id yourself.
+func give_yeehaw(giver_id: StringName) -> String:
+	var reason: String = YeehawRules.validate_give(giver_id, state)
+	if not reason.is_empty():
+		return reason
+	state.yeehaw_requested_by = &""
+	return ""
+
+
+## Who a yeehaw given right now would go to, or an empty id.
+func receiver_of_yeehaw() -> StringName:
+	return state.yeehaw_requested_by
 
 
 ## Resolves one year. Call only when every player is ready.
+##
+## An unanswered request does not survive the year. The original left it pending
+## forever, which meant one ignored ask locked the button into "Give Yeehaw" for
+## the rest of the match and nobody could ask again. A new year is the natural
+## place to let it go. See docs/decisions.md D52.
 func advance_year() -> YearResult:
+	state.yeehaw_requested_by = &""
 	return _resolver.advance_year(state, _rng)
 
 

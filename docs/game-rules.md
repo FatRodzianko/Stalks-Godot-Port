@@ -464,11 +464,20 @@ through `RpcPlayBearOrBullSounds("yeehaw")`.
 > an authority check, Yeehaw makes an excellent **first networked feature** to build
 > and prove the RPC path with.
 
-**Ported, Phase 5.** `YeehawRules` holds the two checks; the request and the give
-both go through the session interface, so offline play refuses them with "Yeehaws
-need other players" rather than hiding the button. The self-yeehaw check is
-enforced on the host, and a client cannot route around it: a client names only the
-*receiver*, and the giver is taken from the sender's peer id (decisions.md D45).
+**Ported, Phase 5.** A pending request is **match state**, not an event: one
+request at a time, synced to everybody, exactly as the original kept it. That is
+what lets a single button do both jobs — it reads "Can I Get a Yeehaw?" until
+somebody asks, then "Give Yeehaw" for everyone else.
+
+`YeehawRules` holds the checks. The self-yeehaw rule is enforced on the host and
+a client cannot route around it: the giver comes from the sender's peer id and
+the receiver is whoever is asking, so **neither end of the gesture travels in the
+packet** (decisions.md D45).
+
+Two deliberate differences from the original, both documented: the asker's button
+is disabled rather than hidden, so the top bar does not reflow (D37); and an
+unanswered request is cleared when the year advances, where the original left it
+pending forever and locked the button for the rest of the match (D52).
 
 The sound is **not yet wired** — it arrives with audio in Phase 7. Until then the
 gesture shows as a message line.

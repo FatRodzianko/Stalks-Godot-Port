@@ -34,6 +34,9 @@ extends Node
 const PORT_FLOOR: int = 42400
 const PORT_CEILING: int = 42999
 
+## How many times to try a different port before giving up.
+const PORT_ATTEMPTS: int = 8
+
 ## How long `await_join` waits before giving up. Generous: a loaded CI machine is
 ## slower than a desktop, and a flaky networking test is worse than a slow one.
 const JOIN_TIMEOUT_SECONDS: float = 5.0
@@ -68,9 +71,15 @@ func start(
 	host_name: String = "Host",
 	guest_name: String = "Guest",
 ) -> String:
-	_port = randi_range(PORT_FLOOR, PORT_CEILING)
-
-	var host_result: Dictionary = HostSession.host(_port, settings, library, host_name)
+	# Retry on a taken port rather than failing the test. Ports are picked at
+	# random because one just closed can linger, and with a suite this size a
+	# collision is a matter of when, not if — it cost a red run once already.
+	var host_result: Dictionary = {}
+	for attempt: int in PORT_ATTEMPTS:
+		_port = randi_range(PORT_FLOOR, PORT_CEILING)
+		host_result = HostSession.host(_port, settings, library, host_name)
+		if String(host_result["error"]).is_empty():
+			break
 	if not String(host_result["error"]).is_empty():
 		return String(host_result["error"])
 	host = host_result["session"]

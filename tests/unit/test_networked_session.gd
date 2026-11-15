@@ -150,7 +150,10 @@ func test_giving_a_yeehaw_is_broadcast_to_both_sides() -> void:
 		func(giver: StringName, receiver: StringName) -> void: on_client.append([giver, receiver])
 	)
 
-	_harness.client.give_yeehaw(&"p1", &"p0")
+	# Somebody has to be asking before there is anything to give.
+	_harness.host.request_yeehaw(&"p0")
+	await _harness.settle(self)
+	_harness.client.give_yeehaw(&"p1")
 	await _harness.settle(self)
 
 	assert_eq(on_host, [[&"p1", &"p0"]], "the host should see who gave it to whom")
@@ -170,7 +173,10 @@ func test_the_host_refuses_a_self_yeehaw_from_a_client() -> void:
 		func(_g: StringName, _r: StringName) -> void: given.append(true)
 	)
 
-	_harness.client.give_yeehaw(&"p1", &"p1")
+	# The client asks, then tries to answer its own ask.
+	_harness.client.request_yeehaw(&"p1")
+	await _harness.settle(self)
+	_harness.client.give_yeehaw(&"p1")
 	await _harness.settle(self)
 
 	assert_eq(given.size(), 0, "a self-yeehaw must not be broadcast")

@@ -52,6 +52,8 @@ static func encode_state(state: GameState, for_player_id: StringName) -> Diction
 	return {
 		"year": state.year,
 		"is_over": state.is_over,
+		# Public: everybody's button depends on it.
+		"yeehaw_requested_by": String(state.yeehaw_requested_by),
 		"stalks": stalks,
 		"players": players,
 		"settings": encode_settings(state.settings),
@@ -140,6 +142,7 @@ static func apply_state(
 
 	state.year = int(data.get("year", 0))
 	state.is_over = bool(data.get("is_over", false))
+	state.yeehaw_requested_by = StringName(data.get("yeehaw_requested_by", ""))
 	apply_settings(state, data.get("settings", {}))
 
 	var stalk_data: Array = data["stalks"]

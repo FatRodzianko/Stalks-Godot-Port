@@ -251,8 +251,8 @@ func request_yeehaw(player_id: StringName) -> void:
 	_apply_yeehaw_ask(player_id)
 
 
-func give_yeehaw(giver_id: StringName, receiver_id: StringName) -> void:
-	_apply_yeehaw_give(giver_id, receiver_id)
+func give_yeehaw(giver_id: StringName) -> void:
+	_apply_yeehaw_give(giver_id)
 
 
 # ------------------------------------------------- client requests (over the wire)
@@ -296,13 +296,14 @@ func _on_yeehaw_asked(peer: int) -> void:
 		_apply_yeehaw_ask(player_id)
 
 
-## Note the giver is the *sender*, never a value from the packet. A client can
-## nominate who receives a yeehaw but can never claim to be somebody else giving
-## it, which is what makes "you cannot yeehaw yourself" enforceable.
-func _on_yeehaw_offered(peer: int, receiver_id: StringName) -> void:
+## The giver is the *sender*, and the receiver is whoever is asking. Neither
+## comes from the packet, so a client cannot claim to be somebody else giving one
+## nor nominate who gets it — which is what makes "you cannot yeehaw yourself"
+## enforceable rather than merely checked.
+func _on_yeehaw_offered(peer: int) -> void:
 	var giver_id: StringName = _require_player(peer)
 	if not giver_id.is_empty():
-		_apply_yeehaw_give(giver_id, receiver_id)
+		_apply_yeehaw_give(giver_id)
 
 
 # ------------------------------------------------------------ one path per action
@@ -341,15 +342,20 @@ func _apply_yeehaw_ask(player_id: StringName) -> void:
 		return
 	yeehaw_requested.emit(player_id)
 	_rpc_yeehaw_asked.rpc(String(player_id))
+	# The pending request is state, and every other player's button depends on
+	# it, so the snapshot has to go out too.
+	_broadcast_state(player_id)
 
 
-func _apply_yeehaw_give(giver_id: StringName, receiver_id: StringName) -> void:
-	var reason: String = _authority.give_yeehaw(giver_id, receiver_id)
+func _apply_yeehaw_give(giver_id: StringName) -> void:
+	var receiver_id: StringName = _authority.receiver_of_yeehaw()
+	var reason: String = _authority.give_yeehaw(giver_id)
 	if not reason.is_empty():
 		_reject(giver_id, reason)
 		return
 	yeehaw_given.emit(giver_id, receiver_id)
 	_rpc_yeehaw_given.rpc(String(giver_id), String(receiver_id))
+	_broadcast_state(giver_id)
 
 
 ## The single gate. Called when somebody readies up and when somebody leaves,

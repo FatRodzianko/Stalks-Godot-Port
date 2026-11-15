@@ -183,6 +183,11 @@ retained (D47).
 who is ready; only the host gets a Start button. One screen serves both sides, since
 the difference is entirely about what you are allowed to do.
 
+**Pending yeehaw** — the one outstanding request for a yeehaw, held as match
+state rather than fired and forgotten. It is what lets a single button read "Can I
+Get a Yeehaw?" until somebody asks and "Give Yeehaw" afterwards. Cleared when the
+year advances. See decisions.md D52.
+
 **Kick** — the host removing a player from the lobby. Exists because Start waits
 for everybody to be ready, so somebody who has wandered off would otherwise hold the
 lobby shut; a person can tell the difference between slow and gone, and a rule

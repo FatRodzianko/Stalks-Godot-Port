@@ -1,0 +1,66 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/widgets/confirm_panel.gd" id="1_confirm"]
+
+[node name="ConfirmPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_confirm")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="Centre" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dialog" type="PanelContainer" parent="Centre"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+
+[node name="Body" type="VBoxContainer" parent="Centre/Dialog"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Centre/Dialog/Body"]
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "ARE YOU SURE?"
+horizontal_alignment = 1
+
+[node name="Message" type="Label" parent="Centre/Dialog/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+autowrap_mode = 3
+horizontal_alignment = 1
+
+[node name="Buttons" type="HBoxContainer" parent="Centre/Dialog/Body"]
+layout_mode = 2
+
+[node name="CancelButton" type="Button" parent="Centre/Dialog/Body/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PrimaryButton"
+text = "Go back"
+
+[node name="ConfirmButton" type="Button" parent="Centre/Dialog/Body/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Yes"

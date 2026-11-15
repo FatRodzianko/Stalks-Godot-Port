@@ -366,7 +366,8 @@ func test_the_loan_button_becomes_a_payment_prompt_when_one_is_due() -> void:
 
 
 func test_a_player_can_still_ready_up_with_a_payment_outstanding() -> void:
-	# The prompt is advisory. The game must never take the choice away.
+	# The prompt is advisory. The game must never take the choice away — it now
+	# asks first (D53), but saying yes still goes through.
 	var bits: Array = _playing(true, 2)
 	var screen: Control = bits[1]
 	var session: LocalSession = bits[2]
@@ -377,8 +378,67 @@ func test_a_player_can_still_ready_up_with_a_payment_outstanding() -> void:
 
 	var year_before: int = session.state().year
 	(screen.get_node("%ReadyButton") as Button).pressed.emit()
+	var confirm: ConfirmPanel = screen.confirm_panel()
+	assert_true(confirm.is_open(), "it should ask before costing the player 10%")
+	assert_eq(session.state().year, year_before, "and not advance until answered")
+
+	(confirm.get_node("%ConfirmButton") as Button).pressed.emit()
 	assert_eq(session.state().year, year_before + 1,
 		"readying up with a payment due must be allowed")
+
+
+func test_the_prompt_lets_a_player_go_back_and_pay() -> void:
+	var bits: Array = _playing(true, 2)
+	var screen: Control = bits[1]
+	var session: LocalSession = bits[2]
+	session.request_loan(&"p0", LoanRules.max_loan_for(
+		session.state().player_by_id(&"p0")
+	))
+	(screen.get_node("%ReadyButton") as Button).pressed.emit()
+
+	var year_before: int = session.state().year
+	(screen.get_node("%ReadyButton") as Button).pressed.emit()
+	var confirm: ConfirmPanel = screen.confirm_panel()
+	(confirm.get_node("%CancelButton") as Button).pressed.emit()
+
+	assert_false(confirm.is_open(), "the prompt should close")
+	assert_eq(session.state().year, year_before, "and nothing should have happened")
+	assert_false(
+		session.state().player_by_id(&"p0").is_ready,
+		"the player should not be left readied",
+	)
+
+
+func test_the_prompt_names_what_it_will_cost() -> void:
+	# "Are you sure?" without a consequence is noise.
+	var bits: Array = _playing(true, 2)
+	var screen: Control = bits[1]
+	var session: LocalSession = bits[2]
+	session.request_loan(&"p0", LoanRules.max_loan_for(
+		session.state().player_by_id(&"p0")
+	))
+	(screen.get_node("%ReadyButton") as Button).pressed.emit()
+	(screen.get_node("%ReadyButton") as Button).pressed.emit()
+
+	var message: String = screen.confirm_panel().get_node("%Message").text
+	assert_string_contains(message, "10%", "the first miss costs 10%")
+
+
+func test_readying_up_without_a_loan_asks_nothing() -> void:
+	var bits: Array = _playing(true, 2)
+	var screen: Control = bits[1]
+	var session: LocalSession = bits[2]
+
+	var year_before: int = session.state().year
+	(screen.get_node("%ReadyButton") as Button).pressed.emit()
+
+	assert_false(
+		screen.confirm_panel().is_open(),
+		"nothing is owed, so there is nothing to confirm",
+	)
+	# Solo, so readying is the only thing the year was waiting on and the flag
+	# is cleared again by the advance.
+	assert_eq(session.state().year, year_before + 1, "it should just go ahead")
 
 
 func test_paying_the_minimum_through_the_panel_reduces_the_balance() -> void:

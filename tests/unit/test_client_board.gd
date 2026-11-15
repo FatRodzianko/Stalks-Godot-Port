@@ -337,3 +337,98 @@ func test_the_board_shows_another_players_readiness() -> void:
 		host_row.get_node("%ReadyDot").modulate, Palette.BULL,
 		"the other player's dot should turn ready",
 	)
+
+
+# --------------------------------------------------------------- yeehaw, both ways
+#
+# Reported: "one player presses 'Can I get a yeehaw?' and there's a message, but
+# the button does not change to 'give' for the other player." A pending request
+# was a passing signal, so there was nothing left to answer. It is match state
+# now, exactly as the original kept it. See docs/game-rules.md 10.
+
+func test_asking_turns_the_other_players_button_into_give() -> void:
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _client_board()
+	var button: Button = board.get_node("%YeehawButton")
+	assert_eq(button.text, "Can I Get a Yeehaw?")
+
+	_harness.host.request_yeehaw(&"p0")
+	await _harness.settle(self)
+
+	assert_eq(button.text, "Give Yeehaw", "the client should be offered the answer")
+	assert_false(button.disabled, "and be able to press it")
+
+
+func test_the_asker_cannot_answer_their_own_ask() -> void:
+	# The original hid the button for the asker. This disables it instead, to
+	# keep the top bar from reflowing (D37), with the reason in the tooltip.
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _client_board()
+
+	_harness.client.request_yeehaw(&"p1")
+	await _harness.settle(self)
+
+	var button: Button = board.get_node("%YeehawButton")
+	assert_eq(button.text, "Give Yeehaw")
+	assert_true(button.disabled, "you cannot yeehaw yourself")
+	assert_string_contains(button.tooltip_text.to_lower(), "yourself")
+
+
+func test_pressing_give_answers_the_request_for_everybody() -> void:
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _client_board()
+	var given: Array = []
+	_harness.host.yeehaw_given.connect(
+		func(giver: StringName, receiver: StringName) -> void: given.append([giver, receiver])
+	)
+
+	_harness.host.request_yeehaw(&"p0")
+	await _harness.settle(self)
+	board.get_node("%YeehawButton").pressed.emit()
+	await _harness.settle(self)
+
+	assert_eq(given, [[&"p1", &"p0"]], "the client gave one to the host")
+	assert_false(_harness.host.state().is_yeehaw_pending(), "and the ask is answered")
+	assert_eq(
+		board.get_node("%YeehawButton").text, "Can I Get a Yeehaw?",
+		"the button should go back to asking",
+	)
+
+
+func test_only_one_request_is_pending_at_a_time() -> void:
+	if not await _started_match():
+		return
+	_harness.host.request_yeehaw(&"p0")
+	await _harness.settle(self)
+
+	var refusals: Array[String] = []
+	_harness.client.action_rejected.connect(
+		func(_id: StringName, reason: String) -> void: refusals.append(reason)
+	)
+	_harness.client.request_yeehaw(&"p1")
+	await _harness.settle(self)
+
+	assert_eq(_harness.host.state().yeehaw_requested_by, &"p0", "the first ask stands")
+	assert_eq(refusals.size(), 1, "and the second is refused")
+
+
+func test_an_unanswered_request_does_not_outlive_the_year() -> void:
+	# The original left it pending forever, so one ignored ask locked the button
+	# into "Give Yeehaw" for the rest of the match. See D52.
+	if not await _started_match():
+		return
+	_harness.host.request_yeehaw(&"p0")
+	await _harness.settle(self)
+	assert_true(_harness.host.state().is_yeehaw_pending())
+
+	_harness.client.set_ready(&"p1", true)
+	await _harness.settle(self)
+	_harness.host.set_ready(&"p0", true)
+	await _harness.settle(self)
+
+	assert_eq(_harness.host.state().year, 1)
+	assert_false(_harness.host.state().is_yeehaw_pending(), "a new year clears it")
+	assert_false(_harness.client.state().is_yeehaw_pending(), "on both sides")
