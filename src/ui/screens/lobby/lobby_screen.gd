@@ -122,8 +122,9 @@ func _refresh_for_host() -> void:
 	else:
 		# Named rather than counted, and paired with the way out: the host can
 		# remove somebody who has wandered off rather than waiting indefinitely.
-		_status.text = "Waiting on %s. Remove them with X if they have gone." % _listed(
-			waiting
+		_status.text = (
+			"Waiting on %s. Remove them with X if they have gone."
+			% Palette.list_names(waiting)
 		)
 
 
@@ -138,13 +139,6 @@ func _refresh_for_guest() -> void:
 	)
 
 
-## "Ann", "Ann and Bob", "Ann, Bob and Cal" — names read better than a count when
-## the host is deciding whether to wait for somebody.
-static func _listed(names: PackedStringArray) -> String:
-	if names.size() == 1:
-		return names[0]
-	var all_but_last: PackedStringArray = names.slice(0, names.size() - 1)
-	return "%s and %s" % [", ".join(all_but_last), names[names.size() - 1]]
 
 
 func _attach() -> void:
@@ -220,6 +214,13 @@ func _clear_list() -> void:
 	for child: Node in _player_list.get_children():
 		_player_list.remove_child(child)
 		child.queue_free()
+
+
+## Presses the ready button as a player would. Only for the `--ready` launch
+## flag: a scripted run that called the session directly would miss anything
+## wrong with the button itself.
+func press_ready_for_testing() -> void:
+	_ready_button.pressed.emit()
 
 
 ## Only a guest reaches this — the host's button is hidden.

@@ -51,6 +51,17 @@ static func for_mood(mood: MarketMood.Value) -> Color:
 
 ## A signed figure written the way a market board writes it: +15, -8, or an
 ## em dash when it did not move.
+## "Ann", "Ann and Bob", "Ann, Bob and Cal". Names read better than a count
+## when the reader is deciding whether to wait for somebody in particular.
+static func list_names(names: PackedStringArray) -> String:
+	if names.is_empty():
+		return ""
+	if names.size() == 1:
+		return names[0]
+	var all_but_last: PackedStringArray = names.slice(0, names.size() - 1)
+	return "%s and %s" % [", ".join(all_but_last), names[names.size() - 1]]
+
+
 static func format_change(delta: int) -> String:
 	if delta > 0:
 		return "+%d" % delta

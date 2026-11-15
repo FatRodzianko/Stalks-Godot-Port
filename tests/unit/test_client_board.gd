@@ -186,3 +186,154 @@ func test_main_returns_to_the_menu_when_a_connection_ends() -> void:
 		"carrying the reason, or the player has no idea what happened",
 	)
 	assert_string_contains(menu.get_node("%ContentWarning").text.to_lower(), "removed you")
+
+
+# ---------------------------------------------- can a client actually play?
+#
+# Reported from a real two-window game: "I could join the lobby, but couldn't
+# interact with the game at all." Nothing drove the client's board through its
+# own controls, so there was nothing to catch it.
+
+func _client_board() -> GameplayScreen:
+	var board: GameplayScreen = GameplayScene.instantiate()
+	board.setup(_harness.client)
+	add_child_autofree(board)
+	await wait_process_frames(2)
+	return board
+
+
+func test_a_client_can_ready_up_from_the_board() -> void:
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _client_board()
+
+	var ready_button: Button = board.get_node("%ReadyButton")
+	gut.p("client ready button disabled: %s" % ready_button.disabled)
+	ready_button.pressed.emit()
+	await _harness.settle(self)
+
+	assert_true(
+		_harness.host.state().player_by_id(&"p1").is_ready,
+		"the host should have recorded the client's readiness",
+	)
+
+
+func test_a_clients_board_opens_for_trading_in_year_one() -> void:
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _client_board()
+
+	# Both ready, so the year advances.
+	board.get_node("%ReadyButton").pressed.emit()
+	await _harness.settle(self)
+	_harness.host.set_ready(&"p0", true)
+	await _harness.settle(self)
+	await wait_process_frames(2)
+
+	gut.p("host year: %d" % _harness.host.state().year)
+	gut.p("client year: %d" % _harness.client.state().year)
+	assert_eq(_harness.client.state().year, 1, "the client should have advanced too")
+
+	var first_row: StalkRow = board.get_node("%StalkList").get_child(0)
+	var buy_button: Button = first_row.get_node("%BuyButton")
+	var amount: LineEdit = first_row.get_node("%Amount")
+	gut.p("client buy disabled: %s, field editable: %s" % [buy_button.disabled, amount.editable])
+	assert_false(buy_button.disabled, "a client should be able to buy in year 1")
+	assert_true(amount.editable, "and type an amount")
+
+
+func test_a_client_can_buy_through_the_real_controls() -> void:
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _client_board()
+	board.get_node("%ReadyButton").pressed.emit()
+	await _harness.settle(self)
+	_harness.host.set_ready(&"p0", true)
+	await _harness.settle(self)
+	await wait_process_frames(2)
+
+	var first_row: StalkRow = board.get_node("%StalkList").get_child(0)
+	var amount: LineEdit = first_row.get_node("%Amount")
+	amount.text = "2"
+	amount.text_changed.emit("2")
+	first_row.get_node("%BuyButton").pressed.emit()
+	await _harness.settle(self)
+
+	assert_eq(
+		_harness.host.state().player_by_id(&"p1").shares_of(first_row.stalk_id()), 2,
+		"the host should have applied the client's purchase",
+	)
+
+
+# ------------------------------------------------ the board must answer a press
+#
+# "Couldn't interact with the game at all." The board never connected
+# `ready_state_changed`, so pressing Ready changed nothing on screen: the button
+# kept its old label, the rankings did not update, and no message appeared. In a
+# solo game the year advances instantly, so it never showed.
+
+func test_the_board_says_you_are_ready_after_you_press_it() -> void:
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _client_board()
+	var ready_button: Button = board.get_node("%ReadyButton")
+	assert_eq(ready_button.text, "Ready for New Year")
+
+	ready_button.pressed.emit()
+	await _harness.settle(self)
+
+	assert_eq(ready_button.text, "Waiting...", "the button must acknowledge the press")
+
+
+func test_the_board_names_who_it_is_waiting_for() -> void:
+	# A screen that simply stops responding reads as broken rather than waiting.
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _client_board()
+
+	board.get_node("%ReadyButton").pressed.emit()
+	await _harness.settle(self)
+
+	assert_string_contains(board.get_node("%InfoLabel").text, "Host")
+
+
+func test_readying_up_can_be_undone_from_the_board() -> void:
+	# Readying by accident would otherwise trap you waiting for a year you did
+	# not want to start.
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _client_board()
+	var ready_button: Button = board.get_node("%ReadyButton")
+
+	ready_button.pressed.emit()
+	await _harness.settle(self)
+	assert_true(_harness.host.state().player_by_id(&"p1").is_ready)
+
+	ready_button.pressed.emit()
+	await _harness.settle(self)
+
+	assert_false(_harness.host.state().player_by_id(&"p1").is_ready, "un-readied")
+	assert_eq(ready_button.text, "Ready for New Year", "and the button says so")
+
+
+func test_the_board_shows_another_players_readiness() -> void:
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _client_board()
+
+	_harness.host.set_ready(&"p0", true)
+	await _harness.settle(self)
+
+	var host_row: RankingRow = null
+	for row: RankingRow in board.get_node("%RankingList").get_children():
+		if row.get_node("%Name").text.begins_with("Host"):
+			host_row = row
+	assert_not_null(host_row, "the host should be in the rankings")
+	if host_row == null:
+		return
+	# The dot is green when ready, red when not. Asserting the colour rather
+	# than a label because that is what a player actually reads here.
+	assert_eq(
+		host_row.get_node("%ReadyDot").modulate, Palette.BULL,
+		"the other player's dot should turn ready",
+	)

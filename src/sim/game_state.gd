@@ -71,6 +71,18 @@ func all_players_ready() -> bool:
 	return true
 
 
+## Ids of the players who have not readied up, in roster order.
+##
+## What the UI needs to say "waiting on Ann and Bob" rather than leaving a
+## screen that looks broken while it waits.
+func players_not_ready() -> Array[StringName]:
+	var waiting: Array[StringName] = []
+	for player: PlayerState in players:
+		if not player.is_ready:
+			waiting.append(player.id)
+	return waiting
+
+
 func clear_ready_flags() -> void:
 	for player: PlayerState in players:
 		player.is_ready = false

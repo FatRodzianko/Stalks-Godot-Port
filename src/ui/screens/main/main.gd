@@ -154,17 +154,21 @@ func _show_lobby() -> void:
 	_swap(lobby)
 	# After the swap, so the screen is in the tree and its @onready nodes exist.
 	lobby.setup(_session, _listening_port)
-	_apply_lobby_automation()
+	_apply_lobby_automation(lobby)
 
 
 ## The `--ready` / `--autostart` development conveniences. Does nothing unless
 ## those flags were given, which they never are outside a debug build.
-func _apply_lobby_automation() -> void:
+##
+## `--ready` presses the lobby's own button rather than calling the session, so
+## that a scripted two-process run exercises the same path a player does. An
+## automation that takes a shortcut past the UI cannot reproduce a UI bug.
+func _apply_lobby_automation(lobby: LobbyScreen) -> void:
 	if _launch.auto_ready:
 		var client: ClientSession = _session as ClientSession
 		if client != null:
 			client.joined.connect(
-				func(player_id: StringName) -> void: client.set_ready(player_id, true)
+				func(_player_id: StringName) -> void: lobby.press_ready_for_testing()
 			)
 	if not _launch.auto_start:
 		return

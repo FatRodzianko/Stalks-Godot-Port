@@ -906,6 +906,37 @@ the board.
 
 ---
 
+### D51 — Readying up is reversible, and always visibly acknowledged
+**2026-11-14 · Accepted**
+
+Pressing Ready on the playing screen toggles rather than latching, and the board
+reacts to `ready_state_changed` — the button becomes "Waiting...", the other
+players' dots update, and the status line names who is being waited for.
+
+**Why.** Reported from a real two-window game as "couldn't interact with the game
+at all". The board never connected `ready_state_changed`, so pressing Ready
+changed nothing whatsoever on screen. In a solo game the year advances the
+instant you press it, so the gap never showed; in a networked one the screen
+simply stopped responding, which reads as broken rather than as waiting.
+
+Two separate faults, which is why the symptom was so total: no acknowledgement
+that the press registered, and no way to undo it. `_on_ready_pressed` hard-set
+`true`, so a player who readied by accident was stuck waiting for a year they
+did not want to start.
+
+**What it rules out.** Readiness can no longer be treated as a one-way latch, so
+anything that assumes "ready means ready for good" is wrong. That is the right
+way round: the lobby already toggles, and the two screens disagreeing about what
+the same button means would be worse.
+
+**The general lesson, which is the valuable part.** Solo play hides every bug of
+this shape, because in solo the local player is the only one and every action
+resolves immediately. Any control whose effect depends on *another* player needs
+its own test with a real second peer. Four tests in `test_client_board.gd` now
+cover this one, and all four were confirmed to fail without the fix.
+
+---
+
 ### D50 — A screen stops listening the moment it leaves the tree
 **2026-11-14 · Accepted**
 

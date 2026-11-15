@@ -513,10 +513,13 @@ func test_the_host_alone_is_told_they_can_still_start() -> void:
 
 
 func test_several_waiting_players_are_listed_readably() -> void:
-	assert_eq(LobbyScreen._listed(PackedStringArray(["Ann"])), "Ann")
-	assert_eq(LobbyScreen._listed(PackedStringArray(["Ann", "Bob"])), "Ann and Bob")
+	# Shared with the playing screen, which says the same thing while waiting
+	# for a year to start.
+	assert_eq(Palette.list_names(PackedStringArray([])), "")
+	assert_eq(Palette.list_names(PackedStringArray(["Ann"])), "Ann")
+	assert_eq(Palette.list_names(PackedStringArray(["Ann", "Bob"])), "Ann and Bob")
 	assert_eq(
-		LobbyScreen._listed(PackedStringArray(["Ann", "Bob", "Cal"])),
+		Palette.list_names(PackedStringArray(["Ann", "Bob", "Cal"])),
 		"Ann, Bob and Cal",
 	)
 

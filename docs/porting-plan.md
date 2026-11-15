@@ -335,6 +335,21 @@ Phase 8 below.
   disconnect.
 - 44 tests in `test_lobby_screen.gd`, driving the real controls.
 
+**Found by actually playing two windows**, after the suite was green. Each one
+was invisible to the tests for the same underlying reason — solo play hides
+anything that depends on a second player:
+
+- The client died on Start: a swapped-out lobby still reacting to the state
+  broadcast that follows (D50).
+- A kicked player stayed sitting in the lobby, with only a status line to say
+  otherwise (D50).
+- The board never acknowledged a Ready press, so a client could reach the match
+  and find nothing responded at all (D51).
+
+The lesson is recorded in D51: any control whose effect depends on another
+player needs a test with a real second peer, because solo play will never show
+the fault.
+
 **Still open in Phase 5:** the yeehaw *sound* (Phase 7, with the rest of the
 audio), and a control for *giving* a yeehaw — the request path is wired to the
 button, but choosing who to give one to has no UI yet.

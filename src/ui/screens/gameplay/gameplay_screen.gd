@@ -107,6 +107,10 @@ func _attach(session: GameSession) -> void:
 		session.game_over.connect(_on_game_over)
 		session.yeehaw_requested.connect(_on_yeehaw_requested)
 		session.yeehaw_given.connect(_on_yeehaw_given)
+		# Without this the board does not move when anybody readies up. In a solo
+		# game the year advances instantly so it never showed; in a networked one
+		# it made the whole screen look dead while it waited.
+		session.ready_state_changed.connect(_on_ready_state_changed)
 
 	_build_stalk_rows()
 	_build_loan_panel()
@@ -133,6 +137,7 @@ func _detach() -> void:
 	_session.game_over.disconnect(_on_game_over)
 	_session.yeehaw_requested.disconnect(_on_yeehaw_requested)
 	_session.yeehaw_given.disconnect(_on_yeehaw_given)
+	_session.ready_state_changed.disconnect(_on_ready_state_changed)
 
 
 func _exit_tree() -> void:
@@ -297,6 +302,10 @@ func _refresh_bottom_bar(game: GameState, player: PlayerState) -> void:
 	if game.is_over:
 		_ready_button.text = "Game Over"
 		_ready_button.disabled = true
+	elif player != null and player.is_ready:
+		# Still enabled: pressing it again un-readies.
+		_ready_button.disabled = false
+		_ready_button.text = "Waiting..."
 	else:
 		_ready_button.disabled = false
 		_ready_button.text = (
@@ -315,6 +324,21 @@ func _refresh_bottom_bar(game: GameState, player: PlayerState) -> void:
 		)
 	elif game.is_over:
 		_info_label.text = "The game is over."
+
+	# Once you are ready there is nothing left to do but wait, so say who for.
+	# Without this the screen simply stops responding to you, which reads as
+	# broken rather than as waiting.
+	if player != null and player.is_ready and not game.is_over:
+		var waiting: PackedStringArray = []
+		for other_id: StringName in game.players_not_ready():
+			var other: PlayerState = game.player_by_id(other_id)
+			if other != null:
+				waiting.append(other.display_name)
+		_info_label.text = (
+			"Waiting for %s." % Palette.list_names(waiting)
+			if not waiting.is_empty()
+			else "Everybody is ready. Starting the year..."
+		)
 
 	# Why the button is off comes from the same rule the authority enforces, so the
 	# greyed-out state can never disagree with it. See docs/architecture.md 5.1.
@@ -409,8 +433,19 @@ func _on_sell_all_requested(stalk_id: StringName) -> void:
 		)
 
 
+## Toggles, rather than only setting true.
+##
+## A player who readies by accident in a networked match would otherwise be stuck
+## waiting for a year they did not want to start, with no way back. The lobby
+## already works this way.
 func _on_ready_pressed() -> void:
-	_session.set_ready(_session.local_player_id(), true)
+	var player: PlayerState = _session.state().player_by_id(_session.local_player_id())
+	var now_ready: bool = player == null or not player.is_ready
+	_session.set_ready(_session.local_player_id(), now_ready)
+
+
+func _on_ready_state_changed(_player_id: StringName, _is_ready: bool) -> void:
+	refresh()
 
 
 func _on_loan_button_pressed() -> void:
