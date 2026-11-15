@@ -33,6 +33,10 @@ var _listening_port: int = 0
 ## conveniences. MENU unless flags were given.
 var _launch: LaunchArgs = LaunchArgs.new()
 
+## The lobby `--ready` should press the button on. Held because the handler is
+## a named method rather than a closure that could capture it.
+var _automated_lobby: LobbyScreen
+
 ## Steam, created the first time somebody asks for it and kept for the life of
 ## the process. Never an autoload: a game played offline, and every test run,
 ## must never touch Steam at all. See docs/decisions.md D59.
@@ -270,21 +274,30 @@ func _apply_lobby_automation(lobby: LobbyScreen) -> void:
 	if _launch.auto_ready:
 		var client: ClientSession = _session as ClientSession
 		if client != null:
-			client.joined.connect(
-				func(_player_id: StringName) -> void: lobby.press_ready_for_testing()
-			)
-	if not _launch.auto_start:
-		return
+			_automated_lobby = lobby
+			client.joined.connect(_on_automation_joined)
+
+	if _launch.auto_start:
+		var host: HostSession = _session as HostSession
+		if host != null:
+			host.ready_state_changed.connect(_on_automation_ready_changed)
+
+
+## `--ready`: press the lobby's own button as soon as this client is seated.
+func _on_automation_joined(_player_id: StringName) -> void:
+	if _automated_lobby != null:
+		_automated_lobby.press_ready_for_testing()
+
+
+## `--autostart`: begin as soon as the gate allows it. Readiness is the only
+## thing the gate waits on once somebody has joined, so this is the only moment
+## worth re-checking.
+func _on_automation_ready_changed(_player_id: StringName, _is_ready: bool) -> void:
 	var host: HostSession = _session as HostSession
 	if host == null:
 		return
-	# Try whenever readiness changes, since that is the only thing the gate waits
-	# on once somebody has joined.
-	host.ready_state_changed.connect(
-		func(_id: StringName, _ready: bool) -> void:
-			if host.why_not_start().is_empty() and host.state().players.size() > 1:
-				host.start_match()
-	)
+	if host.why_not_start().is_empty() and host.state().players.size() > 1:
+		host.start_match()
 
 
 ## Kicked, or the host quit. Back to the menu, carrying the reason: a player

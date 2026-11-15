@@ -16,8 +16,10 @@ signal join_requested(lobby_id: int)
 var _lobby_id: int = 0
 
 
+## Godot calls this once, when the row has been created and added to the
+## screen. It only wires the button to its handler.
 func _ready() -> void:
-	_join_button.pressed.connect(func() -> void: join_requested.emit(_lobby_id))
+	_join_button.pressed.connect(_on_join_button_pressed)
 
 
 ## `lobby` is one entry from `SteamService.lobby_list`.
@@ -36,3 +38,8 @@ func display(lobby: Dictionary) -> void:
 
 func lobby_id() -> int:
 	return _lobby_id
+
+
+## Somebody clicked JOIN on this row.
+func _on_join_button_pressed() -> void:
+	join_requested.emit(_lobby_id)

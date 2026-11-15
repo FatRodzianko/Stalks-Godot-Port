@@ -34,11 +34,9 @@ static func validate_request(player_id: StringName, state: GameState) -> String:
 		return "Yeehaws need other players."
 	if state.is_yeehaw_pending():
 		var asker: PlayerState = state.player_by_id(state.yeehaw_requested_by)
-		return (
-			"%s is already asking for one." % asker.display_name
-			if asker != null
-			else "Somebody is already asking for one."
-		)
+		if asker == null:
+			return "Somebody is already asking for one."
+		return "%s is already asking for one." % asker.display_name
 	return ""
 
 

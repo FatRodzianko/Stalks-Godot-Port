@@ -20,8 +20,11 @@ signal kick_requested(player_id: StringName)
 var _player_id: StringName = &""
 
 
+## Godot calls this once, when the row has been created and added to the
+## screen. Nothing to do with a player "readying up" — that is the game's own
+## word, and this is Godot's. All it does is wire the button to its handler.
 func _ready() -> void:
-	_kick_button.pressed.connect(func() -> void: kick_requested.emit(_player_id))
+	_kick_button.pressed.connect(_on_kick_button_pressed)
 
 
 ## `is_you` marks the local player, and `is_host` marks player 0. Both are shown
@@ -61,3 +64,9 @@ func display(
 
 func player_id() -> StringName:
 	return _player_id
+
+
+## The host clicked the X on this row. The row does not know what removing a
+## player involves; it says who was clicked and the lobby screen decides.
+func _on_kick_button_pressed() -> void:
+	kick_requested.emit(_player_id)

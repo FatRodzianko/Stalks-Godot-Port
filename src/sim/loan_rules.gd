@@ -184,11 +184,9 @@ static func process_year_end(player: PlayerState) -> LoanYearChange:
 			_default(player, loan, change)
 			return change
 
-		var multiplier: float = (
-			FIRST_MISS_MULTIPLIER
-			if loan.missed_payments == 1
-			else SECOND_MISS_MULTIPLIER
-		)
+		var multiplier: float = SECOND_MISS_MULTIPLIER
+		if loan.missed_payments == 1:
+			multiplier = FIRST_MISS_MULTIPLIER
 		var penalised: int = int(loan.balance * multiplier)
 		change.penalty_added = penalised - loan.balance
 		loan.balance = penalised

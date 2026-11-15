@@ -23,8 +23,8 @@ var _local_player_id: StringName = &""
 
 
 func _ready() -> void:
-	_again_button.pressed.connect(func() -> void: play_again_requested.emit())
-	_menu_button.pressed.connect(func() -> void: menu_requested.emit())
+	_again_button.pressed.connect(_on_again_button_pressed)
+	_menu_button.pressed.connect(_on_menu_button_pressed)
 	if _state != null:
 		_render()
 
@@ -102,3 +102,13 @@ func detail_text() -> String:
 
 func ranking_count() -> int:
 	return _ranking_list.get_child_count()
+
+
+## "Play again" — a new match on a fresh seed, not a replay. See decisions.md
+## D38. This screen only reports the click; Main decides what it means.
+func _on_again_button_pressed() -> void:
+	play_again_requested.emit()
+
+
+func _on_menu_button_pressed() -> void:
+	menu_requested.emit()

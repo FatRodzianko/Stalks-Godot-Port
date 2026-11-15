@@ -66,7 +66,7 @@ func _ready() -> void:
 	_solo_tab.pressed.connect(_on_solo_tab)
 	_host_tab.pressed.connect(_on_host_tab)
 	_join_tab.pressed.connect(_on_join_tab)
-	_steam_button.pressed.connect(steam_requested.emit)
+	_steam_button.pressed.connect(_on_steam_button_pressed)
 
 	_port_spin.min_value = 1024
 	_port_spin.max_value = 65535
@@ -172,6 +172,10 @@ func _on_host_tab() -> void:
 
 func _on_join_tab() -> void:
 	_show_mode(Mode.JOIN)
+
+
+func _on_steam_button_pressed() -> void:
+	steam_requested.emit()
 
 
 func _on_start_pressed() -> void:

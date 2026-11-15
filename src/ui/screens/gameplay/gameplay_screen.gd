@@ -333,11 +333,10 @@ func _refresh_bottom_bar(game: GameState, player: PlayerState) -> void:
 		_ready_button.text = "Waiting..."
 	else:
 		_ready_button.disabled = false
-		_ready_button.text = (
-			"Finish Year %d" % game.settings.max_years
-			if game.year >= game.settings.max_years
-			else "Ready for New Year"
-		)
+		if game.year >= game.settings.max_years:
+			_ready_button.text = "Finish Year %d" % game.settings.max_years
+		else:
+			_ready_button.text = "Ready for New Year"
 
 	# Year 0 is the opening position: prices are all at their starting value and
 	# no trading is allowed until everyone readies up. Straight from the original.
@@ -359,11 +358,10 @@ func _refresh_bottom_bar(game: GameState, player: PlayerState) -> void:
 			var other: PlayerState = game.player_by_id(other_id)
 			if other != null:
 				waiting.append(other.display_name)
-		_info_label.text = (
-			"Waiting for %s." % Palette.list_names(waiting)
-			if not waiting.is_empty()
-			else "Everybody is ready. Starting the year..."
-		)
+		if waiting.is_empty():
+			_info_label.text = "Everybody is ready. Starting the year..."
+		else:
+			_info_label.text = "Waiting for %s." % Palette.list_names(waiting)
 
 	_refresh_yeehaw(game)
 
@@ -523,11 +521,11 @@ func _payment_is_due(player: PlayerState) -> bool:
 ## Names the penalty, because "are you sure?" without a consequence is noise.
 func _ask_about_the_unpaid_loan(player: PlayerState) -> void:
 	var missed_so_far: int = player.loan.missed_payments
-	var penalty: String = (
-		"That would be your third miss: your stalks are seized and you are out."
-		if missed_so_far >= LoanRules.MISSES_BEFORE_DEFAULT - 1
-		else "Your balance will grow by %d%%." % _penalty_percent_for(missed_so_far)
+	var penalty: String = "Your balance will grow by %d%%." % _penalty_percent_for(
+		missed_so_far
 	)
+	if missed_so_far >= LoanRules.MISSES_BEFORE_DEFAULT - 1:
+		penalty = "That would be your third miss: your stalks are seized and you are out."
 	_confirm_panel.ask(
 		"You still owe %s on your loan this year. %s%s" % [
 			Palette.format_money(player.loan.min_payment),
@@ -550,11 +548,9 @@ func _misses_so_far(missed: int) -> String:
 ## Derived from the multipliers rather than written out again, so the number the
 ## player is shown cannot drift from the number they are charged.
 func _penalty_percent_for(missed_so_far: int) -> int:
-	var multiplier: float = (
-		LoanRules.FIRST_MISS_MULTIPLIER
-		if missed_so_far == 0
-		else LoanRules.SECOND_MISS_MULTIPLIER
-	)
+	var multiplier: float = LoanRules.SECOND_MISS_MULTIPLIER
+	if missed_so_far == 0:
+		multiplier = LoanRules.FIRST_MISS_MULTIPLIER
 	return int(round((multiplier - 1.0) * 100.0))
 
 

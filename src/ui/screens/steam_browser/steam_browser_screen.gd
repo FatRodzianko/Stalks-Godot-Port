@@ -43,7 +43,7 @@ var _pending_lobby: int = 0
 func _ready() -> void:
 	_host_button.pressed.connect(_on_host_pressed)
 	_refresh_button.pressed.connect(_on_refresh_pressed)
-	_back_button.pressed.connect(back_requested.emit)
+	_back_button.pressed.connect(_on_back_button_pressed)
 	if _service != null:
 		_attach()
 
@@ -101,6 +101,10 @@ func _show_unavailable(reason: String) -> void:
 	_refresh_button.disabled = true
 	_empty.visible = false
 	_clear_list()
+
+
+func _on_back_button_pressed() -> void:
+	back_requested.emit()
 
 
 func _on_host_pressed() -> void:

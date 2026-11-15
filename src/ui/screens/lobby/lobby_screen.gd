@@ -50,7 +50,7 @@ var _listening_port: int = 0
 func _ready() -> void:
 	_ready_button.pressed.connect(_on_ready_pressed)
 	_start_button.pressed.connect(_on_start_pressed)
-	_leave_button.pressed.connect(leave_requested.emit)
+	_leave_button.pressed.connect(_on_leave_button_pressed)
 	if _session != null:
 		_attach()
 
@@ -132,12 +132,12 @@ func _refresh_for_host() -> void:
 func _refresh_for_guest() -> void:
 	var local: PlayerState = _session.state().player_by_id(_session.local_player_id())
 	var is_ready: bool = local != null and local.is_ready
-	_ready_button.text = "NOT READY" if is_ready else "READY"
-	_status.text = (
-		"The host decides when to begin."
-		if is_ready
-		else "Tell the host you are ready."
-	)
+	if is_ready:
+		_ready_button.text = "NOT READY"
+		_status.text = "The host decides when to begin."
+	else:
+		_ready_button.text = "READY"
+		_status.text = "Tell the host you are ready."
 
 
 
@@ -151,9 +151,9 @@ func _attach() -> void:
 	if _host != null:
 		_host.player_joined.connect(_on_roster_changed)
 		_host.player_left.connect(_on_roster_changed)
-		_host.match_started.connect(play_requested.emit)
+		_host.match_started.connect(_on_match_started)
 	if _client != null:
-		_client.match_started.connect(play_requested.emit)
+		_client.match_started.connect(_on_match_started)
 		_client.connection_lost.connect(_on_connection_lost)
 
 	refresh()
@@ -181,9 +181,9 @@ func _detach() -> void:
 	if _host != null:
 		_host.player_joined.disconnect(_on_roster_changed)
 		_host.player_left.disconnect(_on_roster_changed)
-		_host.match_started.disconnect(play_requested.emit)
+		_host.match_started.disconnect(_on_match_started)
 	if _client != null:
-		_client.match_started.disconnect(play_requested.emit)
+		_client.match_started.disconnect(_on_match_started)
 		_client.connection_lost.disconnect(_on_connection_lost)
 
 
@@ -274,6 +274,18 @@ func _on_action_rejected(_player_id: StringName, reason: String) -> void:
 ## it. Leaving a kicked player sitting in a lobby they are no longer part of —
 ## which is what this used to do — is worse than no message at all, because the
 ## list keeps showing players they cannot see any more.
+## The player clicked LEAVE. What leaving means — closing a server or
+## disconnecting a client — is the screen host's business, not this screen's.
+func _on_leave_button_pressed() -> void:
+	leave_requested.emit()
+
+
+## The match has begun, either because this host started it or because the host
+## told this client. Either way the screen host should show the board.
+func _on_match_started() -> void:
+	play_requested.emit()
+
+
 func _on_connection_lost(reason: String) -> void:
 	_status.text = reason
 	_ready_button.disabled = true

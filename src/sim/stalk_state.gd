@@ -43,11 +43,9 @@ func is_price_static() -> bool:
 func dividend_per_share(mood: MarketMood.Value) -> int:
 	if definition == null:
 		return 0
-	return (
-		definition.bear_dividend
-		if mood == MarketMood.Value.BEAR
-		else definition.bull_dividend
-	)
+	if mood == MarketMood.Value.BEAR:
+		return definition.bear_dividend
+	return definition.bull_dividend
 
 
 ## Whether holdings in this stalk currently carry any value.

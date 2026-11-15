@@ -76,6 +76,24 @@ strength of a successful parse.
 
 ---
 
+## Conventions are checked, not trusted
+
+This file contains two kinds of rule, and only one kind has ever held.
+
+**Static typing** is enforced in `project.godot` (`untyped_declaration=2` makes
+untyped code a hard parse error). It has never drifted once.
+
+**Everything written here and nowhere else** drifted. Eighteen signal
+connections were written in a style this document forbids, over several weeks,
+without anybody noticing — by the same author who wrote the rule.
+
+So the readability rules that matter are now checked by
+`tests/unit/test_conventions.gd`, which scans `src/` as text and fails with the
+file and line. If you add a rule here that you actually care about, add a check
+for it. A rule nobody runs is a rule nobody follows. See decisions.md D60.
+
+---
+
 ## Static Typing (enforced)
 
 This is **mechanically enforced**, not just a convention:
@@ -173,7 +191,16 @@ nothing about the screen that holds them.
   It emits a signal; the listener decides what to do.
 - Connect in code (see **Working Agreement**). Connect in `_ready()`, and prefer
   connecting from the parent that owns both ends.
-- Callback naming: `_on_<emitter>_<signal>` (`_on_stalk_row_buy_requested`).
+- **Whatever is connected to a signal must have a name.** No inline `func`,
+  no passing another signal's `.emit`. A reader must be able to search for the
+  name and find the behaviour. Checked by `tests/unit/test_conventions.gd`.
+- Callback naming: `_on_<emitter>_<signal>` (`_on_stalk_row_buy_requested`) for
+  a handler that exists only to serve that signal. Connecting to an existing
+  descriptive method (`show_menu`, `hide_panel`) is fine when the signal simply
+  triggers it.
+- **No conditional expression split across lines.** `a if cond else b` on one
+  short line is fine; spread over three it puts the condition after the answer.
+  Use an if/else block. Also checked.
 - Signals carry data, not node references, wherever possible — pass a stalk id, not
   the `StalkRow` that was clicked.
 - Pure-logic classes may emit signals, but only about state changes, and must not

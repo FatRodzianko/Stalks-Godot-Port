@@ -906,6 +906,45 @@ the board.
 
 ---
 
+### D60 — Readability rules are checked by a test, not by memory
+**2026-11-15 · Accepted**
+
+`tests/unit/test_conventions.gd` scans `src/` as text and fails on patterns
+`CLAUDE.md` forbids: an inline `func` connected to a signal, a signal connected
+to another signal's `.emit`, a conditional expression split across lines, a
+leftover substitution placeholder, a stray `print`.
+
+**Why.** The project had two kinds of rule and only one kind held. Static
+typing is enforced in `project.godot` and has never drifted. The naming and
+readability rules lived only in `CLAUDE.md` and drifted badly: eighteen signal
+connections written in the forbidden style, over weeks, by the author of the
+rule, without being noticed until the owner read the code and said it looked
+like nonsense.
+
+Same project, same author, opposite outcomes. The only difference was whether a
+machine checked. That is strong enough evidence to stop relying on intent.
+
+**The specific code that prompted it:**
+
+```gdscript
+_kick_button.pressed.connect(func() -> void: kick_requested.emit(_player_id))
+```
+
+Three things wrong at once, and all of them invisible to someone learning the
+engine: the behaviour is buried inside the wiring, the function has no name to
+search for, and `_ready()` — Godot's "this node now exists" callback — sits
+right above it, colliding with the game's own idea of a player "readying up".
+
+**What it rules out.** The checks are crude text scans and will occasionally be
+wrong about something legitimate. When that happens the answer is to look hard
+at whether the rule is right, and change the rule and the check together — not
+to add an exception so the scan goes quiet.
+
+**It is also a documentation gate.** A rule added to `CLAUDE.md` without a
+check is a rule that will be broken. Add both or neither.
+
+---
+
 ### D59 — Steam's waiting happens in the UI, not in the Transport interface
 **2026-11-15 · Accepted**
 
