@@ -394,7 +394,7 @@ process below). **That is the remaining gate on calling Phase 5 complete.**
 
 ## Phase 6 — Steam
 
-**Status: started. The groundwork is in; the rest waits on the owner.**
+**Status: built on one machine. Two Steam accounts have never met.**
 
 Full detail, including the setup steps, is in
 [steam-integration.md](steam-integration.md). In short:
@@ -405,9 +405,17 @@ Full detail, including the setup steps, is in
   both sides up on a transport that is not ENet.
 - **Done:** researched which GodotSteam build to use. **GDExtension v4.24-gde**
   (Steamworks 1.65), from **Codeberg** — the GitHub repo is archived.
-- **Waiting on the owner:** the App ID decision, the Steamworks SDK download,
-  and dropping the extension into the project. None of it can be scripted.
-- **Then:** `SteamTransport` plus a lobby browser screen. Nothing else changes.
+- **Done:** App ID decided (1821800, D57), the GDExtension installed and
+  committed (D58), and the achievement catalogue pinned against the backend.
+- **Done:** `SteamService`, `SteamTransport` and the lobby browser. Verified
+  live on one machine DASH Steam starts, a real lobby is created, and the
+  transport turns it into a working `SteamMultiplayerPeer`. Nothing in the
+  economy, the RPCs or the lobby flow changed to accommodate it, which is what
+  the transport seam was for.
+- **Waiting on the owner:** two Steam accounts in one lobby actually playing.
+  That is the only part neither tests nor a single machine can prove.
+- **Still to write:** acting on Steam invites (`SteamService` reports them,
+  `Main` ignores them), and unlocking achievements.
 
 ⚠️ **A correction to the note below.** The `callable_method_pointer.h` —
 `callable_mp.h` rename in Godot 4.7 breaks the **module** build, which compiles

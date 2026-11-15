@@ -14,6 +14,9 @@ const MenuScene: PackedScene = preload("res://src/ui/screens/main_menu/main_menu
 const GameplayScene: PackedScene = preload("res://src/ui/screens/gameplay/gameplay_screen.tscn")
 const GameOverScene: PackedScene = preload("res://src/ui/screens/game_over/game_over_screen.tscn")
 const LobbyScene: PackedScene = preload("res://src/ui/screens/lobby/lobby_screen.tscn")
+const SteamBrowserScene: PackedScene = preload(
+	"res://src/ui/screens/steam_browser/steam_browser_screen.tscn"
+)
 
 var _screen: Control
 
@@ -29,6 +32,11 @@ var _listening_port: int = 0
 ## What this process was launched with, for the `--ready` / `--autostart`
 ## conveniences. MENU unless flags were given.
 var _launch: LaunchArgs = LaunchArgs.new()
+
+## Steam, created the first time somebody asks for it and kept for the life of
+## the process. Never an autoload: a game played offline, and every test run,
+## must never touch Steam at all. See docs/decisions.md D59.
+var _steam: SteamService
 
 
 func _ready() -> void:
@@ -71,6 +79,7 @@ func show_menu() -> void:
 	menu.start_requested.connect(_on_start_requested)
 	menu.host_requested.connect(_on_host_requested)
 	menu.join_requested.connect(_on_join_requested)
+	menu.steam_requested.connect(show_steam_browser)
 	_swap(menu)
 
 
@@ -148,6 +157,96 @@ func join_match(address: String, port: int, player_name: String) -> String:
 	session.attach_peer(result["peer"])
 	_show_lobby()
 	return ""
+
+
+## Steam, started on first use. Public so a test can see whether anything has
+## touched it.
+func steam_service() -> SteamService:
+	if _steam == null:
+		_steam = SteamService.new()
+		_steam.name = "SteamService"
+		add_child(_steam)
+	return _steam
+
+
+## The Steam lobby browser. Reachable even when Steam is unavailable — the
+## screen explains why rather than the menu silently refusing.
+func show_steam_browser() -> void:
+	_discard_session()
+	var browser: SteamBrowserScreen = SteamBrowserScene.instantiate()
+	browser.back_requested.connect(show_menu)
+	browser.host_requested.connect(_on_steam_host_requested)
+	browser.join_requested.connect(_on_steam_join_requested)
+	_swap(browser)
+	browser.setup(steam_service())
+
+
+## Hosts inside a Steam lobby that already exists. The browser created it and
+## waited for Steam to answer, so by here there is nothing left to wait for.
+func host_steam_match(lobby_id: int, settings: GameSettings, player_name: String) -> String:
+	_discard_session()
+	_last_settings = settings
+
+	var library: ContentLibrary = _loaded_library()
+	if library == null:
+		return "The game's content is broken — see the log."
+
+	var result: Dictionary = HostSession.host(
+		SteamTransport.new(lobby_id), settings, library, player_name
+	)
+	if not String(result["error"]).is_empty():
+		return String(result["error"])
+
+	_listening_port = 0
+	var session: HostSession = result["session"]
+	_mount_session(session)
+	session.attach_peer(result["peer"])
+	_show_lobby()
+	return ""
+
+
+func join_steam_match(lobby_id: int, owner_steam_id: int, player_name: String) -> String:
+	_discard_session()
+
+	var library: ContentLibrary = _loaded_library()
+	if library == null:
+		return "The game's content is broken — see the log."
+
+	var result: Dictionary = ClientSession.join(
+		SteamTransport.new(lobby_id, owner_steam_id), library, player_name
+	)
+	if not String(result["error"]).is_empty():
+		return String(result["error"])
+
+	_listening_port = 0
+	var session: ClientSession = result["session"]
+	_mount_session(session)
+	session.attach_peer(result["peer"])
+	_show_lobby()
+	return ""
+
+
+func _on_steam_host_requested(lobby_id: int) -> void:
+	var settings: GameSettings = (
+		_last_settings if _last_settings != null else GameSettings.new()
+	)
+	var problem: String = host_steam_match(lobby_id, settings, _steam_name())
+	if not problem.is_empty():
+		show_menu()
+		_report_to_menu(problem)
+
+
+func _on_steam_join_requested(lobby_id: int, owner_steam_id: int) -> void:
+	var problem: String = join_steam_match(lobby_id, owner_steam_id, _steam_name())
+	if not problem.is_empty():
+		show_menu()
+		_report_to_menu(problem)
+
+
+## The player's Steam display name, which saves them typing one.
+func _steam_name() -> String:
+	var persona: String = _steam.persona_name() if _steam != null else ""
+	return persona if not persona.is_empty() else "Player"
 
 
 func _show_lobby() -> void:
@@ -292,6 +391,10 @@ func _discard_session() -> void:
 	var networked: NetworkedSession = _session as NetworkedSession
 	if networked != null:
 		networked.close()
+	# Leaving the match means leaving the Steam lobby too, or the browser would
+	# keep listing a game nobody is in.
+	if _steam != null and _steam.is_running():
+		_steam.leave_lobby()
 	remove_child(_session)
 	_session.queue_free()
 	_session = null

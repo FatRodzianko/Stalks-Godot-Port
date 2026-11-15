@@ -194,8 +194,14 @@ layout_mode = 2
 theme_type_variation = &"PrimaryButton"
 text = "Join"
 
+[node name="SteamButton" type="Button" parent="Centre/Card/Body"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "Play on Steam"
+
 [node name="Note" type="Label" parent="Centre/Card/Body"]
 layout_mode = 2
 theme_type_variation = &"Faint"
-text = "Direct connection. Steam lobbies come later."
+text = "Solo and direct connection need no Steam."
 horizontal_alignment = 1

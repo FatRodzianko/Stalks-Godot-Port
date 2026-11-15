@@ -906,6 +906,43 @@ the board.
 
 ---
 
+### D59 — Steam's waiting happens in the UI, not in the Transport interface
+**2026-11-15 · Accepted**
+
+`SteamService` (a Node) does everything asynchronous: initialising Steam,
+creating a lobby, joining one, listing them. `SteamTransport` is constructed
+only once a lobby exists, and turning that lobby into a `MultiplayerPeer` is
+immediate. The `Transport` interface did not change.
+
+**Why.** Steam lobbies are asynchronous — `createLobby` returns nothing and the
+answer arrives on a signal — while `EnetTransport.open_server()` answers on the
+spot. The obvious move was to make `Transport` asynchronous for everybody, with
+a signal or an `await`. That would have rewritten the interface, both
+implementations, `Main`, the harness and every networked test, to accommodate
+one implementation.
+
+The alternative is better and smaller: the waiting is a *UI flow*, not a
+transport concern. A human clicks "Host", watches a lobby get made, and then
+there is something to play on. So the lobby browser owns the waiting, and the
+transport is handed a lobby id that already exists.
+
+What makes this fit rather than dodge: `SteamMultiplayerPeer.host_with_lobby()`
+and `create_client()` are both synchronous. The asynchronous part really does
+belong before the transport, not inside it.
+
+**Why `SteamService` is created on demand and is not an autoload.** An autoload
+would initialise Steam for every run, including offline play and every test.
+The port's whole point is that it works with Steam closed (D14), and the suite
+must pass on a machine with no Steam client and no plugin.
+
+**What it rules out.** A transport that has to negotiate before it can produce
+a peer does not fit this interface — it would have to do that negotiation in
+its constructor's caller, as Steam now does. If a future transport cannot, the
+interface has to change then, deliberately, rather than being made
+asynchronous now on speculation.
+
+---
+
 ### D58 — The GodotSteam plugin is committed, the SDK never is
 **2026-11-15 · Accepted**
 

@@ -34,19 +34,33 @@ the transport for a `joining_hint()` and prints it.
 up on a transport that is deliberately **not** ENet. If somebody reaches for
 `ENetMultiplayerPeer` inside a session again, those tests fail.
 
-### What is left to write
+### What is built
 
-A `SteamTransport` implementing three methods, plus a lobby browser screen.
-Everything else — the economy, the RPCs, the authority checks, the redaction,
-the lobby flow, the disconnect handling — is already built and tested over ENet
-and does not change.
+- **`SteamService`** (`src/net/steam_service.gd`) — the only file that talks to
+  the Steam API. Starts Steam, creates and joins lobbies, lists them, and
+  reports Steam invites. Created on demand by `Main`, never an autoload, so a
+  solo game and every test run never touch Steam at all.
+- **`SteamTransport`** (`src/net/steam_transport.gd`) — turns a lobby into a
+  `MultiplayerPeer`. Thin, because all the waiting happens before it exists.
+- **The lobby browser** (`src/ui/screens/steam_browser/`) — lists joinable
+  games, hosts a new one, and survives Steam being absent by saying so.
+- **Menu entry**: "Play on Steam" sits alongside Solo, Host and Join.
 
-**ENet does not get removed.** A direct connection stays available for
-development, for LAN play, and for anyone running the game outside Steam. It is
-also how the automated tests run, since they cannot depend on a Steam client
-being installed.
+Nothing in the economy, the RPCs, the authority checks, the redaction or the
+lobby flow changed to accommodate any of it. That was the point of the
+transport seam (D56), and it held.
 
----
+### What is left
+
+- **Two machines have never connected over Steam.** Everything below section 6
+  was verified on one machine; peer-to-peer needs a second Steam account.
+- Steam invites: `SteamService` emits `invited_to` when a friend's invite is
+  accepted, but `Main` does not yet act on it.
+- Achievements are catalogued (`src/data/achievements.gd`) but nothing unlocks
+  them yet.
+- Steam persona names are used for the local player; other players' names come
+  from the lobby handshake as before.
+
 
 ## 2. Which GodotSteam, and why
 
@@ -226,7 +240,32 @@ right, and nothing has verified them.
 ---
 
 
-## 5. Done when
+## 5. What has actually been verified
+
+On **2026-11-15**, on one machine with Steam running, by
+`tools/steam_lobby_check.gd`:
+
+- `steamInitEx` returns status 0 and the signed-in persona name
+- `createLobby` returns a real lobby, owned by this user, with the `name` and
+  `game` metadata the browser filters on
+- `SteamTransport.open_server()` returns a `SteamMultiplayerPeer` with unique
+  id 1, meaning a working server peer
+- Leaving the lobby cleans up
+
+**Not verified, and it needs you:** two machines, or two Steam accounts, in the
+same lobby actually exchanging RPCs. Everything underneath that DASH the economy,
+the authority checks, the per-player redaction, disconnect handling DASH is tested
+over ENet in the ordinary suite and does not change with the transport. What is
+unproven is specifically Steam's relay carrying the traffic between two
+different users.
+
+The GDExtension also loads cleanly in Godot **4.7.2**, confirmed by
+`tools/steam_check.gd`. That closes the caveat in section 2: the "4.4 and up"
+claim holds, and the `callable_mp.h` break really was module-only.
+
+---
+
+## 6. Done when
 
 Two Steam accounts can find each other through the in-game browser **and**
 through a Steam invite, play a full game, and unlock at least one achievement —

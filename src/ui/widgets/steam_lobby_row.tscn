@@ -1,0 +1,33 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/widgets/steam_lobby_row.gd" id="1_row"]
+
+[node name="SteamLobbyRow" type="PanelContainer"]
+theme_type_variation = &"Card"
+script = ExtResource("1_row")
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "GAME"
+text_overrun_behavior = 3
+
+[node name="Players" type="Label" parent="Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "0/0"
+horizontal_alignment = 2
+
+[node name="JoinButton" type="Button" parent="Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+size_flags_vertical = 4
+text = "JOIN"

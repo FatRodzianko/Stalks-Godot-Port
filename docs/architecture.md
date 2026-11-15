@@ -416,7 +416,7 @@ A `Transport` answers one question: how is this match carried? It hands back a
 ```
 Transport                 abstract
 ├── EnetTransport         direct IP; what the tests run on
-└── SteamTransport        Phase 6
+└── SteamTransport        Steam's relay, via a lobby
 ```
 
 `HostSession.host()` and `ClientSession.join()` take one and never build one.
@@ -426,6 +426,12 @@ and `open_client` take no arguments. Even the lobby screen stays ignorant: it
 asks for a `joining_hint()` and prints it, rather than branching on whether to
 show a port or an invite. See decisions.md D56 and
 [steam-integration.md](steam-integration.md).
+
+Steam needed one thing the interface does not provide: creating or joining a
+lobby is asynchronous. Rather than make every transport asynchronous for one
+implementation, the waiting lives in `SteamService` and the lobby browser — a
+UI flow, where a human is already waiting — and `SteamTransport` is built only
+once a lobby exists. Turning a lobby into a peer is immediate. See D59.
 
 ### Transport is separate again
 

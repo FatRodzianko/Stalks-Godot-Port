@@ -239,6 +239,11 @@ economics themselves.
 chosen because it needs a request, an authority check and a broadcast while being
 incapable of corrupting the economy.
 
+**Steam lobby** — Valve's matchmaking object: a small named room with metadata
+and a member list, which other players can find or be invited to. It is not the
+game's own lobby screen, though the two appear together: the Steam lobby is how
+peers find each other, and the lobby screen is what they see once they have.
+
 **Transport** — what physically carries network messages. Godot's
 `ENetMultiplayerPeer` first, Steam's relay later. Deliberately separate from the
 session layer so Steam is a swap rather than a rewrite.

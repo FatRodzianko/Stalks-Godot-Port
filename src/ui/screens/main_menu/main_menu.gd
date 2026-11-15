@@ -22,6 +22,10 @@ signal host_requested(settings: GameSettings, player_name: String, port: int)
 ## Join somebody else's match. No settings — the host owns those.
 signal join_requested(address: String, port: int, player_name: String)
 
+## Open the Steam lobby browser. Carries nothing: Steam supplies the player's
+## name, and the lobby supplies everything else.
+signal steam_requested
+
 
 ## Where a networked match listens unless somebody changes it. Picked from the
 ## IANA dynamic range, which is where a game has no business claiming a
@@ -45,6 +49,7 @@ const DEFAULT_PORT: int = 42420
 @onready var _solo_tab: Button = %SoloTab
 @onready var _host_tab: Button = %HostTab
 @onready var _join_tab: Button = %JoinTab
+@onready var _steam_button: Button = %SteamButton
 
 
 ## Which of the three paths the player is looking at. Not an enum on purpose —
@@ -61,6 +66,7 @@ func _ready() -> void:
 	_solo_tab.pressed.connect(_on_solo_tab)
 	_host_tab.pressed.connect(_on_host_tab)
 	_join_tab.pressed.connect(_on_join_tab)
+	_steam_button.pressed.connect(steam_requested.emit)
 
 	_port_spin.min_value = 1024
 	_port_spin.max_value = 65535

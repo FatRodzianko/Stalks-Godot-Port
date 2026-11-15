@@ -107,7 +107,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-410 tests, 14,184 asserts, about 28 seconds.
+427 tests, 14,216 asserts, about 30 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -128,6 +128,7 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_lobby_screen.gd` | **Scene tests** for the menu's three paths (solo, host, join; a joiner is not offered the host's settings) and the lobby over a live host session: the player list, who you are and who is hosting, arrivals and departures, ready-up both ways, Start being the host's alone, the all-ready gate and the host's kick that escapes it, that the host has no ready button because Start is their readiness, and `Main` opening a lobby, reporting a busy port and carrying on into the match | 44 |
 | `test_client_board.gd` | The client's path from lobby to board, which nothing covered before two windows were played for real: the board building and filling for a `ClientSession`, a swapped-out lobby or board ignoring the signals that follow it, a live one still updating, a removed player returned to the menu with the reason, and the board visibly acknowledging a Ready press — readying, un-readying, naming who it waits for, and showing another player's dot | 13 |
 | `test_achievements.gd` | The achievement catalogue: 25 distinct ids, none differing only by case (the bug the original shipped), none padded, and the win achievement keeping the spelling that actually fired | 8 |
+| `test_steam_transport.gd` | The Steam transport and lobby browser **without touching Steam**: that the transport satisfies the `Transport` contract, refuses a missing lobby or host, offers invites rather than a port, and that the browser renders a list, an empty list, a full lobby and a failure | 15 |
 | `test_transport.gd` | The transport seam Phase 6 rests on: a host and a client built on a transport that is deliberately not ENet, failures surfacing to the caller, and the lobby's joining hint coming from below rather than being branched on | 8 |
 | `test_launch_args.gd` | The `--host` / `--join` development flags: every flag and its default, nonsense values ignored rather than breaking the launch, Godot's own arguments passing through untouched, and `Main` going straight into a lobby or falling back to the menu with a reason | 20 |
 | `test_screens.gd` | **Scene tests** for the menu (ranges, defaults, seed handling), the screen host (one screen at a time, session ownership, play-again), the result screen, and the loan panel (borrowing, paying the minimum, the escalating warnings, and that a player may still ready up with a payment due) | 25 |
@@ -226,6 +227,25 @@ One teardown quirk is documented in the harness and worth repeating: Godot's
 `SceneTree.set_multiplayer` **rejects a null interface**, and there is no removal
 API, so a harness cannot unregister the API it registered. Clearing the peer is what
 actually releases the socket; the stale path registration is inert.
+
+### What the suite deliberately will not test
+
+Anything that talks to Steam. `test_steam_transport.gd` covers argument
+handling and rendering only, because the suite has to pass on a machine with no
+Steam client and no GodotSteam plugin — the same condition the game itself
+must run in (decisions.md D14). A test that only passes on one developer's
+machine is worse than no test.
+
+The Steam path is checked by hand instead, with two tools:
+
+```
+<godot> --headless --script res://tools/steam_check.gd
+<godot> --headless --script res://tools/steam_lobby_check.gd
+```
+
+The first says whether the plugin is installed. The second starts Steam,
+creates a real lobby, turns it into a peer and leaves again. Neither is a test,
+because "Steam is not installed" is a legitimate answer on a fresh checkout.
 
 ### A regression test that has not failed is not evidence
 
