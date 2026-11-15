@@ -62,6 +62,22 @@ func is_showing() -> bool:
 	return visible
 
 
+## Escape closes the panel, like the confirmation overlay.
+##
+## It also stops Escape reaching the screen host, which would otherwise offer to
+## leave the match while the player was only trying to shut a panel. Godot
+## delivers unhandled input upwards from the deepest node, so marking it handled
+## here is enough.
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not visible:
+		return
+	var key: InputEventKey = event as InputEventKey
+	if key == null or not key.pressed or key.keycode != KEY_ESCAPE:
+		return
+	accept_event()
+	hide_panel()
+
+
 ## Shows a refusal inside the panel.
 ##
 ## The screen behind this is covered, so its message line cannot be read while

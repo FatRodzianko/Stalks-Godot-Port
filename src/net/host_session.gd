@@ -617,6 +617,18 @@ func _rebuild_active_players() -> void:
 	_authority.state.players = active
 
 
+## What to call a player who is no longer in `state().players`.
+##
+## A player who disconnects mid-match is taken off the active roster but kept in
+## `_roster` with their holdings intact (D47), so the usual
+## `state().player_by_id()` stops finding them at exactly the moment the screen
+## wants to say "so-and-so left". This looks in the place they still exist.
+## Returns an empty string for an id this host has never seated.
+func display_name_of(player_id: StringName) -> String:
+	var player: PlayerState = _player_in_roster(player_id)
+	return player.display_name if player != null else ""
+
+
 func _player_in_roster(player_id: StringName) -> PlayerState:
 	for player: PlayerState in _roster:
 		if player.id == player_id:

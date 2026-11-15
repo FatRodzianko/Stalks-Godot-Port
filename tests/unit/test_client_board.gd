@@ -185,7 +185,9 @@ func test_main_returns_to_the_menu_when_a_connection_ends() -> void:
 		menu.get_node("%ContentWarning").visible,
 		"carrying the reason, or the player has no idea what happened",
 	)
-	assert_string_contains(menu.get_node("%ContentWarning").text.to_lower(), "removed you")
+	var told: String = menu.get_node("%ContentWarning").text.to_lower()
+	assert_string_contains(told, "removed you", "say what happened")
+	assert_string_contains(told, "title screen", "and say where they have ended up")
 
 
 # ---------------------------------------------- can a client actually play?
@@ -506,3 +508,72 @@ func test_your_own_trade_does_clear_your_typing() -> void:
 	await _harness.settle(self)
 
 	assert_eq(amount.text, "", "your own purchase should clear the field")
+
+
+# ------------------------------------------- the host going away, mid-match
+#
+# Reported from a two-machine game: when the host left, the client was left on
+# a board that looked live and answered every click with "Not connected."
+# It should be told the host has gone, and put back on the title screen.
+#
+# "Not connected" is what a client says when it tries to act with no seat. The
+# playing screen was the one screen that never listened for the connection
+# being lost — the lobby did, from the day a kick was added, but nothing
+# connected the same signal once the match was under way.
+
+func test_a_playing_client_is_told_when_the_host_goes_away() -> void:
+	if not await _started_match():
+		return
+
+	var board: GameplayScreen = GameplayScene.instantiate()
+	board.setup(_harness.client)
+	add_child_autofree(board)
+	await wait_process_frames(2)
+
+	var endings: Array[String] = []
+	board.connection_ended.connect(func(reason: String) -> void: endings.append(reason))
+
+	_harness.host.close()
+	await _harness.settle(self, 60)
+
+	assert_eq(endings.size(), 1, "the board should end, not sit there refusing clicks")
+	if endings.is_empty():
+		return
+	assert_string_contains(endings[0].to_lower(), "host")
+
+
+func test_main_listens_for_the_board_losing_its_connection() -> void:
+	# The other half of the chain. A board that emitted into nothing would look
+	# exactly like the test above passing, so this checks that the screen host
+	# is on the other end of the signal. What it then does with it is
+	# test_main_returns_to_the_menu_when_a_connection_ends, above.
+	var main: Main = MainScene.instantiate()
+	add_child_autofree(main)
+	main.start_match(StalksFixture.make_settings())
+
+	var board: GameplayScreen = main.current_screen() as GameplayScreen
+	assert_not_null(board, "a match should put the board on screen")
+	if board == null:
+		return
+	assert_gt(board.connection_ended.get_connections().size(), 0,
+		"nobody is listening for the board losing its connection")
+
+
+func test_the_host_is_told_when_a_player_leaves_mid_match() -> void:
+	# The mirror of the above. The host keeps playing — that part already
+	# worked — but the player simply vanished from the standings, which
+	# reads as a fault rather than as somebody leaving.
+	if not await _started_match():
+		return
+
+	var board: GameplayScreen = GameplayScene.instantiate()
+	board.setup(_harness.host)
+	add_child_autofree(board)
+	await wait_process_frames(2)
+
+	var who: String = _harness.host.state().player_by_id(&"p1").display_name
+	_harness.client.close()
+	await _harness.settle(self, 60)
+
+	assert_string_contains(board.current_message().to_lower(), who.to_lower())
+	assert_string_contains(board.current_message().to_lower(), "left")

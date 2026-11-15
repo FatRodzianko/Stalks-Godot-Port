@@ -906,6 +906,156 @@ the board.
 
 ---
 
+### D64 — Escape backs out, and the screen host decides what that means
+**2026-11-15 · Accepted**
+
+Escape on the playing screen or in a lobby asks "leave the game and go back to
+the title screen?" and, on a yes, does. Escape on the Steam browser or the
+result screen goes straight back — there is nothing to lose. Escape on the
+title screen does nothing.
+
+**Why it exists at all.** There was no way out of a match. The owner found this
+the obvious way: "You need to add a way to exit to the title screen so I don't
+need to restart the game every time." Every repeat of a test meant killing the
+process and starting the game again.
+
+**Why it lives on `Main` rather than on each screen.** What to back out *to* is
+the screen host's business. The screens are deliberately ignorant of one
+another (architecture.md §6), so a screen cannot know what is behind it. `Main`
+does.
+
+**How the overlays get out of the way.** Godot delivers unhandled input from
+the deepest node upwards, so the loan panel and the confirmation overlay —
+both descendants of the current screen — see Escape before `Main` does and
+mark it handled. Shutting a panel therefore closes the panel, rather than
+asking whether you want to abandon the game. The loan panel gained its own
+Escape handler for exactly this reason.
+
+**Why it asks.** Leaving a match cannot be undone: there is no rejoin yet
+(porting-plan.md), so a host who leaves ends the game for everybody and a guest
+who leaves forfeits a portfolio. A single keystroke should not do that silently.
+
+**What it rules out.** A pause menu. There is nothing else a player would want
+from one — no settings to change mid-match, nothing to save — so a menu
+with one item on it would be ceremony. If settings or a save ever appear, this
+becomes that menu.
+
+---
+
+### D63 — The bottom bar reserves its tallest shape and never changes height
+**2026-11-15 · Accepted**
+
+The message column keeps room for its worst case at all times: one line for the
+loan reminder, two for the news line, one for the refusal line. Labels with
+nothing to say are blanked rather than hidden.
+
+**Why.** The owner, after a two-machine game: "The bottom bar is larger for
+Year 0 than subsequent years due to amount of text. It should be static." The
+year-0 explanation wraps onto a second line where later messages fit on one, so
+the bar was 57px at year 0 and 42px afterwards — and the boards above it
+jumped down fifteen pixels to fill the gap, once per game plus every time a
+loan reminder came or went.
+
+**The number comes from the theme**, not from a pixel count written into the
+scene: `_reserve_bottom_bar_height` multiplies the font's line height by the
+label's `max_lines_visible`. A pixel count would be correct until somebody
+changed the font, and then wrong in a way nothing would catch.
+
+**The cost is honest.** The bar is now permanently as tall as its year-0 shape,
+which is about a sixth of a 360px-high screen. That is the price of a layout
+that does not move, and it is the shape the player already saw at year 0.
+
+**What it rules out.** Letting the bar grow for an unusually long message. A
+third line of news would be clipped rather than shown, because the alternative
+is the thing this decision exists to prevent. If a message ever genuinely needs
+three lines, raise the reserve — do not make it conditional.
+
+**Checked.** `test_the_bottom_bar_holds_one_height_for_a_whole_match` walks a
+match through year 0, two ordinary years, borrowing, a payment falling due, a
+refusal on screen, settling the loan and the final year, and insists on one
+height throughout. Both halves of the fix were confirmed to be load-bearing by
+removing them one at a time and watching it fail.
+
+---
+
+### D62 — The title screen's settings travel to a Steam match
+**2026-11-15 · Accepted**
+
+`MainMenu.steam_requested` carries a `GameSettings`. `Main` keeps it and hosts
+the Steam match with it. The Steam browser shows a one-line summary of what
+HOST would start, and says where to change it.
+
+**The bug this fixes.** From the owner's first Steam game: "as far as I could
+tell, there was no way to enable loans for a steam lobby... setting the game
+settings on the non-steam page, then clicking join steam, did not carry over
+the game settings."
+
+They did not carry over. The browser had no settings of its own, and
+`_last_settings` was only ever filled in by starting a solo game or hosting a
+direct one — so arriving at the browser from the title screen left it null,
+and hosting fell back to `GameSettings.new()`. That default has
+`loans_enabled = false`, so **every Steam match ever played had loans off**, no
+matter what the title screen said.
+
+**Why the browser does not get its own settings controls.** A match is
+configured in one place. Two sets of controls for the same settings is two
+places for them to disagree, and the title screen's are the ones the player has
+already filled in. The browser states what it would use instead, which is the
+part that was actually missing: the old screen was silent, so there was nothing
+to notice.
+
+**Why a summary and not just the carry-over.** The carry-over alone would have
+fixed the behaviour and left the screen just as opaque. The owner's words were
+"there was no way to enable loans" — the complaint is as much about not being
+able to see the settings as about their not being applied.
+
+**What it rules out.** Changing the settings after a Steam lobby exists. The
+lobby is created before the session, so the settings are already fixed by then;
+to change them, back out and start again.
+
+---
+
+### D61 — Every screen that can lose a connection says so
+**2026-11-15 · Accepted**
+
+`GameplayScreen` listens for `ClientSession.connection_lost` and emits
+`connection_ended`, which `Main` turns into a return to the title screen
+carrying the reason. It also listens for `HostSession.player_left` and says who
+has gone.
+
+**The bug.** From a two-machine game: "if host leaves, client just gets 'Not
+connected' message in the game. They should be told the host left and that they
+will return to the main menu."
+
+"Not connected." is what `ClientSession._may_act` says when a client tries to
+act with no seat. The board itself never noticed anything: it stayed up, fully
+drawn, looking live, and answered every click with a refusal. The only way out
+was to kill the process.
+
+**Why it had been missed.** The lobby screen has handled this since the kick
+was added (D49), and the lobby is where a connection was expected to fail. The
+playing screen had the identical exposure and nothing connected the signal.
+This is the third variation on the same theme — see D50, where a swapped-out
+screen kept listening, and D51, where the board never connected
+`ready_state_changed` at all. **A screen that does not connect a signal fails
+silently and looks exactly like a screen with nothing to report.**
+
+**So both ends of the chain are now tested separately**: that the board emits
+when the host's peer closes, and that `Main` has something connected to it. A
+screen emitting into nothing passes the first test on its own.
+
+**No reconnection**, so there is nothing to offer and nothing to decide: say
+what happened and hand back to the title screen. A rejoin is still future work
+(porting-plan.md), and when it arrives this is where the offer belongs.
+
+**The host side is informational only.** The host keeps playing — that
+already worked — but a player who leaves simply vanished from the standings,
+which reads as a fault. `HostSession.display_name_of` exists because a departed
+player is off `state().players` by the time the signal arrives, while still in
+`_roster` with their portfolio (D47).
+
+---
+
 ### D60 — Readability rules are checked by a test, not by memory
 **2026-11-15 · Accepted**
 

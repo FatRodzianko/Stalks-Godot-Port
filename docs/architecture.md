@@ -464,6 +464,19 @@ This exists so screens stay ignorant of each other. The menu emits
 result screen emits `play_again_requested` or `menu_requested`. None of them knows
 what comes next.
 
+**A screen that can lose its connection emits `connection_ended(reason)`**, and
+`Main` turns that into a return to the title screen carrying the reason. The
+lobby and the playing screen both do. This is a separate signal from
+`match_finished` because the two mean opposite things — one is a game that
+reached its end, the other is a game that stopped — and only one of them has a
+result worth showing. See decisions.md D61 for how the playing screen came to be
+the one screen that had not connected it.
+
+**`Main` also owns Escape.** Backing out means going to whatever is behind the
+current screen, and only the screen host knows what that is. Overlays inside a
+screen — the loan panel, the confirmation — take Escape first, because Godot
+delivers unhandled input from the deepest node upwards. See decisions.md D64.
+
 **Every screen's root is a container**, not an anchored `Control` — see
 decisions.md D35. The first version anchored a Control and produced dead space at the
 top and bottom of the window.

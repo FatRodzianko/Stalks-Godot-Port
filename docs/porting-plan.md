@@ -408,14 +408,44 @@ Full detail, including the setup steps, is in
 - **Done:** App ID decided (1821800, D57), the GDExtension installed and
   committed (D58), and the achievement catalogue pinned against the backend.
 - **Done:** `SteamService`, `SteamTransport` and the lobby browser. Verified
-  live on one machine DASH Steam starts, a real lobby is created, and the
+  live on one machine — Steam starts, a real lobby is created, and the
   transport turns it into a working `SteamMultiplayerPeer`. Nothing in the
   economy, the RPCs or the lobby flow changed to accommodate it, which is what
   the transport seam was for.
-- **Waiting on the owner:** two Steam accounts in one lobby actually playing.
-  That is the only part neither tests nor a single machine can prove.
+- **Done:** two Steam accounts in one lobby, playing. Confirmed by the owner
+  on 2026-11-15: lobbies are findable and joinable, Steam persona names load,
+  the host can kick, and the whole game plays through. A kick takes a few
+  seconds longer to land than over a direct connection, which is Steam's lobby
+  callback latency and was left alone.
+- **Fixed after that session:** the title screen's settings never reached a
+  Steam match, so every Steam game was played with loans off whatever the
+  player had chosen (D62). The browser now states what HOST would start.
 - **Still to write:** acting on Steam invites (`SteamService` reports them,
   `Main` ignores them), and unlocking achievements.
+
+### Found by playing, fixed on 2026-11-15
+
+A two-machine direct-connection game (Test A in
+[manual-testing.md](manual-testing.md)) and a two-account Steam game between
+them turned up five things. All are fixed and covered by tests:
+
+| What was wrong | Fix |
+|---|---|
+| Losing the host mid-match left the client on a board that answered every click with "Not connected" | The playing screen now reports a lost connection and `Main` returns to the title screen with the reason (D61) |
+| A player leaving mid-match simply vanished from the host's standings | The host is told who left (D61) |
+| A Steam match always had loans off | The title screen's settings travel, and the browser says what hosting would start (D62) |
+| The bottom bar was taller at year 0 than afterwards | It reserves its tallest shape permanently (D63) |
+| No way out of a match but closing the window | Escape backs out, asking first when a match is running (D64) |
+
+Two smaller things came out of the same session: the minimum loan payment is
+now shown under the **LOAN** button, and that button reads **PAY LOAN** for as
+long as anything is owed — both of which were the Phase 7 items recorded on
+2026-11-14, brought forward because they were asked for again.
+
+One documentation fault was found too: the A5 step in
+[manual-testing.md](manual-testing.md) said a player's net worth changes when
+they buy. It does not — buying converts cash into shares at that moment's
+price — and the table has been corrected.
 
 ⚠️ **A correction to the note below.** The `callable_method_pointer.h` —
 `callable_mp.h` rename in Godot 4.7 breaks the **module** build, which compiles
@@ -454,13 +484,11 @@ GDExtension**, not the module build and not Foundation for Steamworks — see
 
 - Sound: bull, bear, bankruptcy, split, yeehaw, UI feedback; mixer and volume
   settings
-- **Loan button, requested 2026-11-14:** show the minimum payment underneath it,
-  and label it "PAY LOAN" whenever a loan is outstanding rather than only when a
-  payment is due this year. Today it reads "LOAN" once you have paid for the
-  year. Both are in `_refresh_loan_controls`; the second is a one-line change,
-  the first needs the button wrapped in a `VBoxContainer` in the bottom bar so a
-  caption can sit under it
-- Esc / pause menu, settings persistence, quit handling
+- ~~Loan button: minimum payment underneath, "PAY LOAN" whenever a loan is
+  outstanding~~ — **done 2026-11-15**, brought forward after a second request
+- ~~Esc as a way out of a match~~ — **done 2026-11-15** (D64). What is left of
+  this item is settings persistence and tidy quit handling; there is no pause
+  menu and the decision record says why there should not be one
 - Error and edge-case presentation
 - Export presets and a Windows build, **excluding `steam_appid.txt`** — Valve's
   guidance is that it is a development-only file

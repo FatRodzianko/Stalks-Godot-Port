@@ -17,6 +17,7 @@ const LobbyScene: PackedScene = preload("res://src/ui/screens/lobby/lobby_screen
 const SteamBrowserScene: PackedScene = preload(
 	"res://src/ui/screens/steam_browser/steam_browser_screen.tscn"
 )
+const ConfirmPanelScene: PackedScene = preload("res://src/ui/widgets/confirm_panel.tscn")
 
 var _screen: Control
 
@@ -41,6 +42,11 @@ var _automated_lobby: LobbyScreen
 ## the process. Never an autoload: a game played offline, and every test run,
 ## must never touch Steam at all. See docs/decisions.md D59.
 var _steam: SteamService
+
+## The "leave the game?" overlay, built the first time Escape is pressed during
+## a match and kept afterwards. Null until then, so a session that never asks
+## never pays for it.
+var _leave_prompt: ConfirmPanel
 
 
 func _ready() -> void:
@@ -77,13 +83,77 @@ func _report_launch_problem(problem: String) -> void:
 	_report_to_menu(problem)
 
 
+# ------------------------------------------------------------------- escape
+#
+# Until this existed the only way out of a match was to close the window, which
+# made every test of a second game a restart of the whole program.
+
+## Escape means "back out of where I am".
+##
+## This lives on the screen host rather than on each screen because what to back
+## out *to* is the host's business — the screens deliberately know nothing about
+## one another.
+##
+## Overlays get first refusal. Godot delivers unhandled input from the deepest
+## node upwards, so a confirmation or the loan panel, both of which are
+## descendants of the current screen, takes Escape and marks it handled before
+## it reaches here.
+func _unhandled_key_input(event: InputEvent) -> void:
+	var key: InputEventKey = event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return
+	if key.keycode != KEY_ESCAPE:
+		return
+	if _screen == null or _screen is MainMenu:
+		# Already as far back as there is. Left unhandled on purpose, so Escape
+		# stays available to anything else that wants it on the title screen.
+		return
+
+	accept_event()
+	if _session == null:
+		# The Steam browser and the result screen hold nothing that can be lost,
+		# so backing out of them needs no ceremony.
+		show_menu()
+		return
+	_ask_about_leaving()
+
+
+## Leaving a match in progress is not undoable — there is no reconnection yet —
+## so it asks first.
+func _ask_about_leaving() -> void:
+	if _leave_prompt == null:
+		_leave_prompt = ConfirmPanelScene.instantiate()
+		add_child(_leave_prompt)
+		_leave_prompt.confirmed.connect(_on_leave_confirmed)
+	# Every screen swap adds the new screen as the last child, which would put
+	# it over the top of this one. Raising it here keeps it on top without the
+	# swap having to know the prompt exists.
+	move_child(_leave_prompt, -1)
+	_leave_prompt.ask(
+		"Leave the game and go back to the title screen?",
+		"Leave",
+		"Keep playing",
+	)
+
+
+func _on_leave_confirmed() -> void:
+	show_menu()
+
+
+## The "leave the game?" overlay, or null if Escape has never been pressed
+## during a match. For tests, and for anything that needs to know whether a
+## question is already on screen.
+func leave_prompt() -> ConfirmPanel:
+	return _leave_prompt
+
+
 func show_menu() -> void:
 	_discard_session()
 	var menu: MainMenu = MenuScene.instantiate()
 	menu.start_requested.connect(_on_start_requested)
 	menu.host_requested.connect(_on_host_requested)
 	menu.join_requested.connect(_on_join_requested)
-	menu.steam_requested.connect(show_steam_browser)
+	menu.steam_requested.connect(_on_steam_requested)
 	_swap(menu)
 
 
@@ -97,11 +167,7 @@ func start_match(settings: GameSettings) -> void:
 		return
 
 	_mount_session(LocalSession.create(settings, library))
-
-	var gameplay: Control = GameplayScene.instantiate()
-	gameplay.setup(_session)
-	gameplay.match_finished.connect(_on_match_finished)
-	_swap(gameplay)
+	_show_gameplay()
 
 
 func current_screen() -> Control:
@@ -173,6 +239,18 @@ func steam_service() -> SteamService:
 	return _steam
 
 
+## The player opened the Steam browser from the title screen.
+##
+## The settings they chose there come along. They used not to: the browser had
+## no settings of its own and `_last_settings` was only ever filled in by
+## starting or hosting a game, so a Steam match was always hosted with
+## `GameSettings.new()` — ten years, and **loans switched off**, no matter what
+## the title screen said. See docs/decisions.md D62.
+func _on_steam_requested(settings: GameSettings) -> void:
+	_last_settings = settings
+	show_steam_browser()
+
+
 ## The Steam lobby browser. Reachable even when Steam is unavailable — the
 ## screen explains why rather than the menu silently refusing.
 func show_steam_browser() -> void:
@@ -182,7 +260,7 @@ func show_steam_browser() -> void:
 	browser.host_requested.connect(_on_steam_host_requested)
 	browser.join_requested.connect(_on_steam_join_requested)
 	_swap(browser)
-	browser.setup(steam_service())
+	browser.setup(steam_service(), settings_for_steam())
 
 
 ## Hosts inside a Steam lobby that already exists. The browser created it and
@@ -230,11 +308,16 @@ func join_steam_match(lobby_id: int, owner_steam_id: int, player_name: String) -
 	return ""
 
 
+## What a Steam match would be hosted with: whatever the title screen was last
+## set to. Never null, so the browser always has something to show.
+func settings_for_steam() -> GameSettings:
+	if _last_settings != null:
+		return _last_settings
+	return GameSettings.new()
+
+
 func _on_steam_host_requested(lobby_id: int) -> void:
-	var settings: GameSettings = (
-		_last_settings if _last_settings != null else GameSettings.new()
-	)
-	var problem: String = host_steam_match(lobby_id, settings, _steam_name())
+	var problem: String = host_steam_match(lobby_id, settings_for_steam(), _steam_name())
 	if not problem.is_empty():
 		show_menu()
 		_report_to_menu(problem)
@@ -304,15 +387,28 @@ func _on_automation_ready_changed(_player_id: StringName, _is_ready: bool) -> vo
 ## left sitting in a lobby they are no longer part of has no idea what happened.
 func _on_connection_ended(reason: String) -> void:
 	show_menu()
-	_report_to_menu(reason)
+	# Says where they have ended up as well as why. Being dropped onto the title
+	# screen with a bare "The host closed the game." reads as the game having
+	# restarted itself.
+	_report_to_menu("%s You are back at the title screen." % reason)
 
 
 ## The lobby is done with: show the board. The session is untouched — the match
 ## has already begun as far as the host is concerned.
 func _on_play_requested() -> void:
-	var gameplay: Control = GameplayScene.instantiate()
+	_show_gameplay()
+
+
+## Builds and shows the playing screen.
+##
+## Solo and networked play both come through here, so a connection made for one
+## cannot be missed by the other - which is how the playing screen came to be
+## the only screen that did not notice the host leaving.
+func _show_gameplay() -> void:
+	var gameplay: GameplayScreen = GameplayScene.instantiate()
 	gameplay.setup(_session)
 	gameplay.match_finished.connect(_on_match_finished)
+	gameplay.connection_ended.connect(_on_connection_ended)
 	_swap(gameplay)
 
 

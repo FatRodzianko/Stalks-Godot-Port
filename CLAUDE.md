@@ -89,7 +89,8 @@ without anybody noticing — by the same author who wrote the rule.
 
 So the readability rules that matter are now checked by
 `tests/unit/test_conventions.gd`, which scans `src/` as text and fails with the
-file and line. If you add a rule here that you actually care about, add a check
+file and line. It scans `docs/` for leftover substitution placeholders too —
+added on 2026-11-15, and it found five the moment it was written. If you add a rule here that you actually care about, add a check
 for it. A rule nobody runs is a rule nobody follows. See decisions.md D60.
 
 ---

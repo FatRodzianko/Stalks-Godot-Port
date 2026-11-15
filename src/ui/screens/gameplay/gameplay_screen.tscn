@@ -262,13 +262,26 @@ layout_mode = 2
 [node name="Bar" type="HBoxContainer" parent="Root/BottomBar"]
 layout_mode = 2
 
-[node name="LoanButton" type="Button" parent="Root/BottomBar/Bar"]
+[node name="LoanBox" type="VBoxContainer" parent="Root/BottomBar/Bar"]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(66, 0)
+custom_minimum_size = Vector2(84, 0)
 layout_mode = 2
 size_flags_vertical = 4
+theme_type_variation = &"TightVBox"
+
+[node name="LoanButton" type="Button" parent="Root/BottomBar/Bar/LoanBox"]
+unique_name_in_owner = true
+layout_mode = 2
 text = "LOANS"
+
+[node name="LoanMinLabel" type="Label" parent="Root/BottomBar/Bar/LoanBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = ""
+horizontal_alignment = 1
+text_overrun_behavior = 3
 
 [node name="Messages" type="VBoxContainer" parent="Root/BottomBar/Bar"]
 layout_mode = 2
@@ -278,10 +291,9 @@ theme_type_variation = &"TightVBox"
 
 [node name="LoanNag" type="Label" parent="Root/BottomBar/Bar/Messages"]
 unique_name_in_owner = true
-visible = false
 layout_mode = 2
 theme_type_variation = &"Bear"
-text = "Don't forget to pay your loan!"
+text = ""
 text_overrun_behavior = 3
 
 [node name="InfoLabel" type="Label" parent="Root/BottomBar/Bar/Messages"]

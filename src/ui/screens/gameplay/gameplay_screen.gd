@@ -25,6 +25,10 @@ const MESSAGE_SECONDS: float = 5.0
 
 signal match_finished(winners: Array[StringName])
 
+## The connection ended while the match was running - the host quit, or this
+## client was dropped. Carries text to show the player on the way out.
+signal connection_ended(reason: String)
+
 @onready var _year_label: Label = %YearLabel
 @onready var _mood_label: Label = %MoodLabel
 @onready var _event_flavour: Label = %EventFlavour
@@ -47,12 +51,21 @@ signal match_finished(winners: Array[StringName])
 @onready var _ranking_list: VBoxContainer = %RankingList
 @onready var _info_label: Label = %InfoLabel
 @onready var _error_label: Label = %ErrorLabel
+@onready var _loan_box: VBoxContainer = %LoanBox
 @onready var _loan_button: Button = %LoanButton
+@onready var _loan_min_label: Label = %LoanMinLabel
 @onready var _loan_nag: Label = %LoanNag
 @onready var _ready_button: Button = %ReadyButton
 @onready var _message_timer: Timer = %MessageTimer
 
 var _session: GameSession
+
+## The same session, narrowed. Both may be null in a solo game; at most one is
+## ever set. They exist only for the two things that differ between the ends of
+## a connection - being dropped, and being told somebody else was.
+var _host: HostSession
+var _client: ClientSession
+
 var _stalk_rows: Dictionary[StringName, StalkRow] = {}
 var _loan_panel: LoanPanel
 var _confirm_panel: ConfirmPanel
@@ -76,6 +89,7 @@ func _ready() -> void:
 	_message_timer.one_shot = true
 
 	_build_headers()
+	_reserve_bottom_bar_height()
 
 	if _session == null:
 		_session = _build_default_session()
@@ -84,6 +98,8 @@ func _ready() -> void:
 
 func setup(session: GameSession) -> void:
 	_session = session
+	_host = session as HostSession
+	_client = session as ClientSession
 	if is_node_ready():
 		_attach(session)
 
@@ -123,6 +139,13 @@ func _attach(session: GameSession) -> void:
 		# it made the whole screen look dead while it waited.
 		session.ready_state_changed.connect(_on_ready_state_changed)
 
+	# Losing the host mid-match used to show nothing at all: the screen stayed
+	# up and every button answered "Not connected." See docs/decisions.md D61.
+	if _client != null and not _client.connection_lost.is_connected(_on_connection_lost):
+		_client.connection_lost.connect(_on_connection_lost)
+	if _host != null and not _host.player_left.is_connected(_on_player_left):
+		_host.player_left.connect(_on_player_left)
+
 	_build_stalk_rows()
 	_build_loan_panel()
 	_build_confirm_panel()
@@ -150,6 +173,10 @@ func _detach() -> void:
 	_session.yeehaw_requested.disconnect(_on_yeehaw_requested)
 	_session.yeehaw_given.disconnect(_on_yeehaw_given)
 	_session.ready_state_changed.disconnect(_on_ready_state_changed)
+	if _client != null and _client.connection_lost.is_connected(_on_connection_lost):
+		_client.connection_lost.disconnect(_on_connection_lost)
+	if _host != null and _host.player_left.is_connected(_on_player_left):
+		_host.player_left.disconnect(_on_player_left)
 
 
 func _exit_tree() -> void:
@@ -180,6 +207,32 @@ func _build_headers() -> void:
 	_inset_header_for_scrollbar(_board_header_slot, _stalk_scroll)
 	_inset_header_for_scrollbar(_holdings_header_slot, _holding_scroll)
 	_inset_header_for_scrollbar(_ranking_header_slot, _ranking_scroll)
+
+
+## Pins the bottom bar to one height for the whole match.
+##
+## It used to grow and shrink. The year-0 explanation is long enough to wrap
+## onto a second line, later messages fit on one, and the loan reminder came
+## and went - so the bar changed height several times a game and dragged the
+## boards above it up and down with it.
+##
+## The fix is to reserve the tallest it can ever be: the reminder keeps its line
+## whether or not it has anything to say, and the message label keeps room for
+## both of the lines it is allowed. The refusal line below them is capped at one
+## line already, so with those two pinned the total cannot move.
+##
+## The number comes from the theme rather than being written down as a pixel
+## count, so changing the font cannot quietly break this again.
+func _reserve_bottom_bar_height() -> void:
+	var line_height: int = _info_label.get_theme_font("font").get_height(
+		_info_label.get_theme_font_size("font_size")
+	)
+	var spacing: int = 0
+	if _info_label.has_theme_constant("line_spacing"):
+		spacing = _info_label.get_theme_constant("line_spacing")
+	_info_label.custom_minimum_size.y = (
+		(line_height + spacing) * _info_label.max_lines_visible
+	)
 
 
 func _inset_header_for_scrollbar(slot: MarginContainer, scroll: ScrollContainer) -> void:
@@ -341,10 +394,12 @@ func _refresh_bottom_bar(game: GameState, player: PlayerState) -> void:
 	# Year 0 is the opening position: prices are all at their starting value and
 	# no trading is allowed until everyone readies up. Straight from the original.
 	if game.year == 0:
+		# Two lines is all the bar reserves (D63), and the old third clause -
+		# "buy stalks and hope they go up" - was being clipped mid-sentence.
+		# Better to say less and finish the thought.
 		_info_label.text = (
 			"Year 0. The game begins when all players are ready. "
-			+ "Highest net worth after the last year wins - "
-			+ "buy stalks and hope they go up."
+			+ "Highest net worth after the last year wins."
 		)
 	elif game.is_over:
 		_info_label.text = "The game is over."
@@ -405,30 +460,51 @@ func _refresh_yeehaw(game: GameState) -> void:
 	_yeehaw_note.visible = game.players.size() < YeehawRules.MIN_PLAYERS
 
 
+## The loan corner of the bottom bar: the button, the minimum payment under it,
+## and the reminder in the message column.
+##
+## The minimum is shown under the button for as long as a loan is outstanding,
+## not only when a payment is due. Knowing what you will owe is part of deciding
+## whether to borrow more, and the figure was previously buried inside the loan
+## panel - you had to open it to find out.
+##
+## Nothing here is ever hidden in a way that changes the bar's height: the
+## minimum label and the reminder keep their lines and go blank instead. See
+## `_reserve_bottom_bar_height`.
 func _refresh_loan_controls(game: GameState, player: PlayerState) -> void:
 	var loans_on: bool = game.settings != null and game.settings.loans_enabled
-	_loan_button.visible = loans_on and not game.is_over
+	_loan_box.visible = loans_on and not game.is_over
 
 	if not loans_on:
-		_loan_nag.visible = false
+		_loan_nag.text = ""
+		_loan_min_label.text = ""
 		return
 
 	var payment_due: bool = (
 		player.has_outstanding_loan() and not player.loan.paid_this_year
 	)
 	# The original nagged in the bottom bar. It is a reminder, never a block:
-	# the player may ready up with a payment due and take the penalty.
-	_loan_nag.visible = payment_due
+	# the player may ready up with a payment due and take the penalty. The
+	# amount is no longer repeated here - it is under the button, always.
 	if payment_due:
-		_loan_nag.text = "Don't forget to pay your loan! Minimum %s" % (
-			Palette.format_money(player.loan.min_payment)
-		)
+		_loan_nag.text = "Don't forget to pay your loan!"
+	else:
+		_loan_nag.text = ""
+
+	if player.has_outstanding_loan():
+		_loan_min_label.text = "Min %s" % Palette.format_money(player.loan.min_payment)
+	else:
+		_loan_min_label.text = ""
 
 	# Short captions: the button is a few cells wide at this resolution.
+	#
+	# "PAY LOAN" for as long as anything is owed, not only in a year where a
+	# payment is outstanding. Asked for in play: with a loan running, the button
+	# should say what it is for. You can always pay more than the minimum, so it
+	# is never a lie, and the reminder beside it is what says a payment is
+	# actually due.
 	if player.has_outstanding_loan():
-		_loan_button.text = "PAY LOAN" if payment_due else "LOAN"
-	elif player.loan != null:
-		_loan_button.text = "LOAN"
+		_loan_button.text = "PAY LOAN"
 	else:
 		_loan_button.text = "LOANS"
 
@@ -689,6 +765,39 @@ func _on_action_rejected(_player_id: StringName, reason: String) -> void:
 	_show_error(reason)
 
 
+## The host went away, or this client was dropped.
+##
+## Before this, the screen stayed exactly as it was and every button answered
+## "Not connected." - the message a client gets when it tries to act without a
+## seat. The player was left looking at a board that had quietly stopped being
+## connected to anything, with no way out but to kill the process.
+##
+## There is no reconnection yet (see docs/porting-plan.md), so there is nothing
+## to offer and nothing to decide: say what happened and hand back to the title
+## screen, which is where the reason is shown.
+func _on_connection_lost(reason: String) -> void:
+	if _loan_panel != null:
+		_loan_panel.hide_panel()
+	connection_ended.emit(reason)
+
+
+## Somebody else dropped out. Only the host hears this, because only the host
+## is told about other peers.
+##
+## Worth saying out loud: their row simply disappears from the standings
+## otherwise, which looks like a fault rather than like somebody leaving. Their
+## holdings are kept - see HostSession and docs/decisions.md D47 - they are just
+## no longer playing.
+func _on_player_left(player_id: StringName) -> void:
+	if _host == null:
+		return
+	var who: String = _host.display_name_of(player_id)
+	if who.is_empty():
+		who = "A player"
+	_show_info("%s left the game." % who)
+	refresh()
+
+
 func _on_game_over(winners: Array[StringName]) -> void:
 	if _loan_panel != null:
 		_loan_panel.hide_panel()
@@ -803,6 +912,12 @@ func current_message() -> String:
 	return _error_label.text
 
 
+## Puts a message on the transient line as a refusal would. For tests that need
+## that line occupied without arranging a real refusal.
+func show_message_for_testing(text: String) -> void:
+	_show_error(text)
+
+
 func info_text() -> String:
 	return _info_label.text
 
@@ -811,8 +926,17 @@ func year_summary_text() -> String:
 	return _info_label.text
 
 
+## Whether the reminder is saying anything. The label itself is always visible
+## - it holds its line open so the bar cannot change height - so its text is
+## what tells you whether there is a reminder.
 func loan_nag_visible() -> bool:
-	return _loan_nag.visible
+	return not _loan_nag.text.is_empty()
+
+
+## The minimum payment as shown under the loan button, or empty when there is
+## no loan to pay.
+func loan_minimum_text() -> String:
+	return _loan_min_label.text
 
 
 func stalk_row_for(stalk_id: StringName) -> StalkRow:

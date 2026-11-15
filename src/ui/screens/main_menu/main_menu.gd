@@ -22,9 +22,13 @@ signal host_requested(settings: GameSettings, player_name: String, port: int)
 ## Join somebody else's match. No settings — the host owns those.
 signal join_requested(address: String, port: int, player_name: String)
 
-## Open the Steam lobby browser. Carries nothing: Steam supplies the player's
-## name, and the lobby supplies everything else.
-signal steam_requested
+## Open the Steam lobby browser, carrying the settings chosen here.
+##
+## Steam supplies the player's name, and a joiner gets the match settings from
+## whoever is hosting — but if this player goes on to host, these are the
+## settings they host with. They used not to travel at all, which is how Steam
+## games ended up always having loans switched off (decisions.md D62).
+signal steam_requested(settings: GameSettings)
 
 
 ## Where a networked match listens unless somebody changes it. Picked from the
@@ -175,7 +179,7 @@ func _on_join_tab() -> void:
 
 
 func _on_steam_button_pressed() -> void:
-	steam_requested.emit()
+	steam_requested.emit(chosen_settings())
 
 
 func _on_start_pressed() -> void:

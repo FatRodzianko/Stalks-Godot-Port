@@ -5,6 +5,9 @@ extends GutTest
 const MainScene: PackedScene = preload("res://src/ui/screens/main/main.tscn")
 const MenuScene: PackedScene = preload("res://src/ui/screens/main_menu/main_menu.tscn")
 const GameOverScene: PackedScene = preload("res://src/ui/screens/game_over/game_over_screen.tscn")
+const SteamBrowserScene: PackedScene = preload(
+	"res://src/ui/screens/steam_browser/steam_browser_screen.tscn"
+)
 
 
 func _settings(years: int = 10, loans: bool = true, seed_value: int = 555) -> GameSettings:
@@ -296,7 +299,10 @@ func _playing(loans: bool = true, advance_to: int = 0) -> Array:
 func test_the_loan_button_is_hidden_when_loans_are_disabled() -> void:
 	var bits: Array = _playing(false)
 	var screen: Control = bits[1]
-	assert_false((screen.get_node("%LoanButton") as Button).visible)
+	# Visibility is set on the box that holds the button and the minimum
+	# payment under it, so ask whether the button can actually be seen rather
+	# than whether its own flag is set.
+	assert_false((screen.get_node("%LoanButton") as Button).is_visible_in_tree())
 
 
 func test_the_loan_button_invites_borrowing_before_any_loan() -> void:
@@ -669,3 +675,264 @@ func test_a_refused_payment_keeps_the_panel_open() -> void:
 
 	assert_true(screen.loan_panel().is_showing())
 	assert_string_contains(screen.loan_panel().warning_text().to_lower(), "minimum")
+
+
+# ------------------------------------------- the bottom bar holds its height
+#
+# Reported from play: the bottom bar was taller in year 0 than afterwards,
+# because of the amount of text. It should be static.
+#
+# The year-0 explanation wraps onto a second line and later messages fit on
+# one, so the bar shrank after the first year and the boards above it jumped
+# down to fill the gap. The fix reserves the tallest the bar can ever be.
+
+## The bar, measured in the design resolution. A wider viewport gives the text
+## room to fit on one line, which would make this test pass without proving
+## anything — 640x360 is what the game actually runs at.
+func _bar_height(screen: Control) -> float:
+	return (screen.get_node("Root/BottomBar") as Control).size.y
+
+
+## Walks a match through every state the bar has to survive and insists the
+## height never changes. One screen throughout, so this is the player's own
+## experience of it rather than a comparison between two separate games.
+func test_the_bottom_bar_holds_one_height_for_a_whole_match() -> void:
+	var bits: Array = await _in_viewport(MainScene, Vector2i(640, 360))
+	var main: Main = bits[1]
+	main.start_match(_settings())
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var screen: GameplayScreen = main.current_screen()
+	var session: LocalSession = main.session()
+	var ready_button: Button = screen.get_node("%ReadyButton")
+	var settled: float = _bar_height(screen)
+	assert_gt(settled, 0.0, "the bar should have a height to compare against")
+
+	# Year 0 is the tall case: the opening explanation wraps onto two lines
+	# where later messages fit on one.
+	assert_string_contains(screen.info_text().to_lower(), "year 0",
+		"the test needs the long opening text to be on screen")
+
+	ready_button.pressed.emit()
+	await get_tree().process_frame
+	assert_eq(_bar_height(screen), settled, "year 1 changed the bar's height")
+
+	ready_button.pressed.emit()
+	await get_tree().process_frame
+	assert_eq(_bar_height(screen), settled, "year 2 changed the bar's height")
+
+	session.request_loan(&"p0", LoanRules.max_loan_for(
+		session.state().player_by_id(&"p0")
+	))
+	await get_tree().process_frame
+	assert_eq(_bar_height(screen), settled, "borrowing changed the bar's height")
+
+	ready_button.pressed.emit()
+	await get_tree().process_frame
+	assert_true(screen.loan_nag_visible(), "the test needs a payment to be due")
+	assert_eq(_bar_height(screen), settled, "the loan reminder changed the bar's height")
+
+	screen.show_message_for_testing("A refusal, which goes on its own line.")
+	await get_tree().process_frame
+	assert_eq(_bar_height(screen), settled, "a refusal changed the bar's height")
+
+	# Paid off, so readying up stops asking about the outstanding payment and
+	# the rest of the match can be pressed through.
+	session.pay_loan(&"p0", session.state().player_by_id(&"p0").loan.balance)
+	await get_tree().process_frame
+	assert_false(screen.loan_nag_visible(), "the loan should be settled")
+	assert_eq(_bar_height(screen), settled, "settling the loan changed the bar's height")
+
+	# Stops one short of the end on purpose: the final year swaps this screen
+	# out for the result screen, and there is no bar left to measure.
+	while session.state().year < session.state().settings.max_years:
+		ready_button.pressed.emit()
+	await get_tree().process_frame
+	assert_eq(_bar_height(screen), settled, "the last year changed the bar's height")
+
+
+# ------------------------------------------- the minimum payment, on the board
+#
+# Asked for after play: the minimum loan payment should be visible on the main
+# board, under the LOAN button. It was only inside the loan panel before, so
+# you had to open the panel to find out what you owed this year.
+
+func test_there_is_no_minimum_shown_before_any_loan() -> void:
+	var bits: Array = _playing(true, 2)
+	var screen: Control = bits[1]
+	assert_eq(screen.loan_minimum_text(), "", "nothing to pay, nothing to show")
+
+
+func test_the_minimum_payment_is_shown_under_the_loan_button() -> void:
+	var bits: Array = _playing(true, 2)
+	var screen: Control = bits[1]
+	var session: LocalSession = bits[2]
+	var player: PlayerState = session.state().player_by_id(&"p0")
+	session.request_loan(&"p0", LoanRules.max_loan_for(player))
+
+	assert_string_contains(
+		screen.loan_minimum_text(),
+		Palette.format_money(player.loan.min_payment),
+	)
+
+
+func test_the_minimum_keeps_up_with_what_is_actually_owed() -> void:
+	# Derived from state rather than remembered, so interest and penalties
+	# cannot leave a stale figure on the board.
+	var bits: Array = _playing(true, 2)
+	var screen: Control = bits[1]
+	var session: LocalSession = bits[2]
+	session.request_loan(&"p0", LoanRules.max_loan_for(
+		session.state().player_by_id(&"p0")
+	))
+	(screen.get_node("%ReadyButton") as Button).pressed.emit()
+
+	var player: PlayerState = session.state().player_by_id(&"p0")
+	assert_string_contains(
+		screen.loan_minimum_text(),
+		Palette.format_money(player.loan.min_payment),
+	)
+
+
+# --------------------------------------------------------- escape, as a way out
+#
+# Asked for after play: there must be a way back to the title screen without
+# restarting the game. There was none — closing the window was the only way
+# out of a match.
+
+func _press_escape() -> void:
+	var event: InputEventKey = InputEventKey.new()
+	event.keycode = KEY_ESCAPE
+	event.pressed = true
+	get_tree().root.push_input(event)
+	await wait_process_frames(1)
+
+
+func test_escape_during_a_match_asks_before_leaving() -> void:
+	var main: Main = MainScene.instantiate()
+	add_child_autofree(main)
+	main.start_match(_settings())
+	await _press_escape()
+
+	assert_true(main.leave_prompt() != null and main.leave_prompt().is_open(),
+		"leaving a game in progress should ask first")
+	assert_true(main.current_screen() is GameplayScreen,
+		"and should not have left yet")
+
+
+func test_saying_yes_to_that_question_goes_back_to_the_title_screen() -> void:
+	var main: Main = MainScene.instantiate()
+	add_child_autofree(main)
+	main.start_match(_settings())
+	await _press_escape()
+	if main.leave_prompt() == null:
+		fail_test("no prompt to answer")
+		return
+
+	(main.leave_prompt().get_node("%ConfirmButton") as Button).pressed.emit()
+	assert_true(main.current_screen() is MainMenu, "it should be back at the menu")
+	assert_null(main.session(), "and the match should be gone")
+
+
+func test_saying_no_keeps_the_match() -> void:
+	var main: Main = MainScene.instantiate()
+	add_child_autofree(main)
+	main.start_match(_settings())
+	await _press_escape()
+	if main.leave_prompt() == null:
+		fail_test("no prompt to answer")
+		return
+
+	(main.leave_prompt().get_node("%CancelButton") as Button).pressed.emit()
+	assert_true(main.current_screen() is GameplayScreen, "the match should still be there")
+	assert_not_null(main.session())
+
+
+func test_escape_on_the_title_screen_does_nothing() -> void:
+	var main: Main = MainScene.instantiate()
+	add_child_autofree(main)
+	await _press_escape()
+
+	assert_true(main.current_screen() is MainMenu)
+	assert_null(main.leave_prompt(), "there is nothing to leave, so nothing to ask")
+
+
+func test_escape_closes_the_loan_panel_rather_than_offering_to_leave() -> void:
+	# The panel is a descendant of the playing screen, so it takes Escape first.
+	# Without that, shutting a panel would put a "leave the game?" question on
+	# the screen, which is a nasty thing to do to somebody reaching for Escape.
+	var main: Main = MainScene.instantiate()
+	add_child_autofree(main)
+	main.start_match(_settings())
+	var screen: GameplayScreen = main.current_screen()
+	screen.loan_panel().show_panel()
+
+	await _press_escape()
+
+	assert_false(screen.loan_panel().is_showing(), "the panel should have closed")
+	assert_null(main.leave_prompt(), "and nothing should have asked about leaving")
+
+
+# ------------------------------------------- the settings reach a Steam match
+#
+# Found in play: there was no way to enable loans for a Steam lobby, and
+# settings chosen on the title screen did not carry over to one.
+#
+# They did not travel at all. The browser had no settings of its own and
+# nothing filled `_last_settings` in on the way there, so every Steam match was
+# hosted with a default GameSettings — which has loans OFF. See
+# decisions.md D62.
+
+func test_the_menu_sends_its_settings_with_the_steam_request() -> void:
+	var menu: MainMenu = MenuScene.instantiate()
+	add_child_autofree(menu)
+	(menu.get_node("%LoansCheck") as CheckBox).button_pressed = true
+	(menu.get_node("%YearsSpin") as SpinBox).value = 25
+
+	var carried: Array[GameSettings] = []
+	menu.steam_requested.connect(func(s: GameSettings) -> void: carried.append(s))
+	(menu.get_node("%SteamButton") as Button).pressed.emit()
+
+	assert_eq(carried.size(), 1)
+	if carried.is_empty():
+		return
+	assert_true(carried[0].loans_enabled, "loans were on, so they should travel")
+	assert_eq(carried[0].max_years, 25)
+
+
+## The browser with no Steam behind it at all.
+##
+## Deliberately not driven through `Main`, which would start Steam for real:
+## no test may touch Steam (decisions.md D59), and on a machine where Steam
+## happens to be running one that did would initialise it twice and fail.
+## A null service is the build-without-the-plugin case, which this screen is
+## required to survive anyway.
+func _browser_showing(settings: GameSettings) -> SteamBrowserScreen:
+	var browser: SteamBrowserScreen = SteamBrowserScene.instantiate()
+	add_child_autofree(browser)
+	browser.setup(null, settings)
+	return browser
+
+
+func test_the_steam_browser_says_what_hosting_would_start() -> void:
+	var browser: SteamBrowserScreen = _browser_showing(_settings(25, true))
+	var summary: String = (browser.get_node("%HostingSummary") as Label).text.to_lower()
+	assert_string_contains(summary, "25", "the year limit chosen on the title screen")
+	assert_string_contains(summary, "loans on", "and whether loans are on")
+
+
+func test_the_steam_browser_says_so_when_loans_are_off() -> void:
+	# The case that was wrong in play, inverted: it used to say nothing at all
+	# and host with loans off whatever the player had chosen.
+	var browser: SteamBrowserScreen = _browser_showing(_settings(10, false))
+	assert_string_contains(
+		(browser.get_node("%HostingSummary") as Label).text.to_lower(),
+		"loans off",
+	)
+
+
+func test_the_steam_browser_still_comes_up_with_no_steam_at_all() -> void:
+	var browser: SteamBrowserScreen = _browser_showing(_settings())
+	assert_false((browser.get_node("%Status") as Label).text.is_empty(),
+		"it should explain itself rather than sit there empty")

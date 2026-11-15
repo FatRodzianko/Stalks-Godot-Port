@@ -253,8 +253,8 @@ On **2026-11-15**, on one machine with Steam running, by
 - Leaving the lobby cleans up
 
 **Not verified, and it needs you:** two machines, or two Steam accounts, in the
-same lobby actually exchanging RPCs. Everything underneath that DASH the economy,
-the authority checks, the per-player redaction, disconnect handling DASH is tested
+same lobby actually exchanging RPCs. Everything underneath that — the economy,
+the authority checks, the per-player redaction, disconnect handling — is tested
 over ENet in the ordinary suite and does not change with the transport. What is
 unproven is specifically Steam's relay carrying the traffic between two
 different users.

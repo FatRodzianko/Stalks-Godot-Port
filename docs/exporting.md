@@ -226,7 +226,7 @@ libgodotsteam.windows.template_debug.x86_64.dll     4.3 MB   the GDExtension
 steam_api64.dll                                     319 KB   Valve's library
 ```
 
-The last two are copied in **automatically** DASH nothing in the preset mentions
+The last two are copied in **automatically** — nothing in the preset mentions
 them. The `.gdextension` file declares its libraries and dependencies per
 platform, and the exporter follows that.
 
@@ -234,7 +234,7 @@ Run `StalksStalksStalks.console.exe` rather than the plain one when you want to
 see output; it is a small wrapper around the same game.
 
 **Verified on the exported debug build:** it runs, hosts, accepts a joining
-client, and honours `--host` DASH the port really does get bound. That last check
+client, and honours `--host` — the port really does get bound. That last check
 matters because a *release* build would silently ignore the flag and show the
 menu instead, which looks like the flag not existing rather than being
 disabled.

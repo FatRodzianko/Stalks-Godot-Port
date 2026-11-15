@@ -26,6 +26,7 @@ const LobbyRowScene: PackedScene = preload("res://src/ui/widgets/steam_lobby_row
 
 @onready var _status: Label = %Status
 @onready var _persona: Label = %Persona
+@onready var _hosting_summary: Label = %HostingSummary
 @onready var _list: VBoxContainer = %LobbyList
 @onready var _empty: Label = %EmptyNote
 @onready var _host_button: Button = %HostButton
@@ -33,6 +34,18 @@ const LobbyRowScene: PackedScene = preload("res://src/ui/widgets/steam_lobby_row
 @onready var _back_button: Button = %BackButton
 
 var _service: SteamService
+
+## What HOST would start a game with. This screen has no settings controls of
+## its own — they live on the title screen, which is the only place a match is
+## configured — so all it does is say what they currently are. Showing them
+## matters because they used to be silently discarded on the way here: a Steam
+## game was always ten years with loans off. See docs/decisions.md D62.
+var _settings: GameSettings
+
+## Whether `setup` has been called. Not `_service != null`, because a null
+## service is a real answer — it means a build with no Steam plugin — and
+## that case still has to reach `_attach` and be reported.
+var _was_set_up: bool = false
 
 ## What the player last asked for, so the right signal goes out when Steam
 ## answers. Steam does not tell us which request a result belongs to.
@@ -44,19 +57,32 @@ func _ready() -> void:
 	_host_button.pressed.connect(_on_host_pressed)
 	_refresh_button.pressed.connect(_on_refresh_pressed)
 	_back_button.pressed.connect(_on_back_button_pressed)
-	if _service != null:
+	if _was_set_up:
 		_attach()
 
 
-## Hands the screen the service. `Main` owns it, because Steam is initialised
-## once per process and outlives any one screen.
-func setup(service: SteamService) -> void:
+## Hands the screen the service and the settings a hosted game would use.
+## `Main` owns both: Steam is initialised once per process and outlives any one
+## screen, and the settings belong to the title screen the player came from.
+func setup(service: SteamService, settings: GameSettings) -> void:
 	_service = service
+	_settings = settings
+	_was_set_up = true
 	if is_node_ready():
 		_attach()
 
 
 func _attach() -> void:
+	# What hosting would start is the one thing on this screen that has nothing
+	# to do with Steam, so it is shown before anything can go wrong with Steam.
+	_show_hosting_summary()
+
+	# No service at all is the extreme case of Steam being unavailable: a build
+	# without the plugin. The screen still has to come up and say so.
+	if _service == null:
+		_show_unavailable("Steam is not available in this build.")
+		return
+
 	_service.lobby_created.connect(_on_lobby_created)
 	_service.lobby_joined.connect(_on_lobby_joined)
 	_service.lobby_failed.connect(_on_lobby_failed)
@@ -71,6 +97,22 @@ func _attach() -> void:
 	_persona.text = "Signed in as %s" % _service.persona_name()
 	_status.text = "Looking for games..."
 	_service.refresh_lobbies()
+
+
+## Spells out what HOST would start, and where to go to change it.
+##
+## A joiner does not need this — the host owns the settings and sends them with
+## the opening state — but it is shown to everybody, because which of the two
+## you are about to be is not decided until you press a button.
+func _show_hosting_summary() -> void:
+	if _settings == null:
+		_hosting_summary.text = ""
+		return
+	_hosting_summary.text = "HOST starts: %d years, %s each, loans %s. Change on the title screen." % [
+		_settings.max_years,
+		Palette.format_money(_settings.starting_cash),
+		"on" if _settings.loans_enabled else "off",
+	]
 
 
 ## Stops listening on the way out. The same deferred-`queue_free` trap as every

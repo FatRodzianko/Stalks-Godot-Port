@@ -109,13 +109,25 @@ Year 0 is deliberately inert: no trading until year 1. What should still work:
 | Step | Expected |
 |---|---|
 | Guest buys 3 of a stalk | Guest's cash drops, holding appears. |
-| Look at the host's rankings | Guest's **net worth** changes. |
+| Look at the host's rankings | Guest's **net worth does not change.** |
+| Guest's own net worth, on their own screen | Also unchanged. |
 | Look at the host's view of the guest's **cash** | It must **not** match. Cash is private. |
 | Guest types a quantity, host buys something meanwhile | Guest's typed quantity is still there. |
 | Guest tries to buy far more than they can afford | Refused, with a reason on screen. Nothing bought. |
 
-**Failure signs:** a rival's exact cash visible; a typed quantity vanishing when
-somebody else trades; a refusal with no message.
+**Why net worth must not move.** Buying converts cash into shares at that
+moment's price, so nothing is gained or lost by the act of buying — net worth
+is cash plus holdings valued at the current price. It moves when **prices**
+move, at the end of a year. A net worth that drops when you buy would mean the
+host was subtracting the cash without counting the shares.
+
+*(This table previously said net worth changes on a buy. It was wrong, and the
+owner caught it in play. Corrected here rather than quietly: a test document
+that states a wrong expectation will have somebody chasing a bug that is not
+there, or waving through one that is.)*
+
+**Failure signs:** net worth moving on a trade; a rival's exact cash visible; a
+typed quantity vanishing when somebody else trades; a refusal with no message.
 
 ### A6. A year with both players
 
@@ -152,19 +164,53 @@ Needs year 2 or later.
 | Try to borrow more than allowed | Panel stays open with the reason **inside** it. |
 | Next year, press **Ready** without paying | A confirmation appears naming the penalty. |
 | Choose **Pay first** | The loan panel opens. |
+| Look under the **LOAN** button | The minimum payment is shown there, and matches the panel. |
+| Press **Escape** with the loan panel open | The panel closes. Nothing asks about leaving the game. |
 
 **Failure signs:** panel staying open after a successful borrow; a refusal with
-no visible reason; readying up with a payment due asking nothing.
+no visible reason; readying up with a payment due asking nothing; the minimum
+under the button disagreeing with the panel.
+
+### A8b. The bottom bar holds still
+
+| Step | Expected |
+|---|---|
+| Note where the bottom bar's top edge is at year 0 | — |
+| Advance a year and look again | Exactly the same place. |
+| Take a loan and let a payment fall due | Still the same place. |
+
+**Failure signs:** the boards jumping up or down by a line as the text in the
+bar gets shorter or longer. See decisions.md D63.
+
+### A8c. Getting out
+
+| Step | Expected |
+|---|---|
+| Mid-match, press **Escape** | "Leave the game and go back to the title screen?" |
+| Choose **Keep playing** | Back to the board, match untouched. |
+| Press **Escape**, choose **Leave** | Title screen. |
+| On the title screen, press **Escape** | Nothing happens. |
+
+**Failure signs:** no way out but closing the window — which is what this
+replaces. Escape offering to leave while a panel is open (it should shut the
+panel instead).
 
 ### A9. Disconnection
 
 | Step | Expected |
 |---|---|
-| Mid-match, close the guest's window entirely | Host's rankings drop to one player. |
+| Mid-match, close the guest's window entirely | Host's rankings drop to one player, and a message names who left. |
 | Host readies up | **The year still advances.** |
+| Start again, and this time close the **host's** window | Guest lands on the title screen, told the host closed the game. |
 
-**Failure signs:** the host stuck unable to advance. That was the deadlock
-behind D46/D47 and is the single most important thing in this test.
+**Failure signs:** the host stuck unable to advance — that was the deadlock
+behind D46/D47 and is the single most important thing in this test. On the
+other side, a guest left sitting on a board that answers every click with "Not
+connected" instead of being told what happened; that was the state before D61.
+
+**What still does not happen:** there is no rejoin. A player who drops is out
+for the rest of that match, and if the host drops the match is over for
+everybody. That is a known gap, not a fault — see porting-plan.md.
 
 ---
 
@@ -203,7 +249,22 @@ If Steam *is* running, suspect the account ownership above.
 **Failure signs:** the lobby never appearing in the list. Both accounts must be
 running the same App ID, and the lobby is filtered on a `game=stalks` tag.
 
-### B3. Playing
+### B3. The settings follow you to Steam
+
+| Step | Expected |
+|---|---|
+| On the title screen, set the years and tick **loans**, then **Play on Steam** | The browser says what HOST would start: the years, the starting cash, and loans on. |
+| **HOST**, start the match, and look for the **LOAN** button | It is there. |
+| Back out, untick loans, **Play on Steam** again | The summary now says loans off. |
+
+**Failure signs:** the summary disagreeing with the title screen, or a Steam
+match having no loans when loans were ticked. That was the bug in the first
+Steam game played — see decisions.md D62.
+
+The settings are **not** editable on the browser screen, deliberately. A match
+is configured in one place, and that place is the title screen.
+
+### B4. Playing
 
 Repeat **A3 through A7** over the Steam connection. They are the same screens
 and the same code; what is being checked is that the traffic arrives.
@@ -217,6 +278,10 @@ Steam transport specifically, which is a much narrower place to look.
   but nothing acts on it. Use the browser.
 - **No achievements unlock.** They are catalogued but nothing calls Steam yet.
 - **No sound.**
+- **A kick takes a few seconds to land over Steam**, where it is immediate over
+  a direct connection. Steam's lobby callbacks are not instant and the game
+  waits for them rather than guessing; it is slow, not broken. Observed in the
+  first two-account game and left alone.
 
 ---
 

@@ -107,7 +107,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-443 tests, 14,244 asserts, about 29 seconds.
+460 tests, 14,285 asserts, about 21 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -121,18 +121,18 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_loan_rules.gd` | Annuity arithmetic, eligibility, the full ten-payment schedule, penalties and default, overpayment, one-loan-per-game, pipeline integration | 40 |
 | `test_marquee_label.gd` | The scrolling name label: overflow detection against the real font, hover and click-to-pin, character-by-character stepping, reset on leave | 14 |
 | `test_content_library.gd` | The shipped content loads and validates clean, stat blocks match the documented table, 45/45 pools, deterministic order, a full match played from real content, and every validator rule rejecting bad content | 29 |
-| `test_local_session.gd` | Session start-up, seed recording, trading and its rejections, pre-checks agreeing with enforcement, ready-up and year advance, a two-player wait, a full match, loans through the session | 25 |
+| `test_local_session.gd` | Session start-up, seed recording, trading and its rejections, pre-checks agreeing with enforcement, ready-up and year advance, a two-player wait, a full match, loans through the session | 26 |
 | `test_gameplay_screen.gd` | **Scene tests** driving the real screen: rows built, header figures, buying and selling through actual controls, live validation disabling the Buy button, bankrupt presentation, event and year-summary display, header/row column alignment, ellipsis on long names, and the UI matching a headless run of the same seed | 27 |
 | `test_state_sync.gd` | What crosses the wire: the redaction rules (a rival's cash, holdings and loan schedule are never sent; net worth and *that* they borrowed are), snapshot and `YearResult` round trips, mismatched content being reported, and a walk of the whole payload asserting nothing in it is an object | 20 |
-| `test_networked_session.gd` | **Networked tests** with a real host and client in one process: joining and seating, yeehaw in both directions, a refused self-yeehaw, a client's buy applied by the host, an unaffordable and a nonsense request refused, a refusal reaching only the asker, a client unable to act as another player, redaction end to end, the all-ready gate, both sides agreeing on every price after a year, and the disconnect behaviour including the deadlock it used to cause | 28 |
+| `test_networked_session.gd` | **Networked tests** with a real host and client in one process: joining and seating, yeehaw in both directions, a refused self-yeehaw, a client's buy applied by the host, an unaffordable and a nonsense request refused, a refusal reaching only the asker, a client unable to act as another player, redaction end to end, the all-ready gate, both sides agreeing on every price after a year, and the disconnect behaviour including the deadlock it used to cause | 40 |
 | `test_lobby_screen.gd` | **Scene tests** for the menu's three paths (solo, host, join; a joiner is not offered the host's settings) and the lobby over a live host session: the player list, who you are and who is hosting, arrivals and departures, ready-up both ways, Start being the host's alone, the all-ready gate and the host's kick that escapes it, that the host has no ready button because Start is their readiness, and `Main` opening a lobby, reporting a busy port and carrying on into the match | 44 |
-| `test_client_board.gd` | The client's path from lobby to board, which nothing covered before two windows were played for real: the board building and filling for a `ClientSession`, a swapped-out lobby or board ignoring the signals that follow it, a live one still updating, a removed player returned to the menu with the reason, and the board visibly acknowledging a Ready press — readying, un-readying, naming who it waits for, and showing another player's dot | 13 |
-| `test_achievements.gd` | The achievement catalogue: 25 distinct ids, none differing only by case (the bug the original shipped), none padded, and the win achievement keeping the spelling that actually fired | 8 |
-| `test_conventions.gd` | Readability rules checked by machine rather than memory: no inline function connected to a signal, no signal connected to another signal's `emit`, no conditional expression split across lines, no leftover placeholder, no stray `print` | 7 |
+| `test_client_board.gd` | The client's path from lobby to board, which nothing covered before two windows were played for real: the board building and filling for a `ClientSession`, a swapped-out lobby or board ignoring the signals that follow it, a live one still updating, a removed player returned to the menu with the reason, the board visibly acknowledging a Ready press — readying, un-readying, naming who it waits for, and showing another player's dot — and the host going away mid-match, which leaves the board reporting it and `Main` listening | 25 |
+| `test_achievements.gd` | The achievement catalogue: 25 distinct ids, none differing only by case (the bug the original shipped), none padded, and the win achievement keeping the spelling that actually fired | 10 |
+| `test_conventions.gd` | Readability rules checked by machine rather than memory: no inline function connected to a signal, no signal connected to another signal's `emit`, no conditional expression split across lines, no leftover placeholder in `src/` **or in `docs/`**, no stray `print` | 8 |
 | `test_steam_transport.gd` | The Steam transport and lobby browser **without touching Steam**: that the transport satisfies the `Transport` contract, refuses a missing lobby or host, offers invites rather than a port, and that the browser renders a list, an empty list, a full lobby and a failure | 15 |
 | `test_transport.gd` | The transport seam Phase 6 rests on: a host and a client built on a transport that is deliberately not ENet, failures surfacing to the caller, and the lobby's joining hint coming from below rather than being branched on, and the LAN address ranking pinned against a real multi-adapter machine | 17 |
 | `test_launch_args.gd` | The `--host` / `--join` development flags: every flag and its default, nonsense values ignored rather than breaking the launch, Godot's own arguments passing through untouched, and `Main` going straight into a lobby or falling back to the menu with a reason | 20 |
-| `test_screens.gd` | **Scene tests** for the menu (ranges, defaults, seed handling), the screen host (one screen at a time, session ownership, play-again), the result screen, and the loan panel (borrowing, paying the minimum, the escalating warnings, and that a player may still ready up with a payment due) | 25 |
+| `test_screens.gd` | **Scene tests** for the menu (ranges, defaults, seed handling), the screen host (one screen at a time, session ownership, play-again), the result screen, the loan panel (borrowing, paying the minimum, the escalating warnings, and that a player may still ready up with a payment due), the minimum payment shown under the loan button, the bottom bar holding one height through a whole match, Escape as the way out, and the title screen's settings reaching a Steam match | 57 |
 
 Counts above are read from a suite run, not estimated. If you add tests, re-run and
 update them — a stale number here is a small lie that erodes trust in the rest.
@@ -231,9 +231,41 @@ actually releases the socket; the stale path registration is inert.
 
 ### Testing by hand
 
-What only a person can check — two separate machines, Steam's relay, and
-whether anything feels right — has its own document, written to be worked
+What only a person can check @@ two separate machines, Steam's relay, and
+whether anything feels right @@ has its own document, written to be worked
 through in order: [manual-testing.md](manual-testing.md).
+
+**Looking at the screen without playing the game.** Godot draws nothing with
+`--headless`, so a purely visual question used to mean building and playing.
+`tools/loan_shot.gd` puts the board into a chosen state and Godot's Movie Maker
+writes the frames to PNG files; the script's own header has the command. It was
+written to answer three questions at once @@ does "Min $339" fit under the LOAN
+button, does the bottom bar sit at the same height at year 0 as at year 3, and
+is the year-0 sentence clipped (it was) @@ and all three took one run. Point it
+at a different state by changing what its `_process` presses.
+
+Being able to see the screen does not replace asserting about it: a picture
+proves one state looked right once, where `test_the_bottom_bar_holds_one_height_for_a_whole_match`
+proves every state does, every run.
+
+### No test may touch Steam
+
+`SteamService` is created on demand and is never an autoload, so a test that
+does not ask for Steam never gets it (decisions.md D59). Anything that reaches
+`Main.show_steam_browser()` **does** ask for it: the browser starts Steam, and
+on a machine where Steam happens to be running that initialises it for real.
+
+This is not hypothetical. Two tests written for the settings carry-over (D62)
+went through `Main`; on a machine with Steam open the second one failed with an
+engine error from initialising Steam twice, and on a machine without Steam both
+would have passed. A test whose result depends on whether the author had Steam
+running is worse than no test.
+
+So those tests drive `SteamBrowserScreen` directly and hand it a null service,
+which is the real build-without-the-plugin case the screen is required to
+survive. What is left uncovered is the single line in `Main` that stores the
+settings on the way through — covered at both ends instead: the menu emits
+them, and the browser displays them.
 
 ### What the suite deliberately will not test
 
