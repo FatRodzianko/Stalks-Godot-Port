@@ -906,6 +906,45 @@ the board.
 
 ---
 
+### D58 — The GodotSteam plugin is committed, the SDK never is
+**2026-11-15 · Accepted**
+
+`addons/godotsteam/` is committed in full, including the Valve redistributable
+libraries it bundles. The Steamworks SDK stays ignored, as does
+`steam_appid.txt`.
+
+**Why these are different things.** The earlier `.gitignore` treated anything
+matching `steam_api*` as SDK material and blocked it. That conflated two
+unrelated things:
+
+- The **Steamworks SDK** — headers, tools and docs from the partner site — is
+  not redistributable and must never be committed anywhere.
+- The **redistributable libraries** (`steam_api64.dll` and friends) are
+  designed to ship with a game. GodotSteam bundles them in its own public
+  release zip, and its `.gdextension` file lists them as hard dependencies.
+
+**The state it was in was the worst of both.** The blanket rules would have
+committed 24 of the plugin's 31 files and silently dropped the 7 it depends
+on, so a fresh clone would get a plugin that fails to load in a way that looks
+like a build problem rather than a missing file. Two negation rules fix it, and
+they sit directly under the rules they modify with the reasoning attached.
+
+**Why commit rather than ignore.** The alternative puts a manual download
+between a stranger and a working checkout, which is exactly what the
+documentation bar for this project exists to prevent. The cost is a few MB of
+binaries that are already public.
+
+**What it rules out.** The plugin is now pinned at the committed version
+(4.24). Upgrading means replacing the folder deliberately rather than each
+machine drifting to whatever it last downloaded — which is the better failure
+mode, since a GDExtension mismatch shows up as a crash on load.
+
+**Also learned here:** the SDK download is not needed to develop or run at all,
+only to upload a build. The setup instructions said otherwise and sent the
+owner to the partner site for nothing; corrected in steam-integration.md 3.3.
+
+---
+
 ### D57 — Reuse the original's Steam App ID, 1821800
 **2026-11-14 · Accepted**
 
