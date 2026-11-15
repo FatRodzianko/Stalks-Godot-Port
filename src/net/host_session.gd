@@ -146,14 +146,47 @@ func lobby_is_open() -> bool:
 	return _lobby_is_open
 
 
+## Why the match cannot start yet, or an empty string.
+##
+## Everybody except the host must be ready. The host does not ready up —
+## pressing Start is their readiness — so they are excluded from the check, and a
+## host on their own can always start.
+##
+## A player who will not ready up is removed with `kick_player`, which is what
+## stops this becoming the deadlock that an all-ready gate would otherwise be.
+## See docs/decisions.md D49.
+func why_not_start() -> String:
+	if not _lobby_is_open:
+		return "The match has already started."
+
+	var waiting: PackedStringArray = waiting_on()
+	if waiting.is_empty():
+		return ""
+	return "Not everybody is ready yet."
+
+
+## Display names of the players who have not readied up, in roster order. The
+## host is never in this list.
+func waiting_on() -> PackedStringArray:
+	var waiting: PackedStringArray = []
+	for player: PlayerState in _authority.state.players:
+		if player.id != local_player_id() and not player.is_ready:
+			waiting.append(player.display_name)
+	return waiting
+
+
 ## Closes the lobby and begins the match with whoever is present.
+##
+## Refuses unless everybody is ready. The host is the authority, so this is not a
+## security check — it is here rather than only on the button so that the rule has
+## one home and a second caller cannot skip it.
 ##
 ## The roster is fixed from here on: late joiners are turned away, and a player
 ## who drops vacates their slot rather than disappearing (D47). Before Start a
 ## dropped player is simply forgotten — there is no portfolio to keep and nobody
 ## is waiting on them.
 func start_match() -> void:
-	if not _lobby_is_open:
+	if not why_not_start().is_empty():
 		return
 	_lobby_is_open = false
 	_authority.state.clear_ready_flags()
@@ -452,6 +485,34 @@ func _seat_new_player(peer_id: int, player_name: String) -> StringName:
 	_rebuild_active_players()
 	_seat(peer_id, player.id)
 	return player.id
+
+
+## Removes a player from the lobby, telling them why.
+##
+## **The host's escape from a waiting game.** Start requires everybody to be
+## ready, so somebody who has wandered off would otherwise hold the lobby shut
+## forever. Kicking is a decision a person makes, which is the right kind of
+## answer — better than a rule that guesses when to give up on somebody.
+##
+## Lobby only. Removing somebody from a running match is a different act with
+## different consequences for the economy — see D47 — and nothing asks for it
+## yet.
+##
+## Returns a reason it could not be done, or an empty string.
+func kick_player(player_id: StringName) -> String:
+	if not _lobby_is_open:
+		return "You can only remove players before the match starts."
+	if player_id == local_player_id():
+		return "You cannot remove yourself."
+
+	var peer_id: int = _peer_by_player.get(player_id, 0)
+	if peer_id == 0:
+		return "That player is not connected."
+
+	# Everything else follows from the disconnect: the peer's departure forgets
+	# the player, rebuilds the roster and tells the others.
+	_turn_away(peer_id, "The host removed you from the lobby.")
+	return ""
 
 
 func _turn_away(peer_id: int, reason: String) -> void:

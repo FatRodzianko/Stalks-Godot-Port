@@ -903,3 +903,47 @@ lobby and "advance the year" in the match. They share `PlayerState.is_ready`, so
 the year gate is disabled while the lobby is open and Start clears the flags.
 Without that, a lobby of ready players would resolve year 1 before anybody saw
 the board.
+
+---
+
+### D49 — Start waits for everybody; the host removes anyone holding it up
+**2026-11-14 · Accepted**
+
+The host's Start button is disabled until every other player has readied up. The
+host does not ready up themselves — pressing Start is their readiness. To get out
+of a lobby held up by somebody who has wandered off, the host **removes** them.
+
+**How this arrived.** The first version gave the host a READY button that did
+nothing: they could press Start regardless, and Start clears every flag anyway.
+The owner found that in the first real two-window test. The fix for the dead
+button was easy; what it exposed was the real question, which is whether a
+not-ready player should be able to hold the match shut.
+
+I argued no, and made Start always available, on the grounds that one idle player
+would otherwise deadlock the lobby — this project having walked into that exact
+failure three times already (D46, D47, D48). The owner's answer was better: gate
+the start properly, and give the host a kick. That removes the deadlock without
+making readiness meaningless, which is what an always-available Start does.
+
+**Why the kick is the right escape.** A rule cannot tell the difference between
+somebody reading the rules and somebody who has left the room. A person can. The
+deadlock is real, but the answer is to give the host a decision rather than to
+guess on their behalf or to let them steamroll a player who is simply slow.
+
+**Lobby only.** `kick_player` refuses once the match has started. Removing
+somebody from a running match changes the economy for everybody still playing,
+which is the whole subject of D47, and nothing asks for it yet.
+
+**Where it lives.** `HostSession.why_not_start`, `waiting_on` and `kick_player`;
+the button on `LobbyRow`. The rule is on the session rather than only on the
+button so that it has one home — the host is the authority, so this is not a
+security boundary, but a second caller should not be able to skip it.
+
+**What it rules out.** A host cannot start a match while somebody is connected
+and not ready; the only way past is to remove them. If that ever proves annoying
+in practice — a friend who readies slowly every single time — the thing to add is
+a countdown, not an override.
+
+**Still named, not counted.** The status line says "Waiting on Ann and Bob"
+rather than "2 of 4 ready", because the host is deciding whether to wait for a
+particular person.

@@ -183,6 +183,11 @@ retained (D47).
 who is ready; only the host gets a Start button. One screen serves both sides, since
 the difference is entirely about what you are allowed to do.
 
+**Kick** — the host removing a player from the lobby. Exists because Start waits
+for everybody to be ready, so somebody who has wandered off would otherwise hold the
+lobby shut; a person can tell the difference between slow and gone, and a rule
+cannot. Lobby only. See decisions.md D49.
+
 **Introduction** — the first thing a joining client sends: the name the player typed.
 The host creates their slot when this arrives rather than when the socket connects,
 so a player never appears under a placeholder name.

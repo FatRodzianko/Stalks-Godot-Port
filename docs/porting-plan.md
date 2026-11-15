@@ -302,8 +302,8 @@ condition below that automated tests cannot stand in for.
   networked feature, working end to end in both directions.
 - A one-process test harness (`tests/fixtures/net_harness.gd`) and 48 new tests —
   20 pure encoding tests and 28 with a real host and client over real ENet. With
-  increment 2's screen tests the suite stands at **320 tests / 13,960 asserts in
-  about 17 seconds**; the networked tests account for most of that time, since
+  increment 2's screen tests the suite stands at **337 tests / 14,003 asserts in
+  about 19 seconds**; the networked tests account for most of that time, since
   each opens a socket.
 
 Two de-risking spikes ran before any of it was written, because the testing
@@ -323,7 +323,9 @@ Phase 8 below.
 - Menu with three paths: Solo, Host and Join. A joiner is not offered the match
   settings, because the host owns them.
 - Lobby screen serving both sides: the player list with who you are and who is
-  hosting, ready-up, and a Start button only the host sees.
+  hosting, ready-up, and a Start button only the host sees. Start waits for
+  everybody to be ready, and the host can remove a player who is holding the
+  lobby up (D49).
 - `Main` wiring — `host_match`, `join_match`, the lobby, and the swap into the
   playing screen when the match begins. A busy port or an unreachable host is
   shown on the menu rather than only logged.
@@ -331,7 +333,7 @@ Phase 8 below.
   the unclaimed-slot deadlock before it could be hit.
 - Latecomers and a full match are refused *with a reason*, sent before the
   disconnect.
-- 27 new tests in `test_lobby_screen.gd`, driving the real controls.
+- 44 tests in `test_lobby_screen.gd`, driving the real controls.
 
 **Still open in Phase 5:** the yeehaw *sound* (Phase 7, with the rest of the
 audio), and a control for *giving* a yeehaw — the request path is wired to the

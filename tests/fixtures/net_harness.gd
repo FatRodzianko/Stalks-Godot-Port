@@ -129,8 +129,15 @@ func drop_client(test: GutTest) -> bool:
 	return gone.call()
 
 
-## Closes the lobby, as the host pressing Start does, and lets both sides see it.
+## Takes the lobby through to a running match the way a real one goes: every
+## guest readies up, then the host presses Start.
+##
+## Start refuses until everybody is ready (D49), so readying is not optional
+## scene-setting — it is how a match begins.
 func begin_match(test: GutTest) -> void:
+	if client != null and client.has_joined():
+		client.set_ready(client.local_player_id(), true)
+		await settle(test)
 	host.start_match()
 	await settle(test)
 

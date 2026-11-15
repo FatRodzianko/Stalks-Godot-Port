@@ -106,18 +106,19 @@ func refresh() -> void:
 ## which is the deadlock this project has now walked into three times. The host
 ## is told what they are about to do instead of being stopped from doing it.
 func _refresh_for_host() -> void:
-	var players: Array[PlayerState] = _session.state().players
-	var waiting: PackedStringArray = []
-	for player: PlayerState in players:
-		if player.id != _session.local_player_id() and not player.is_ready:
-			waiting.append(player.display_name)
+	var waiting: PackedStringArray = _host.waiting_on()
+	_start_button.disabled = not _host.why_not_start().is_empty()
 
-	if players.size() < 2:
-		_status.text = "Nobody else has joined yet. You can still start on your own."
+	if _session.state().players.size() < 2:
+		_status.text = "Nobody else has joined yet. You can start on your own."
 	elif waiting.is_empty():
 		_status.text = "Everybody is ready."
 	else:
-		_status.text = "Waiting on %s. You can start anyway." % _listed(waiting)
+		# Named rather than counted, and paired with the way out: the host can
+		# remove somebody who has wandered off rather than waiting indefinitely.
+		_status.text = "Waiting on %s. Remove them with X if they have gone." % _listed(
+			waiting
+		)
 
 
 func _refresh_for_guest() -> void:
@@ -168,7 +169,9 @@ func _rebuild_list() -> void:
 		var player: PlayerState = players[index]
 		var row: LobbyRow = LobbyRowScene.instantiate()
 		_player_list.add_child(row)
-		row.display(player, player.id == _session.local_player_id(), index == 0)
+		var is_you: bool = player.id == _session.local_player_id()
+		row.display(player, is_you, index == 0, is_hosting() and not is_you)
+		row.kick_requested.connect(_on_kick_requested)
 
 
 ## Removes rows immediately rather than only queueing them. `queue_free()` is
@@ -192,8 +195,23 @@ func _on_ready_pressed() -> void:
 
 
 func _on_start_pressed() -> void:
-	if _host != null:
+	if _host == null:
+		return
+	var problem: String = _host.why_not_start()
+	if problem.is_empty():
 		_host.start_match()
+	else:
+		# The button is disabled in this state, so this is belt and braces — but
+		# silence would be the wrong answer if it is ever reached.
+		_status.text = problem
+
+
+func _on_kick_requested(player_id: StringName) -> void:
+	if _host == null:
+		return
+	var problem: String = _host.kick_player(player_id)
+	if not problem.is_empty():
+		_status.text = problem
 
 
 func _on_ready_state_changed(_player_id: StringName, _is_ready: bool) -> void:

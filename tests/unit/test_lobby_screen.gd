@@ -274,6 +274,8 @@ func test_the_host_pressing_start_asks_to_play() -> void:
 	var asked: Array = []
 	lobby.play_requested.connect(func() -> void: asked.append(true))
 
+	_harness.client.set_ready(&"p1", true)
+	await _harness.settle(self)
 	lobby.get_node("%StartButton").pressed.emit()
 	await _harness.settle(self)
 
@@ -292,6 +294,8 @@ func test_a_client_is_asked_to_play_when_the_host_starts() -> void:
 	var asked: Array = []
 	client_lobby.play_requested.connect(func() -> void: asked.append(true))
 
+	_harness.client.set_ready(&"p1", true)
+	await _harness.settle(self)
 	_harness.host.start_match()
 	await _harness.settle(self)
 
@@ -490,22 +494,9 @@ func test_the_host_is_told_who_is_still_waiting() -> void:
 	_harness.client.set_ready(&"p1", true)
 	await _harness.settle(self)
 
-	assert_string_contains(lobby.get_node("%Status").text.to_lower(), "everybody is ready")
-
-
-func test_the_host_can_start_with_somebody_not_ready() -> void:
-	# Deliberate. One idle player must not be able to hold the game shut with
-	# nothing the host can do — the deadlock this project keeps rediscovering.
-	var lobby: LobbyScreen = await _lobby_on_host()
-	if lobby == null:
-		return
-	assert_false(_harness.client.state().player_by_id(&"p1").is_ready)
-
-	assert_false(lobby.get_node("%StartButton").disabled, "Start stays available")
-	lobby.get_node("%StartButton").pressed.emit()
-	await _harness.settle(self)
-
-	assert_false(_harness.host.lobby_is_open(), "and it works")
+	assert_string_contains(
+		lobby.get_node("%Status").text.to_lower(), "everybody is ready"
+	)
 
 
 func test_the_host_alone_is_told_they_can_still_start() -> void:
@@ -528,3 +519,168 @@ func test_several_waiting_players_are_listed_readably() -> void:
 		LobbyScreen._listed(PackedStringArray(["Ann", "Bob", "Cal"])),
 		"Ann, Bob and Cal",
 	)
+
+
+# ------------------------------------------------------- the all-ready gate
+#
+# Start waits for everybody. The host's way out of a lobby held up by somebody
+# who has wandered off is to remove them, not to override the gate. See D49.
+
+func test_start_is_refused_until_everybody_is_ready() -> void:
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+
+	assert_ne(_harness.host.why_not_start(), "", "a waiting player blocks the start")
+	assert_true(lobby.get_node("%StartButton").disabled)
+
+	lobby.get_node("%StartButton").pressed.emit()
+	await _harness.settle(self)
+
+	assert_true(_harness.host.lobby_is_open(), "pressing it anyway should do nothing")
+
+
+func test_start_opens_once_the_last_player_readies_up() -> void:
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+
+	_harness.client.set_ready(&"p1", true)
+	await _harness.settle(self)
+
+	assert_eq(_harness.host.why_not_start(), "")
+	assert_false(lobby.get_node("%StartButton").disabled)
+
+	lobby.get_node("%StartButton").pressed.emit()
+	await _harness.settle(self)
+
+	assert_false(_harness.host.lobby_is_open(), "and now it starts")
+
+
+func test_the_host_does_not_have_to_ready_themselves() -> void:
+	# Start is the host's readiness. Requiring both would be the dead button
+	# again, one turn later.
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+	_harness.client.set_ready(&"p1", true)
+	await _harness.settle(self)
+
+	assert_false(_harness.host.state().player_by_id(&"p0").is_ready)
+	assert_eq(_harness.host.why_not_start(), "", "the host is not waited on")
+
+
+func test_a_host_alone_can_start() -> void:
+	_harness = NetHarness.new()
+	add_child(_harness)
+	assert_eq(_harness.start(StalksFixture.make_settings(), _library, "Murph"), "")
+
+	assert_eq(_harness.host.why_not_start(), "")
+	_harness.host.start_match()
+	assert_false(_harness.host.lobby_is_open())
+
+
+func test_un_readying_closes_the_start_again() -> void:
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+	_harness.client.set_ready(&"p1", true)
+	await _harness.settle(self)
+	assert_false(lobby.get_node("%StartButton").disabled)
+
+	_harness.client.set_ready(&"p1", false)
+	await _harness.settle(self)
+
+	assert_true(lobby.get_node("%StartButton").disabled, "the gate should close again")
+
+
+# ------------------------------------------------------------------- kicking
+
+func test_the_host_can_remove_a_player_who_is_holding_things_up() -> void:
+	# The escape from the all-ready gate, and the reason the gate is safe.
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+	assert_ne(_harness.host.why_not_start(), "", "blocked to begin with")
+
+	assert_eq(_harness.host.kick_player(&"p1"), "")
+	await _harness.settle(self, 30)
+
+	assert_eq(_harness.host.state().players.size(), 1, "they should be gone")
+	assert_eq(_harness.host.why_not_start(), "", "and the lobby should be free to start")
+
+
+func test_a_kicked_player_is_told_why() -> void:
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+
+	var reasons: Array[String] = []
+	_harness.client.connection_lost.connect(
+		func(reason: String) -> void: reasons.append(reason)
+	)
+
+	assert_eq(_harness.host.kick_player(&"p1"), "")
+	await _harness.settle(self, 30)
+
+	assert_true(reasons.size() >= 1, "being dropped in silence would be worse")
+	if reasons.size() >= 1:
+		assert_string_contains(reasons[0].to_lower(), "removed you")
+
+
+func test_the_kick_button_shows_only_to_the_host_and_not_on_their_own_row() -> void:
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+
+	assert_false(
+		lobby.player_rows()[0].get_node("%Kick").visible,
+		"the host cannot remove themselves",
+	)
+	assert_true(lobby.player_rows()[1].get_node("%Kick").visible)
+
+	var guest: LobbyScreen = _guest_lobby()
+	for row: LobbyRow in guest.player_rows():
+		assert_false(row.get_node("%Kick").visible, "a guest cannot remove anybody")
+
+
+func test_pressing_the_kick_button_removes_the_player() -> void:
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+
+	lobby.player_rows()[1].get_node("%Kick").pressed.emit()
+	await _harness.settle(self, 30)
+
+	assert_eq(lobby.player_rows().size(), 1, "the row should go with them")
+
+
+func test_the_host_cannot_kick_themselves() -> void:
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+	assert_ne(_harness.host.kick_player(&"p0"), "")
+	assert_eq(_harness.host.state().players.size(), 2, "nobody removed")
+
+
+func test_kicking_is_refused_once_the_match_has_started() -> void:
+	# Removing somebody from a running match is a different act with different
+	# consequences for the economy. Nothing asks for it yet.
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+	_harness.client.set_ready(&"p1", true)
+	await _harness.settle(self)
+	_harness.host.start_match()
+	await _harness.settle(self)
+
+	assert_ne(_harness.host.kick_player(&"p1"), "")
+	assert_eq(_harness.host.state().players.size(), 2, "still both playing")
+
+
+func test_the_host_is_told_how_to_get_unstuck() -> void:
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+	assert_string_contains(lobby.get_node("%Status").text, "Guest")
+	assert_string_contains(lobby.get_node("%Status").text.to_lower(), "remove")
