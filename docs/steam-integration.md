@@ -127,43 +127,71 @@ The Steamworks SDK beside it is a different matter: that one is genuinely not
 redistributable and must never be committed anywhere.
 
 
-### 3.2 Get the Steamworks SDK
+### 3.2 Install the GodotSteam GDExtension
 
-1. Go to **partner.steamgames.com** and sign in.
-2. Download the **Steamworks SDK** matching the GodotSteam release (1.65 at the
-   time of writing).
-3. Keep the zip somewhere outside this repository for now.
-
-⚠️ **The SDK is not redistributable.** It must never be committed, even to a
-private repo. `.gitignore` already covers it; do not override that.
-
-### 3.3 Install the GodotSteam GDExtension
+**This is the only step needed to make Steam work in the project.** You do
+*not* need the Steamworks SDK for it — see 3.3.
 
 1. Go to **codeberg.org/GodotSteam/GodotSteam/releases**.
-2. Find the newest release whose title contains **GDExtension** — it looks like
-   `Godot 4.4+ - Steamworks 1.65 - GodotSteam GDExtension 4.24`.
+2. Find the newest release whose title contains **GDExtension**. It looks like
+   `Godot 4.4+ - Steamworks 1.65 - GodotSteam GDExtension 4.24`. Both flavours
+   are in the list with nearly identical titles; the other one ("module")
+   requires rebuilding Godot from source and is the wrong one.
 3. Download the plugin zip, e.g. `godotsteam-4.24-gdextension-plugin-4.4.zip`.
-4. Unzip it into the **root of this project**, next to `project.godot`. The
-   release notes say: *"Just drop the contents of this zip into the base of your
-   project and that's it!"*
-5. In the Godot editor, choose **Project → Reload Current Project**.
-6. Open the **Output** panel at the bottom and check for load errors.
+4. Unzip it anywhere. It contains a single folder: `addons/godotsteam`.
+5. Copy that **`godotsteam` folder** into this project's existing **`addons`**
+   folder, so you end up with:
+   `Stalks-Godot-Port/addons/godotsteam/godotsteam.gdextension`
 
-To confirm it loaded, open **Project → Project Settings → Globals** and look for
-Steam entries, or run this in a test script: `print(ClassDB.class_exists("Steam"))`.
+   Your `addons` folder already contains `gut` (the test framework). You are
+   adding alongside it, not replacing it — if Windows offers to "replace the
+   folder", choose **merge** instead.
+6. If the Godot editor is open, choose **Project** in the top menu bar, then
+   **Reload Current Project**.
 
-⚠️ Whether that zip includes the Steam API DLL is **unconfirmed** — the
-GDExtension release notes do not say, while the module release notes explicitly
-do. If Steam fails to initialise, copy `steam_api64.dll` from the SDK's
-`redistributable_bin/win64/` to the project root.
+#### How to tell whether it worked
+
+**A successful load prints nothing at all.** The Output panel stays quiet and
+nothing new appears in Project Settings, so there is nothing to look for by
+eye. That is normal and is not a sign of failure.
+
+To actually check, run this from a terminal in the project root — the same way
+the tests are run (see [development.md](development.md)):
+
+```
+<godot> --headless --script res://tools/steam_check.gd
+```
+
+It prints three lines. All three saying `true` means the extension is working:
+
+```
+Steam class registered: true
+  steamInit available:  true
+  SteamMultiplayerPeer: true
+```
+
+If the first line says `false`, the extension did not load. The usual cause is
+the folder landing in the wrong place: check that
+`addons/godotsteam/godotsteam.gdextension` exists at that exact path.
+
+### 3.3 The Steamworks SDK — not needed yet
+
+**You do not need to download the Steamworks SDK to develop or test.** The
+GDExtension zip already contains Valve's redistributable libraries
+(`addons/godotsteam/win64/steam_api64.dll` and the Linux/macOS equivalents),
+and its `.gdextension` file lists them as its own dependencies.
+
+The SDK is needed later, once there is a build to publish, for the SteamPipe
+upload tools. That belongs with the export work in Phase 7.
+
+⚠️ When that time comes: **the SDK is not redistributable.** It must never be
+committed, even to a private repo.
 
 ### 3.4 Tell me when it is in
 
-Once the extension loads, I can write `SteamTransport` and the lobby browser.
-Paste the Output panel contents, working or not — the failure mode is as useful
-as the success.
+Paste the three lines from the check above. If anything says `false`, paste
+whatever the command printed instead — a failure says as much as a success.
 
----
 
 ## 4. Achievements
 

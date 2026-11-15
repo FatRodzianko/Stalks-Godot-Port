@@ -239,3 +239,28 @@ is the `_console` executable from [development.md §2](development.md):
 
 `--headless` means "no window". This is how the tests are run from the command line,
 and what a build server would use later. See [testing.md](testing.md).
+
+## Running a one-off script
+
+Some checks are not tests and do not belong in the suite. They live in `tools/`
+and are run the same way, with `--script` instead of `-s`:
+
+```
+<godot> --headless --script res://tools/steam_check.gd
+```
+
+That one reports whether the Steam plugin is installed. You do not need to open
+the editor, create anything, or know any GDScript to run it — it is a file that
+already exists in the repository, and the command prints its answer to the
+terminal.
+
+**There is no "script console" in Godot.** If you are told to run something in
+one, that instruction is wrong. A script is either attached to a node in a
+scene, or run from the command line like the above.
+
+### Why `tools/` and not `tests/`
+
+A tool can legitimately fail — `steam_check.gd` reports "not installed" on a
+checkout where nobody has installed the plugin, which is a correct answer, not
+a broken build. Tests must pass everywhere, so anything with a legitimate
+failure mode stays out of `tests/`.
