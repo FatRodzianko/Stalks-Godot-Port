@@ -601,3 +601,71 @@ func test_choosing_to_pay_first_opens_the_loan_panel() -> void:
 	(screen.confirm_panel().get_node("%CancelButton") as Button).pressed.emit()
 
 	assert_true(screen.loan_panel().is_showing(), "it should take you there")
+
+
+# ------------------------------------------- the loan panel is an errand, not a place
+
+func test_borrowing_closes_the_panel() -> void:
+	# It used to stay open and switch to its pay controls, which reads as being
+	# asked for money you have just this moment received.
+	var bits: Array = _playing(true, 2)
+	var screen: Control = bits[1]
+	var session: LocalSession = bits[2]
+	screen.get_node("%LoanButton").pressed.emit()
+	assert_true(screen.loan_panel().is_showing())
+
+	screen.loan_panel().borrow_requested.emit(
+		LoanRules.max_loan_for(session.state().player_by_id(&"p0"))
+	)
+
+	assert_false(screen.loan_panel().is_showing(), "the errand is done")
+	assert_string_contains(screen.current_message().to_lower(), "borrowed")
+
+
+func test_the_board_says_when_the_first_payment_falls_due() -> void:
+	var bits: Array = _playing(true, 2)
+	var screen: Control = bits[1]
+	var session: LocalSession = bits[2]
+	screen.loan_panel().borrow_requested.emit(
+		LoanRules.max_loan_for(session.state().player_by_id(&"p0"))
+	)
+	assert_string_contains(screen.current_message().to_lower(), "next year")
+
+
+func test_paying_closes_the_panel_and_reports_what_is_left() -> void:
+	var bits: Array = _with_a_fresh_loan()
+	var screen: Control = bits[1]
+	var session: LocalSession = bits[2]
+	screen.get_node("%LoanButton").pressed.emit()
+
+	screen.loan_panel().payment_requested.emit(
+		session.state().player_by_id(&"p0").loan.min_payment
+	)
+
+	assert_false(screen.loan_panel().is_showing())
+	assert_string_contains(screen.current_message().to_lower(), "still owed")
+
+
+func test_a_refused_borrow_keeps_the_panel_open_and_says_why_in_it() -> void:
+	# The message line is covered while the panel is open, so a refusal reported
+	# there would be invisible.
+	var bits: Array = _playing(true, 2)
+	var screen: Control = bits[1]
+	screen.get_node("%LoanButton").pressed.emit()
+
+	# Far more than 25% of net worth.
+	screen.loan_panel().borrow_requested.emit(999999)
+
+	assert_true(screen.loan_panel().is_showing(), "it should stay open to be fixed")
+	assert_ne(screen.loan_panel().warning_text(), "", "with the reason inside it")
+
+
+func test_a_refused_payment_keeps_the_panel_open() -> void:
+	var bits: Array = _with_a_fresh_loan()
+	var screen: Control = bits[1]
+	screen.get_node("%LoanButton").pressed.emit()
+
+	screen.loan_panel().payment_requested.emit(1)
+
+	assert_true(screen.loan_panel().is_showing())
+	assert_string_contains(screen.loan_panel().warning_text().to_lower(), "minimum")

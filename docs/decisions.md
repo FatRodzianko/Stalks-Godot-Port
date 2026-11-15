@@ -906,6 +906,33 @@ the board.
 
 ---
 
+### D55 — An overlay closes when its errand is done
+**2026-11-14 · Accepted**
+
+The loan panel closes itself after a successful borrow or payment, reporting
+what happened on the board behind it. A *refused* attempt keeps it open and
+shows the reason inside the panel.
+
+**Why.** Borrowing left the panel open, where it switched to its pay controls —
+so the moment you took a loan you appeared to be asked for money you had just
+received. The panel is somewhere you go to do a thing, not a screen you inhabit;
+when the thing is done it should hand you back to the game.
+
+**The refusal half was a real bug, not a nicety.** `action_rejected` wrote to the
+board's message line, which the open panel covers. A borrow refused for being
+over the 25% limit reported its reason somewhere the player could not see it.
+Refusals now go to whichever surface the player is actually looking at.
+
+**What it rules out.** Paying twice in a row now takes two trips through the
+panel. That is the right trade against the confusion of it staying open, and
+the second trip is one click.
+
+**Note for any future overlay**: a panel that covers the message line owns its
+own error reporting. This is the second time a message has been delivered where
+it could not be read — see D54 for the first.
+
+---
+
 ### D54 — Only a refusal is cleared by a state change, and only your own
 **2026-11-14 · Accepted**
 

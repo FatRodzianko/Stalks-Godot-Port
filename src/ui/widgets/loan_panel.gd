@@ -62,6 +62,16 @@ func is_showing() -> bool:
 	return visible
 
 
+## Shows a refusal inside the panel.
+##
+## The screen behind this is covered, so its message line cannot be read while
+## the panel is open — a refused borrow used to report its reason somewhere the
+## player could not see.
+func show_problem(reason: String) -> void:
+	_warning_label.text = reason
+	_warning_label.theme_type_variation = &"Danger"
+
+
 ## A loan taken this year, before any year-end has processed it.
 ##
 ## The counter starts at TERM_YEARS + 1 and is decremented by the first year-end
@@ -90,6 +100,9 @@ func refresh() -> void:
 		)
 		+ "One loan per game — even after you pay it off."
 	)
+
+	# Any refusal on screen belongs to the last attempt, not to this redraw.
+	_warning_label.theme_type_variation = &""
 
 	var has_loan: bool = player.has_outstanding_loan()
 	var ever_borrowed: bool = player.loan != null

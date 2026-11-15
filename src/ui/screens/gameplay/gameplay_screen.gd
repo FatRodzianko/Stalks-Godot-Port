@@ -61,6 +61,11 @@ var _confirm_panel: ConfirmPanel
 ## a piece of news. Only a refusal is cleared by a state change.
 var _message_is_error: bool = false
 
+## What the player last asked the loan panel to do, while the answer is still
+## outstanding. Empty when nothing is pending. A client waits a round trip for
+## this, which is why it is a flag rather than a return value.
+var _pending_loan_action: StringName = &""
+
 
 func _ready() -> void:
 	_ready_button.pressed.connect(_on_ready_pressed)
@@ -586,11 +591,43 @@ func _on_yeehaw_pressed() -> void:
 
 
 func _on_borrow_requested(amount: int) -> void:
+	_pending_loan_action = &"borrow"
 	_session.request_loan(_session.local_player_id(), amount)
 
 
 func _on_payment_requested(amount: int) -> void:
+	_pending_loan_action = &"pay"
 	_session.pay_loan(_session.local_player_id(), amount)
+
+
+## Borrowing or paying is a finished errand, so the panel gets out of the way
+## and says what happened on the board behind it.
+##
+## Leaving it open after a successful borrow was actively confusing: the panel
+## switched to its pay controls, which reads as being asked for money you have
+## just this moment received.
+func _finish_loan_action() -> void:
+	var action: StringName = _pending_loan_action
+	_pending_loan_action = &""
+
+	var player: PlayerState = _session.state().player_by_id(_session.local_player_id())
+	if player == null or player.loan == null:
+		return
+
+	if action == &"borrow":
+		_show_info(
+			"Borrowed %s. Your first payment is due next year."
+			% Palette.format_money(player.loan.balance)
+		)
+	elif player.loan.is_paid_off:
+		_show_info("Loan paid off.")
+	else:
+		# Reported from state rather than from what was typed, because an
+		# overpayment is clamped to the balance.
+		_show_info("Payment made. %s still owed." % Palette.format_money(player.loan.balance))
+
+	if _loan_panel != null:
+		_loan_panel.hide_panel()
 
 
 # -------------------------------------------------------------- session handlers
@@ -633,6 +670,8 @@ func _on_player_changed(player_id: StringName) -> void:
 		for row: StalkRow in _stalk_rows.values():
 			row.clear_amount()
 	refresh()
+	if is_me and not _pending_loan_action.is_empty():
+		_finish_loan_action()
 	if _loan_panel != null and _loan_panel.is_showing():
 		_loan_panel.refresh()
 
@@ -644,7 +683,13 @@ func _on_year_resolved(result: YearResult) -> void:
 	refresh()
 
 
+## A refusal goes wherever the player is looking. With the loan panel open that
+## is the panel, not the message line it covers.
 func _on_action_rejected(_player_id: StringName, reason: String) -> void:
+	_pending_loan_action = &""
+	if _loan_panel != null and _loan_panel.is_showing():
+		_loan_panel.show_problem(reason)
+		return
 	_show_error(reason)
 
 
