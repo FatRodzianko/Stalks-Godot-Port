@@ -107,7 +107,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-427 tests, 14,216 asserts, about 30 seconds.
+436 tests, 14,236 asserts, about 29 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -129,7 +129,7 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_client_board.gd` | The client's path from lobby to board, which nothing covered before two windows were played for real: the board building and filling for a `ClientSession`, a swapped-out lobby or board ignoring the signals that follow it, a live one still updating, a removed player returned to the menu with the reason, and the board visibly acknowledging a Ready press — readying, un-readying, naming who it waits for, and showing another player's dot | 13 |
 | `test_achievements.gd` | The achievement catalogue: 25 distinct ids, none differing only by case (the bug the original shipped), none padded, and the win achievement keeping the spelling that actually fired | 8 |
 | `test_steam_transport.gd` | The Steam transport and lobby browser **without touching Steam**: that the transport satisfies the `Transport` contract, refuses a missing lobby or host, offers invites rather than a port, and that the browser renders a list, an empty list, a full lobby and a failure | 15 |
-| `test_transport.gd` | The transport seam Phase 6 rests on: a host and a client built on a transport that is deliberately not ENet, failures surfacing to the caller, and the lobby's joining hint coming from below rather than being branched on | 8 |
+| `test_transport.gd` | The transport seam Phase 6 rests on: a host and a client built on a transport that is deliberately not ENet, failures surfacing to the caller, and the lobby's joining hint coming from below rather than being branched on, and the LAN address ranking pinned against a real multi-adapter machine | 17 |
 | `test_launch_args.gd` | The `--host` / `--join` development flags: every flag and its default, nonsense values ignored rather than breaking the launch, Godot's own arguments passing through untouched, and `Main` going straight into a lobby or falling back to the menu with a reason | 20 |
 | `test_screens.gd` | **Scene tests** for the menu (ranges, defaults, seed handling), the screen host (one screen at a time, session ownership, play-again), the result screen, and the loan panel (borrowing, paying the minimum, the escalating warnings, and that a player may still ready up with a payment due) | 25 |
 

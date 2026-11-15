@@ -103,3 +103,95 @@ func test_the_enet_transport_refuses_a_port_already_in_use() -> void:
 	assert_null(opened["peer"])
 	assert_string_contains(String(opened["error"]), str(port))
 	assert_engine_error("host", "ENet reports the failed bind")
+
+
+# --------------------------------------------- which address to tell a friend
+#
+# A host's lobby has to name an address another machine can reach. "Join on
+# port 42420" is useless from a second computer, and the obvious implementation
+# — first non-loopback address — picked a virtual adapter on the machine this
+# was written on. These pin the ranking against that real address list.
+
+## Exactly what Godot reported on a Windows developer machine, in order. The
+## real network was `Ethernet` at 192.168.1.242; everything above it was WSL,
+## Hyper-V or a failed DHCP lease.
+const REAL_WORLD_ADDRESSES: PackedStringArray = [
+	"fe80:0:0:0:2faa:91db:3516:4076",
+	"172.31.160.1",
+	"fe80:0:0:0:6b11:c7df:1e93:377e",
+	"172.20.0.1",
+	"0:0:0:0:0:0:0:1",
+	"127.0.0.1",
+	"fe80:0:0:0:e1c0:aec1:bc4e:9f41",
+	"169.254.56.57",
+	"fe80:0:0:0:5f73:c7b8:2b47:f37b",
+	"169.254.190.105",
+	"169.254.44.119",
+	"192.168.1.242",
+	"192.168.56.1",
+]
+
+
+func test_the_real_network_beats_the_virtual_ones() -> void:
+	# The case that caused this: taking the first non-loopback address offered
+	# the WSL switch, which no other computer can reach.
+	assert_eq(EnetTransport.rank_addresses(REAL_WORLD_ADDRESSES)[0], "192.168.1.242")
+
+
+func test_loopback_and_link_local_are_never_offered() -> void:
+	# Loopback reaches only this machine; 169.254 means DHCP failed, so that
+	# adapter is not on a working network at all.
+	var ranked: PackedStringArray = EnetTransport.rank_addresses(REAL_WORLD_ADDRESSES)
+	for address: String in ranked:
+		assert_false(address.begins_with("127."), "offered loopback: %s" % address)
+		assert_false(address.begins_with("169.254."), "offered link-local: %s" % address)
+
+
+func test_ipv6_is_never_offered() -> void:
+	# Nobody is typing an IPv6 address into a text field by hand.
+	for address: String in EnetTransport.rank_addresses(REAL_WORLD_ADDRESSES):
+		assert_false(address.contains(":"), "offered IPv6: %s" % address)
+
+
+func test_every_plausible_address_is_still_offered() -> void:
+	# The first choice is a guess, so the alternatives have to survive for a
+	# human to try. Four of the thirteen above are plausible.
+	assert_eq(EnetTransport.rank_addresses(REAL_WORLD_ADDRESSES).size(), 4)
+
+
+func test_virtualbox_ranks_below_a_real_192_168() -> void:
+	var ranked: PackedStringArray = EnetTransport.rank_addresses(
+		PackedStringArray(["192.168.56.1", "192.168.1.242"])
+	)
+	assert_eq(ranked[0], "192.168.1.242")
+
+
+func test_a_corporate_ten_dot_beats_a_docker_172() -> void:
+	var ranked: PackedStringArray = EnetTransport.rank_addresses(
+		PackedStringArray(["172.17.0.1", "10.0.0.5"])
+	)
+	assert_eq(ranked[0], "10.0.0.5")
+
+
+func test_equal_ranks_keep_the_order_the_machine_gave() -> void:
+	# Two addresses with nothing to choose between them should not be shuffled
+	# arbitrarily between runs.
+	var ranked: PackedStringArray = EnetTransport.rank_addresses(
+		PackedStringArray(["192.168.1.10", "192.168.1.20"])
+	)
+	assert_eq(ranked, PackedStringArray(["192.168.1.10", "192.168.1.20"]))
+
+
+func test_a_machine_with_no_network_offers_nothing() -> void:
+	assert_eq(
+		EnetTransport.rank_addresses(PackedStringArray(["127.0.0.1", "::1"])),
+		PackedStringArray(),
+	)
+
+
+func test_the_hint_names_an_address_not_just_a_port() -> void:
+	var hint: String = EnetTransport.new(42420).joining_hint()
+	assert_string_contains(hint, "42420")
+	# On a machine with no network this degrades to the port alone, which is
+	# why this does not assert a specific address.
+	assert_true(hint.to_lower().contains("join"), "got: %s" % hint)

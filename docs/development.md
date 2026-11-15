@@ -371,6 +371,43 @@ two-window experience has to be checked by hand, the way described above.
 
 ---
 
+## 6b. Playing across two machines, without Steam
+
+Direct connection is the **fast path for testing**, and it stays that way after
+Steam exists. No accounts, no store, no second Steam install, and it is what
+the automated suite uses. Save Steam for testing Steam.
+
+On the machine that will host, find the address to give out:
+
+```
+<godot> --headless --script res://tools/lan_check.gd
+```
+
+It prints the best candidate and the alternatives. More than one is normal: a
+developer machine is usually on several networks and most of them are virtual.
+On the machine this was written on, Godot reported nine addresses and the real
+one was eighth — WSL, Hyper-V and VirtualBox all offer plausible-looking
+addresses no other computer can reach.
+
+Then:
+
+1. On the host machine: **HOST** — **Open a lobby**. The lobby names the
+   address, which is the same one the tool printed.
+2. On the other machine: **JOIN**, type that address, **Join**.
+
+The port is 42420 on both by default. The host listens on every network
+interface, so there is nothing to configure beyond the address.
+
+If they cannot see each other, it is nearly always the wrong address of the
+several, or Windows Firewall quietly refusing — see
+[exporting.md section 5](exporting.md).
+
+Running a build rather than the editor on the far machine is covered in
+[exporting.md](exporting.md), but note you do not need one: Godot and a copy of
+the project work just as well for testing gameplay.
+
+---
+
 ## 7. Conventions
 
 Full detail in [../CLAUDE.md](../CLAUDE.md). The ones that bite most often:
