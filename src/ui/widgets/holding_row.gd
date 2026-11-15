@@ -55,7 +55,10 @@ func display(stalk: StalkState, shares_held: int) -> void:
 	# The full name is shown, and scrolls on hover when it does not fit.
 	_name_label.set_full_text(stalk.definition.display_name)
 	_owned_label.text = str(shares_held)
-	_amount_field.placeholder_text = "max %d" % shares_held
+	# Just the number — the field is too narrow for "max N" plus more than three
+	# digits. The word lives in the tooltip.
+	_amount_field.placeholder_text = str(shares_held)
+	_amount_field.tooltip_text = "Most you can sell: %d" % shares_held
 
 
 func set_trading_open(is_open: bool) -> void:

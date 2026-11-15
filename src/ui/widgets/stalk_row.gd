@@ -111,10 +111,16 @@ func set_buy_blocked(reason: String) -> void:
 	)
 
 
+## Shows the affordable maximum as the field's placeholder.
+##
+## Just the number, not "max N": the field is seven characters wide, so "max "
+## left room for only three digits and anything larger was cut off. The word is
+## carried by the tooltip instead, where there is room for it.
 func set_affordable_hint(maximum: int) -> void:
 	if _is_header or _is_bankrupt:
 		return
-	_amount_field.placeholder_text = "max %d" % maximum
+	_amount_field.placeholder_text = str(maximum)
+	_amount_field.tooltip_text = "Most you can afford: %d" % maximum
 
 
 func shares_entered() -> int:

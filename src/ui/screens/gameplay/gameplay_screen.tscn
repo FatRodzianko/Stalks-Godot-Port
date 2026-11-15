@@ -265,6 +265,7 @@ layout_mode = 2
 [node name="LoanButton" type="Button" parent="Root/BottomBar/Bar"]
 unique_name_in_owner = true
 visible = false
+custom_minimum_size = Vector2(66, 0)
 layout_mode = 2
 size_flags_vertical = 4
 text = "LOANS"
@@ -272,6 +273,7 @@ text = "LOANS"
 [node name="Messages" type="VBoxContainer" parent="Root/BottomBar/Bar"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
 theme_type_variation = &"TightVBox"
 
 [node name="LoanNag" type="Label" parent="Root/BottomBar/Bar/Messages"]
@@ -297,8 +299,14 @@ text = ""
 autowrap_mode = 3
 max_lines_visible = 1
 
+[node name="Gutter" type="Control" parent="Root/BottomBar/Bar"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+
 [node name="ReadyButton" type="Button" parent="Root/BottomBar/Bar"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 size_flags_vertical = 4
 theme_type_variation = &"PrimaryButton"

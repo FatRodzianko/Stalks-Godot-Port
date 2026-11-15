@@ -158,7 +158,8 @@ func test_the_affordable_maximum_is_shown_as_a_hint() -> void:
 	var stalk: StalkState = _first_tradable_stalk()
 	var row: StalkRow = _screen.stalk_row_for(stalk.id)
 	var expected: int = TradeRules.max_affordable(_player(), stalk)
-	assert_eq((row.get_node("%Amount") as LineEdit).placeholder_text, "max %d" % expected)
+	assert_eq((row.get_node("%Amount") as LineEdit).placeholder_text, str(expected),
+		"just the number: the field is too narrow for \"max N\" plus digits")
 
 
 func test_the_amount_field_clears_after_a_successful_buy() -> void:

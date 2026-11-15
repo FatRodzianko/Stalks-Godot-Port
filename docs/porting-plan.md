@@ -259,6 +259,21 @@ screen takes over.
 play, and no animation on a year advance — prices simply change. Sound and polish are
 Phase 7.
 
+### Outstanding: confirm ending a turn with a loan payment due
+
+Requested after play-testing, not yet built. Readying up with an unpaid loan should
+ask *"Are you sure you want to end your turn without paying your loan?"* before it
+goes through.
+
+This is **not** a change to the advisory rule in game-rules.md §9.5 — it is how that
+rule should have been implemented. The rule is that the game must never penalise a
+player for something it hid from them, while never taking the choice away. A
+confirmation does both: it guarantees the player saw the consequence, and they can
+still decline and take the penalty. The current bottom-bar nag is easy to miss, which
+is exactly the failure the rule exists to prevent.
+
+Belongs with the Phase 7 polish pass unless it comes up sooner.
+
 🖱️ Heaviest editor phase. I'll write the scenes as text where the node tree is
 regular, and give numbered click-by-click steps for theme authoring and any fiddly
 container layout.
