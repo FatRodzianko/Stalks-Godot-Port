@@ -695,3 +695,119 @@ Not yet decided. Resolve one by replacing it with an entry above.
   those thresholds should be player-visible options is undecided.
 - **GodotSteam vs Foundation for Steamworks** — two viable GDExtensions for Steam
   integration. Decide in Phase 6.
+
+---
+
+### D41 — Nothing but built-in types crosses the wire
+
+Every network payload is a `Dictionary` of ints, bools, strings and arrays,
+encoded field by field in `StateSync`. No `Resource`, no `RefCounted`, no
+`StalkState`.
+
+**Why.** Godot *can* send script objects over RPC, but only with object decoding
+enabled on the `MultiplayerAPI` — and that lets a remote peer instantiate
+arbitrary classes in this process, which is a remote code execution primitive. It
+stays off. Hand-written encoding is the price.
+
+**What it rules out.** Adding a field to `PlayerState` or `YearResult` no longer
+replicates it automatically; `StateSync` has to list it. That is a real
+maintenance cost, paid deliberately. `test_state_sync.gd` walks the whole payload
+asserting nothing in it is an `Object`, so a forgotten object field fails a test
+rather than being silently dropped at runtime.
+
+---
+
+### D42 — Replicate whole snapshots, not deltas
+
+After any authoritative change, each client is sent a complete (redacted)
+snapshot of the match, rather than a description of what changed.
+
+**Why.** Ten players, ten stalks, and state that changes when somebody clicks a
+button: a snapshot is well under a kilobyte and arrives a handful of times per
+year of play. Delta encoding would save nothing measurable and introduces the one
+failure mode this design most wants to avoid — a client whose state has silently
+drifted from the host's, which is invisible until it affects a decision.
+
+**What it rules out.** This would be the wrong choice for anything real-time or
+with large state. If the game ever grows a per-tick element, revisit it. Note the
+snapshot deliberately excludes match history: each `YearResult` is broadcast once
+as it happens and clients accumulate their own, so history costs nothing per
+snapshot. The cost is that **joining a match in progress is not supported** — a
+late joiner would have no history. The original did not support it either.
+
+---
+
+### D43 — The rules moved out of the session into `MatchAuthority`
+
+`LocalSession` used to validate and apply actions itself. That logic now lives in
+`MatchAuthority` (`src/sim`, a `RefCounted`), and both `LocalSession` and
+`HostSession` own one.
+
+**Why two reasons, either sufficient.** First, `LocalSession` is a `Node`, so the
+old arrangement broke the rule in `CLAUDE.md` that the economy must not depend on
+the scene tree. Second, and more practically: the host needs exactly the same
+validate-and-apply logic. Duplicating it would mean offline and hosted play could
+drift apart, and such a drift would be invisible in single-player testing —
+precisely the bug class that is worst to find late.
+
+**What it rules out.** `MatchAuthority` may never emit a signal or touch a node;
+it returns a rejection reason and the session decides how to say it. The
+refactor was verified by the existing `LocalSession` tests passing unchanged,
+since the public interface did not move.
+
+---
+
+### D44 — Both networked sides share one script for every `@rpc`
+
+`NetworkedSession` declares every remote method once. `HostSession` and
+`ClientSession` override ordinary, non-`@rpc` handler methods instead.
+
+**Why.** Godot routes an RPC by node path and method name: a call on the host's
+`Session` node invokes the method of that name on the client's `Session` node. The
+two ends must therefore agree exactly on the set of remote methods and their
+modes. Declaring them in one place makes that agreement structural. Declaring them
+separately on each side would make a typo or a mismatched transfer mode into a
+silent "the call just never arrives", which is miserable to debug.
+
+It also side-steps the question of whether `@rpc` configuration survives being
+overridden in a subclass — nothing is overridden.
+
+**What it rules out.** The handler indirection (`_rpc_buy` calls
+`_on_buy_requested`) is one extra hop per call, and every RPC exists as a method
+on both sides even though only one ever receives it. The unused side is a no-op
+rather than an error, so a stray packet arriving during shutdown is harmless.
+
+---
+
+### D45 — A client-to-host RPC carries no player id
+
+Requests from a client name the stalk, the amount, the receiver of a yeehaw —
+never who is acting. The host derives that from
+`multiplayer.get_remote_sender_id()`.
+
+**Why.** The usual advice is "validate that the caller owns the player they claim
+to be". Not sending the claim at all is strictly better: there is no field to
+forge, so the check cannot be forgotten at a new entry point added later. The
+authority property holds by construction rather than by review.
+
+**What it rules out.** The host cannot act on behalf of a client (there is no way
+to express it), which is fine — nothing in the game needs that. It also means the
+peer-to-player map on the host is load-bearing: a peer with no slot has its
+packets dropped rather than being treated as some default player.
+
+---
+
+### D46 — A disconnected player keeps their slot in the match
+
+When a peer drops, its `PlayerState` stays in the match with its cash and
+holdings, and the slot becomes reclaimable.
+
+**Why.** Removing the player would change the economy for everyone still playing:
+net worth comparisons, dividend payouts and the all-players-ready gate all count
+players, so a disconnect would silently rewrite the match. Leaving the slot is the
+conservative choice.
+
+**What it rules out.** The year cannot advance while a slot is empty, because the
+ready gate waits for every player. That is a real limitation of this increment and
+is what the lobby work has to address — by letting the host fill or close a slot
+deliberately, which is a decision a human should make rather than a rule.

@@ -464,6 +464,15 @@ through `RpcPlayBearOrBullSounds("yeehaw")`.
 > an authority check, Yeehaw makes an excellent **first networked feature** to build
 > and prove the RPC path with.
 
+**Ported, Phase 5.** `YeehawRules` holds the two checks; the request and the give
+both go through the session interface, so offline play refuses them with "Yeehaws
+need other players" rather than hiding the button. The self-yeehaw check is
+enforced on the host, and a client cannot route around it: a client names only the
+*receiver*, and the giver is taken from the sender's peer id (decisions.md D45).
+
+The sound is **not yet wired** — it arrives with audio in Phase 7. Until then the
+gesture shows as a message line.
+
 ---
 
 ## 11. Buying and selling

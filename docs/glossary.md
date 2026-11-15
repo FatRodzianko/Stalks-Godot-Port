@@ -153,9 +153,33 @@ created on the spot or taken from Godot's global functions. Non-negotiable: glob
 `randi()` would make the game untestable.
 
 **Session** — the abstraction over "who is playing and who is allowed to do what", and
-the only thing the UI talks to. `LocalSession` is the offline implementation;
-`HostSession` and `ClientSession` arrive in Phase 5. A Node, because the networked
-ones need to issue RPCs. See [architecture.md §5](architecture.md).
+the only thing the UI talks to. `LocalSession` plays offline, `HostSession` is
+authoritative over a networked match, and `ClientSession` joins one. A Node, because
+the networked ones need to issue RPCs. See [architecture.md §5](architecture.md).
+
+**Authority** — `MatchAuthority`, the single place a match is allowed to change. It
+validates an action, applies it, and returns a rejection reason or an empty string.
+Pure: no nodes, no signals, no peers. Both `LocalSession` and `HostSession` own one,
+which is why offline and hosted play cannot resolve an action differently.
+
+**Replica** — the partial copy of the match a client holds. It is overwritten from
+the host's snapshots and never computed locally. "Partial" because this client's own
+cash, holdings and loan are real while other players carry only their public figures.
+
+**Snapshot** — one encoded, redacted copy of the match, built per recipient and sent
+to one client. What keeps a replica current. See [architecture.md §5.3](architecture.md).
+
+**Redaction** — leaving private figures out of a snapshot as it is encoded. A rival's
+cash, holdings and loan schedule are never put on the wire at all, so there is
+nothing private in the payload to leak.
+
+**Slot** — a player position in a networked match. Slots are created when the host
+starts the match and claimed by peers as they join; a peer that drops frees its slot
+and leaves its player in place with its cash and holdings. See decisions.md D46.
+
+**Peer id** — the number Godot assigns each connected machine; the host is always 1.
+The host maps peer ids to slots, and derives *who is acting* from the sender's peer
+id rather than trusting anything in the packet.
 
 **Pre-check** — a `why_not_*` call on the session that the UI uses to grey out or
 red-flag a control *before* anything is sent. It runs the same validation function
@@ -190,6 +214,10 @@ invisible until Phase 4, which made a doubled share count look like a bug.
 **Host-authoritative** — the design where one machine owns the simulation and decides
 every number. Clients request actions and receive results; they never compute
 economics themselves.
+
+**Yeehaw** — see the game term above. In code it is the first networked feature,
+chosen because it needs a request, an authority check and a broadcast while being
+incapable of corrupting the economy.
 
 **Transport** — what physically carries network messages. Godot's
 `ENetMultiplayerPeer` first, Steam's relay later. Deliberately separate from the

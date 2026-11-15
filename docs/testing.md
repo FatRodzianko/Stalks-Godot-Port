@@ -107,7 +107,9 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-233 tests, 13,578 asserts, about 3.7 seconds.
+275 tests, 13,849 asserts, about 13 seconds.
+
+The networked tests account for most of that time — each one opens a real socket.
 
 | File | Covers | Tests |
 |---|---|---|
@@ -121,6 +123,8 @@ several; the point of this suite is that the port does not.
 | `test_content_library.gd` | The shipped content loads and validates clean, stat blocks match the documented table, 45/45 pools, deterministic order, a full match played from real content, and every validator rule rejecting bad content | 29 |
 | `test_local_session.gd` | Session start-up, seed recording, trading and its rejections, pre-checks agreeing with enforcement, ready-up and year advance, a two-player wait, a full match, loans through the session | 25 |
 | `test_gameplay_screen.gd` | **Scene tests** driving the real screen: rows built, header figures, buying and selling through actual controls, live validation disabling the Buy button, bankrupt presentation, event and year-summary display, header/row column alignment, ellipsis on long names, and the UI matching a headless run of the same seed | 27 |
+| `test_state_sync.gd` | What crosses the wire: the redaction rules (a rival's cash, holdings and loan schedule are never sent; net worth and *that* they borrowed are), snapshot and `YearResult` round trips, mismatched content being reported, and a walk of the whole payload asserting nothing in it is an object | 20 |
+| `test_networked_session.gd` | **Networked tests** with a real host and client in one process: joining and seating, yeehaw in both directions, a refused self-yeehaw, a client's buy applied by the host, an unaffordable and a nonsense request refused, a refusal reaching only the asker, a client unable to act as another player, redaction end to end, the all-ready gate, and both sides agreeing on every price after a year | 22 |
 | `test_screens.gd` | **Scene tests** for the menu (ranges, defaults, seed handling), the screen host (one screen at a time, session ownership, play-again), the result screen, and the loan panel (borrowing, paying the minimum, the escalating warnings, and that a player may still ready up with a payment due) | 25 |
 
 Counts above are read from a suite run, not estimated. If you add tests, re-run and
@@ -165,6 +169,41 @@ The acceptance test to keep an eye on is
 `test_what_is_on_screen_matches_a_headless_simulation_of_the_same_seed`: it plays a
 whole match through the UI, plays the same seed headlessly, and compares every stalk
 price and the final net worth. It is what proves the UI invents nothing.
+
+### Networked tests
+
+`test_networked_session.gd` stands up a real `HostSession` and `ClientSession`,
+connected over real ENet, **in one process**. No second window, no manual
+two-window dance, and they run in the ordinary suite.
+
+`tests/fixtures/net_harness.gd` does the work, and the three things that make it
+possible are each easy to get wrong:
+
+1. **Each side needs its own subtree and its own `MultiplayerAPI`**, registered
+   with `SceneTree.set_multiplayer(api, path)`. A tree has one default API, so two
+   peers cannot otherwise coexist. The nodes must already be in the tree when that
+   call is made.
+2. **The session's path *relative to its API's root* must match on both sides.**
+   Godot resolves an RPC by that relative path. The harness mounts both sessions as
+   `Session` directly under their own world node — the world names differ, which is
+   fine; what is below them may not.
+3. **A non-default `MultiplayerAPI` is not polled by the engine.** The harness
+   polls both by hand in `_process`. In the real game there is one API, the tree's
+   own, and Godot polls it; this is a harness concern only.
+
+Use `await harness.settle(self)` to let a request and its reply cross. It waits on
+**process** frames, not physics frames, because that is where the polling happens —
+waiting on physics frames would advance a clock that moves no packets.
+
+What these tests deliberately do *not* cover is the rules. Those are tested without
+a network, where they are faster and the failures are clearer. What is asserted here
+is only what the wire adds: that a request arrives, that the answer comes back, and
+that a client cannot do what it must not.
+
+One teardown quirk is documented in the harness and worth repeating: Godot's
+`SceneTree.set_multiplayer` **rejects a null interface**, and there is no removal
+API, so a harness cannot unregister the API it registered. Clearing the peer is what
+actually releases the socket; the stale path registration is inert.
 
 Two of these tests exist specifically because a layout bug regressed once and would
 not announce itself: `test_the_board_header_columns_line_up_with_the_rows` compares

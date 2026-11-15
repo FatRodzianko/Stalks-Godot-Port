@@ -177,6 +177,16 @@ func stalk_by_id(stalk_id: StringName) -> StalkDefinition:
 	return null
 
 
+## One event by id, or null. Needed to rebuild a YearResult on a client: only the
+## event's id crosses the wire, and the client reads the flavour text from its own
+## copy of the content. See StateSync.
+func event_by_id(event_id: StringName) -> SpecialEventDefinition:
+	for event: SpecialEventDefinition in all_events():
+		if event.id == event_id:
+			return event
+	return null
+
+
 func all_events() -> Array[SpecialEventDefinition]:
 	var combined: Array[SpecialEventDefinition] = []
 	for stalk: StalkDefinition in stalks:

@@ -248,11 +248,15 @@ func request_sell(player_id: StringName, stalk_id: StringName, shares: int) -> v
 func request_loan(player_id: StringName, amount: int) -> void
 func pay_loan(player_id: StringName, amount: int) -> void
 func set_ready(player_id: StringName, is_ready: bool) -> void
+func request_yeehaw(player_id: StringName) -> void
+func give_yeehaw(giver_id: StringName, receiver_id: StringName) -> void
 
 # Pre-checks for live UI feedback. Presentation only — see §5.1.
 func why_not_buy(player_id: StringName, stalk_id: StringName, shares: int) -> String
 func why_not_sell(player_id: StringName, stalk_id: StringName, shares: int) -> String
 func why_not_loan(player_id: StringName, amount: int) -> String
+func why_not_request_yeehaw(player_id: StringName) -> String
+func why_not_give_yeehaw(giver_id: StringName, receiver_id: StringName) -> String
 func max_affordable(player_id: StringName, stalk_id: StringName) -> int
 ```
 
@@ -262,19 +266,45 @@ Node now means the UI's contract does not change when multiplayer arrives
 (decisions.md D32). `src/sim` remains node-free; this is the layer above, where nodes
 are allowed.
 
-Yeehaw is deliberately absent from this interface so far — it arrives in Phase 5 as
-the first networked feature.
+```
+GameSession              interface; a Node, so the two networked sides can use @rpc
+├── LocalSession         offline; owns a MatchAuthority, no MultiplayerAPI at all
+└── NetworkedSession     declares every @rpc, for both sides, in one script
+    ├── HostSession      owns a MatchAuthority; validates, applies, broadcasts
+    └── ClientSession    holds a replica; asks, and computes nothing
+```
 
 | Implementation | Role |
 |---|---|
-| `LocalSession` | Single player. Owns the state, resolves years in-process. **No `MultiplayerAPI` at all.** |
-| `HostSession` | Authoritative. Validates every request, resolves the year, broadcasts `YearResult`. |
-| `ClientSession` | Sends requests as RPCs, applies received results. Computes nothing. |
+| `LocalSession` | Single player. Owns a `MatchAuthority` and turns its answers into signals. |
+| `HostSession` | The same `MatchAuthority`, plus peer-to-player mapping and broadcast. |
+| `ClientSession` | Sends requests, applies snapshots. Holds no authority object at all. |
 
-**Authority rule:** every `@rpc("any_peer", ...)` entry point re-validates server-side
-— sufficient cash, loan eligibility, correct phase, and that the caller owns the
-player they claim to act as. The original validated on the server too; the port keeps
-that and makes it explicit at every entry point.
+### The rules are not in the session
+
+`MatchAuthority` (`src/sim`, a `RefCounted`) is the single place a match may change.
+It validates an action, applies it, and returns a rejection reason or an empty
+string. It emits nothing and knows nothing about peers.
+
+Both `LocalSession` and `HostSession` own one. That is what makes "hosted and
+offline play cannot diverge" a structural fact rather than a promise: there is one
+implementation of what happens when somebody buys, and both sessions call it.
+
+The sessions are left with one job each — turning answers into signals, and (on
+the host) putting them on the wire. This also restores the rule from `CLAUDE.md`
+that the economy must not depend on the scene tree: before the extraction, the
+validate-and-apply logic lived in `LocalSession`, which is a Node. See D43.
+
+### The authority line
+
+**A client-to-host RPC carries no player id.** Who is acting is derived from
+`multiplayer.get_remote_sender_id()`, which a client cannot forge. So a client has
+no way to even *express* "act as somebody else" — the attack is removed rather
+than validated against. See D45.
+
+On top of that, every `any_peer` entry point re-validates through
+`MatchAuthority`: sufficient cash, loan eligibility, correct phase. The original
+validated on the server too; the port keeps that and makes it structural.
 
 ### 5.1 Responsiveness without prediction
 
@@ -332,6 +362,35 @@ Three things make it work, and all three are easy to get wrong:
 3. **A non-default `MultiplayerAPI` must be polled by hand.** In a real game there
    is one API and Godot polls it; a test harness holding two must call `poll()` on
    each itself.
+
+### 5.3 What a client is allowed to know
+
+A client holds a **partial replica**, not a copy. `StateSync` encodes the match
+once per recipient and redacts as it goes:
+
+| | Sent to its owner | Sent to everybody else |
+|---|---|---|
+| Cash | yes | **no** |
+| Holdings | yes | **no** |
+| Loan balance, schedule, missed payments | yes | **no** |
+| *That* they have a loan | yes | yes |
+| Net worth | yes | yes |
+| Display name, ready flag, bankruptcy | yes | yes |
+
+Net worth is public because the rankings board exists to show it. Cash and
+holdings are not, because knowing exactly what a rival holds would change how the
+game is played.
+
+Two consequences worth knowing:
+
+- Applying a redacted entry **leaves the recipient's local values alone** rather
+  than zeroing them. A client holds no real figure for a rival's cash, and zeroing
+  would make every rival look broke.
+- Because the redaction happens at encode time, per recipient, a client cannot be
+  sent data it should not have even by a host bug in the broadcast loop — there is
+  nothing private in the payload to leak. The rules are asserted in
+  `tests/unit/test_state_sync.gd`, where a leak is visible; in play it would not
+  be.
 
 ### Transport is separate again
 

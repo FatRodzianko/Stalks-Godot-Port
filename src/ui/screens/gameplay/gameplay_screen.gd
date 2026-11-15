@@ -104,6 +104,8 @@ func _attach(session: GameSession) -> void:
 		session.player_changed.connect(_on_player_changed)
 		session.action_rejected.connect(_on_action_rejected)
 		session.game_over.connect(_on_game_over)
+		session.yeehaw_requested.connect(_on_yeehaw_requested)
+		session.yeehaw_given.connect(_on_yeehaw_given)
 
 	_build_stalk_rows()
 	_build_loan_panel()
@@ -288,10 +290,12 @@ func _refresh_bottom_bar(game: GameState, player: PlayerState) -> void:
 	elif game.is_over:
 		_info_label.text = "The game is over."
 
-	# Yeehaw needs somebody else: you cannot give one to yourself.
-	var others: bool = game.players.size() > 1
-	_yeehaw_button.disabled = not others or game.is_over
-	_yeehaw_note.visible = not others
+	# Why the button is off comes from the same rule the authority enforces, so the
+	# greyed-out state can never disagree with it. See docs/architecture.md 5.1.
+	var no_yeehaw: String = _session.why_not_request_yeehaw(_session.local_player_id())
+	_yeehaw_button.disabled = not no_yeehaw.is_empty()
+	_yeehaw_button.tooltip_text = no_yeehaw
+	_yeehaw_note.visible = game.players.size() < YeehawRules.MIN_PLAYERS
 
 	_refresh_loan_controls(game, player)
 
@@ -389,8 +393,7 @@ func _on_loan_button_pressed() -> void:
 
 
 func _on_yeehaw_pressed() -> void:
-	# Wired up in Phase 5, when there is somebody to ask.
-	_show_error("Yeehaws need other players. Multiplayer comes later.")
+	_session.request_yeehaw(_session.local_player_id())
 
 
 func _on_borrow_requested(amount: int) -> void:
@@ -402,6 +405,25 @@ func _on_payment_requested(amount: int) -> void:
 
 
 # -------------------------------------------------------------- session handlers
+
+## Somebody asked. Phase 7 adds the sound; for now the message carries it.
+func _on_yeehaw_requested(player_id: StringName) -> void:
+	var asker: PlayerState = _session.state().player_by_id(player_id)
+	if asker == null:
+		return
+	if player_id == _session.local_player_id():
+		_show_info("You asked for a yeehaw.")
+	else:
+		_show_info("%s wants a yeehaw!" % asker.display_name)
+
+
+func _on_yeehaw_given(giver_id: StringName, receiver_id: StringName) -> void:
+	var giver: PlayerState = _session.state().player_by_id(giver_id)
+	var receiver: PlayerState = _session.state().player_by_id(receiver_id)
+	if giver == null or receiver == null:
+		return
+	_show_info("%s gave %s a yeehaw!" % [giver.display_name, receiver.display_name])
+
 
 func _on_player_changed(_player_id: StringName) -> void:
 	_clear_error()
@@ -501,7 +523,19 @@ func _display_names(ids: Array[StringName]) -> PackedStringArray:
 	return names
 
 
+## The transient message line, under the boards. Both kinds of message use it and
+## both expire after MESSAGE_SECONDS; only the colour differs, so a yeehaw is not
+## dressed up as a failure.
 func _show_error(text: String) -> void:
+	_show_message(text, &"Danger")
+
+
+func _show_info(text: String) -> void:
+	_show_message(text, &"")
+
+
+func _show_message(text: String, variation: StringName) -> void:
+	_error_label.theme_type_variation = variation
 	_error_label.text = text
 	_message_timer.start()
 

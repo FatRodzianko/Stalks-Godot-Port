@@ -34,6 +34,14 @@ signal ready_state_changed(player_id: StringName, is_ready: bool)
 ## The match ended. `winners` may hold more than one id — ties are possible.
 signal game_over(winners: Array[StringName])
 
+## Somebody asked for a yeehaw. Every player hears about it, including the asker,
+## so their own UI can show that the ask went out.
+signal yeehaw_requested(player_id: StringName)
+
+## Somebody gave one. Every player hears about it and plays the sound — see
+## docs/game-rules.md §10.
+signal yeehaw_given(giver_id: StringName, receiver_id: StringName)
+
 
 ## The live match state. Read-only as far as the UI is concerned: look at it to
 ## render, never write to it.
@@ -79,6 +87,17 @@ func set_ready(_player_id: StringName, _is_ready: bool) -> void:
 	push_error("GameSession.set_ready is abstract")
 
 
+## "Can I get a yeehaw?" — notifies everybody else, and nothing more.
+func request_yeehaw(_player_id: StringName) -> void:
+	push_error("GameSession.request_yeehaw is abstract")
+
+
+## Answers somebody's ask. `receiver_id` is who gets it; the giver cannot be the
+## receiver.
+func give_yeehaw(_giver_id: StringName, _receiver_id: StringName) -> void:
+	push_error("GameSession.give_yeehaw is abstract")
+
+
 # ------------------------------------------------------------- local pre-checks
 #
 # The UI calls these to grey out or red-flag a control before anything is sent.
@@ -117,6 +136,20 @@ func why_not_loan(player_id: StringName, amount: int) -> String:
 	if player == null:
 		return "Unknown player."
 	return LoanRules.validate_take_loan(player, amount, game)
+
+
+func why_not_request_yeehaw(player_id: StringName) -> String:
+	var game: GameState = state()
+	if game == null:
+		return "No game in progress."
+	return YeehawRules.validate_request(player_id, game)
+
+
+func why_not_give_yeehaw(giver_id: StringName, receiver_id: StringName) -> String:
+	var game: GameState = state()
+	if game == null:
+		return "No game in progress."
+	return YeehawRules.validate_give(giver_id, receiver_id, game)
 
 
 ## The most shares of `stalk_id` that `player_id` could afford right now.

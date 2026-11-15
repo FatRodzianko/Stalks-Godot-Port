@@ -282,6 +282,48 @@ container layout.
 
 ## Phase 5 — Multiplayer over ENet
 
+**Status: increment 1 of 2 complete.** The whole networked layer is built and
+tested; what is missing is the UI to reach it — a host/join screen and a lobby.
+Until that lands, a networked match can be stood up from code and from the test
+suite, but not from the running game.
+
+### Increment 1 — delivered
+
+- `MatchAuthority` extracted from `LocalSession`, so one implementation of
+  validate-and-apply serves offline and hosted play alike (D43). The existing
+  `LocalSession` tests passing unchanged is what verified the move.
+- `NetworkedSession`, declaring every `@rpc` once for both sides (D44).
+- `HostSession`: peer-to-slot mapping, every request re-validated through the
+  authority, redacted per-player snapshots pushed out, year results broadcast.
+- `ClientSession`: a replica that asks and computes nothing.
+- `StateSync`: hand-written encoding of built-in types only (D41), whole snapshots
+  rather than deltas (D42), per-recipient redaction (architecture §5.3).
+- `YeehawRules` plus the full request/notify/give/broadcast path — the first
+  networked feature, working end to end in both directions.
+- A one-process test harness (`tests/fixtures/net_harness.gd`) and 42 new tests —
+  20 pure encoding tests and 22 with a real host and client over real ENet — taking
+  the suite to **275 tests / 13,849 asserts in about 13 seconds**. The networked
+  tests account for most of that time, since each opens a socket.
+
+Two de-risking spikes ran before any of it was written, because the testing
+approach depended on the answer: two ENet peers *can* coexist in one process, and
+RPCs route both ways. The three non-obvious requirements that makes are recorded in
+[architecture.md §5.2](architecture.md) and in the harness itself.
+
+**Known limitation.** A disconnected player keeps their slot (D46), and the
+all-players-ready gate counts every player — so a match cannot advance a year while
+a slot sits empty. Filling or closing a slot is a decision for the host to make in
+the lobby, which is increment 2.
+
+### Increment 2 — remaining
+
+- Host/join screen: port, address, player name
+- Lobby screen: player list, ready-up, host starts the match
+- `Main` wiring so the menu can reach hosting and joining
+- Host handling of a full match (currently the peer is simply disconnected) and of
+  an empty slot blocking the year
+- The yeehaw *sound* is Phase 7 work, with the rest of the audio
+
 **Build:**
 - `HostSession` / `ClientSession` behind the existing `GameSession` interface
 - `ENetMultiplayerPeer` transport; direct IP/port connection
@@ -300,6 +342,10 @@ the economy. It is also, per the owner, a critical feature.
 **Done when:** two instances on one machine can play a full game together over ENet,
 the host rejects a malformed or unaffordable client request, and both clients show
 identical market state after every year.
+
+Of those three: the rejection and the identical-market conditions are met and
+tested (`test_networked_session.gd`). Two *instances* playing together needs
+increment 2 — the layer underneath it is done and proven in one process.
 
 ---
 
