@@ -37,6 +37,17 @@ const HOST_PEER_ID: int = 1
 # Mode is stated explicitly on every one of these, never left to a default.
 # Economy traffic is `reliable`: losing a buy is not acceptable.
 
+## Sent by a client immediately on connecting, carrying the name the player
+## typed. Nothing else is sent with it: the host assigns the slot.
+##
+## A slot is created when this arrives rather than when the socket connects, so
+## that a player appears in the lobby already named instead of flickering through
+## a placeholder.
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_introduce(player_name: String) -> void:
+	_on_introduced(_sender(), player_name)
+
+
 @rpc("any_peer", "call_remote", "reliable")
 func _rpc_buy(stalk_id: String, shares: int) -> void:
 	_on_buy_requested(_sender(), StringName(stalk_id), shares)
@@ -77,6 +88,21 @@ func _rpc_give_yeehaw(receiver_id: String) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _rpc_welcome(player_id: String, state_data: Dictionary) -> void:
 	_on_welcomed(StringName(player_id), state_data)
+
+
+## The host closed the lobby. A client's screen host swaps the lobby for the
+## playing screen on this.
+@rpc("authority", "call_remote", "reliable")
+func _rpc_match_started() -> void:
+	_on_match_start_pushed()
+
+
+## The host refused the connection — the match is full, or already under way.
+## Sent before the peer is disconnected so the player gets a reason rather than a
+## silent failure.
+@rpc("authority", "call_remote", "reliable")
+func _rpc_turned_away(reason: String) -> void:
+	_on_turned_away(reason)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -144,7 +170,19 @@ func _on_yeehaw_offered(_peer: int, _receiver_id: StringName) -> void:
 	pass
 
 
+func _on_introduced(_peer: int, _player_name: String) -> void:
+	pass
+
+
 func _on_welcomed(_player_id: StringName, _state_data: Dictionary) -> void:
+	pass
+
+
+func _on_match_start_pushed() -> void:
+	pass
+
+
+func _on_turned_away(_reason: String) -> void:
 	pass
 
 

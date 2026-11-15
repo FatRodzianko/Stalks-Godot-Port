@@ -24,7 +24,7 @@ extends Node
 ## ```gdscript
 ## var harness: NetHarness = NetHarness.new()
 ## add_child_autofree(harness)
-## assert_eq(harness.start(StalksFixture.make_settings(), library, ["Host", "Guest"]), "")
+## assert_eq(harness.start(StalksFixture.make_settings(), library), "")
 ## assert_true(await harness.await_join(self), "client should connect")
 ## ```
 
@@ -50,26 +50,32 @@ var _client_api: MultiplayerAPI
 ## `_exit_tree` runs, the sessions are already detached and `Node.multiplayer`
 ## no longer resolves.
 var _peers: Array[MultiplayerPeer] = []
+
+## APIs for any extra clients a test mounts, each with its own world.
+var _extra_apis: Array[MultiplayerAPI] = []
+
 var _port: int = 0
 
 
 ## Builds both sides and connects them. Returns an error string, empty on success.
 ##
-## `player_names` sizes the match; the host takes the first slot and the client
-## the second, so pass at least two names for anything involving both.
+## The host takes the first slot and the client the second, as they would in a
+## real lobby: the host exists from the start and the client is seated when it
+## introduces itself.
 func start(
 	settings: GameSettings,
 	library: ContentLibrary,
-	player_names: Array[String] = ["Host", "Guest"],
+	host_name: String = "Host",
+	guest_name: String = "Guest",
 ) -> String:
 	_port = randi_range(PORT_FLOOR, PORT_CEILING)
 
-	var host_result: Dictionary = HostSession.host(_port, settings, library, player_names)
+	var host_result: Dictionary = HostSession.host(_port, settings, library, host_name)
 	if not String(host_result["error"]).is_empty():
 		return String(host_result["error"])
 	host = host_result["session"]
 
-	var client_result: Dictionary = ClientSession.join("127.0.0.1", _port, library)
+	var client_result: Dictionary = ClientSession.join("127.0.0.1", _port, library, guest_name)
 	if not String(client_result["error"]).is_empty():
 		return String(client_result["error"])
 	client = client_result["session"]
@@ -112,13 +118,41 @@ func settle(test: GutTest, frames: int = 6) -> void:
 ## Closing the peer is what a crash or a pulled cable looks like from the host's
 ## side, which is the case worth testing — a clean "I am leaving" message does not
 ## exist in this game yet.
+## Waits on the player being gone from the *active* roster, which covers both
+## outcomes: a lobby drop forgets the player outright, while an in-match drop
+## vacates the slot and keeps the portfolio.
 func drop_client(test: GutTest) -> bool:
 	if client != null:
 		client.close()
-	await test.wait_until(
-		func() -> bool: return host.is_vacated(&"p1"), JOIN_TIMEOUT_SECONDS
-	)
-	return host.is_vacated(&"p1")
+	var gone: Callable = func() -> bool: return host.state().player_by_id(&"p1") == null
+	await test.wait_until(gone, JOIN_TIMEOUT_SECONDS)
+	return gone.call()
+
+
+## Closes the lobby, as the host pressing Start does, and lets both sides see it.
+func begin_match(test: GutTest) -> void:
+	host.start_match()
+	await settle(test)
+
+
+## The port this harness bound, for a test that wants to connect a third peer.
+func port() -> int:
+	return _port
+
+
+## Mounts an additional client in **its own world with its own API**, exactly as
+## the first two are.
+##
+## It cannot share the first client's world. Two sessions under one API would be
+## siblings, so only one of them could be named `Session`, and the host's RPCs
+## resolve by that relative path — the second would fail with "Failed to get path
+## from RPC". That is requirement 2 at the top of this file, met the hard way.
+func attach_extra_client(extra: ClientSession, peer: MultiplayerPeer) -> void:
+	var world: Node = _mount("ExtraWorld%d" % _extra_apis.size(), extra)
+	var api: MultiplayerAPI = _register_api(world)
+	_extra_apis.append(api)
+	extra.attach_peer(peer)
+	_peers.append(peer)
 
 
 ## Both APIs are polled here because the engine only polls the tree's default one.
@@ -127,6 +161,8 @@ func _process(_delta: float) -> void:
 		_host_api.poll()
 	if _client_api != null:
 		_client_api.poll()
+	for api: MultiplayerAPI in _extra_apis:
+		api.poll()
 
 
 func _mount(world_name: String, session: NetworkedSession) -> Node:
@@ -160,7 +196,9 @@ func _register_api(world: Node) -> MultiplayerAPI:
 ##   — nothing resolves to a freed node — and clearing the peer is what actually
 ##   releases the socket.
 func _exit_tree() -> void:
-	for api: MultiplayerAPI in [_host_api, _client_api]:
+	var apis: Array[MultiplayerAPI] = [_host_api, _client_api]
+	apis.append_array(_extra_apis)
+	for api: MultiplayerAPI in apis:
 		if api != null:
 			api.multiplayer_peer = null
 	for peer: MultiplayerPeer in _peers:

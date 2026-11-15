@@ -24,11 +24,22 @@ signal joined(player_id: StringName)
 ## The connection failed or dropped. `reason` is player-facing.
 signal connection_lost(reason: String)
 
+## The host closed the lobby and the match is under way.
+signal match_started
+
 
 var _state: GameState
 var _library: ContentLibrary
 var _local_player_id: StringName = &""
 var _has_joined: bool = false
+
+## The name the player typed, sent once the socket is up. The host sanitises it
+## and may hand back something different, which is what the replica then shows.
+var _chosen_name: String = ""
+
+## Set when the host turned this client away, so a subsequent disconnect is
+## reported with the host's reason rather than a generic one.
+var _refusal: String = ""
 
 
 ## Builds a client and its transport. Returns `{session, peer, error}` in the same
@@ -36,10 +47,16 @@ var _has_joined: bool = false
 ##
 ## A successful return means only that the socket was created — the connection
 ## itself is asynchronous, and arrives as `joined` or `connection_lost`.
-static func join(address: String, port: int, library: ContentLibrary) -> Dictionary:
+static func join(
+	address: String,
+	port: int,
+	library: ContentLibrary,
+	player_name: String = "",
+) -> Dictionary:
 	var session: ClientSession = ClientSession.new()
 	session.name = NODE_NAME
 	session._library = library
+	session._chosen_name = player_name
 	# An empty state until the host's first snapshot. Settings arrive with it, so
 	# there is nothing to guess at locally.
 	session._state = GameState.new(null)
@@ -59,6 +76,13 @@ func attach_peer(peer: MultiplayerPeer) -> void:
 	if not multiplayer.connection_failed.is_connected(_on_connection_failed):
 		multiplayer.connection_failed.connect(_on_connection_failed)
 		multiplayer.server_disconnected.connect(_on_server_disconnected)
+		multiplayer.connected_to_server.connect(_on_connected)
+
+
+## The socket is up. The host does not seat this client until it says who it is,
+## so the name goes out immediately.
+func _on_connected() -> void:
+	_rpc_introduce.rpc_id(HOST_PEER_ID, _chosen_name)
 
 
 func state() -> GameState:
@@ -173,6 +197,17 @@ func _on_ready_pushed(player_id: StringName, is_ready: bool) -> void:
 	ready_state_changed.emit(player_id, is_ready)
 
 
+func _on_match_start_pushed() -> void:
+	match_started.emit()
+
+
+## The host refused this client. Recorded rather than emitted as a lost
+## connection straight away, because the disconnect follows immediately and would
+## otherwise report a second, vaguer message over the top of this one.
+func _on_turned_away(reason: String) -> void:
+	_refusal = reason
+
+
 func _on_yeehaw_ask_pushed(player_id: StringName) -> void:
 	yeehaw_requested.emit(player_id)
 
@@ -213,4 +248,4 @@ func _on_connection_failed() -> void:
 
 func _on_server_disconnected() -> void:
 	_has_joined = false
-	connection_lost.emit("The host closed the game.")
+	connection_lost.emit(_refusal if not _refusal.is_empty() else "The host closed the game.")

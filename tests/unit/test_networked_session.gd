@@ -30,7 +30,7 @@ func after_each() -> void:
 
 ## Stands up a connected host and client, failing the test if either end does not
 ## come up. Returns whether the caller should continue.
-func _connect(player_names: Array[String] = ["Host", "Guest"]) -> bool:
+func _connect(host_name: String = "Host", guest_name: String = "Guest") -> bool:
 	_harness = NetHarness.new()
 	add_child(_harness)
 
@@ -38,14 +38,34 @@ func _connect(player_names: Array[String] = ["Host", "Guest"]) -> bool:
 	settings.rng_seed = 4242
 	settings.loans_enabled = true
 
-	var error: String = _harness.start(settings, _library, player_names)
+	var error: String = _harness.start(settings, _library, host_name, guest_name)
 	if not error.is_empty():
 		fail_test("harness did not start: %s" % error)
 		return false
 
 	var joined: bool = await _harness.await_join(self)
 	assert_true(joined, "the client should connect to the host")
-	return joined
+	if not joined:
+		return false
+
+	# Everything below the lobby tests happens in a running match, so Start is
+	# part of getting connected. `_connect_lobby` is the variant that stops short.
+	await _harness.begin_match(self)
+	return true
+
+
+## Connects without starting the match, for the lobby tests.
+func _connect_lobby(host_name: String = "Host", guest_name: String = "Guest") -> bool:
+	_harness = NetHarness.new()
+	add_child(_harness)
+
+	var error: String = _harness.start(
+		StalksFixture.make_settings(), _library, host_name, guest_name
+	)
+	if not error.is_empty():
+		fail_test("harness did not start: %s" % error)
+		return false
+	return await _harness.await_join(self)
 
 
 # ---------------------------------------------------------------------- joining
@@ -555,3 +575,147 @@ func test_a_drop_does_not_advance_the_year_on_its_own() -> void:
 		return
 
 	assert_eq(_harness.host.state().year, 0, "a drop is not a ready-up")
+
+
+# ------------------------------------------------------------------------- lobby
+#
+# Players are created as they arrive, and the roster is whatever is present when
+# the host presses Start. Declaring the size up front was the first design and it
+# was wrong — see docs/decisions.md D48.
+
+func test_a_host_alone_is_a_one_player_lobby() -> void:
+	_harness = NetHarness.new()
+	add_child(_harness)
+	assert_eq(_harness.start(StalksFixture.make_settings(), _library), "")
+
+	assert_eq(_harness.host.state().players.size(), 1, "no empty slots waiting")
+	assert_true(_harness.host.lobby_is_open())
+
+
+func test_a_joining_player_is_added_to_the_lobby() -> void:
+	if not await _connect_lobby():
+		return
+
+	assert_eq(_harness.host.state().players.size(), 2)
+	assert_eq(_harness.client.local_player_id(), &"p1")
+
+
+func test_a_player_arrives_with_the_name_they_typed() -> void:
+	if not await _connect_lobby("Murph", "Rodzianko"):
+		return
+
+	assert_eq(_harness.host.state().player_by_id(&"p0").display_name, "Murph")
+	assert_eq(
+		_harness.host.state().player_by_id(&"p1").display_name, "Rodzianko",
+		"the host should seat the client under its chosen name",
+	)
+	assert_eq(
+		_harness.client.state().player_by_id(&"p1").display_name, "Rodzianko",
+		"and the client should see it too",
+	)
+
+
+func test_leaving_the_lobby_removes_the_player_outright() -> void:
+	# Before the match there is no portfolio to preserve and nobody waiting on
+	# them, so the slot goes rather than being vacated.
+	if not await _connect_lobby():
+		return
+	assert_eq(_harness.host.state().players.size(), 2)
+
+	assert_true(await _harness.drop_client(self))
+
+	assert_eq(_harness.host.state().players.size(), 1)
+	assert_eq(_harness.host.roster().size(), 1, "the slot should be gone, not vacated")
+	assert_false(_harness.host.is_vacated(&"p1"))
+
+
+func test_the_year_does_not_advance_while_the_lobby_is_open() -> void:
+	# Readiness means "ready to begin" here, not "advance the year". Without the
+	# guard a full lobby of ready players would resolve year 1 unseen.
+	if not await _connect_lobby():
+		return
+
+	_harness.client.set_ready(&"p1", true)
+	_harness.host.set_ready(&"p0", true)
+	await _harness.settle(self)
+
+	assert_eq(_harness.host.state().year, 0, "the lobby must not resolve a year")
+
+
+func test_starting_the_match_closes_the_lobby_and_tells_the_client() -> void:
+	if not await _connect_lobby():
+		return
+
+	var started: Array = []
+	_harness.client.match_started.connect(func() -> void: started.append(true))
+
+	await _harness.begin_match(self)
+
+	assert_false(_harness.host.lobby_is_open())
+	assert_eq(started.size(), 1, "the client should be told to leave the lobby")
+
+
+func test_starting_the_match_clears_ready_flags() -> void:
+	# Otherwise "ready to begin" would carry over and instantly advance year 1.
+	if not await _connect_lobby():
+		return
+
+	_harness.client.set_ready(&"p1", true)
+	_harness.host.set_ready(&"p0", true)
+	await _harness.settle(self)
+
+	await _harness.begin_match(self)
+
+	assert_eq(_harness.host.state().year, 0, "the match should begin at year 0")
+	assert_false(_harness.host.state().player_by_id(&"p0").is_ready)
+	assert_false(_harness.host.state().player_by_id(&"p1").is_ready)
+
+
+func test_a_latecomer_is_turned_away_with_a_reason() -> void:
+	# A silent failure to join is the worst version of this: the player cannot
+	# tell a started game from a broken one.
+	if not await _connect_lobby():
+		return
+	await _harness.begin_match(self)
+
+	var latecomer: Dictionary = ClientSession.join(
+		"127.0.0.1", _harness.port(), _library, "Late"
+	)
+	assert_eq(String(latecomer["error"]), "")
+	var late: ClientSession = latecomer["session"]
+	var reasons: Array[String] = []
+	late.connection_lost.connect(func(reason: String) -> void: reasons.append(reason))
+	_harness.attach_extra_client(late, latecomer["peer"])
+
+	await _harness.settle(self, 30)
+
+	assert_false(late.has_joined(), "a latecomer must not be seated")
+	assert_eq(_harness.host.state().players.size(), 2, "and must not appear in the match")
+	assert_true(reasons.size() >= 1, "they should be told why")
+	if reasons.size() >= 1:
+		assert_string_contains(reasons[0].to_lower(), "already started")
+
+
+# -------------------------------------------------------------- name sanitising
+#
+# A display name arrives from a client, so it is untrusted input. These are pure
+# and need no connection.
+
+func test_a_blank_name_becomes_a_numbered_placeholder() -> void:
+	assert_eq(HostSession.sanitised_name("", 0), "Player 1")
+	assert_eq(HostSession.sanitised_name("   ", 3), "Player 4")
+
+
+func test_a_name_is_trimmed() -> void:
+	assert_eq(HostSession.sanitised_name("  Murph  ", 0), "Murph")
+
+
+func test_an_overlong_name_is_cut_to_the_column_width() -> void:
+	var long_name: String = "A".repeat(40)
+	assert_eq(HostSession.sanitised_name(long_name, 0).length(), HostSession.MAX_NAME_LENGTH)
+
+
+func test_control_characters_are_stripped_from_a_name() -> void:
+	# A newline or a tab would corrupt a fixed-width row.
+	assert_eq(HostSession.sanitised_name("Mur\nph", 0), "Mur ph")
+	assert_eq(HostSession.sanitised_name("\n\t", 0), "Player 1")

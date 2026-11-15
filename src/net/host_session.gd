@@ -21,6 +21,10 @@ signal player_joined(player_id: StringName)
 ## `_on_peer_disconnected`.
 signal player_left(player_id: StringName)
 
+## The lobby closed and the match is under way. Both sides' screen hosts listen
+## for this to swap the lobby for the playing screen.
+signal match_started
+
 
 var _authority: MatchAuthority
 var _library: ContentLibrary
@@ -47,31 +51,39 @@ var _roster: Array[PlayerState] = []
 ## rather than starting a fresh player. See docs/decisions.md D47.
 var _vacated_player_ids: Array[StringName] = []
 
+## True until the host presses Start. While open, an arriving peer is given a new
+## slot; once closed, the roster is fixed and a late joiner is turned away.
+var _lobby_is_open: bool = true
 
-## Starts listening on `port` and seats the host as the first player.
+
+## Starts listening on `port` with the host as the only player, and the lobby
+## open.
 ##
-## `expected_players` sizes the match: the slots are created up front, because the
-## economy needs every player to exist before year 1 resolves and the original
-## likewise locked the roster at the lobby. Slots nobody claims are still played
-## by the authority — a Phase 5 lobby limitation noted in docs/porting-plan.md.
+## **Players are created as they arrive, not declared up front.** Sizing the match
+## in advance meant a match set up for four with two people present could never
+## advance a year — the ready gate counts every player, which is exactly the
+## deadlock D47 fixed for disconnects. The roster is instead whoever is present
+## when the host presses Start. See docs/decisions.md D48.
 ##
-## Returns an error string, or empty on success.
+## Returns `{session, peer, error}`; check `error` first.
 static func host(
 	port: int,
 	settings: GameSettings,
 	library: ContentLibrary,
-	player_names: Array[String],
+	host_name: String,
 ) -> Dictionary:
 	var session: HostSession = HostSession.new()
 	session.name = NODE_NAME
 	session._library = library
-	session._authority = LocalSession.build_authority(settings, library, player_names)
+	session._authority = LocalSession.build_authority(
+		settings, library, [sanitised_name(host_name, 0)] as Array[String]
+	)
 
-	# Every slot starts unclaimed; the host claims the first one when its peer is
-	# attached, once there is a MultiplayerAPI to read its own peer id from.
+	# The host is the one slot that exists before anybody connects. It is claimed
+	# when the peer is attached, once there is a MultiplayerAPI to read the host's
+	# own peer id from.
 	session._roster = session._authority.state.players.duplicate()
-	for player: PlayerState in session._roster:
-		session._free_player_ids.append(player.id)
+	session._free_player_ids.append(session._roster[0].id)
 
 	var peer: ENetMultiplayerPeer = ENetMultiplayerPeer.new()
 	var error: Error = peer.create_server(port, MAX_CLIENTS)
@@ -93,8 +105,60 @@ func attach_peer(peer: MultiplayerPeer) -> void:
 	_claim_slot(HOST_PEER_ID)
 
 
+## Ten players maximum, host included. See docs/game-rules.md §2.
+const MAX_PLAYERS: int = MAX_CLIENTS + 1
+
+
+## Longest player name the boards have room for. Terminus is a fixed-width font
+## and the rankings column is sized in characters, so this is a layout constant
+## rather than an arbitrary limit.
+const MAX_NAME_LENGTH: int = 16
+
+
+## A display name that is safe to put on screen: trimmed, length-capped, and
+## never empty.
+##
+## Names come from a client over the wire, so they are untrusted input. An empty
+## or whitespace-only name would render as a blank row, and an overlong one would
+## break the column, so both are corrected here rather than rejected — being
+## turned away from a game because of your name would be worse.
+static func sanitised_name(raw: String, slot_index: int) -> String:
+	var trimmed: String = raw.strip_edges()
+	if trimmed.is_empty():
+		return "Player %d" % (slot_index + 1)
+	# Control characters would corrupt a fixed-width row.
+	var cleaned: String = ""
+	for character: String in trimmed:
+		cleaned += character if character.unicode_at(0) >= 32 else " "
+	cleaned = cleaned.strip_edges()
+	if cleaned.is_empty():
+		return "Player %d" % (slot_index + 1)
+	return cleaned.substr(0, MAX_NAME_LENGTH)
+
+
 func state() -> GameState:
 	return _authority.state if _authority != null else null
+
+
+## Whether the lobby is still accepting players.
+func lobby_is_open() -> bool:
+	return _lobby_is_open
+
+
+## Closes the lobby and begins the match with whoever is present.
+##
+## The roster is fixed from here on: late joiners are turned away, and a player
+## who drops vacates their slot rather than disappearing (D47). Before Start a
+## dropped player is simply forgotten — there is no portfolio to keep and nobody
+## is waiting on them.
+func start_match() -> void:
+	if not _lobby_is_open:
+		return
+	_lobby_is_open = false
+	_authority.state.clear_ready_flags()
+	_rpc_match_started.rpc()
+	_broadcast_state(local_player_id())
+	match_started.emit()
 
 
 func local_player_id() -> StringName:
@@ -259,8 +323,15 @@ func _apply_yeehaw_give(giver_id: StringName, receiver_id: StringName) -> void:
 ##
 ## `all_players_ready()` is false for an empty roster, so a match everybody has
 ## left does not resolve years on its own.
+##
+## Nothing advances while the lobby is open. Readiness means two different things
+## either side of Start — "ready to begin" in the lobby, "advance the year" in the
+## match — and without this guard a full lobby of ready players would resolve
+## year 1 before anybody had seen the board.
 func _advance_if_everybody_is_ready() -> void:
-	if _authority.state.all_players_ready() and not _authority.state.is_over:
+	if _lobby_is_open or _authority.state.is_over:
+		return
+	if _authority.state.all_players_ready():
 		_advance()
 
 
@@ -321,12 +392,32 @@ func _broadcast_state(changed_player_id: StringName) -> void:
 
 # ------------------------------------------------------------------- connections
 
-func _on_peer_connected(peer_id: int) -> void:
-	var player_id: StringName = _claim_slot(peer_id)
+## A socket connected. Nothing is decided here — the host waits for the peer to
+## introduce itself, because the player's chosen name arrives with that and a slot
+## created now would have no name to show.
+func _on_peer_connected(_peer_id: int) -> void:
+	pass
+
+
+## A peer has told the host its name, so it can be seated.
+##
+## Everything that can refuse a joiner is decided here, and each refusal sends a
+## reason before disconnecting: a player turned away in silence has no idea
+## whether the game is full, already running, or simply broken.
+func _on_introduced(peer_id: int, player_name: String) -> void:
+	if _player_by_peer.has(peer_id):
+		# A second introduction from the same peer. Ignored rather than treated as
+		# a rename: the lobby is not a place to change your name, and honouring it
+		# mid-match would let a client rewrite the rankings.
+		return
+
+	if not _lobby_is_open:
+		_turn_away(peer_id, "That game has already started.")
+		return
+
+	var player_id: StringName = _seat_new_player(peer_id, player_name)
 	if player_id.is_empty():
-		# The match is full. Disconnecting is blunt but honest; the lobby will
-		# turn this into a message before Phase 5 is done.
-		multiplayer.multiplayer_peer.disconnect_peer(peer_id)
+		_turn_away(peer_id, "That game is full.")
 		return
 
 	_rpc_welcome.rpc_id(
@@ -335,6 +426,42 @@ func _on_peer_connected(peer_id: int) -> void:
 	player_joined.emit(player_id)
 	# Everybody else needs the new arrival in their player list.
 	_broadcast_state(player_id)
+
+
+## Creates a player for an arriving peer, or an empty id if the match is full.
+##
+## A vacated slot is offered first, so somebody who dropped out of a running match
+## resumes their own position rather than being handed a new one (D47). Otherwise
+## a fresh slot is appended.
+func _seat_new_player(peer_id: int, player_name: String) -> StringName:
+	if not _free_player_ids.is_empty():
+		return _claim_slot(peer_id)
+
+	if _roster.size() >= MAX_PLAYERS:
+		return &""
+
+	var index: int = _roster.size()
+	var player: PlayerState = PlayerState.new(
+		StringName("p%d" % index),
+		sanitised_name(player_name, index),
+		_authority.state.settings.starting_cash,
+	)
+	_roster.append(player)
+	_free_player_ids.append(player.id)
+	_rebuild_active_players()
+	return _claim_slot(peer_id)
+
+
+func _turn_away(peer_id: int, reason: String) -> void:
+	_rpc_turned_away.rpc_id(peer_id, reason)
+	# Deferred so the reason is actually flushed to the socket before it closes.
+	_disconnect_soon(peer_id)
+
+
+func _disconnect_soon(peer_id: int) -> void:
+	await get_tree().process_frame
+	if multiplayer != null and multiplayer.multiplayer_peer != null:
+		multiplayer.multiplayer_peer.disconnect_peer(peer_id)
 
 
 ## A dropped peer's player leaves the **active roster**, and their portfolio is
@@ -356,22 +483,41 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 	_player_by_peer.erase(peer_id)
 	_peer_by_player.erase(player_id)
-	_free_player_ids.append(player_id)
 
-	if not _vacated_player_ids.has(player_id):
-		_vacated_player_ids.append(player_id)
-	var player: PlayerState = _player_in_roster(player_id)
-	if player != null:
-		# Cleared so a resumed player is not already ready for a year they were
-		# not present for.
-		player.is_ready = false
-	_rebuild_active_players()
+	if _lobby_is_open:
+		# Nothing to preserve and nobody waiting on them: somebody who leaves the
+		# lobby was never in the match. Their slot is removed outright so the
+		# remaining players keep consecutive ids and a tidy list.
+		_forget_player(player_id)
+	else:
+		_free_player_ids.append(player_id)
+		if not _vacated_player_ids.has(player_id):
+			_vacated_player_ids.append(player_id)
+		var player: PlayerState = _player_in_roster(player_id)
+		if player != null:
+			# Cleared so a resumed player is not already ready for a year they
+			# were not present for.
+			player.is_ready = false
+		_rebuild_active_players()
 
 	player_left.emit(player_id)
 	_broadcast_state(player_id)
 
 	# Their departure may be the last thing the year was waiting on.
 	_advance_if_everybody_is_ready()
+
+
+## Drops a player from the lobby entirely. Only safe before the match starts:
+## afterwards their holdings and their place in the standings matter, which is
+## what D47 is about.
+func _forget_player(player_id: StringName) -> void:
+	for index: int in _roster.size():
+		if _roster[index].id == player_id:
+			_roster.remove_at(index)
+			break
+	_free_player_ids.erase(player_id)
+	_vacated_player_ids.erase(player_id)
+	_rebuild_active_players()
 
 
 ## Seats a peer in the first free slot, in roster order so that the host is always
