@@ -533,7 +533,7 @@ the original's `SteamAchievementManager.cs` and its callers.
 |---|---|
 | `SSS_Win_One_Game` | Win a game |
 | `SSS_WIN_TEN` / `_HUNDRED` / `SSS_WINS_THOUSAND` | 10 / 100 / 1000 lifetime wins (stat `sss_wins`) |
-| `SSS_LOSE_ONE_GAME` | Lose a game — **casing unconfirmed**, see below |
+| `SSS_Lose_One_Game` | Lose a game |
 | `SSS_LOSES_TEN` / `_HUNDRED` / `_THOUSAND` | 10 / 100 / 1000 lifetime losses (stat `sss_loses`) |
 | `SSS_NETWORTH_FIFTY` | Finish with net worth >= 50,000, **and** starting cash <= 10,000 |
 | `SSS_NETWORTH_HUNDRED` | Finish with net worth **<= 100**. A wipe-out, despite the name |
@@ -549,15 +549,17 @@ the original's `SteamAchievementManager.cs` and its callers.
 | `SSS_DIVERSIFIED` | Hold **>= 10 shares of all ten stalks** at once |
 | `SSS_YEEHAW_ONE` / `SSS_YEEHAW_HUNDRED` | Give 1 / 100 yeehaws (stat `sss_yeehaws`) — **given**, not received |
 
-⚠️ **The casing bug, and what is left of it.** Steam's achievement API names
-are case-sensitive, and the original hedged: it sets both `SSS_WIN_ONE_GAME` and
-`SSS_Win_One_Game`, and both `SSS_LOSE_ONE_GAME` and `SSS_Lose_One_Game`.
+**The casing bug, resolved.** Steam's achievement API names are case-sensitive,
+and the original hedged: it set both `SSS_WIN_ONE_GAME` and `SSS_Win_One_Game`,
+and both `SSS_LOSE_ONE_GAME` and `SSS_Lose_One_Game`.
 
-The win pair is settled — the original's only live call is
-`SetAchievement("SSS_Win_One_Game")`, the other being commented out, so that is
-the spelling real players have unlocked. The lose pair sets both on consecutive
-lines, so one is a no-op and the source cannot say which. **Check the partner
-backend**; see [steam-integration.md 4](steam-integration.md).
+Both were read off the partner backend on 2026-11-14, and the answer is **not**
+what the majority pattern suggests: the two singular "one game" achievements are
+`Title_Case` (`SSS_Win_One_Game`, `SSS_Lose_One_Game`) while every other id
+shouts. Guessing from the other 23 would have got both of them wrong, and a
+wrong name does not error — the achievement simply never unlocks.
+
+The shouting variants are dead. Do not reintroduce them.
 
 ### Faithful but fragile, worth fixing in the port
 

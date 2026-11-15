@@ -49,9 +49,32 @@ func test_no_id_has_stray_whitespace() -> void:
 
 func test_the_unconfirmed_ids_are_real_ids() -> void:
 	# The list of things to check against the backend must not drift away from
-	# the catalogue it refers to.
+	# the catalogue it refers to. Written to assert even when the list is empty,
+	# which it is today — a loop over nothing is a test that proves nothing.
+	var strays: PackedStringArray = []
 	for id: StringName in Achievements.UNCONFIRMED_CASING:
-		assert_true(Achievements.ALL.has(id), "%s is not in ALL" % id)
+		if not Achievements.ALL.has(id):
+			strays.append(String(id))
+
+	assert_eq(strays, PackedStringArray(), "unconfirmed ids not in the catalogue")
+
+
+func test_nothing_is_waiting_on_a_backend_check() -> void:
+	# A tripwire, not a formality: anything added to the catalogue whose casing
+	# has not been read off the backend belongs in this list, and this test is
+	# what makes forgetting it noisy.
+	assert_eq(
+		Achievements.UNCONFIRMED_CASING, [] as Array[StringName],
+		"an id is still waiting on a backend check",
+	)
+
+
+func test_the_two_single_game_achievements_are_title_case() -> void:
+	# Both were read off the partner backend, and both go against the pattern of
+	# every other id. Guessing from the majority would have got both wrong, and
+	# a wrong name does not error: the achievement just never unlocks.
+	assert_eq(Achievements.WIN_ONE, &"SSS_Win_One_Game")
+	assert_eq(Achievements.LOSE_ONE, &"SSS_Lose_One_Game")
 
 
 func test_the_win_achievement_keeps_the_spelling_that_actually_fired() -> void:

@@ -31,7 +31,7 @@ func _ready() -> void:
 
 
 ## Shows the question. `confirm_text` labels the yes button, so it can say what
-## will happen ("End the year anyway") rather than a bare "OK" DASH a player
+## will happen ("End the year anyway") rather than a bare "OK" — a player
 ## reading only the buttons should still understand the choice.
 func ask(question: String, confirm_text: String, cancel_text: String) -> void:
 	_message.text = question

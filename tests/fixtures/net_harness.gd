@@ -39,7 +39,7 @@ const PORT_ATTEMPTS: int = 8
 
 ## The next port to hand out. Chosen once per run from a random base and then
 ## walked upwards, so two harnesses in the same run can never pick the same
-## number DASH random-per-harness collided often enough to redden a run, and a
+## number — random-per-harness collided often enough to redden a run, and a
 ## failed bind is not silent: ENet logs an engine error that GUT counts.
 static var _next_port: int = 0
 

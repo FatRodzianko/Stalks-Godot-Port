@@ -63,8 +63,8 @@ func test_the_board_builds_and_fills_for_a_client() -> void:
 # runs on them, and died on a null `@onready` node.
 #
 # These reproduce that exact sequence. Both were written vacuous the first time
-# DASH they poked the session with a buy at year 0, which is rejected, and a
-# rejection broadcasts nothing DASH so they passed with the fix removed. They now
+# — they poked the session with a buy at year 0, which is rejected, and a
+# rejection broadcasts nothing — so they passed with the fix removed. They now
 # fail without it.
 
 ## A connected lobby that has not started yet.
@@ -438,7 +438,7 @@ func test_an_unanswered_request_does_not_outlive_the_year() -> void:
 #
 # Reported: a client never saw "Host wants a yeehaw!", though it saw its own
 # dividend messages. The host follows every broadcast with a state push, and the
-# board cleared its message line on any state change DASH so on a client the
+# board cleared its message line on any state change — so on a client the
 # message was wiped in the same frame it appeared. Hosting hid it, because the
 # host never pushes state to itself.
 

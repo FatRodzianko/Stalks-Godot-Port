@@ -4,14 +4,14 @@ extends RefCounted
 ##
 ## The sessions used to build an `ENetMultiplayerPeer` themselves, which made
 ## "Steam is a transport swap, not a rewrite" a claim rather than a fact. A
-## transport owns everything about *reaching* other players DASH a port, a lobby
-## id, an invite DASH and hands back a `MultiplayerPeer`. Nothing above this layer
+## transport owns everything about *reaching* other players — a port, a lobby
+## id, an invite — and hands back a `MultiplayerPeer`. Nothing above this layer
 ## knows which kind it got.
 ##
 ## Implementations: `EnetTransport` now, `SteamTransport` in Phase 6. They differ
 ## more than they look: ENet needs an address and a port typed by a human, while
 ## Steam needs a lobby that must be created asynchronously and joined by id. That
-## is why `open_server` and `open_client` take no arguments DASH each transport is
+## is why `open_server` and `open_client` take no arguments — each transport is
 ## constructed with whatever *it* needs, and the sessions stay ignorant.
 ##
 ## See docs/architecture.md 5.4 and docs/decisions.md D56.

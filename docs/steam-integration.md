@@ -179,22 +179,21 @@ Steam's achievement API names are **case-sensitive**, and the original hedged:
 it sets both `SSS_WIN_ONE_GAME` and `SSS_Win_One_Game`, and both
 `SSS_LOSE_ONE_GAME` and `SSS_Lose_One_Game`.
 
-- **Win is settled.** The original's only live call is
-  `SetAchievement("SSS_Win_One_Game")`; the shouting version is commented out.
-  So that is the spelling real players have actually unlocked, and therefore
-  what the backend holds.
-- **Lose is not.** Both spellings are set on consecutive lines, so one of them
-  is a no-op and the source cannot say which.
+Both were checked against the backend on 2026-11-14 and the answer is
+**`SSS_Win_One_Game`** and **`SSS_Lose_One_Game`** — `Title_Case`, against the
+pattern of every other id. Guessing from the majority would have got both
+wrong. The shouting variants are dead; do not reintroduce them.
 
-### The one thing to check in the partner backend
+`Achievements.UNCONFIRMED_CASING` is now empty, and a test keeps it that way:
+anything added later whose casing has not been read off the backend belongs in
+that list until somebody looks.
 
-Open the app's achievement list at **partner.steamgames.com** and read the API
-name for "lose one game" exactly as written. If it is `SSS_Lose_One_Game`,
-change `Achievements.LOSE_ONE` — nothing else needs to move, and
-`tests/unit/test_achievements.gd` keeps the rest honest.
+### Still worth confirming while you are in there
 
-While you are there, confirm the four stat names the counters use: `sss_wins`,
-`sss_loses`, `lifetime_networth`, `sss_yeehaws`.
+The four stat names the counters use: `sss_wins`, `sss_loses`,
+`lifetime_networth`, `sss_yeehaws`. These are case-sensitive too, and unlike the
+achievements they were never ambiguous in the source — so they are probably
+right, and nothing has verified them.
 
 ---
 

@@ -7,10 +7,13 @@ extends RefCounted
 ## not names we get to choose: they must match what the Steam partner backend
 ## already holds, or an achievement silently never unlocks.
 ##
-## **Steam achievement API names are case-sensitive.** The original hedged on two
-## of them and set both spellings; see `UNCONFIRMED_CASING` below. That is the
-## one open question here, and `tests/unit/test_achievements.gd` makes sure we
-## never ship two ids that differ only by case.
+## **Steam achievement API names are case-sensitive**, and the original hedged on
+## two of them by setting both spellings. Both are now confirmed against the
+## backend, and the answer is not uniform: the two *singular* "one game"
+## achievements are `Title_Case` while every other id shouts. Guessing from the
+## majority would have got both of them wrong.
+## `tests/unit/test_achievements.gd` makes sure we never ship two ids that
+## differ only by case again.
 ##
 ## Nothing here is wired up yet. Phase 6 adds the code that calls Steam; this is
 ## the catalogue it will use, written now because the information came from a
@@ -22,13 +25,17 @@ extends RefCounted
 ## Win a single game.
 ##
 ## Lowercase on purpose. The original's only live call is
-## `SetAchievement("SSS_Win_One_Game")` DASH the shouting version is commented out
-## DASH so this is the spelling that has actually unlocked for real players, and
+## `SetAchievement("SSS_Win_One_Game")` — the shouting version is commented out
+## — so this is the spelling that has actually unlocked for real players, and
 ## therefore the one the backend holds.
 const WIN_ONE: StringName = &"SSS_Win_One_Game"
 
-## Lose a single game. **Casing unconfirmed** DASH see `UNCONFIRMED_CASING`.
-const LOSE_ONE: StringName = &"SSS_LOSE_ONE_GAME"
+## Lose a single game.
+##
+## `Title_Case`, read off the partner backend on 2026-11-14. The original set
+## both this and `SSS_LOSE_ONE_GAME` on consecutive lines, so the shouting one
+## was the no-op all along. Pairs with `WIN_ONE`.
+const LOSE_ONE: StringName = &"SSS_Lose_One_Game"
 
 ## Lifetime wins, from the Steam stat `sss_wins`.
 const WIN_TEN: StringName = &"SSS_WIN_TEN"
@@ -98,7 +105,7 @@ const DIVERSIFIED: StringName = &"SSS_DIVERSIFIED"
 
 # ----------------------------------------------------------------------- yeehaw
 
-## Give a yeehaw. Given, not received DASH the stat is `sss_yeehaws` and it counts
+## Give a yeehaw. Given, not received — the stat is `sss_yeehaws` and it counts
 ## only what you hand out.
 const YEEHAW_ONE: StringName = &"SSS_YEEHAW_ONE"
 const YEEHAW_HUNDRED: StringName = &"SSS_YEEHAW_HUNDRED"
@@ -120,11 +127,11 @@ const ALL: Array[StringName] = [
 
 ## Ids whose capitalisation has **not** been checked against the partner backend.
 ##
-## The original set `SSS_LOSE_ONE_GAME` *and* `SSS_Lose_One_Game` on the same
-## line, so one of the two is a no-op and the source cannot say which. Reusing
-## the App ID means the backend decides. Check it there before shipping, and if
-## it disagrees, change `LOSE_ONE` above DASH nothing else needs to move.
-const UNCONFIRMED_CASING: Array[StringName] = [LOSE_ONE]
+## Empty, and a test keeps it that way. Every id here was either unambiguous in
+## the original's source — one spelling, which players demonstrably unlocked —
+## or has been read off the backend directly. Anything added later that has not
+## been checked belongs in this list until somebody looks.
+const UNCONFIRMED_CASING: Array[StringName] = []
 
 
 ## Steam stat names the achievements count against. Also case-sensitive, and

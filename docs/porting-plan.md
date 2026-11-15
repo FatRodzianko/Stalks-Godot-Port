@@ -436,8 +436,9 @@ carry over and the partner backend owns their exact names. **GodotSteam
 GDExtension**, not the module build and not Foundation for Steamworks — see
 [steam-integration.md](steam-integration.md) 2.
 
-❓ Still open: the exact casing of `SSS_LOSE_ONE_GAME`, which only the partner
-backend can settle.
+✅ Also settled: both singular "one game" achievements are `Title_Case`
+(`SSS_Win_One_Game`, `SSS_Lose_One_Game`), read off the backend. The four Steam
+*stat* names are still unverified, though unambiguous in the source.
 
 ---
 
