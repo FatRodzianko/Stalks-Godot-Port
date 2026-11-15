@@ -83,14 +83,18 @@ func start(
 	var host_result: Dictionary = {}
 	for attempt: int in PORT_ATTEMPTS:
 		_port = _take_port()
-		host_result = HostSession.host(_port, settings, library, host_name)
+		host_result = HostSession.host(
+			EnetTransport.new(_port), settings, library, host_name
+		)
 		if String(host_result["error"]).is_empty():
 			break
 	if not String(host_result["error"]).is_empty():
 		return String(host_result["error"])
 	host = host_result["session"]
 
-	var client_result: Dictionary = ClientSession.join("127.0.0.1", _port, library, guest_name)
+	var client_result: Dictionary = ClientSession.join(
+		EnetTransport.new(_port), library, guest_name
+	)
 	if not String(client_result["error"]).is_empty():
 		return String(client_result["error"])
 	client = client_result["session"]

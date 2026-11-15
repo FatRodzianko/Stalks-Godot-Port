@@ -225,6 +225,8 @@ func close() -> void:
 	if multiplayer == null:
 		return
 	var peer: MultiplayerPeer = multiplayer.multiplayer_peer
-	if peer != null and peer is ENetMultiplayerPeer:
+	if peer != null:
+		# `close` is on MultiplayerPeer itself, so this works for whatever
+		# transport produced the peer — no `is ENetMultiplayerPeer` here.
 		peer.close()
 	multiplayer.multiplayer_peer = null

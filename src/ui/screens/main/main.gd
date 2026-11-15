@@ -113,7 +113,9 @@ func host_match(settings: GameSettings, player_name: String, port: int) -> Strin
 	if library == null:
 		return "The game's content is broken — see the log."
 
-	var result: Dictionary = HostSession.host(port, settings, library, player_name)
+	var result: Dictionary = HostSession.host(
+		EnetTransport.new(port), settings, library, player_name
+	)
 	if not String(result["error"]).is_empty():
 		return String(result["error"])
 
@@ -134,7 +136,9 @@ func join_match(address: String, port: int, player_name: String) -> String:
 	if library == null:
 		return "The game's content is broken — see the log."
 
-	var result: Dictionary = ClientSession.join(address, port, library, player_name)
+	var result: Dictionary = ClientSession.join(
+		EnetTransport.new(port, address), library, player_name
+	)
 	if not String(result["error"]).is_empty():
 		return String(result["error"])
 

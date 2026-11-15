@@ -685,7 +685,7 @@ func test_a_latecomer_is_turned_away_with_a_reason() -> void:
 	await _harness.begin_match(self)
 
 	var latecomer: Dictionary = ClientSession.join(
-		"127.0.0.1", _harness.port(), _library, "Late"
+		EnetTransport.new(_harness.port()), _library, "Late"
 	)
 	assert_eq(String(latecomer["error"]), "")
 	var late: ClientSession = latecomer["session"]

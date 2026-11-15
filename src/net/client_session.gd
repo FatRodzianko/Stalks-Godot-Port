@@ -48,8 +48,7 @@ var _refusal: String = ""
 ## A successful return means only that the socket was created — the connection
 ## itself is asynchronous, and arrives as `joined` or `connection_lost`.
 static func join(
-	address: String,
-	port: int,
+	transport: Transport,
 	library: ContentLibrary,
 	player_name: String = "",
 ) -> Dictionary:
@@ -61,12 +60,11 @@ static func join(
 	# there is nothing to guess at locally.
 	session._state = GameState.new(null)
 
-	var peer: ENetMultiplayerPeer = ENetMultiplayerPeer.new()
-	var error: Error = peer.create_client(address, port)
-	if error != OK:
-		return {"session": null, "error": "Could not reach %s:%d (%d)." % [address, port, error]}
+	var opened: Dictionary = transport.open_client()
+	if not String(opened["error"]).is_empty():
+		return {"session": null, "error": String(opened["error"])}
 
-	return {"session": session, "error": "", "peer": peer}
+	return {"session": session, "error": "", "peer": opened["peer"]}
 
 
 ## Attaches the transport. Separate from `join()` for the same reason as on the

@@ -394,9 +394,29 @@ process below). **That is the remaining gate on calling Phase 5 complete.**
 
 ## Phase 6 — Steam
 
+**Status: started. The groundwork is in; the rest waits on the owner.**
+
+Full detail, including the setup steps, is in
+[steam-integration.md](steam-integration.md). In short:
+
+- **Done:** the transport seam (D56). `HostSession` and `ClientSession` are
+  handed a `Transport` and never build one, so Steam is now a swap as a property
+  of the code rather than a claim. Proven by `test_transport.gd`, which stands
+  both sides up on a transport that is not ENet.
+- **Done:** researched which GodotSteam build to use. **GDExtension v4.24-gde**
+  (Steamworks 1.65), from **Codeberg** — the GitHub repo is archived.
+- **Waiting on the owner:** the App ID decision, the Steamworks SDK download,
+  and dropping the extension into the project. None of it can be scripted.
+- **Then:** `SteamTransport` plus a lobby browser screen. Nothing else changes.
+
+⚠️ **A correction to the note below.** The `callable_method_pointer.h` —
+`callable_mp.h` rename in Godot 4.7 breaks the **module** build, which compiles
+against engine headers. The GDExtension binds through the stable GDExtension ABI
+and its releases say "4.4 and up" with no 4.7 caveat. Unconfirmed by running it;
+see steam-integration.md 2.
+
 **Build:**
-- GodotSteam GDExtension (a build targeting Godot **4.7** specifically — the 4.7
-  header rename broke older builds)
+- GodotSteam **GDExtension** v4.24-gde or newer, from Codeberg
 - Steamworks SDK placed locally, gitignored
 - `SteamMultiplayerPeer` swapped in for ENet — no game-logic changes
 - Lobby create / browse / search / join, invite-only lobbies, Steam invites
@@ -420,6 +440,12 @@ achievements carry over; GodotSteam vs Foundation for Steamworks.
 
 - Sound: bull, bear, bankruptcy, split, yeehaw, UI feedback; mixer and volume
   settings
+- **Loan button, requested 2026-11-14:** show the minimum payment underneath it,
+  and label it "PAY LOAN" whenever a loan is outstanding rather than only when a
+  payment is due this year. Today it reads "LOAN" once you have paid for the
+  year. Both are in `_refresh_loan_controls`; the second is a one-line change,
+  the first needs the button wrapped in a `VBoxContainer` in the bottom bar so a
+  caption can sit under it
 - Esc / pause menu, settings persistence, quit handling
 - Error and edge-case presentation
 - Export presets and a Windows build

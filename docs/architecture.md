@@ -408,6 +408,25 @@ Two consequences worth knowing:
   `tests/unit/test_state_sync.gd`, where a leak is visible; in play it would not
   be.
 
+### 5.4 Transport is a choice, not a migration
+
+A `Transport` answers one question: how is this match carried? It hands back a
+`MultiplayerPeer` and nothing above it knows which kind.
+
+```
+Transport                 abstract
+├── EnetTransport         direct IP; what the tests run on
+└── SteamTransport        Phase 6
+```
+
+`HostSession.host()` and `ClientSession.join()` take one and never build one.
+Each transport is constructed with what *it* needs — a port for ENet, a lobby for
+Steam — because the two disagree about what "where" even means, so `open_server`
+and `open_client` take no arguments. Even the lobby screen stays ignorant: it
+asks for a `joining_hint()` and prints it, rather than branching on whether to
+show a port or an invite. See decisions.md D56 and
+[steam-integration.md](steam-integration.md).
+
 ### Transport is separate again
 
 `HostSession`/`ClientSession` talk through Godot's `MultiplayerAPI`. What carries it

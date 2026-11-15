@@ -906,6 +906,36 @@ the board.
 
 ---
 
+### D56 — A session is handed a transport; it never builds one
+**2026-11-14 · Accepted**
+
+`HostSession.host()` and `ClientSession.join()` take a `Transport` and ask it
+for a `MultiplayerPeer`. `EnetTransport` is the only implementation today;
+`SteamTransport` is Phase 6.
+
+**Why.** "Steam is a transport swap, not a rewrite" was the reason Steam was
+deferred to a late phase, but the sessions built an `ENetMultiplayerPeer`
+themselves, so it was a claim rather than a property of the code. It is now
+structural: nothing above the transport knows what carries the match, down to
+the lobby, which asks for a `joining_hint()` rather than branching on whether
+to print a port or an invite.
+
+`tests/unit/test_transport.gd` stands a host and a client up on a transport that
+is deliberately **not** ENet, using a real `OfflineMultiplayerPeer`, so the
+property is tested rather than asserted in a comment.
+
+**ENet stays after Steam arrives.** Direct connection is how the automated tests
+run — they cannot depend on a Steam client being installed — and it serves LAN
+play and anyone outside Steam. A transport is a choice, not a migration.
+
+**What it rules out.** A transport cannot need arguments at connect time: each
+is constructed with what *it* needs (a port, later a lobby id), because ENet and
+Steam disagree about what "where" even means. It also means a transport that
+connects asynchronously, as Steam lobbies do, must report that through the
+peer's own signals rather than by blocking in `open_server`.
+
+---
+
 ### D55 — An overlay closes when its errand is done
 **2026-11-14 · Accepted**
 

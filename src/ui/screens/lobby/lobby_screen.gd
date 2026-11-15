@@ -85,9 +85,10 @@ func refresh() -> void:
 		return
 
 	_title.text = "LOBBY" if is_hosting() else "JOINED"
+	# The transport says how to be joined — a port now, a Steam invite later.
+	# This screen does not know which, and should not grow a branch for it.
 	_subtitle.text = (
-		"Others join on port %d" % _listening_port
-		if is_hosting() and _listening_port > 0
+		_host.joining_hint() if is_hosting() and not _host.joining_hint().is_empty()
 		else "Waiting for the host to start"
 	)
 

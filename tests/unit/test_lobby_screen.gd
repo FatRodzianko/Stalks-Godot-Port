@@ -175,7 +175,7 @@ func test_a_new_arrival_appears_in_the_list() -> void:
 	assert_eq(lobby.player_rows().size(), 2)
 
 	var extra: Dictionary = ClientSession.join(
-		"127.0.0.1", _harness.port(), _library, "Third"
+		EnetTransport.new(_harness.port()), _library, "Third"
 	)
 	_harness.attach_extra_client(extra["session"], extra["peer"])
 	await _harness.settle(self, 30)

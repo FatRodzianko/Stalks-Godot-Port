@@ -39,6 +39,7 @@ fixing.
 | [architecture.md](architecture.md) | The four layers, the simulation's internals, the year pipeline, the network design, and the determinism contract | You are writing or reading code |
 | [decisions.md](decisions.md) | A dated log of every significant decision, with the reasoning and what it rules out | You are about to change something structural, or wondering "why on earth is it like this" |
 | [development.md](development.md) | Toolchain setup on a fresh machine, the verification loop, how to add content, and project conventions | You are setting up, or doing the work |
+| [steam-integration.md](steam-integration.md) | The Phase 6 plan, which GodotSteam build to use and why, and the owner's setup steps | You are working on Steam, or about to download anything for it |
 | [testing.md](testing.md) | How to run the suite, how it is organised, testing conventions, and current coverage | You are writing or running tests |
 | [porting-plan.md](porting-plan.md) | The seven phases, what each delivers, and the pass/fail criteria for each | You want to know status, or what to do next |
 | [godot-editor-guide.md](godot-editor-guide.md) | A first-time walkthrough of the Godot editor for this project, written for a complete beginner | You have never opened Godot |

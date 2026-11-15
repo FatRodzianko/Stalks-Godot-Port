@@ -29,6 +29,10 @@ signal match_started
 var _authority: MatchAuthority
 var _library: ContentLibrary
 
+## How this match is carried. Kept so the lobby can tell the host what to pass
+## on, without knowing whether that is a port or an invite.
+var _transport: Transport
+
 ## Which player each connected peer controls. The host itself is in here as
 ## HOST_PEER_ID, so every lookup goes through one map.
 var _player_by_peer: Dictionary[int, StringName] = {}
@@ -67,9 +71,12 @@ var _lobby_is_open: bool = true
 ## deadlock D47 fixed for disconnects. The roster is instead whoever is present
 ## when the host presses Start. See docs/decisions.md D48.
 ##
+## `transport` carries the match — ENet today, Steam later. This function does
+## not know which, which is what makes Steam a swap (D56).
+##
 ## Returns `{session, peer, error}`; check `error` first.
 static func host(
-	port: int,
+	transport: Transport,
 	settings: GameSettings,
 	library: ContentLibrary,
 	host_name: String,
@@ -77,6 +84,7 @@ static func host(
 	var session: HostSession = HostSession.new()
 	session.name = NODE_NAME
 	session._library = library
+	session._transport = transport
 	session._authority = LocalSession.build_authority(
 		settings, library, [sanitised_name(host_name, 0)] as Array[String]
 	)
@@ -86,12 +94,11 @@ static func host(
 	# own peer id from.
 	session._roster = session._authority.state.players.duplicate()
 
-	var peer: ENetMultiplayerPeer = ENetMultiplayerPeer.new()
-	var error: Error = peer.create_server(port, MAX_CLIENTS)
-	if error != OK:
-		return {"session": null, "error": "Could not listen on port %d (%d)." % [port, error]}
+	var opened: Dictionary = transport.open_server(MAX_CLIENTS)
+	if not String(opened["error"]).is_empty():
+		return {"session": null, "error": String(opened["error"])}
 
-	return {"session": session, "error": "", "peer": peer}
+	return {"session": session, "error": "", "peer": opened["peer"]}
 
 
 ## Attaches the transport. Separate from `host()` because the node must be in the
@@ -139,6 +146,12 @@ static func sanitised_name(raw: String, slot_index: int) -> String:
 
 func state() -> GameState:
 	return _authority.state if _authority != null else null
+
+
+## One line telling the host how others can join. The lobby shows it verbatim
+## and does not care whether it names a port or a Steam invite.
+func joining_hint() -> String:
+	return _transport.joining_hint() if _transport != null else ""
 
 
 ## Whether the lobby is still accepting players.
