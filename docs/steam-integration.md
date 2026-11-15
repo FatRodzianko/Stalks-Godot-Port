@@ -108,9 +108,23 @@ The consequence is that **the achievement ids are not ours to choose** (see 4).
 For local development before any build is uploaded, App ID **480** (Spacewar,
 Valve's public test app) works for lobbies and the overlay. Never ship with it.
 
-The id goes in a `steam_appid.txt` at the project root for local runs. That file
-is **not** a secret — an App ID is public — so it can be committed. The
-Steamworks SDK beside it cannot.
+### You need a local `steam_appid.txt`
+
+Running the game outside the Steam client needs an App ID on disk. Create a file
+called **`steam_appid.txt`** in the project root containing exactly:
+
+```
+1821800
+```
+
+It is **gitignored on purpose**, so every checkout makes its own. An App ID is
+public, so this is not about secrecy — it is that Valve's own guidance is to
+keep this file out of a shipped build, and a file that is never committed
+cannot be shipped by accident. The export presets in Phase 7 should exclude it
+as well, belt and braces.
+
+The Steamworks SDK beside it is a different matter: that one is genuinely not
+redistributable and must never be committed anywhere.
 
 
 ### 3.2 Get the Steamworks SDK

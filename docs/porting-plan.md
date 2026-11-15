@@ -453,7 +453,8 @@ backend can settle.
   caption can sit under it
 - Esc / pause menu, settings persistence, quit handling
 - Error and edge-case presentation
-- Export presets and a Windows build
+- Export presets and a Windows build, **excluding `steam_appid.txt`** — Valve's
+  guidance is that it is a development-only file
 - Year history retained and inspectable (groundwork already laid for charts)
 
 ---
