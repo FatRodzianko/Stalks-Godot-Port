@@ -114,6 +114,31 @@ func _attach(session: GameSession) -> void:
 	refresh()
 
 
+
+## Stops listening the moment this screen leaves the tree.
+##
+## The same crash fix as on the lobby screen, for the same reason: `Main` swaps
+## screens with `remove_child` plus a deferred `queue_free`, so without this a
+## replaced screen still reacts to the next session signal and rebuilds rows
+## outside the tree, where their `@onready` nodes stay null. The lobby hit this
+## for real; this screen has the identical exposure when the match ends.
+func _detach() -> void:
+	if _session == null:
+		return
+	if not _session.year_resolved.is_connected(_on_year_resolved):
+		return
+	_session.year_resolved.disconnect(_on_year_resolved)
+	_session.player_changed.disconnect(_on_player_changed)
+	_session.action_rejected.disconnect(_on_action_rejected)
+	_session.game_over.disconnect(_on_game_over)
+	_session.yeehaw_requested.disconnect(_on_yeehaw_requested)
+	_session.yeehaw_given.disconnect(_on_yeehaw_given)
+
+
+func _exit_tree() -> void:
+	_detach()
+
+
 # ----------------------------------------------------------------- construction
 
 ## Each board's column header is its row widget in header mode, so the columns

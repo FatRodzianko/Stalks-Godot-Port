@@ -906,6 +906,43 @@ the board.
 
 ---
 
+### D50 — A screen stops listening the moment it leaves the tree
+**2026-11-14 · Accepted**
+
+`LobbyScreen` and `GameplayScreen` disconnect from the session in `_exit_tree()`,
+and refuse to rebuild their rows when not inside the tree.
+
+**Why — this is a crash fix, not tidiness.** `Main` swaps screens with
+`remove_child` followed by `queue_free`, and `queue_free` is deferred to the end
+of the frame. A replaced screen is therefore still alive, and still connected to
+the session, when the next signal arrives.
+
+That is not theoretical. `HostSession.start_match` sends `match_started` and then
+a state broadcast. On a client the first swapped in the playing screen and the
+second reached the lobby already on its way out; it rebuilt its player rows while
+detached from the tree, where `_ready` never runs on a newly added node, so every
+`@onready` in those rows was null and the client died mid-swap. From the outside
+it looked like "the client didn't load anything".
+
+**This is the third appearance of deferred `queue_free`** in this project — after
+sold-out holdings rows lingering, and `Main._swap` needing `remove_child` rather
+than only queueing. It is the single most reliable way to be wrong in this
+codebase, and the pattern is always the same: the object is gone logically and
+present actually.
+
+**What it rules out.** A screen cannot keep a session subscription across being
+detached and re-attached; `_attach` and `_detach` have to stay symmetrical, and
+adding a signal to one means adding it to the other. That is a real maintenance
+cost and worth it.
+
+**Verified by removing the fix.** The first regression tests written for this
+passed *with the fix removed*, because they poked the session with a buy at year
+0 — which is rejected, and a rejection broadcasts no state. They were rewritten
+to reproduce the real sequence and confirmed to fail without the fix. A
+regression test that has not been seen to fail is not evidence.
+
+---
+
 ### D49 — Start waits for everybody; the host removes anyone holding it up
 **2026-11-14 · Accepted**
 

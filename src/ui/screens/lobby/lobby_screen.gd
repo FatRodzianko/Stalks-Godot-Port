@@ -15,6 +15,10 @@ extends MarginContainer
 ## a server or disconnecting a client.
 signal leave_requested
 
+## The connection ended without the player asking — the host closed the game, or
+## removed this player from the lobby. Carries text to show them on the way out.
+signal connection_ended(reason: String)
+
 ## The host pressed Start, or the client was told the match began. Either way the
 ## screen host swaps in the playing screen.
 signal play_requested
@@ -75,7 +79,9 @@ func player_rows() -> Array[Node]:
 
 
 func refresh() -> void:
-	if _session == null:
+	if _session == null or not is_inside_tree():
+		# Belt and braces alongside `_detach`: building rows outside the tree
+		# gives them no `_ready`, and every `@onready` in them stays null.
 		return
 
 	_title.text = "LOBBY" if is_hosting() else "JOINED"
@@ -158,6 +164,38 @@ func _attach() -> void:
 	refresh()
 
 
+## Stops listening the moment this screen leaves the tree.
+##
+## **This is not tidiness, it is a crash fix.** `Main` swaps screens with
+## `remove_child` plus `queue_free`, and `queue_free` is deferred — so without
+## this, a screen that has already been replaced is still connected to the
+## session and still reacts to the next signal. It then rebuilds its rows while
+## detached from the tree, where `_ready` never runs on them, and every
+## `@onready` node in a new row is null.
+##
+## That is exactly what happened when the host pressed Start: the client swapped
+## to the board on `match_started`, then the state broadcast that follows
+## immediately after reached the dead lobby and took the client down with it.
+func _detach() -> void:
+	if _session == null:
+		return
+	if _session.ready_state_changed.is_connected(_on_ready_state_changed):
+		_session.ready_state_changed.disconnect(_on_ready_state_changed)
+		_session.player_changed.disconnect(_on_player_changed)
+		_session.action_rejected.disconnect(_on_action_rejected)
+	if _host != null:
+		_host.player_joined.disconnect(_on_roster_changed)
+		_host.player_left.disconnect(_on_roster_changed)
+		_host.match_started.disconnect(play_requested.emit)
+	if _client != null:
+		_client.match_started.disconnect(play_requested.emit)
+		_client.connection_lost.disconnect(_on_connection_lost)
+
+
+func _exit_tree() -> void:
+	_detach()
+
+
 ## One row per player, rebuilt wholesale.
 ##
 ## Rebuilding rather than diffing because a lobby list is at most ten rows and
@@ -230,6 +268,11 @@ func _on_action_rejected(_player_id: StringName, reason: String) -> void:
 	_status.text = reason
 
 
+## Being removed, or the host quitting, ends this screen rather than annotating
+## it. Leaving a kicked player sitting in a lobby they are no longer part of —
+## which is what this used to do — is worse than no message at all, because the
+## list keeps showing players they cannot see any more.
 func _on_connection_lost(reason: String) -> void:
 	_status.text = reason
 	_ready_button.disabled = true
+	connection_ended.emit(reason)

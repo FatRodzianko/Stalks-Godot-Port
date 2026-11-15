@@ -26,6 +26,10 @@ var _last_settings: GameSettings
 ## Kept so the lobby can tell the host what port to share.
 var _listening_port: int = 0
 
+## What this process was launched with, for the `--ready` / `--autostart`
+## conveniences. MENU unless flags were given.
+var _launch: LaunchArgs = LaunchArgs.new()
+
 
 func _ready() -> void:
 	apply_launch_args(LaunchArgs.from_command_line())
@@ -37,6 +41,7 @@ func _ready() -> void:
 ## be tested without a command line. `from_command_line()` returns MENU in a
 ## release build, so a shipped game always lands here on the menu.
 func apply_launch_args(launch: LaunchArgs) -> void:
+	_launch = launch
 	match launch.mode:
 		LaunchArgs.Mode.HOST:
 			_report_launch_problem(
@@ -145,9 +150,41 @@ func _show_lobby() -> void:
 	var lobby: LobbyScreen = LobbyScene.instantiate()
 	lobby.leave_requested.connect(show_menu)
 	lobby.play_requested.connect(_on_play_requested)
+	lobby.connection_ended.connect(_on_connection_ended)
 	_swap(lobby)
 	# After the swap, so the screen is in the tree and its @onready nodes exist.
 	lobby.setup(_session, _listening_port)
+	_apply_lobby_automation()
+
+
+## The `--ready` / `--autostart` development conveniences. Does nothing unless
+## those flags were given, which they never are outside a debug build.
+func _apply_lobby_automation() -> void:
+	if _launch.auto_ready:
+		var client: ClientSession = _session as ClientSession
+		if client != null:
+			client.joined.connect(
+				func(player_id: StringName) -> void: client.set_ready(player_id, true)
+			)
+	if not _launch.auto_start:
+		return
+	var host: HostSession = _session as HostSession
+	if host == null:
+		return
+	# Try whenever readiness changes, since that is the only thing the gate waits
+	# on once somebody has joined.
+	host.ready_state_changed.connect(
+		func(_id: StringName, _ready: bool) -> void:
+			if host.why_not_start().is_empty() and host.state().players.size() > 1:
+				host.start_match()
+	)
+
+
+## Kicked, or the host quit. Back to the menu, carrying the reason: a player
+## left sitting in a lobby they are no longer part of has no idea what happened.
+func _on_connection_ended(reason: String) -> void:
+	show_menu()
+	_report_to_menu(reason)
 
 
 ## The lobby is done with: show the board. The session is untouched — the match

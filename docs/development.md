@@ -298,6 +298,8 @@ named "Host" and the joiner "Guest" so the windows are told apart at a glance.
 | `--port=<n>` | Listen on, or connect to, this port (default 42420) |
 | `--name=<name>` | Play under this name |
 | `--seed=<n>` | Host with a fixed match seed, to reproduce a bug |
+| `--ready` | Ready up as soon as the lobby is joined |
+| `--autostart` | Host: start the match as soon as everybody is ready |
 
 They work from a terminal too, in either form:
 
@@ -308,6 +310,22 @@ They work from a terminal too, in either form:
 ```
 <godot> --path . -- --join --name=Murph
 ```
+
+`--autostart` with `--ready` on the other instance takes two windows from launch
+to a running match with no input at all:
+
+```
+<godot> --path . --host --autostart --port=44701
+```
+
+```
+<godot> --path . --join --ready --port=44701
+```
+
+Worth knowing about: this is how the "client didn't load anything" bug was found.
+The suite could not reach it, because two `Main` instances cannot coexist in one
+process, and reproducing it by hand meant clicking through two windows every
+attempt. With these flags it is two commands and a log file.
 
 A flag-launched host turns **loans on** and uses a ten-year match. That is
 deliberately not the same as `GameSettings`' own defaults: these flags exist for

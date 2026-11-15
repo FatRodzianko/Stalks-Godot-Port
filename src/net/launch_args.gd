@@ -21,6 +21,8 @@ extends RefCounted
 ## | `--port=<n>` | Listen on, or connect to, this port |
 ## | `--name=<name>` | Play under this name |
 ## | `--seed=<n>` | Host with a fixed match seed, to reproduce a bug |
+## | `--ready` | Ready up as soon as the lobby is joined |
+## | `--autostart` | Host: start the match as soon as everybody is ready |
 ##
 ## Anything unrecognised is ignored rather than refused: the command line also
 ## carries Godot's own arguments, which are none of this class's business.
@@ -51,6 +53,14 @@ var player_name: String = ""
 
 ## 0 means "choose one and record it", the same as everywhere else.
 var rng_seed: int = 0
+
+## Ready up on arrival, so a flag-launched guest does not need a click.
+var auto_ready: bool = false
+
+## Start as soon as the lobby allows it. With `--ready` on the other instance
+## this takes two windows from launch to a running match with no input at all,
+## which is what makes a networked bug reproducible from a script.
+var auto_start: bool = false
 
 
 ## What this process was told to do, or MENU in a release build.
@@ -90,6 +100,11 @@ static func parse(args: PackedStringArray) -> LaunchArgs:
 			"--seed":
 				if value.is_valid_int():
 					parsed.rng_seed = value.to_int()
+			"--ready":
+				parsed.auto_ready = true
+			"--autostart":
+				parsed.auto_start = true
+				parsed.mode = Mode.HOST
 
 	return parsed
 
