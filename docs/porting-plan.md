@@ -431,8 +431,13 @@ while single-player still runs with Steam closed.
 🖱️ Owner needed for: Steamworks SDK download from the partner site, app ID decision,
 and testing with a second Steam account.
 
-❓ Decisions: reuse the existing Steam App ID or register a new one; which
-achievements carry over; GodotSteam vs Foundation for Steamworks.
+✅ Decided: **reuse App ID 1821800** (D57), which means all 25 achievements
+carry over and the partner backend owns their exact names. **GodotSteam
+GDExtension**, not the module build and not Foundation for Steamworks — see
+[steam-integration.md](steam-integration.md) 2.
+
+❓ Still open: the exact casing of `SSS_LOSE_ONE_GAME`, which only the partner
+backend can settle.
 
 ---
 

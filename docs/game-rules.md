@@ -521,34 +521,51 @@ selling. After they ready up on year N:
 
 ## 13. Steam achievements
 
-25 achievement IDs exist in `SteamAchievementManager.cs`. The owner wants them
-carried over if possible.
+25 achievements. The port **reuses the original's App ID, 1821800**
+(decisions.md D57), so these names must match what the Steam partner backend
+already holds — a name that disagrees does not error, it just never unlocks.
 
-| Group | IDs |
+The catalogue lives in `src/data/achievements.gd`, which is the single source of
+truth for the ids. The table below is the same information in prose, read out of
+the original's `SteamAchievementManager.cs` and its callers.
+
+| Id | Unlocked by |
 |---|---|
-| Wins | `SSS_WIN_ONE_GAME`, `SSS_WIN_TEN`, `SSS_WIN_HUNDRED`, `SSS_WINS_THOUSAND` |
-| Losses | `SSS_LOSE_ONE_GAME`, `SSS_LOSES_TEN`, `SSS_LOSES_HUNDRED`, `SSS_LOSES_THOUSAND` |
-| Net worth | `SSS_NETWORTH_FIFTY`, `SSS_NETWORTH_HUNDRED`, `SSS_ONE_MIL`, `SSS_ONE_BIL` |
-| Swings | `SSS_DOUBLED`, `SSS_HALVED`, `SSS_CENTURY`, `SSS_MORTGAGE` |
-| Loans | `SSS_TOOK_OUT_LOAN`, `SSS_PAID_LOAN`, `SSS_DEFAULT_LOAN` |
-| Events | `SSS_SPLIT`, `SSS_ALL_IN`, `SSS_BANKRUPT`, `SSS_DIVERSIFIED` |
-| Yeehaw | `SSS_YEEHAW_ONE`, `SSS_YEEHAW_HUNDRED` |
+| `SSS_Win_One_Game` | Win a game |
+| `SSS_WIN_TEN` / `_HUNDRED` / `SSS_WINS_THOUSAND` | 10 / 100 / 1000 lifetime wins (stat `sss_wins`) |
+| `SSS_LOSE_ONE_GAME` | Lose a game — **casing unconfirmed**, see below |
+| `SSS_LOSES_TEN` / `_HUNDRED` / `_THOUSAND` | 10 / 100 / 1000 lifetime losses (stat `sss_loses`) |
+| `SSS_NETWORTH_FIFTY` | Finish with net worth >= 50,000, **and** starting cash <= 10,000 |
+| `SSS_NETWORTH_HUNDRED` | Finish with net worth **<= 100**. A wipe-out, despite the name |
+| `SSS_ONE_MIL` / `SSS_ONE_BIL` | Cumulative net worth across all games >= 1,000,000 / 1,000,000,000 (stat `lifetime_networth`) |
+| `SSS_DOUBLED` | Finish with >= 2x your starting cash |
+| `SSS_HALVED` | Finish with <= half your starting cash |
+| `SSS_MORTGAGE` | Play a match of 30 years or more |
+| `SSS_CENTURY` | Play a match of exactly 99 years |
+| `SSS_TOOK_OUT_LOAN` / `SSS_PAID_LOAN` / `SSS_DEFAULT_LOAN` | Borrow / pay off / default |
+| `SSS_SPLIT` | Hold a stalk that splits |
+| `SSS_ALL_IN` | Hold **300 or more shares of one stalk** |
+| `SSS_BANKRUPT` | Hold a stalk that goes bankrupt |
+| `SSS_DIVERSIFIED` | Hold **>= 10 shares of all ten stalks** at once |
+| `SSS_YEEHAW_ONE` / `SSS_YEEHAW_HUNDRED` | Give 1 / 100 yeehaws (stat `sss_yeehaws`) — **given**, not received |
 
-Two confirmed trigger details:
+⚠️ **The casing bug, and what is left of it.** Steam's achievement API names
+are case-sensitive, and the original hedged: it sets both `SSS_WIN_ONE_GAME` and
+`SSS_Win_One_Game`, and both `SSS_LOSE_ONE_GAME` and `SSS_Lose_One_Game`.
 
-- **`SSS_DIVERSIFIED`** — own **≥ 10 shares of all 10 stalks** simultaneously
-  (checked in `CalculateNetWorth`).
-- **`SSS_SPLIT`** — awarded to every holder of a stalk that splits.
+The win pair is settled — the original's only live call is
+`SetAchievement("SSS_Win_One_Game")`, the other being commented out, so that is
+the spelling real players have unlocked. The lose pair sets both on consecutive
+lines, so one is a no-op and the source cannot say which. **Check the partner
+backend**; see [steam-integration.md 4](steam-integration.md).
 
-⚠️ **Casing bug to avoid repeating.** The original sets both `"SSS_WIN_ONE_GAME"`
-and `"SSS_Win_One_Game"`, and both `"SSS_LOSE_ONE_GAME"` and `"SSS_Lose_One_Game"` —
-evidently uncertainty about which case Steam expected. Steam achievement API names
-are case-sensitive. The port should use one canonical spelling per achievement,
-verified against the Steam partner backend.
+### Faithful but fragile, worth fixing in the port
 
-**[OPEN]** — the exact thresholds and trigger conditions for the remaining
-achievements, and whether the port reuses the existing Steam App ID or registers a
-new one.
+The original's lifetime counters test `== 1000` and `== 100` rather than `>=`.
+If a `StoreStats` call ever fails on exactly the right game, the achievement is
+missed forever. The port should use `>=` throughout. This changes no outcome
+that the original would have produced correctly.
+
 
 ---
 

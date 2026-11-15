@@ -97,19 +97,21 @@ the first thing to verify, not as established.
 
 These need a Steamworks account and downloads, so they cannot be scripted.
 
-### 3.1 Decide the App ID
+### 3.1 App ID — decided
 
-**Open question.** The original game has an App ID already. Either:
+**App ID `1821800`** — the original's, reused. Owner's decision on 2026-11-14,
+confirmed against `steam_appid.txt` in the Unity project. See decisions.md D57.
 
-- **Reuse it** — existing store page, reviews and achievements carry over. The
-  port replaces the Unity build.
-- **Register a new one** — a clean slate, but a new store page and no reviews,
-  and the $100 Steam Direct fee again.
+The store page, its reviews and every already-unlocked achievement carry over.
+The consequence is that **the achievement ids are not ours to choose** (see 4).
 
-This decision affects achievements (see §4), so make it before that work starts.
-
-For local development before anything is published, App ID **480** (Spacewar,
+For local development before any build is uploaded, App ID **480** (Spacewar,
 Valve's public test app) works for lobbies and the overlay. Never ship with it.
+
+The id goes in a `steam_appid.txt` at the project root for local runs. That file
+is **not** a secret — an App ID is public — so it can be committed. The
+Steamworks SDK beside it cannot.
+
 
 ### 3.2 Get the Steamworks SDK
 
@@ -151,20 +153,37 @@ as the success.
 
 ## 4. Achievements
 
-25 achievement IDs, listed in [game-rules.md §13](game-rules.md).
+All 25 ids and their trigger conditions live in **`src/data/achievements.gd`**,
+read out of the original's source. [game-rules.md 13](game-rules.md) has the
+same list in prose.
 
-⚠️ **Do not reproduce the original's casing bug.** It sets both
-`SSS_WIN_ONE_GAME` and `SSS_Win_One_Game`, and both `SSS_LOSE_ONE_GAME` and
-`SSS_Lose_One_Game` — evidently uncertainty about which case Steam wanted.
-Steam's achievement API names are **case-sensitive**. The port uses one
-canonical spelling per achievement, verified against the partner backend before
-shipping.
+Because the App ID is reused, **the backend is the authority on these names** —
+not this document, and not the original's source. A name that disagrees with the
+backend does not error; the achievement simply never unlocks for anyone.
 
-If the App ID is reused, the canonical names are whatever the backend already
-holds, and the backend is the authority — not this document and not the original
-source.
+Steam's achievement API names are **case-sensitive**, and the original hedged:
+it sets both `SSS_WIN_ONE_GAME` and `SSS_Win_One_Game`, and both
+`SSS_LOSE_ONE_GAME` and `SSS_Lose_One_Game`.
+
+- **Win is settled.** The original's only live call is
+  `SetAchievement("SSS_Win_One_Game")`; the shouting version is commented out.
+  So that is the spelling real players have actually unlocked, and therefore
+  what the backend holds.
+- **Lose is not.** Both spellings are set on consecutive lines, so one of them
+  is a no-op and the source cannot say which.
+
+### The one thing to check in the partner backend
+
+Open the app's achievement list at **partner.steamgames.com** and read the API
+name for "lose one game" exactly as written. If it is `SSS_Lose_One_Game`,
+change `Achievements.LOSE_ONE` — nothing else needs to move, and
+`tests/unit/test_achievements.gd` keeps the rest honest.
+
+While you are there, confirm the four stat names the counters use: `sss_wins`,
+`sss_loses`, `lifetime_networth`, `sss_yeehaws`.
 
 ---
+
 
 ## 5. Done when
 

@@ -906,6 +906,39 @@ the board.
 
 ---
 
+### D57 — Reuse the original's Steam App ID, 1821800
+**2026-11-14 · Accepted**
+
+The port ships under the existing App ID rather than a new one. Owner's call,
+confirmed against `steam_appid.txt` in the original project.
+
+**Why.** The store page, its reviews, and every achievement players have already
+unlocked carry over. A new App ID would mean a fresh store page with no reviews
+and the Steam Direct fee again, for a game that is the same game.
+
+**What it rules out, and this is the important part.** The achievement ids are
+no longer ours to choose. Whatever the partner backend holds is correct, and a
+name that disagrees with it does not error — it silently never unlocks. The
+same goes for the stat names the counters use.
+
+That turns the original's casing bug from a wart into a live hazard. It sets
+both `SSS_WIN_ONE_GAME` and `SSS_Win_One_Game`, and both `SSS_LOSE_ONE_GAME` and
+`SSS_Lose_One_Game`, because Steam's names are case-sensitive and the author was
+hedging.
+
+The win pair is settled by reading the original more closely: its only live call
+is `SetAchievement("SSS_Win_One_Game")` — the shouting version is commented out
+— so that is the spelling real players have actually unlocked, and therefore
+what the backend holds. The lose pair sets **both** on consecutive lines, so one
+is a no-op and the source cannot say which. That is the single remaining
+unknown, recorded in `Achievements.UNCONFIRMED_CASING`.
+
+**Where it lives.** `src/data/achievements.gd` is the catalogue, with every
+trigger condition written down; `tests/unit/test_achievements.gd` fails if two
+ids ever differ only by case again.
+
+---
+
 ### D56 — A session is handed a transport; it never builds one
 **2026-11-14 · Accepted**
 
