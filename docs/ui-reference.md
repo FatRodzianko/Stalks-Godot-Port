@@ -2,6 +2,14 @@
 
 ## The target: a pixel-art terminal
 
+> **On reference images.** Screenshots and photographs used while designing this
+> are kept locally in `reference-images/` and are **deliberately not committed**:
+> they came from image searches and the project does not hold the rights to
+> republish them. Nothing here links to them, and nothing should — the look is
+> described in words below and in decisions.md D40 precisely so that a fresh
+> clone loses nothing it needs. If a reference ever becomes load-bearing, write
+> down what it shows rather than committing the file.
+
 The interface is a **pixel-art Bloomberg terminal**: dense monospace text on dark
 panels, colour-coded fields, everything on a character grid.
 

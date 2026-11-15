@@ -74,3 +74,14 @@ desktop.ini
 # ---- Logs ----
 *.log
 logs/
+
+# ---- Visual reference material ----
+# Screenshots and photographs gathered while designing the interface, kept
+# locally so they are to hand while working. NOT committed: they come from
+# image searches and we do not hold the rights to republish them.
+#
+# Nothing in docs/ links to them -- the look is described in words instead, in
+# docs/ui-reference.md and decisions.md D40 -- so a fresh clone loses nothing
+# it needs. Keep it that way: if a reference ever becomes load-bearing, write
+# down what it shows rather than committing the file.
+/reference-images/
