@@ -197,32 +197,43 @@ func test_leaving_the_lobby_removes_the_row() -> void:
 	assert_eq(lobby.player_rows().size(), 1, "only the host should be left")
 
 
-func test_pressing_ready_readies_you_on_the_host() -> void:
-	var lobby: LobbyScreen = await _lobby_on_host()
-	if lobby == null:
-		return
+## A guest's own lobby screen, which is the side that has a ready button.
+func _guest_lobby() -> LobbyScreen:
+	var guest: LobbyScreen = LobbyScene.instantiate()
+	add_child_autofree(guest)
+	guest.setup(_harness.client)
+	return guest
 
-	lobby.get_node("%ReadyButton").pressed.emit()
+
+func test_a_guest_pressing_ready_readies_them_on_the_host() -> void:
+	if await _lobby_on_host() == null:
+		return
+	var guest: LobbyScreen = _guest_lobby()
+
+	guest.get_node("%ReadyButton").pressed.emit()
 	await _harness.settle(self)
 
-	assert_true(_harness.host.state().player_by_id(&"p0").is_ready)
+	assert_true(
+		_harness.host.state().player_by_id(&"p1").is_ready,
+		"the host holds the authoritative flag",
+	)
 	assert_eq(
-		lobby.get_node("%ReadyButton").text, "NOT READY",
+		guest.get_node("%ReadyButton").text, "NOT READY",
 		"the button should offer the way back",
 	)
 
 
-func test_pressing_ready_twice_un_readies_you() -> void:
-	var lobby: LobbyScreen = await _lobby_on_host()
-	if lobby == null:
+func test_a_guest_pressing_ready_twice_un_readies_them() -> void:
+	if await _lobby_on_host() == null:
 		return
+	var guest: LobbyScreen = _guest_lobby()
 
-	lobby.get_node("%ReadyButton").pressed.emit()
+	guest.get_node("%ReadyButton").pressed.emit()
 	await _harness.settle(self)
-	lobby.get_node("%ReadyButton").pressed.emit()
+	guest.get_node("%ReadyButton").pressed.emit()
 	await _harness.settle(self)
 
-	assert_false(_harness.host.state().player_by_id(&"p0").is_ready)
+	assert_false(_harness.host.state().player_by_id(&"p1").is_ready)
 
 
 func test_a_players_readiness_shows_in_their_row() -> void:
@@ -437,3 +448,83 @@ func test_the_board_shows_the_hosts_own_player() -> void:
 
 	assert_eq(main.session().local_player_id(), &"p0")
 	assert_eq(main.session().state().player_by_id(&"p0").display_name, "Murph")
+
+
+# ----------------------------------------------- who readies up, and who starts
+#
+# The host does not ready up: pressing Start is their readiness. They had a
+# READY button that changed nothing, which is what prompted this.
+
+func test_the_host_has_no_ready_button() -> void:
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+
+	assert_false(
+		lobby.get_node("%ReadyButton").visible,
+		"Start is the host's readiness; a second control would do nothing",
+	)
+	assert_true(lobby.get_node("%StartButton").visible)
+
+
+func test_a_guest_readies_up_and_cannot_start() -> void:
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+
+	var guest: LobbyScreen = _guest_lobby()
+
+	assert_true(guest.get_node("%ReadyButton").visible, "a guest readies up")
+	assert_false(guest.get_node("%StartButton").visible, "and cannot start")
+
+
+func test_the_host_is_told_who_is_still_waiting() -> void:
+	# Named rather than counted: the host is deciding whether to wait for a
+	# particular person.
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+
+	assert_string_contains(lobby.get_node("%Status").text, "Guest")
+
+	_harness.client.set_ready(&"p1", true)
+	await _harness.settle(self)
+
+	assert_string_contains(lobby.get_node("%Status").text.to_lower(), "everybody is ready")
+
+
+func test_the_host_can_start_with_somebody_not_ready() -> void:
+	# Deliberate. One idle player must not be able to hold the game shut with
+	# nothing the host can do — the deadlock this project keeps rediscovering.
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+	assert_false(_harness.client.state().player_by_id(&"p1").is_ready)
+
+	assert_false(lobby.get_node("%StartButton").disabled, "Start stays available")
+	lobby.get_node("%StartButton").pressed.emit()
+	await _harness.settle(self)
+
+	assert_false(_harness.host.lobby_is_open(), "and it works")
+
+
+func test_the_host_alone_is_told_they_can_still_start() -> void:
+	_harness = NetHarness.new()
+	add_child(_harness)
+	assert_eq(_harness.start(StalksFixture.make_settings(), _library, "Murph"), "")
+
+	var lobby: LobbyScreen = LobbyScene.instantiate()
+	add_child_autofree(lobby)
+	lobby.setup(_harness.host, _harness.port())
+
+	assert_string_contains(lobby.get_node("%Status").text.to_lower(), "on your own")
+	assert_false(lobby.get_node("%StartButton").disabled)
+
+
+func test_several_waiting_players_are_listed_readably() -> void:
+	assert_eq(LobbyScreen._listed(PackedStringArray(["Ann"])), "Ann")
+	assert_eq(LobbyScreen._listed(PackedStringArray(["Ann", "Bob"])), "Ann and Bob")
+	assert_eq(
+		LobbyScreen._listed(PackedStringArray(["Ann", "Bob", "Cal"])),
+		"Ann, Bob and Cal",
+	)

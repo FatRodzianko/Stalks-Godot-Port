@@ -87,20 +87,57 @@ func refresh() -> void:
 
 	_rebuild_list()
 
-	var local: PlayerState = _session.state().player_by_id(_session.local_player_id())
-	_ready_button.text = "NOT READY" if local != null and local.is_ready else "READY"
-
+	# The host does not ready up. Pressing Start *is* their readiness, and a
+	# second control that means the same thing but does nothing is worse than no
+	# control at all — which is what it was.
+	_ready_button.visible = not is_hosting()
 	_start_button.visible = is_hosting()
+
 	if is_hosting():
-		var count: int = _session.state().players.size()
-		_start_button.disabled = count < 1
-		_status.text = (
-			"Start whenever you like — nobody else has joined yet."
-			if count < 2
-			else "%d players. Start when everybody is in." % count
-		)
+		_refresh_for_host()
 	else:
-		_status.text = "The host decides when to begin."
+		_refresh_for_guest()
+
+
+## The host's view: Start, and an honest count of who is waiting.
+##
+## Start is never disabled by other players' readiness. A single idle player
+## would otherwise hold the game shut with nothing the host could do about it,
+## which is the deadlock this project has now walked into three times. The host
+## is told what they are about to do instead of being stopped from doing it.
+func _refresh_for_host() -> void:
+	var players: Array[PlayerState] = _session.state().players
+	var waiting: PackedStringArray = []
+	for player: PlayerState in players:
+		if player.id != _session.local_player_id() and not player.is_ready:
+			waiting.append(player.display_name)
+
+	if players.size() < 2:
+		_status.text = "Nobody else has joined yet. You can still start on your own."
+	elif waiting.is_empty():
+		_status.text = "Everybody is ready."
+	else:
+		_status.text = "Waiting on %s. You can start anyway." % _listed(waiting)
+
+
+func _refresh_for_guest() -> void:
+	var local: PlayerState = _session.state().player_by_id(_session.local_player_id())
+	var is_ready: bool = local != null and local.is_ready
+	_ready_button.text = "NOT READY" if is_ready else "READY"
+	_status.text = (
+		"The host decides when to begin."
+		if is_ready
+		else "Tell the host you are ready."
+	)
+
+
+## "Ann", "Ann and Bob", "Ann, Bob and Cal" — names read better than a count when
+## the host is deciding whether to wait for somebody.
+static func _listed(names: PackedStringArray) -> String:
+	if names.size() == 1:
+		return names[0]
+	var all_but_last: PackedStringArray = names.slice(0, names.size() - 1)
+	return "%s and %s" % [", ".join(all_but_last), names[names.size() - 1]]
 
 
 func _attach() -> void:
@@ -144,6 +181,7 @@ func _clear_list() -> void:
 		child.queue_free()
 
 
+## Only a guest reaches this — the host's button is hidden.
 func _on_ready_pressed() -> void:
 	var local: PlayerState = _session.state().player_by_id(_session.local_player_id())
 	var now_ready: bool = local == null or not local.is_ready

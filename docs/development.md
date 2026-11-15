@@ -259,6 +259,56 @@ what the interface is for (decisions.md D6).
 
 ---
 
+## 6a. Playing a networked match yourself
+
+Multiplayer needs two copies of the game running. **You do not need to export a
+build for this** — the editor can launch several instances at once, and that is
+the fastest loop by a wide margin.
+
+In the Godot editor:
+
+1. In the top menu bar, click **Debug**.
+2. Choose **Customize Run Instances...** (on Godot versions before 4.2 this is
+   **Run Multiple Instances** with a submenu instead).
+3. Tick **Enable Multiple Instances** and set the number to **2**.
+4. Click **OK**.
+5. Press **F5** (or the play button, top right). Two windows open.
+
+Then, in one window click **HOST** and **Open a lobby**; in the other click
+**JOIN** and **Join**. The address and port are pre-filled for the same machine,
+so neither needs typing.
+
+### Without the editor
+
+Run the project twice from a terminal, from the project root:
+
+```
+<godot> --path .
+```
+
+Use the **console** executable so you see `print` output. Running one instance
+this way and one from the editor works too, which is handy when you want the
+editor's debugger attached to only one side.
+
+### Why not an exported build?
+
+You can, but exporting needs the **export templates** for your exact Godot
+version — a separate download of several hundred megabytes, matched to
+4.7.2.stable. Worth doing when you want to test the real shipped artifact, and a
+waste of time for everyday multiplayer work. See Phase 7 in
+[porting-plan.md](porting-plan.md) for when export presets get set up properly.
+
+### What the automated tests can and cannot cover
+
+The suite runs a real host and client over real ENet in a single process, so the
+handshake, the economy and the disconnect behaviour are all tested without any of
+this (see [testing.md](testing.md)). What it cannot test is two *processes*:
+`Main` uses the scene tree's single default `MultiplayerAPI`, so two `Main`
+instances in one process overwrite each other's peer. Anything about the real
+two-window experience has to be checked by hand, the way described above.
+
+---
+
 ## 7. Conventions
 
 Full detail in [../CLAUDE.md](../CLAUDE.md). The ones that bite most often:
