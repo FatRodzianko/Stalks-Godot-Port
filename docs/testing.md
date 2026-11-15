@@ -228,6 +228,12 @@ One teardown quirk is documented in the harness and worth repeating: Godot's
 API, so a harness cannot unregister the API it registered. Clearing the peer is what
 actually releases the socket; the stale path registration is inert.
 
+### Testing by hand
+
+What only a person can check — two separate machines, Steam's relay, and
+whether anything feels right — has its own document, written to be worked
+through in order: [manual-testing.md](manual-testing.md).
+
 ### What the suite deliberately will not test
 
 Anything that talks to Steam. `test_steam_transport.gd` covers argument

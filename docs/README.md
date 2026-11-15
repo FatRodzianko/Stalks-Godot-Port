@@ -41,6 +41,7 @@ fixing.
 | [development.md](development.md) | Toolchain setup on a fresh machine, the verification loop, how to add content, and project conventions | You are setting up, or doing the work |
 | [exporting.md](exporting.md) | Export templates, presets, and getting a build onto a second computer | You need a runnable build rather than the editor |
 | [steam-integration.md](steam-integration.md) | The Phase 6 plan, which GodotSteam build to use and why, and the owner's setup steps | You are working on Steam, or about to download anything for it |
+| [manual-testing.md](manual-testing.md) | What a person has to check by hand, in order, with expected outcomes and failure signs | You are about to test a build, or two machines |
 | [testing.md](testing.md) | How to run the suite, how it is organised, testing conventions, and current coverage | You are writing or running tests |
 | [porting-plan.md](porting-plan.md) | The seven phases, what each delivers, and the pass/fail criteria for each | You want to know status, or what to do next |
 | [godot-editor-guide.md](godot-editor-guide.md) | A first-time walkthrough of the Godot editor for this project, written for a complete beginner | You have never opened Godot |
