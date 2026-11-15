@@ -46,53 +46,101 @@ from. Delete the download afterwards; it is 1.28 GB and the installed copy is
 all that matters.
 
 
-## 2. The export preset
+## 2. What an export preset is
 
-**Present on the author's machine, but gitignored — a fresh clone has to make
-its own.** It is three steps, below.
+**A preset is a saved recipe for making a build.** Which platform, where to put
+the file, what to call it, what to leave out. Unity keeps the equivalent in its
+Build Settings window; Godot calls each saved recipe a *preset* and lets you
+have several — one for Windows, one for Linux, one for a demo version, and so
+on.
 
-`export_presets.cfg` defines one preset, **Windows Desktop**, which:
+A project with no presets cannot be built at all. That is what the export
+dialog means when it says **"No presets found."**
 
-- exports to `../stalks-build/StalksStalksStalks.exe` — a **relative** path, so
-  it lands beside the repository on any machine rather than inside it. `/build/`
-  and `*.exe` are gitignored, but keeping build output out of the repo entirely
-  is simpler than trusting a pattern.
-- excludes `tools/*` and `steam_appid.txt` from the packed content. The tools
-  are editor-and-source utilities, and Valve's guidance is that the App ID file
-  should not ship.
-- targets x86_64 and enables the console wrapper, so a build run from a
-  terminal prints its output.
+### Where it lives
 
-### Making one on a fresh clone
+All of them are stored in one plain text file in the project folder:
 
-1. Top menu bar — **Project** — **Export...**
-2. **Add...** — **Windows Desktop**.
-3. Set **Export Path** to `../stalks-build/StalksStalksStalks.exe`. Relative,
-   so it lands beside the repository rather than inside it.
+```
+Stalks-Godot-Port/export_presets.cfg
+```
 
-Defaults are fine for everything else. Optionally set **Resources — Filters to
-exclude** to `tools/*, steam_appid.txt`, which is what the author's copy does.
+You never have to edit it by hand — the dialog writes it — but it is readable
+if you are curious, and it is how the setting you click in the dialog actually
+persists.
 
-To change any of it later: the same dialog, or edit the file directly — it is
-plain text and reads clearly.
+⚠️ **It is gitignored.** Presets are per-machine, so a fresh clone of this
+project has none and the export dialog will be empty until somebody makes one.
+That is normal, and section 2.3 is how.
 
-### Why it is not committed
+### 2.1 Opening it
 
-`.gitignore` excludes it on the general principle that export configuration
-carries local paths and signing credentials. Neither applies *yet* — the path
-is relative and nothing is signed — so committing it would genuinely save a
-successor these three steps.
+**Project → Export...** from the top menu bar.
 
-It is left out because the moment signing is set up, the file starts carrying
-credentials, and a file that was already committed is the easy one to forget
-about. Three steps now beats a leaked certificate later. Revisit deliberately
-if the balance changes.
+The window has three parts:
+
+- **Left:** the list of presets, with **Add...** above it.
+- **Right:** every setting for whichever preset is selected.
+- **Bottom:** the buttons that actually build — **Export Project...** is the
+  one you want.
+
+If the left list is empty, the right side is blank and the bottom buttons are
+greyed out. Nothing is broken; there is just no recipe yet.
+
+### 2.2 The preset this project uses
+
+One, called **Windows Desktop**. The settings that were deliberately chosen,
+rather than left at their defaults:
+
+| Setting | Value | Why |
+|---|---|---|
+| **Export Path** | `../stalks-build/StalksStalksStalks.exe` | Where the build is written. Relative, and starting `../` means *the folder next to the project*, so builds never land inside the repository where they could be committed by accident. |
+| **Resources → Filters to exclude** | `tools/*, steam_appid.txt` | Leaves the developer tools and the Steam App ID file out of the finished build. Valve's guidance is that the App ID file should not ship. |
+| **Binary Format → Architecture** | `x86_64` | Ordinary 64-bit Windows. |
+| **Debug → Export Console Wrapper** | on | Produces a second small `.console.exe` that prints output to a terminal. Useful when something goes wrong on another machine. |
+
+Everything else is Godot's default and has not been thought about.
+
+### 2.3 Making one yourself, from nothing
+
+If the list is empty — a fresh clone, or a new platform:
+
+1. **Project → Export...**
+2. Click **Add...** at the top of the left-hand list.
+3. Choose **Windows Desktop** from the menu that appears.
+4. A preset called "Windows Desktop" appears in the list and its settings fill
+   the right-hand side.
+5. Find **Export Path** near the top right. Click the folder icon and choose
+   where the build should go, or type `../stalks-build/StalksStalksStalks.exe`
+   to match this project's convention.
+6. Close the window. It saves by itself.
+
+That is the whole thing. The other settings in the table above are refinements,
+not requirements — a preset with nothing but a path will build.
+
+### 2.4 Changing it later
+
+Open the same dialog, click the preset, change the setting, close the window.
+There is no Save button; it writes as you go.
+
+To delete one, select it and click the dustbin icon above the list. To make a
+variant — a release preset with different filters, say — select it and click
+the copy icon next to the dustbin.
+
+### 2.5 If the dialog is empty when you expect a preset
+
+The dialog reads `export_presets.cfg` when the **project** opens, not when the
+dialog opens. A preset file that appeared while the editor was already running
+is invisible to it.
+
+**Project → Reload Current Project**, then open the dialog again.
 
 ### What about the Steam plugin?
 
-Nothing to do. A GDExtension declares its own libraries per platform in
-`addons/godotsteam/godotsteam.gdextension`, and Godot copies the right ones
-next to the executable automatically. That includes `steam_api64.dll`.
+Nothing to do, and nothing to configure. A GDExtension declares its own
+libraries per platform in `addons/godotsteam/godotsteam.gdextension`, and the
+exporter copies the right ones next to the finished executable — including
+`steam_api64.dll`.
 
 
 ## 3. Every time: export
@@ -118,11 +166,7 @@ Next time it is three clicks: the dialog remembers the preset.
 
 ### "No presets found"
 
-The dialog reads `export_presets.cfg` when the **project** loads, not when the
-dialog opens. If the file was created or changed while the editor was running,
-the dialog will show nothing.
-
-**Project → Reload Current Project**, then open the export dialog again.
+See [section 2.5](#25-if-the-dialog-is-empty-when-you-expect-a-preset) → **Project → Reload Current Project**.
 
 ### The command-line equivalent
 
