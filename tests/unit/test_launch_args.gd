@@ -122,7 +122,7 @@ func test_no_flags_leaves_main_on_the_menu() -> void:
 
 func test_the_host_flag_puts_main_straight_into_a_lobby() -> void:
 	var launch: LaunchArgs = _parsed(
-		["--host", "--port=%d" % randi_range(43600, 43999)] as Array[String]
+		["--host", "--port=%d" % TestPorts.next(TestPorts.LAUNCH_BASE)] as Array[String]
 	)
 	var main: Main = MainScene.instantiate()
 	add_child_autofree(main)
@@ -136,7 +136,7 @@ func test_the_host_flag_puts_main_straight_into_a_lobby() -> void:
 
 func test_a_failed_auto_host_falls_back_to_the_menu_with_the_reason() -> void:
 	# A blank screen would be a miserable way to discover the port is busy.
-	var port: int = randi_range(43600, 43999)
+	var port: int = TestPorts.next(TestPorts.LAUNCH_BASE)
 	var squatter: ENetMultiplayerPeer = ENetMultiplayerPeer.new()
 	assert_eq(squatter.create_server(port, 1), OK, "the test needs the port held")
 

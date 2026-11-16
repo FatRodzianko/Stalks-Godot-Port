@@ -38,21 +38,30 @@ func open_client() -> Dictionary:
 	var peer: ENetMultiplayerPeer = ENetMultiplayerPeer.new()
 	var error: Error = peer.create_client(_address, _port)
 	if error != OK:
-		return {
-			"peer": null,
-			"error": "Could not reach %s:%d: %s." % [
-				_address, _port, Transport.describe_error(error)
-			],
-		}
+		return {"peer": null, "error": _why_the_address_failed(error)}
 	return {"peer": peer, "error": ""}
 
 
-## What to tell the other players.
+## Why a client could not even open its socket.
 ##
-## Names this machine's address on the network, not just the port. "Others join
-## on port 42420" is useless from a second computer, which is exactly where a
-## direct connection earns its keep — two machines on a desk, no Steam, no
-## accounts, fast enough to test a gameplay change on.
+## **This failure only ever means the address could not be resolved.** A
+## perfectly good address with nothing listening on it does *not* fail here:
+## ENet is UDP, so there is nobody to refuse the connection, and
+## `create_client` returns `OK`. That case is reported later, by the join
+## timeout in `client_session.gd`. Established by binding nothing and trying
+## each kind of address in turn — see `tests/unit/test_transport.gd`.
+##
+## So the only player who sees this one has typed the address wrong, and that
+## is what it says. ENet reports it as `ERR_CANT_CREATE`, not
+## `ERR_CANT_RESOLVE`, which is why the generic description cannot be used.
+func _why_the_address_failed(error: int) -> String:
+	if error == ERR_CANT_CREATE or error == ERR_CANT_RESOLVE:
+		return "Could not find %s. Check the address for a typo." % _address
+	return "Could not reach %s:%d: %s." % [
+		_address, _port, Transport.describe_error(error)
+	]
+
+
 ## Why a bind failed, for the one failure players actually hit.
 ##
 ## **ENet reports a taken port as `ERR_CANT_CREATE`**, not
@@ -66,6 +75,12 @@ func _why_the_port_refused(error: int) -> String:
 	return "Could not listen on port %d: %s." % [_port, Transport.describe_error(error)]
 
 
+## What to tell the other players.
+##
+## Names this machine's address on the network, not just the port. "Others join
+## on port 42420" is useless from a second computer, which is exactly where a
+## direct connection earns its keep — two machines on a desk, no Steam, no
+## accounts, fast enough to test a gameplay change on.
 func joining_hint() -> String:
 	var address: String = local_address()
 	if address.is_empty():

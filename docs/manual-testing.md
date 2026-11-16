@@ -175,19 +175,39 @@ under the button disagreeing with the panel.
 
 One machine, no Steam, no second player.
 
-| Step | Expected |
-|---|---|
-| Start a single-player game and advance a year | **Two** clips together — a bull pair or a bear pair, not one sound. |
-| Keep advancing until a stalk goes bankrupt | Breaking glass **and** a scream, once for the year. |
-| Give a yeehaw (needs a second player, so skip if alone) | The yeehaw clip. |
-| Title screen: **SETTINGS** | A **Sound** slider, and no "Your name" field. |
-| Drag the slider | A clip plays at each step, and the percentage follows it. |
-| Set it to 0, start a game, advance a year | Silence, not a faint sound. |
-| Quit, relaunch, open **SETTINGS** | The slider is where you left it. |
+One step per line, in order. Sub-steps belong to the step above them.
+
+1. Start a single-player game.
+2. Advance a year.
+   - **Two** clips together: a bull pair or a bear pair, never one sound.
+3. Keep advancing until a stalk goes bankrupt.
+   - Breaking glass **and** a scream.
+   - Once for the year, however many stalks went under. Two in one year is
+     uncommon in play — the once-per-year rule is covered by
+     `test_audio_service.gd` rather than by hand.
+4. Give a yeehaw. (Needs a second player. Skip it if you are alone.)
+   - The yeehaw clip.
+5. Return to the title screen and open **SETTINGS**.
+   - A **Sound** slider.
+   - No "Your name" field.
+6. Drag the slider from one end to the other without letting go.
+   - The percentage follows your finger.
+   - **No sound at all while you are dragging.**
+7. Let go, wait for the clip to start, and immediately drag again.
+   - The clip stops the moment the drag begins.
+   - It does **not** ride the volume up and down as you drag.
+8. Let go.
+   - One clip, at the volume you landed on.
+9. Click once on the far left of the slider track.
+   - One clip, and the previous one cut off if it was still sounding.
+10. Set the slider to 0, start a game, advance a year.
+    - Silence, not a faint sound.
+11. Quit, relaunch, open **SETTINGS**.
+    - The slider is where you left it.
 
 **Failure signs:** one clip where there should be two; a bankruptcy sounding
-once per stalk rather than once per year; the slider not moving the volume;
-the volume forgotten between runs.
+once per stalk rather than once per year; clips overlapping into an echo, which
+is the fault D74 was amended for; the volume forgotten between runs.
 
 ### A8b. The bottom bar holds still
 
@@ -223,13 +243,30 @@ panel instead).
 
 ### A9a. Failures say what went wrong
 
-| Step | Expected |
-|---|---|
-| Host locally on a port, then from a second window host locally on the same port | "Could not listen on port NNNNN: something else may already be using it." |
-| **JOIN GAME**, type an address nothing is listening on, **JOIN LOCALLY** | A sentence naming the address, not a code. |
+One machine. No Steam, no second player needed.
+
+1. Host locally on the default port.
+2. Launch a second copy of the game and host locally on the **same** port.
+   - "Could not listen on port NNNNN: something else may already be using it."
+3. Change the port on the second copy and host again.
+   - It hosts.
+4. **JOIN GAME**, clear the address field, type `nope`, **JOIN LOCALLY**.
+   - "Could not find nope. Check the address for a typo."
+   - You stay on the title screen. Nothing is swapped.
+5. **JOIN GAME**, type a real address with nothing listening on it (`127.0.0.1`
+   on a port nobody is hosting), **JOIN LOCALLY**.
+   - The lobby appears, saying it is connecting.
+   - After about twelve seconds you are returned to the title screen with
+     "Could not reach the host. They may have left."
 
 **Failure signs:** any message ending in a number in brackets, like "(24)".
-See decisions.md D74.
+
+**Why step 5 is not an error message about the address.** ENet is UDP, so a
+valid address with nothing on it cannot refuse the connection — opening the
+socket succeeds and there is nothing to report yet. The failure can only be a
+timeout, which is why it takes a few seconds and why the wording is about the
+host rather than the address. Step 4 is the only client-side failure that knows
+anything at the moment it happens. See decisions.md D74.
 
 ### A9 continued
 

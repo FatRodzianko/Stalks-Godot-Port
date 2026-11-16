@@ -94,7 +94,7 @@ func test_the_enet_transport_names_its_port() -> void:
 
 func test_the_enet_transport_refuses_a_port_already_in_use() -> void:
 	var squatter: ENetMultiplayerPeer = ENetMultiplayerPeer.new()
-	var port: int = randi_range(44800, 44899)
+	var port: int = TestPorts.next(TestPorts.TRANSPORT_BASE)
 	assert_eq(squatter.create_server(port, 1), OK, "the test needs the port held")
 
 	var opened: Dictionary = EnetTransport.new(port).open_server(4)
@@ -109,6 +109,32 @@ func test_the_enet_transport_refuses_a_port_already_in_use() -> void:
 	assert_string_contains(String(opened["error"]).to_lower(), "already be using")
 	assert_false(String(opened["error"]).contains("("), String(opened["error"]))
 	assert_engine_error("host", "ENet reports the failed bind")
+
+
+## The behaviour the join timeout exists for, and the reason the error message
+## for a client cannot say "there was nothing listening".
+func test_a_valid_address_with_nothing_on_it_opens_anyway() -> void:
+	# ENet is UDP, so there is nobody at the other end to refuse the socket.
+	# Nothing has failed yet; the failure arrives later as a timeout in
+	# client_session.gd. See decisions.md D74.
+	var port: int = TestPorts.next(TestPorts.TRANSPORT_BASE)
+	var opened: Dictionary = EnetTransport.new(port).open_client()
+
+	assert_not_null(opened["peer"], "a dead address still opens")
+	assert_eq(String(opened["error"]), "")
+
+
+func test_a_mistyped_address_says_to_check_it() -> void:
+	# Which, given the test above, is the only way open_client can fail: the
+	# address could not be resolved.
+	var opened: Dictionary = EnetTransport.new(42420, "nope").open_client()
+
+	assert_null(opened["peer"])
+	assert_string_contains(String(opened["error"]), "nope", "name what was typed")
+	assert_string_contains(String(opened["error"]).to_lower(), "typo")
+	assert_false(String(opened["error"]).contains("("), String(opened["error"]))
+	assert_engine_error("resolve", "ENet reports the unresolvable address")
+	assert_engine_error("connect", "and then that it could not connect")
 
 
 # --------------------------------------------- which address to tell a friend

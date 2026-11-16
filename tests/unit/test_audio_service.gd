@@ -114,3 +114,31 @@ func test_the_effects_bus_exists() -> void:
 		AudioServer.get_bus_index(String(AudioService.BUS)), 0,
 		"an SFX bus should exist under Master",
 	)
+
+
+# ---------------------------------------------- the volume preview, reported
+#
+# Dragging the slider used to stack previews on top of each other: the clip
+# is longer than the gap between steps, so the old one was still sounding, at
+# the old volume, underneath the new. Heard as an echo, and it made the
+# control useless — only the tail of it was at the volume you had chosen.
+
+
+func test_the_preview_has_a_voice_of_its_own() -> void:
+	# Which is what lets a new preview stop the last one. Taking the next
+	# voice in the round-robin could not: there would be two players holding
+	# the clip and no way to know which to silence.
+	assert_false(
+		Audio.voices().has(Audio.preview_voice()),
+		"the preview should not be one of the round-robin voices",
+	)
+
+
+func test_previewing_twice_leaves_one_clip_sounding_not_two() -> void:
+	Audio.preview_voice().stop()
+
+	Audio.play_volume_preview()
+	Audio.play_volume_preview()
+
+	assert_eq(Audio.preview_voice().stream, AudioService.BULL[1])
+	assert_eq(_sounding().size(), 0, "a preview should not use up a game voice")

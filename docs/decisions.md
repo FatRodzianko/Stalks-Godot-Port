@@ -952,6 +952,44 @@ take: there is no log window and the file is somewhere nobody has told them
 about. It now names the thing they can actually do, and the detail still goes
 to the log for whoever is debugging.
 
+**Amended the same day, from play.** Two things in here were wrong.
+
+**The preview must not play on every step of a drag.** Reported: "the previous
+sound clip keeps playing when the new one starts — this creates a delay or
+echo effect, and makes it difficult to tell what the actual volume you are
+setting will be". Exactly right, and the cause is that the clip is longer than
+the gap between steps, so a drag stacks previews and the only part at the
+volume you chose is the tail. Two changes: the clip is played when the slider
+is **let go** (`drag_ended`), and the preview has a **player of its own** so a
+new one stops the last rather than sounding over it. A change made without a
+drag — the arrow keys, a click on the track — has no release to wait for and
+previews immediately, which is why the dedicated player is needed as well as
+the deferral and not instead of it.
+
+A third fix followed from testing the first two: a clip still sounding when a
+drag *began* rode the volume up and down with the slider, because moving the
+bus moves everything on it. That is right for a mixer and wrong for feedback,
+so grabbing the slider now silences the last preview. A drag is quiet
+whatever was happening before it.
+
+The original played a clip on every change, so this is a place where copying
+the original was the wrong instinct: its slider and this one do not have the
+same step size or the same clip length.
+
+**A client cannot be told "nothing was listening".** The A9a test step written
+above asked for a sentence naming an address after joining one with nothing on
+it, and that is not what happens — reported as "I don't understand what this
+is saying". ENet is UDP: `create_client` on a valid but dead address returns
+`OK`, because there is nobody at the far end to refuse it. Probed rather than
+assumed: a dead `127.0.0.1` opens fine, while `nope`, `1.2.3` and
+`999.999.999.999` all fail with `ERR_CANT_CREATE`.
+
+So the only failure `open_client` can report is an address that could not be
+resolved, and it now says so by name: *"Could not find nope. Check the address
+for a typo."* A valid address with nothing on it is reported by the join
+timeout instead, twelve seconds later, which is why that message is about the
+host and not the address.
+
 **What it rules out.** A settings screen of its own, for now. One tab holding
 one row does not need to be a whole screen, and making it one would be
 building the thing the owner declined twice.
@@ -1013,6 +1051,15 @@ one is given.
 audio as a service that earns one, and it does: sound is triggered from more
 than one screen and belongs to none of them. It stays thin — players, clips
 and a volume, no game rules.
+
+Both the autoload and the bus layout were registered by editing
+`project.godot` directly, as CLAUDE.md asks. Two things follow that are easy
+to trip over. **The editor needs the project closed and reopened** before a
+hand-added autoload appears under Project > Project Settings > Globals.
+And **Godot strips comments out of `project.godot`** the next time the editor
+saves it, so the reasoning for anything registered there has to live in a
+docstring or here, not in the file itself — the comments originally written
+beside these two entries were gone by the following day.
 
 **Two details from the original that a reimplementation loses by default**,
 both read out of `GameplayManager.RpcPlayBearOrBullSounds`:

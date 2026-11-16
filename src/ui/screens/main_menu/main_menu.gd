@@ -84,6 +84,10 @@ enum Mode { CREATE, JOIN, SETTINGS }
 
 var _mode: Mode = Mode.CREATE
 
+## True between grabbing the volume slider and letting it go, so the preview
+## clip can wait for the release instead of firing on every step of a drag.
+var _dragging_volume: bool = false
+
 
 func _ready() -> void:
 	_single_player_button.pressed.connect(_on_single_player_pressed)
@@ -95,6 +99,8 @@ func _ready() -> void:
 	_join_tab.pressed.connect(_on_join_tab_pressed)
 	_settings_tab.pressed.connect(_on_settings_tab_pressed)
 	_volume_slider.value_changed.connect(_on_volume_changed)
+	_volume_slider.drag_started.connect(_on_volume_drag_started)
+	_volume_slider.drag_ended.connect(_on_volume_drag_ended)
 	_show_current_volume()
 
 	show_mode(Mode.CREATE)
@@ -228,17 +234,38 @@ func _show_current_volume() -> void:
 	_volume_value.text = "%d%%" % int(_volume_slider.value)
 
 
-## Applies, saves, and plays something so you can hear what you chose.
+## Applies and saves at once, so the number on screen is never a promise about
+## a volume that has not been set yet.
 ##
-## The preview is the original's behaviour — its settings screen played
-## `bull2` on every change. It is bearable here because the slider moves in
-## steps of five, so a full drag is twenty sounds rather than one per frame;
-## the same step is why saving on every change is a few writes and not
-## hundreds.
+## **The clip is not played here while a drag is in progress.** Playing on
+## every step was the first attempt and it was wrong: the clip is longer than
+## the gap between steps, so a drag stacked previews into an echo, and the only
+## part at the volume you had chosen was the tail. It is now played when the
+## slider is let go. A change made without a drag — the arrow keys, Home, End —
+## has no release to wait for, so it previews immediately.
 func _on_volume_changed(value: float) -> void:
 	Audio.set_volume_percent(int(value))
 	_volume_value.text = "%d%%" % int(value)
+	if _dragging_volume:
+		return
 	Audio.play_volume_preview()
+
+
+## Silences a preview left over from the last adjustment, so that a drag is
+## quiet whether or not one was still sounding when it began. Without this, a
+## clip from a previous release rides the volume up and down as you drag, which
+## is exactly the thing the deferral was meant to stop.
+func _on_volume_drag_started() -> void:
+	_dragging_volume = true
+	Audio.stop_volume_preview()
+
+
+## `changed` is false when the slider was grabbed and released on the same
+## value, where a preview would be a sound in answer to nothing.
+func _on_volume_drag_ended(changed: bool) -> void:
+	_dragging_volume = false
+	if changed:
+		Audio.play_volume_preview()
 
 
 func _on_single_player_pressed() -> void:

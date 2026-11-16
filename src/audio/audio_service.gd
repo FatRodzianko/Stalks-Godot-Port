@@ -50,6 +50,15 @@ const SILENCE_DB: float = -80.0
 
 var _players: Array[AudioStreamPlayer] = []
 
+## The volume preview's own player, kept out of the round-robin above.
+##
+## It has to be a dedicated one so that a second preview can **stop** the
+## first. Taking the next voice in the rotation would leave the old clip
+## sounding underneath the new one, and the two together are heard as an echo
+## — which makes it impossible to tell what volume you have just chosen,
+## because only the tail of it is at the new level. Reported from play.
+var _preview: AudioStreamPlayer = null
+
 ## The next player to use. Round-robin rather than searching for a free one:
 ## with six voices and clips this short, the oldest is always the best
 ## candidate and looking for an idle one just risks finding none.
@@ -63,6 +72,10 @@ func _ready() -> void:
 		player.bus = BUS
 		add_child(player)
 		_players.append(player)
+
+	_preview = AudioStreamPlayer.new()
+	_preview.bus = BUS
+	add_child(_preview)
 
 
 ## The year's mood, as two clips at once.
@@ -86,8 +99,34 @@ func play_yeehaw() -> void:
 ##
 ## `bull2` because that is what the original's settings screen played. One
 ## clip rather than the layered pair: this is feedback, not a bull market.
+##
+## **Cuts off whatever the last preview was still playing.** Without that,
+## previews overlap into an echo and the old clip is still sounding at the old
+## volume, so you cannot hear what you just set. The menu also waits for the
+## slider to be let go before asking for one — see `main_menu.gd`.
 func play_volume_preview() -> void:
-	_play(BULL[1])
+	if _preview == null:
+		return
+	_preview.stop()
+	_preview.stream = BULL[1]
+	_preview.play()
+
+
+## Silences the last preview without starting another.
+##
+## A drag is supposed to be quiet, and moving the bus does not silence a clip
+## that is already sounding — it rides the volume up and down with the slider,
+## which is correct for a mixer and wrong for feedback. Reported from play.
+##
+## **Clears the stream as well as stopping.** Under the headless dummy audio
+## driver `playing` is always false, so "is a preview sounding" is only
+## answerable by looking at the clip the player holds. See
+## `tests/unit/test_audio_service.gd`.
+func stop_volume_preview() -> void:
+	if _preview == null:
+		return
+	_preview.stop()
+	_preview.stream = null
 
 
 # ------------------------------------------------------------------- volume
@@ -135,6 +174,13 @@ func volume_percent() -> int:
 ## sounding without reaching into the node tree by path.
 func voices() -> Array[AudioStreamPlayer]:
 	return _players
+
+
+## The volume preview's player, which is **not** one of `voices()`. Public for
+## the same reason: so a test can see whether a preview is sounding, and
+## whether a second one replaced the first rather than joining it.
+func preview_voice() -> AudioStreamPlayer:
+	return _preview
 
 
 # ----------------------------------------------------------------- internals

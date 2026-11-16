@@ -511,7 +511,7 @@ const MainScene: PackedScene = preload("res://src/ui/screens/main/main.tscn")
 
 
 func _free_port() -> int:
-	return randi_range(43100, 43599)
+	return TestPorts.next(TestPorts.LOBBY_BASE)
 
 
 func test_hosting_through_main_opens_a_lobby() -> void:
@@ -1016,3 +1016,67 @@ func test_moving_the_slider_changes_the_volume_and_says_so() -> void:
 
 	Audio.set_volume_percent(before)
 
+
+## Reported from play: a drag played a clip at every step, and they overlapped
+## into an echo. The preview now waits for the slider to be let go.
+func test_dragging_the_slider_does_not_preview_until_it_is_let_go() -> void:
+	var before: int = Audio.volume_percent()
+	var menu: MainMenu = _menu()
+	var slider: HSlider = menu.get_node("%VolumeSlider") as HSlider
+	Audio.preview_voice().stop()
+	Audio.preview_voice().stream = null
+
+	slider.drag_started.emit()
+	slider.value = 40
+	slider.value = 25
+	assert_null(Audio.preview_voice().stream, "no clip while the drag is going")
+
+	slider.drag_ended.emit(true)
+	assert_eq(Audio.preview_voice().stream, AudioService.BULL[1], "one on release")
+
+	Audio.set_volume_percent(before)
+
+
+func test_a_change_with_no_drag_previews_straight_away() -> void:
+	# The arrow keys, Home and End. There is no release to wait for, so
+	# waiting for one would mean no feedback at all.
+	var before: int = Audio.volume_percent()
+	var menu: MainMenu = _menu()
+	Audio.preview_voice().stop()
+	Audio.preview_voice().stream = null
+
+	(menu.get_node("%VolumeSlider") as HSlider).value = 65
+
+	assert_eq(Audio.preview_voice().stream, AudioService.BULL[1])
+
+	Audio.set_volume_percent(before)
+
+
+func test_letting_go_without_moving_anything_is_silent() -> void:
+	var menu: MainMenu = _menu()
+	var slider: HSlider = menu.get_node("%VolumeSlider") as HSlider
+	Audio.preview_voice().stop()
+	Audio.preview_voice().stream = null
+
+	slider.drag_started.emit()
+	slider.drag_ended.emit(false)
+
+	assert_null(Audio.preview_voice().stream, "a sound in answer to nothing")
+
+
+## Reported from play, after the deferral above: a clip still sounding when a
+## drag began rode the volume up and down with the slider. Correct for a
+## mixer, wrong for feedback, and it put sound back into a drag that was
+## supposed to be silent.
+func test_starting_a_drag_silences_the_last_preview() -> void:
+	var before: int = Audio.volume_percent()
+	var menu: MainMenu = _menu()
+	var slider: HSlider = menu.get_node("%VolumeSlider") as HSlider
+	Audio.play_volume_preview()
+	assert_not_null(Audio.preview_voice().stream, "the test needs a clip loaded")
+
+	slider.drag_started.emit()
+
+	assert_null(Audio.preview_voice().stream, "the drag should begin in silence")
+
+	Audio.set_volume_percent(before)

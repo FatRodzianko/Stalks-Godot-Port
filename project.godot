@@ -18,16 +18,10 @@ config/icon="res://icon.svg"
 
 [audio]
 
-; One SFX bus under Master, so a single volume governs every effect and
-; Master is left free for music if any ever arrives. See src/audio/.
 buses/default_bus_layout="res://assets/audio/bus_layout.tres"
 
 [autoload]
 
-; Sound is triggered from several screens and belongs to none of them, which
-; is what CLAUDE.md means by a service that earns being an autoload. Adding
-; this by hand means the editor needs the project reopened before it shows up
-; under Project > Project Settings > Globals.
 Audio="*res://src/audio/audio_service.gd"
 
 [debug]
