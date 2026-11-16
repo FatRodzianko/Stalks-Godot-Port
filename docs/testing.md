@@ -107,7 +107,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-528 tests, 14,412 asserts, about 21 seconds.
+537 tests, 14,433 asserts, about 21 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -127,6 +127,7 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_networked_session.gd` | **Networked tests** with a real host and client in one process: joining and seating, yeehaw in both directions, a refused self-yeehaw, a client's buy applied by the host, an unaffordable and a nonsense request refused, a refusal reaching only the asker, a client unable to act as another player, redaction end to end, the all-ready gate, both sides agreeing on every price after a year, and the disconnect behaviour including the deadlock it used to cause | 40 |
 | `test_lobby_screen.gd` | **Scene tests** for the title screen (Create Game and Join Game; one settings panel serving all three ways to start a game; a joiner offered none of them; the lobby's invite button and invite-only games; the host naming the match, that name heading the lobby on both machines, and an online game taking its player names from Steam rather than from the title screen) and the lobby over a live host session: the player list, who you are and who is hosting, arrivals and departures, ready-up both ways, Start being the host's alone, the all-ready gate and the host's kick that escapes it, that the host has no ready button because Start is their readiness, and `Main` opening a lobby, reporting a busy port and carrying on into the match | 62 |
 | `test_client_board.gd` | The client's path from lobby to board, which nothing covered before two windows were played for real: the board building and filling for a `ClientSession`, a swapped-out lobby or board ignoring the signals that follow it, a live one still updating, a removed player returned to the menu with the reason, the board visibly acknowledging a Ready press — readying, un-readying, naming who it waits for, and showing another player's dot — and the host going away mid-match, which leaves the board reporting it and `Main` listening | 25 |
+| `test_user_settings.gd` | What the game remembers between runs: defaults on a first run, every Create Game field surviving a round trip, a flag switched **off** staying off, a corrupt file reading as a first run rather than crashing, the seed never being remembered, and a menu that was never told where to save writing nothing — which is what keeps every other menu test independent of the developer's own saved file | 9 |
 | `test_achievement_rules.gd` | What a match earns, decided without Steam: the all-in and diversified thresholds and their near-misses, borrowing and settling, a split or bankruptcy judged from the holdings **before** the year (a bankrupt stalk's shares are zeroed, so the current state would never award it), winning and losing being exclusive, the net-worth targets including the starting-cash guard that stops one being bought, doubling and halving, long-match ids, the lifetime ladders awarding every rung reached, and that every id these rules can award is in the catalogue | 28 |
 | `test_achievements.gd` | The achievement catalogue: 25 distinct ids, none differing only by case (the bug the original shipped), none padded, and the win achievement keeping the spelling that actually fired | 10 |
 | `test_conventions.gd` | Readability rules checked by machine rather than memory: no inline function connected to a signal, no signal connected to another signal's `emit`, no conditional expression split across lines, no leftover placeholder in `src/` **or in `docs/`**, no stray `print` | 8 |
@@ -287,6 +288,28 @@ The Steam path is checked by hand instead, with two tools:
 The first says whether the plugin is installed. The second starts Steam,
 creates a real lobby, turns it into a peer and leaves again. Neither is a test,
 because "Steam is not installed" is a legitimate answer on a fresh checkout.
+
+### One unexplained red run, 2026-11-15
+
+A full run reported **536 of 537 passing, 14,431 of 14,434 asserts**, and the
+next run with no code change in between was clean. Ten further runs have been
+clean. The failing test's name was not captured.
+
+What is known: three asserts in a single test failed together, so it is a test
+with at least three of them rather than a stray engine error.
+
+What was ruled out: the first theory was that `test_user_settings.gd`'s
+teardown removed a file that was not there and that Godot logged an error GUT
+would count. A probe showed `DirAccess.remove_absolute` on a missing path
+returns a failure code and logs **nothing**, so that was not it. The teardown
+now checks anyway, because it should.
+
+Still suspected, unproven: the networked tests take real ports. They are
+chosen from a random base per run and the harness retries a taken one, but a
+collision has cost a red run before.
+
+**If you see a lone failure, capture the name before re-running.** That is the
+thing this note could not do and the reason it is still open.
 
 ### A regression test that has not failed is not evidence
 

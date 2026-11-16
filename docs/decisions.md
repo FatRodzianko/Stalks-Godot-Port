@@ -906,6 +906,52 @@ the board.
 
 ---
 
+### D71 — The game remembers what you typed, and leaves cleanly when closed
+**2026-11-15 · Accepted**
+
+`UserSettings` keeps the Create Game fields and the player's name in
+`user://settings.cfg`. `Main` asks the title screen to fill itself in from
+them, and the screen writes them back whenever a game is started or joined.
+Closing the window discards the session properly instead of vanishing.
+
+**The first piece of Phase 7, and a prerequisite for the rest of it.** The
+phase asks for "mixer and volume settings", and there was nowhere to keep a
+volume: nothing in this game had ever been written to disk.
+
+**The seed is deliberately not remembered.** Every other field comes back; a
+remembered seed would make every match identical and the player would have no
+way to guess why. It is the one case where carrying a value forward turns a
+convenience into a bug.
+
+**Recalling is `Main`'s call, not the screen's `_ready`.** A screen that read
+the file the moment it existed would make every test of the menu depend on
+whatever the developer last typed — the default-value tests would pass or
+fail by accident. Until `recall_settings` is called the screen neither reads
+nor writes, which is what makes it safe to put one in a test. Confirmed by
+running the whole suite against a deliberately populated settings file and
+watching all 537 still pass.
+
+**And it is called after the swap**, not before, because the controls are
+`@onready` and do not exist until the screen is in the tree. That is the
+ordering the lobby already documents, and it bit this change too.
+
+**Closing the window does not ask.** Clicking the X is not a keystroke
+somebody hits by accident, and a confirmation in front of a window that is
+already going away is an argument with somebody who has finished. Escape asks
+because it is reversible; this is not.
+
+**What it does do is leave properly.** Before this, closing the window skipped
+`_discard_session` entirely: a host's Steam lobby was never marked shut and
+its peer was never closed, so the lobby survived until Steam noticed it was
+empty. `auto_accept_quit` is off and `NOTIFICATION_WM_CLOSE_REQUEST` does the
+tidying before quitting.
+
+**What it rules out.** A settings screen. There is nothing in here a player
+chooses twice, and the owner has not asked for one; when volume arrives it
+will need one, and this is the store it will use.
+
+---
+
 ### D70 — Achievements are decided by pure rules and reported by a thin node
 **2026-11-15 · Accepted**
 

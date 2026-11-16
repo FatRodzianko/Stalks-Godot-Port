@@ -510,13 +510,22 @@ GDExtension**, not the module build and not Foundation for Steamworks — see
 
 ## Phase 7 — Polish
 
-- Sound: bull, bear, bankruptcy, split, yeehaw, UI feedback; mixer and volume
-  settings
+- **Sound — blocked on an asset decision, not on code.** The original's seven
+  effects live in its `Assets/SFX/` (`bull1`, `bull2`, `bear1`, `bear2`,
+  `glass-shattering`, `wilhelm-scream`, `yeehaw`). They have not been copied
+  into this repository and should not be until the owner says so: this
+  repository is public, and at least two of those are recognisable stock
+  sounds whose licensing is unknown — the same reason `reference-images/` is
+  gitignored. The port's `assets/audio/` is empty and waiting. Also wanted:
+  mixer and volume settings, which now have somewhere to persist (D71).
 - ~~Loan button: minimum payment underneath, "PAY LOAN" whenever a loan is
   outstanding~~ — **done 2026-11-15**, brought forward after a second request
-- ~~Esc as a way out of a match~~ — **done 2026-11-15** (D64). What is left of
-  this item is settings persistence and tidy quit handling; there is no pause
-  menu and the decision record says why there should not be one
+- ~~Esc as a way out of a match~~ — **done 2026-11-15** (D64)
+- ~~Settings persistence and tidy quit handling~~ — **done 2026-11-15** (D71).
+  The Create Game fields and the player's name come back between runs, the
+  seed deliberately does not, and closing the window now shuts the Steam lobby
+  and the peer instead of vanishing. There is no pause menu and no settings
+  screen; D64 and D71 say why neither should exist yet
 - Error and edge-case presentation
 - Export presets and a Windows build, **excluding `steam_appid.txt`** — Valve's
   guidance is that it is a development-only file

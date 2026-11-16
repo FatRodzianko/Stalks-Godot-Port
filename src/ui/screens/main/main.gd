@@ -55,6 +55,11 @@ var _leave_prompt: ConfirmPanel
 
 
 func _ready() -> void:
+	# Godot closes the window the moment it is asked unless told otherwise.
+	# This game has a Steam lobby to shut and a peer to close first — see
+	# `_notification` and docs/decisions.md D71.
+	get_tree().auto_accept_quit = false
+
 	# An invite accepted while the game was closed launches it with
 	# `+connect_lobby <id>`, and that has to work in a release build — which
 	# is why it is not a `LaunchArgs` flag. See docs/decisions.md D69.
@@ -174,6 +179,10 @@ func show_menu() -> void:
 	menu.browse_online_requested.connect(_on_browse_online_requested)
 	menu.join_local_requested.connect(_on_join_local_requested)
 	_swap(menu)
+	# After the swap, so the screen is in the tree and its @onready nodes
+	# exist — the same ordering the lobby needs. Done here rather than in the
+	# screen's own _ready so that a menu in a test starts from the defaults.
+	menu.recall_settings()
 
 
 ## Starts a match. Public so a test can begin one without driving the menu.
@@ -673,6 +682,24 @@ func _on_play_again() -> void:
 	var settings: GameSettings = _last_settings.duplicate() as GameSettings
 	settings.rng_seed = 0
 	start_match(settings)
+
+
+## The window was closed, or the OS asked the game to stop.
+##
+## **Does not ask.** Clicking the X is not a keystroke somebody hits by
+## accident, and a confirmation in front of a window that is already going
+## away is an argument with a player who has finished. Escape asks because it
+## is reversible; this is not.
+##
+## What it does do is leave properly. Before this, closing the window skipped
+## `_discard_session` entirely, so a host's Steam lobby was never marked shut
+## and its peer was never closed — the lobby survived until Steam noticed it
+## was empty. See docs/decisions.md D71.
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_WM_CLOSE_REQUEST:
+		return
+	_discard_session()
+	get_tree().quit()
 
 
 ## Replaces the current screen. Removes the old one from the tree immediately
