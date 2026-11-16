@@ -42,6 +42,7 @@ with no Steam dependency at all.
 
 | Setting | Range | Default |
 |---|---|---|
+| Game name | up to 24 characters | named after the host |
 | Starting cash | — | **10,000** |
 | Number of years | 2–99 | — |
 | Number of players | 1–10 | — |

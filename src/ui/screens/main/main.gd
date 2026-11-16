@@ -14,8 +14,8 @@ const MenuScene: PackedScene = preload("res://src/ui/screens/main_menu/main_menu
 const GameplayScene: PackedScene = preload("res://src/ui/screens/gameplay/gameplay_screen.tscn")
 const GameOverScene: PackedScene = preload("res://src/ui/screens/game_over/game_over_screen.tscn")
 const LobbyScene: PackedScene = preload("res://src/ui/screens/lobby/lobby_screen.tscn")
-const SteamBrowserScene: PackedScene = preload(
-	"res://src/ui/screens/steam_browser/steam_browser_screen.tscn"
+const OnlineGamesScene: PackedScene = preload(
+	"res://src/ui/screens/online_games/online_games_screen.tscn"
 )
 const ConfirmPanelScene: PackedScene = preload("res://src/ui/widgets/confirm_panel.tscn")
 
@@ -42,6 +42,11 @@ var _automated_lobby: LobbyScreen
 ## the process. Never an autoload: a game played offline, and every test run,
 ## must never touch Steam at all. See docs/decisions.md D59.
 var _steam: SteamService
+
+## Set while Steam is being asked for a lobby to host in, and cleared when it
+## answers. Held here because the menu that supplied them is swapped away
+## before the answer arrives.
+var _pending_host_settings: GameSettings
 
 ## The "leave the game?" overlay, built the first time Escape is pressed during
 ## a match and kept afterwards. Null until then, so a session that never asks
@@ -151,9 +156,10 @@ func show_menu() -> void:
 	_discard_session()
 	var menu: MainMenu = MenuScene.instantiate()
 	menu.start_requested.connect(_on_start_requested)
-	menu.host_requested.connect(_on_host_requested)
-	menu.join_requested.connect(_on_join_requested)
-	menu.steam_requested.connect(_on_steam_requested)
+	menu.host_online_requested.connect(_on_host_online_requested)
+	menu.host_local_requested.connect(_on_host_local_requested)
+	menu.browse_online_requested.connect(_on_browse_online_requested)
+	menu.join_local_requested.connect(_on_join_local_requested)
 	_swap(menu)
 
 
@@ -186,6 +192,7 @@ func session() -> GameSession:
 ## Opens a lobby and shows it. Returns an error string, empty on success.
 func host_match(settings: GameSettings, player_name: String, port: int) -> String:
 	_discard_session()
+	_name_the_match(settings, player_name)
 	_last_settings = settings
 
 	var library: ContentLibrary = _loaded_library()
@@ -239,34 +246,26 @@ func steam_service() -> SteamService:
 	return _steam
 
 
-## The player opened the Steam browser from the title screen.
+## The list of games being hosted online. Reachable even when Steam is
+## unavailable — the screen explains why rather than the menu silently
+## refusing.
 ##
-## The settings they chose there come along. They used not to: the browser had
-## no settings of its own and `_last_settings` was only ever filled in by
-## starting or hosting a game, so a Steam match was always hosted with
-## `GameSettings.new()` — ten years, and **loans switched off**, no matter what
-## the title screen said. See docs/decisions.md D62.
-func _on_steam_requested(settings: GameSettings) -> void:
-	_last_settings = settings
-	show_steam_browser()
-
-
-## The Steam lobby browser. Reachable even when Steam is unavailable — the
-## screen explains why rather than the menu silently refusing.
-func show_steam_browser() -> void:
+func show_online_games() -> void:
 	_discard_session()
-	var browser: SteamBrowserScreen = SteamBrowserScene.instantiate()
+	var browser: OnlineGamesScreen = OnlineGamesScene.instantiate()
 	browser.back_requested.connect(show_menu)
-	browser.host_requested.connect(_on_steam_host_requested)
-	browser.join_requested.connect(_on_steam_join_requested)
+	browser.join_requested.connect(_on_online_join_requested)
 	_swap(browser)
-	browser.setup(steam_service(), settings_for_steam())
+	var service: SteamService = steam_service()
+	_watch_for_departures(service)
+	browser.setup(service)
 
 
-## Hosts inside a Steam lobby that already exists. The browser created it and
+## Hosts inside a Steam lobby that already exists. Whoever asked for the lobby
 ## waited for Steam to answer, so by here there is nothing left to wait for.
 func host_steam_match(lobby_id: int, settings: GameSettings, player_name: String) -> String:
 	_discard_session()
+	_name_the_match(settings, player_name)
 	_last_settings = settings
 
 	var library: ContentLibrary = _loaded_library()
@@ -289,6 +288,7 @@ func host_steam_match(lobby_id: int, settings: GameSettings, player_name: String
 
 func join_steam_match(lobby_id: int, owner_steam_id: int, player_name: String) -> String:
 	_discard_session()
+	_online_host_steam_id = owner_steam_id
 
 	var library: ContentLibrary = _loaded_library()
 	if library == null:
@@ -308,32 +308,128 @@ func join_steam_match(lobby_id: int, owner_steam_id: int, player_name: String) -
 	return ""
 
 
-## What a Steam match would be hosted with: whatever the title screen was last
-## set to. Never null, so the browser always has something to show.
-func settings_for_steam() -> GameSettings:
-	if _last_settings != null:
-		return _last_settings
-	return GameSettings.new()
+# ------------------------------------------------------------- hosting online
+#
+# Creating a Steam lobby is asynchronous: ask, then wait for Steam to call
+# back with an id. That wait lives here rather than in the Transport (D59),
+# and it lives in `Main` rather than on a screen because the screen it was
+# asked from is gone by the time the answer arrives.
+
+## Host a game other people reach through Steam, with the settings from Create
+## Game. The lobby does not exist yet, so this asks for one and continues in
+## `_on_steam_lobby_created`.
+func _on_host_online_requested(settings: GameSettings) -> void:
+	_pending_host_settings = settings
+
+	var service: SteamService = steam_service()
+	if not service.is_running():
+		var problem: String = service.start()
+		if not problem.is_empty():
+			_report_to_menu(problem)
+			return
+
+	if not service.lobby_created.is_connected(_on_steam_lobby_created):
+		service.lobby_created.connect(_on_steam_lobby_created)
+		service.lobby_failed.connect(_on_steam_lobby_failed)
+	_watch_for_departures(service)
+
+	# Steam takes a moment, and a button that does nothing visible reads as
+	# broken.
+	var menu: MainMenu = _screen as MainMenu
+	if menu != null:
+		menu.show_status("Creating a lobby...")
+
+	# Ten players including the host, matching the match limit. The lobby
+	# carries the host's chosen name so the browser can show it.
+	service.create_lobby(NetworkedSession.MAX_CLIENTS + 1, settings.game_name)
 
 
-func _on_steam_host_requested(lobby_id: int) -> void:
-	var problem: String = host_steam_match(lobby_id, settings_for_steam(), _steam_name())
-	if not problem.is_empty():
-		show_menu()
-		_report_to_menu(problem)
+## Listens for members leaving the Steam lobby. Connected once, from wherever
+## Steam is first needed.
+func _watch_for_departures(service: SteamService) -> void:
+	if service.lobby_member_left.is_connected(_on_steam_lobby_member_left):
+		return
+	service.lobby_member_left.connect(_on_steam_lobby_member_left)
 
 
-func _on_steam_join_requested(lobby_id: int, owner_steam_id: int) -> void:
+## Somebody left the Steam lobby. Only the host leaving matters: this game has
+## no host migration, so their departure ends the match for everybody.
+##
+## **This is the only thing that reports it over Steam.** A direct connection
+## raises `server_disconnected` and the session acts on that; Steam's
+## peer-to-peer session just goes quiet. Without this a client sat on a lobby
+## or a board that had silently stopped being connected to anything, which is
+## what `ClientSession`'s join timeout was written to catch — that timeout is
+## now a backstop rather than the mechanism. See docs/decisions.md D68.
+func _on_steam_lobby_member_left(steam_id: int) -> void:
+	if steam_id == 0 or steam_id != _online_host_steam_id:
+		return
+	if _session == null or _session is HostSession:
+		return
+	_online_host_steam_id = 0
+	_on_connection_ended("The host left the game.")
+
+
+## Steam has made the lobby. Now there is something to host in.
+func _on_steam_lobby_created(lobby_id: int) -> void:
+	if _pending_host_settings == null:
+		return
+	var settings: GameSettings = _pending_host_settings
+	_pending_host_settings = null
+
+	var problem: String = host_steam_match(lobby_id, settings, _steam_name())
+	if problem.is_empty():
+		return
+	show_menu()
+	_report_to_menu(problem)
+
+
+func _on_steam_lobby_failed(reason: String) -> void:
+	_pending_host_settings = null
+	if _screen is MainMenu:
+		_report_to_menu(reason)
+		return
+	show_menu()
+	_report_to_menu(reason)
+
+
+func _on_browse_online_requested() -> void:
+	show_online_games()
+
+
+## Who this process connected to when joining an online game, so that Steam
+## reporting them leaving can be recognised as the host going away.
+##
+## Recorded rather than read back from `getLobbyOwner`: when a lobby's owner
+## leaves, **Steam promotes another member to owner automatically**, so by the
+## time the departure is reported the lobby already belongs to somebody else.
+## Steam lobby ownership and being this game's host are different things, and
+## only the second one matters here. See docs/decisions.md D68.
+var _online_host_steam_id: int = 0
+
+
+## The player's Steam display name.
+##
+## **An online game names you from your Steam account**, never from the title
+## screen's name field. That field exists for local games, where there is no
+## account to ask. The rebuilt menu briefly used it for both, so a Steam game
+## showed everybody as "Player" — or as whatever had been typed for an earlier
+## local game, which was worse, because it looked deliberate. See
+## docs/decisions.md D66.
+func _steam_name() -> String:
+	var persona: String = ""
+	if _steam != null:
+		persona = _steam.persona_name().strip_edges()
+	if persona.is_empty():
+		return "Player"
+	return persona
+
+
+func _on_online_join_requested(lobby_id: int, owner_steam_id: int) -> void:
 	var problem: String = join_steam_match(lobby_id, owner_steam_id, _steam_name())
 	if not problem.is_empty():
 		show_menu()
 		_report_to_menu(problem)
-
-
-## The player's Steam display name, which saves them typing one.
-func _steam_name() -> String:
-	var persona: String = _steam.persona_name() if _steam != null else ""
-	return persona if not persona.is_empty() else "Player"
 
 
 func _show_lobby() -> void:
@@ -396,6 +492,10 @@ func _on_connection_ended(reason: String) -> void:
 ## The lobby is done with: show the board. The session is untouched — the match
 ## has already begun as far as the host is concerned.
 func _on_play_requested() -> void:
+	# A started game should stop appearing in the list of games to join. Only
+	# the host can say so, and only the host owns the Steam lobby.
+	if _session is HostSession and _steam != null and _steam.is_running():
+		_steam.close_lobby_to_newcomers()
 	_show_gameplay()
 
 
@@ -412,6 +512,16 @@ func _show_gameplay() -> void:
 	_swap(gameplay)
 
 
+## Fills in a blank game name, so that by the time anybody is looking at a
+## lobby it always has a heading. Done here rather than on the title screen
+## because an online game is named after the Steam account, which the title
+## screen has not asked Steam about.
+func _name_the_match(settings: GameSettings, host_name: String) -> void:
+	if not settings.game_name.strip_edges().is_empty():
+		return
+	settings.game_name = "%s's game" % host_name
+
+
 ## A session must be in the tree before `attach_peer`, because `multiplayer`
 ## resolves by node path — see architecture.md §5.2.
 func _mount_session(session: GameSession) -> void:
@@ -423,13 +533,13 @@ func _mount_session(session: GameSession) -> void:
 ## not a fault in the game, so it goes on the screen rather than into the log.
 ## `push_error` is reserved for things that mean the build is broken — bad
 ## content, say.
-func _on_host_requested(settings: GameSettings, player_name: String, port: int) -> void:
+func _on_host_local_requested(settings: GameSettings, player_name: String, port: int) -> void:
 	var problem: String = host_match(settings, player_name, port)
 	if not problem.is_empty():
 		_report_to_menu(problem)
 
 
-func _on_join_requested(address: String, port: int, player_name: String) -> void:
+func _on_join_local_requested(address: String, port: int, player_name: String) -> void:
 	var problem: String = join_match(address, port, player_name)
 	if not problem.is_empty():
 		_report_to_menu(problem)
@@ -502,8 +612,17 @@ func _discard_session() -> void:
 		networked.close()
 	# Leaving the match means leaving the Steam lobby too, or the browser would
 	# keep listing a game nobody is in.
+	#
+	# A host shuts theirs to newcomers first. **Steam has no way to destroy a
+	# lobby**: one exists until its last member leaves, and the owner leaving
+	# simply promotes somebody else. Shutting it is the closest thing to
+	# killing it that Steam offers, and it has to happen before leaving,
+	# because afterwards this process no longer owns it. See decisions.md D68.
 	if _steam != null and _steam.is_running():
+		if _session is HostSession:
+			_steam.close_lobby_to_newcomers()
 		_steam.leave_lobby()
+	_online_host_steam_id = 0
 	remove_child(_session)
 	_session.queue_free()
 	_session = null

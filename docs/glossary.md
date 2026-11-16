@@ -280,3 +280,18 @@ Python-like syntax, optional static typing (mandatory here).
 
 **`--headless`** — a command-line flag that runs Godot with no window. How the tests
 run, and how a build server would run them.
+
+## Screen
+
+This project's word for a top-level scene that fills the window and is swapped
+in and out by `Main`: the title screen, the online games list, the lobby, the
+playing screen, the result screen. They live in `src/ui/screens/`.
+
+Godot has no such concept. Its unit is a **scene** (a `.tscn` file), and a
+reusable widget — a stalk row, a lobby row — is a scene as well. "Screen"
+only means *this* scene owns the whole window, and exactly one of them exists
+at a time.
+
+The word was used throughout the code and these documents for weeks before it
+was written down here, which is the sort of thing this glossary exists to
+catch.

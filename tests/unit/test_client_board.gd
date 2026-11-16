@@ -328,11 +328,16 @@ func test_the_board_shows_another_players_readiness() -> void:
 
 	var host_row: RankingRow = null
 	for row: RankingRow in board.get_node("%RankingList").get_children():
-		if row.get_node("%Name").text.begins_with("Host"):
+		if row.get_node("%Name").text.contains("Host"):
 			host_row = row
 	assert_not_null(host_row, "the host should be in the rankings")
 	if host_row == null:
 		return
+	# Found by contains rather than begins_with because the host carries a
+	# tag after their name — which a client can see too, since the roster
+	# order travels with the snapshot.
+	assert_string_contains(host_row.get_node("%Name").text, "(Host)",
+		"a client should be able to tell who is hosting")
 	# The dot is green when ready, red when not. Asserting the colour rather
 	# than a label because that is what a player actually reads here.
 	assert_eq(

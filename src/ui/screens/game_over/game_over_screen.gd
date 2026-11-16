@@ -81,13 +81,14 @@ func _render() -> void:
 	var order: Array[StringName] = (
 		result.rankings if result != null else TradeRules.rank(_state.players)
 	)
+	var host_id: StringName = _state.host_player_id()
 	for index: int in order.size():
 		var player: PlayerState = _state.player_by_id(order[index])
 		if player == null:
 			continue
 		var row: RankingRow = RankingRowScene.instantiate()
 		_ranking_list.add_child(row)
-		row.display(player, player.id == _local_player_id, true)
+		row.display(player, player.id == _local_player_id, true, player.id == host_id)
 
 
 # ------------------------------------------------------------------- for tests

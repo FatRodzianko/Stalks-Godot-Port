@@ -248,8 +248,8 @@ build — they are editor-and-source tools. On the second machine, check by
 playing:
 
 1. Launch the build. The menu should appear.
-2. **HOST** → **Open a lobby**. The lobby subtitle should name an address.
-3. On the first machine, **JOIN**, type that address, and connect.
+2. **CREATE GAME** → **HOST LOCALLY**. The lobby subtitle should name an address.
+3. On the first machine, **JOIN GAME**, type that address, and **JOIN LOCALLY**.
 
 If the two machines cannot see each other, it is almost always one of:
 

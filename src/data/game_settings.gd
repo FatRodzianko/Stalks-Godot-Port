@@ -9,6 +9,17 @@ extends Resource
 ## See docs/game-rules.md §2.
 
 
+## What the host calls this match. Shown as the lobby's heading on every
+## machine in it, and as the row in the online games list.
+##
+## A setting rather than lobby metadata because it has to reach the clients,
+## and the settings already do: they travel with the opening snapshot. Steam
+## lobby data would only reach somebody browsing, not somebody already in.
+##
+## Blank means "name it after the host", which `Main` fills in when the match
+## is created, so by the time anybody sees this it always says something.
+@export var game_name: String = ""
+
 @export var starting_cash: int = 10000
 
 @export_range(2, 99) var max_years: int = 10

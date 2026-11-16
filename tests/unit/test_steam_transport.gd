@@ -13,7 +13,7 @@ extends GutTest
 
 
 const BrowserScene: PackedScene = preload(
-	"res://src/ui/screens/steam_browser/steam_browser_screen.tscn"
+	"res://src/ui/screens/online_games/online_games_screen.tscn"
 )
 const RowScene: PackedScene = preload("res://src/ui/widgets/steam_lobby_row.tscn")
 
@@ -102,22 +102,21 @@ func test_pressing_join_carries_the_lobby_id() -> void:
 
 ## The browser with no service attached. It has to survive that state: `Main`
 ## shows the screen first and hands it Steam afterwards.
-func _browser() -> SteamBrowserScreen:
-	var browser: SteamBrowserScreen = BrowserScene.instantiate()
+func _browser() -> OnlineGamesScreen:
+	var browser: OnlineGamesScreen = BrowserScene.instantiate()
 	add_child_autofree(browser)
 	return browser
 
 
 func test_the_browser_survives_having_no_service() -> void:
-	var browser: SteamBrowserScreen = _browser()
+	var browser: OnlineGamesScreen = _browser()
 	assert_eq(browser.lobby_rows().size(), 0)
-	browser.get_node("%HostButton").pressed.emit()
 	browser.get_node("%RefreshButton").pressed.emit()
 	assert_true(true, "pressing things with no service must not crash")
 
 
 func test_the_browser_lists_what_steam_reports() -> void:
-	var browser: SteamBrowserScreen = _browser()
+	var browser: OnlineGamesScreen = _browser()
 	browser._on_lobby_list([
 		{"id": 1, "name": "First", "players": 1, "capacity": 10},
 		{"id": 2, "name": "Second", "players": 3, "capacity": 10},
@@ -129,7 +128,7 @@ func test_the_browser_lists_what_steam_reports() -> void:
 
 
 func test_an_empty_list_says_so_rather_than_looking_broken() -> void:
-	var browser: SteamBrowserScreen = _browser()
+	var browser: OnlineGamesScreen = _browser()
 	browser._on_lobby_list([] as Array[Dictionary])
 
 	assert_eq(browser.lobby_rows().size(), 0)
@@ -139,7 +138,7 @@ func test_an_empty_list_says_so_rather_than_looking_broken() -> void:
 func test_refreshing_replaces_the_list_rather_than_doubling_it() -> void:
 	# Rows are removed immediately, not queued, or a refresh briefly shows every
 	# lobby twice. The same trap as D50.
-	var browser: SteamBrowserScreen = _browser()
+	var browser: OnlineGamesScreen = _browser()
 	browser._on_lobby_list([
 		{"id": 1, "name": "First", "players": 1, "capacity": 10},
 	] as Array[Dictionary])
@@ -152,21 +151,120 @@ func test_refreshing_replaces_the_list_rather_than_doubling_it() -> void:
 
 
 func test_one_game_is_not_described_as_one_games() -> void:
-	var browser: SteamBrowserScreen = _browser()
+	var browser: OnlineGamesScreen = _browser()
 	browser._on_lobby_list([
 		{"id": 1, "name": "Only", "players": 1, "capacity": 10},
 	] as Array[Dictionary])
 	assert_string_contains(browser.get_node("%Status").text, "1 game available")
 
 
-func test_a_failure_is_reported_and_hosting_stays_possible() -> void:
-	var browser: SteamBrowserScreen = _browser()
-	browser.get_node("%HostButton").disabled = true
+func test_a_failure_is_reported_rather_than_swallowed() -> void:
+	var browser: OnlineGamesScreen = _browser()
 
-	browser._on_lobby_failed("Steam could not create the lobby.")
+	browser._on_lobby_failed("Steam could not reach that lobby.")
 
-	assert_string_contains(browser.get_node("%Status").text, "could not create")
+	assert_string_contains(browser.get_node("%Status").text, "could not reach")
 	assert_false(
-		browser.get_node("%HostButton").disabled,
+		browser.get_node("%RefreshButton").disabled,
 		"a failed attempt must leave the player able to try again",
 	)
+
+
+func test_the_empty_note_points_at_where_games_are_made() -> void:
+	# This screen no longer hosts, so an empty list has to say where to go.
+	var browser: OnlineGamesScreen = _browser()
+	browser._on_lobby_list([] as Array[Dictionary])
+
+	var said: String = (
+		(browser.get_node("%EmptyNote") as Label).text
+		+ " " + (browser.get_node("%Status") as Label).text
+	).to_lower()
+	assert_string_contains(said, "create game")
+
+
+# ------------------------------------------------ lobby departures, decoded
+#
+# `lobby_chat_update` is how Steam reports somebody leaving. It is the only
+# thing that reports a host going away over Steam — the peer-to-peer session
+# itself just goes quiet. See decisions.md D68.
+#
+# These drive `SteamService._on_lobby_chat_update` directly, with no Steam
+# behind it, because the decoding of the bitfield is the part worth pinning
+# and it is pure arithmetic.
+
+func _service_in_lobby(lobby_id: int) -> SteamService:
+	var service: SteamService = SteamService.new()
+	add_child_autofree(service)
+	service._lobby_id = lobby_id
+	return service
+
+
+func _departures_seen(chat_state: int) -> Array:
+	var service: SteamService = _service_in_lobby(77)
+	var seen: Array = []
+	service.lobby_member_left.connect(func(id: int) -> void: seen.append(id))
+	service._on_lobby_chat_update(77, 1234, 0, chat_state)
+	return seen
+
+
+func test_a_member_leaving_is_reported() -> void:
+	assert_eq(_departures_seen(0x0002), [1234])
+
+
+func test_a_member_dropping_out_is_reported_too() -> void:
+	# Disconnected rather than Left: a crash or a pulled cable, which for this
+	# game has exactly the same consequence.
+	assert_eq(_departures_seen(0x0004), [1234])
+
+
+func test_a_kicked_member_is_reported() -> void:
+	assert_eq(_departures_seen(0x0008), [1234])
+
+
+func test_a_member_arriving_is_not_a_departure() -> void:
+	# Entered. The game hears about arrivals through its own networking.
+	assert_eq(_departures_seen(0x0001), [])
+
+
+func test_a_departure_from_another_lobby_is_ignored() -> void:
+	var service: SteamService = _service_in_lobby(77)
+	var seen: Array = []
+	service.lobby_member_left.connect(func(id: int) -> void: seen.append(id))
+	service._on_lobby_chat_update(99, 1234, 0, 0x0002)
+	assert_eq(seen, [])
+
+
+# --------------------------------------------- Steam's refusals, in words
+#
+# Found in play: clicking a game in a list that had not been refreshed since
+# it started gave "Could not join that game (code 3)". The refusal was right
+# — the host marks a started lobby unjoinable — but a bare number is not a
+# message. The codes are EChatRoomEnterResponse, read off the installed
+# plugin.
+
+func _refusal_for(response: int) -> String:
+	var service: SteamService = SteamService.new()
+	add_child_autofree(service)
+	return service._why_refused(response)
+
+
+func test_a_started_or_closed_game_says_so() -> void:
+	var said: String = _refusal_for(SteamService.ENTER_NOT_ALLOWED).to_lower()
+	assert_string_contains(said, "not open")
+	assert_false(said.contains("code"), "got: %s" % said)
+
+
+func test_a_vanished_game_says_so() -> void:
+	assert_string_contains(
+		_refusal_for(SteamService.ENTER_DOESNT_EXIST).to_lower(), "no longer exists"
+	)
+
+
+func test_a_full_game_says_so() -> void:
+	assert_string_contains(_refusal_for(SteamService.ENTER_FULL).to_lower(), "full")
+
+
+func test_an_unexpected_refusal_keeps_its_number() -> void:
+	# A ban or a rate limit. Rare enough not to deserve wording, common enough
+	# that the player needs something to report.
+	assert_string_contains(_refusal_for(15), "15")

@@ -31,22 +31,28 @@ func _menu() -> MainMenu:
 	return menu
 
 
-func test_the_menu_opens_on_solo() -> void:
+func test_the_menu_opens_on_create_game() -> void:
 	var menu: MainMenu = _menu()
-	assert_eq(menu.current_mode(), MainMenu.Mode.SOLO)
+	assert_eq(menu.current_mode(), MainMenu.Mode.CREATE)
 
 
-func test_choosing_host_offers_a_lobby_instead_of_a_start() -> void:
+## The fault this whole screen was rebuilt for.
+##
+## Steam is how the game is played; hosting locally is for testing two windows
+## without it. The settings used to sit on the solo and local-host tabs only,
+## so the configuration lived on the development path and the real one had
+## none — and a Steam match was hosted with defaults, loans off, whatever the
+## player had chosen. See decisions.md D65.
+func test_every_way_of_creating_a_game_is_offered_the_same_settings() -> void:
 	var menu: MainMenu = _menu()
-	menu.show_mode(MainMenu.Mode.HOST)
+	assert_true(menu.get_node("%Settings").is_visible_in_tree(),
+		"settings belong to Create Game, not to one kind of game")
 
-	assert_false(menu.get_node("%StartButton").visible, "solo start should be hidden")
-	assert_true(menu.get_node("%HostButton").visible)
-	assert_true(menu.get_node("%NetworkBox").visible, "a name and port are needed")
-	assert_true(
-		menu.get_node("%SettingsBox").visible,
-		"the host chooses the match settings",
-	)
+	for button_name: String in [
+		"%SinglePlayerButton", "%HostOnlineButton", "%HostLocalButton"
+	]:
+		assert_true((menu.get_node(button_name) as Button).is_visible_in_tree(),
+			"%s should be on Create Game beside the settings" % button_name)
 
 
 func test_a_joiner_is_not_offered_the_match_settings() -> void:
@@ -55,52 +61,166 @@ func test_a_joiner_is_not_offered_the_match_settings() -> void:
 	var menu: MainMenu = _menu()
 	menu.show_mode(MainMenu.Mode.JOIN)
 
-	assert_false(menu.get_node("%SettingsBox").visible)
-	assert_true(menu.get_node("%JoinButton").visible)
-	assert_true(menu.get_node("%AddressField").visible)
+	assert_false(menu.get_node("%Settings").is_visible_in_tree())
+	assert_true(menu.get_node("%JoinLocalButton").is_visible_in_tree())
+	assert_true(menu.get_node("%BrowseOnlineButton").is_visible_in_tree())
+	assert_true(menu.get_node("%AddressField").is_visible_in_tree())
 
 
-func test_only_joining_asks_for_an_address() -> void:
+func test_creating_a_game_does_not_ask_for_an_address() -> void:
 	var menu: MainMenu = _menu()
-	menu.show_mode(MainMenu.Mode.HOST)
 	assert_false(
-		menu.get_node("%AddressField").get_parent().visible,
-		"a host has nowhere to connect to",
+		menu.get_node("%AddressField").is_visible_in_tree(),
+		"somebody making a game has nowhere to connect to",
 	)
 
 
-func test_hosting_emits_the_name_port_and_settings() -> void:
+func test_a_single_player_game_carries_the_settings() -> void:
 	var menu: MainMenu = _menu()
-	menu.show_mode(MainMenu.Mode.HOST)
+	menu.get_node("%YearsSpin").value = 12
+	menu.get_node("%LoansCheck").button_pressed = true
+
+	var seen: Array = []
+	menu.start_requested.connect(
+		func(settings: GameSettings) -> void:
+			seen.append([settings.max_years, settings.loans_enabled])
+	)
+	menu.get_node("%SinglePlayerButton").pressed.emit()
+
+	assert_eq(seen, [[12, true]])
+
+
+func test_hosting_online_carries_the_same_settings() -> void:
+	# The one that was broken in play: loans ticked here, loans off in the game.
+	var menu: MainMenu = _menu()
+	menu.get_node("%YearsSpin").value = 25
+	menu.get_node("%LoansCheck").button_pressed = true
+
+	var seen: Array = []
+	menu.host_online_requested.connect(
+		func(settings: GameSettings) -> void:
+			seen.append([settings.max_years, settings.loans_enabled])
+	)
+	menu.get_node("%HostOnlineButton").pressed.emit()
+
+	assert_eq(seen, [[25, true]])
+
+
+## Found in play: every player in a Steam game showed as "Player", and typing
+## a name for an earlier local game made everyone show as that instead.
+##
+## An online game names you from your Steam account, so the title screen's
+## name field has no say in it — and therefore nothing to send. See
+## decisions.md D66.
+func test_hosting_online_sends_no_player_name_at_all() -> void:
+	var menu: MainMenu = _menu()
+	menu.get_node("%NameField").text = "NotMySteamName"
+
+	for entry: Dictionary in menu.get_signal_list():
+		if entry["name"] != "host_online_requested":
+			continue
+		var args: Array = entry["args"]
+		assert_eq(args.size(), 1, "settings only; Steam supplies the name")
+		if args.size() == 1:
+			assert_eq(String(args[0]["name"]), "settings")
+
+
+func test_the_host_can_name_the_game() -> void:
+	# There was no way to: a lobby was always "<persona>'s game", and the
+	# player could name themselves but not the thing they were making.
+	var menu: MainMenu = _menu()
+	menu.get_node("%GameNameField").text = "  Friday night  "
+
+	assert_eq(menu.chosen_settings().game_name, "Friday night",
+		"trimmed, because a leading space in a heading looks like a fault")
+
+
+func test_a_blank_game_name_is_left_for_the_host_to_be_named_after() -> void:
+	# Blank is not a failure: `Main` fills it in once it knows who is hosting,
+	# which for an online game means once Steam has been asked.
+	assert_eq(_menu().chosen_settings().game_name, "")
+
+
+func test_hosting_locally_emits_the_name_port_and_settings() -> void:
+	var menu: MainMenu = _menu()
 	menu.get_node("%NameField").text = "Murph"
-	menu.get_node("%PortSpin").value = 43000
+	menu.get_node("%HostPortSpin").value = 43000
 	menu.get_node("%YearsSpin").value = 12
 
 	var seen: Array = []
-	menu.host_requested.connect(
+	menu.host_local_requested.connect(
 		func(settings: GameSettings, player_name: String, port: int) -> void:
 			seen.append([settings.max_years, player_name, port])
 	)
-	menu.get_node("%HostButton").pressed.emit()
+	menu.get_node("%HostLocalButton").pressed.emit()
 
 	assert_eq(seen, [[12, "Murph", 43000]])
 
 
-func test_joining_emits_the_address_port_and_name() -> void:
+func test_the_three_ways_to_create_a_game_agree_on_the_settings() -> void:
+	# Read once, used three ways. If these ever diverge, one path has grown its
+	# own copy of the controls, which is how the first version went wrong.
+	var menu: MainMenu = _menu()
+	menu.get_node("%YearsSpin").value = 33
+	menu.get_node("%CashSpin").value = 5000
+	menu.get_node("%LoansCheck").button_pressed = false
+
+	var solo: Array = []
+	var online: Array = []
+	var local: Array = []
+	menu.start_requested.connect(func(s: GameSettings) -> void: solo.append(s))
+	menu.host_online_requested.connect(
+		func(s: GameSettings) -> void: online.append(s)
+	)
+	menu.host_local_requested.connect(
+		func(s: GameSettings, _n: String, _p: int) -> void: local.append(s)
+	)
+
+	menu.get_node("%SinglePlayerButton").pressed.emit()
+	menu.get_node("%HostOnlineButton").pressed.emit()
+	menu.get_node("%HostLocalButton").pressed.emit()
+
+	for batch: Array in [solo, online, local]:
+		assert_eq(batch.size(), 1)
+		if batch.is_empty():
+			continue
+		var settings: GameSettings = batch[0]
+		assert_eq(settings.max_years, 33)
+		assert_eq(settings.starting_cash, 5000)
+		assert_false(settings.loans_enabled)
+
+
+func test_joining_locally_emits_the_address_port_and_name() -> void:
 	var menu: MainMenu = _menu()
 	menu.show_mode(MainMenu.Mode.JOIN)
 	menu.get_node("%AddressField").text = "10.0.0.5"
-	menu.get_node("%PortSpin").value = 43001
+	menu.get_node("%JoinPortSpin").value = 43001
 	menu.get_node("%NameField").text = "Guest"
 
 	var seen: Array = []
-	menu.join_requested.connect(
+	menu.join_local_requested.connect(
 		func(address: String, port: int, player_name: String) -> void:
 			seen.append([address, port, player_name])
 	)
-	menu.get_node("%JoinButton").pressed.emit()
+	menu.get_node("%JoinLocalButton").pressed.emit()
 
 	assert_eq(seen, [["10.0.0.5", 43001, "Guest"]])
+
+
+func test_browsing_online_games_carries_nothing() -> void:
+	# It used to carry the typed name, which is how a name meant for a local
+	# game ended up on a Steam player. Steam says who you are. D66.
+	var menu: MainMenu = _menu()
+	menu.show_mode(MainMenu.Mode.JOIN)
+	menu.get_node("%NameField").text = "NotMySteamName"
+
+	# An Array, not an int: GDScript lambdas capture by value, so incrementing
+	# a captured integer changes the copy and the test watches nothing.
+	var seen: Array = []
+	menu.browse_online_requested.connect(func() -> void: seen.append(true))
+	menu.get_node("%BrowseOnlineButton").pressed.emit()
+
+	assert_eq(seen.size(), 1)
 
 
 func test_a_blank_address_means_this_machine() -> void:
@@ -142,6 +262,57 @@ func _lobby_on_host() -> LobbyScreen:
 	add_child_autofree(lobby)
 	lobby.setup(_harness.host, _harness.port())
 	return lobby
+
+
+## The heading used to read "LOBBY" for the host and "JOINED" for everyone
+## else — a word telling you which end of the connection you were on, which
+## you already knew, where the name of the thing you are in should be. D66.
+func test_the_lobby_is_headed_with_the_name_of_the_game() -> void:
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+	_harness.host.state().settings.game_name = "Friday night"
+	lobby.refresh()
+
+	assert_string_contains(
+		(lobby.get_node("%Title") as Label).text.to_lower(), "friday night"
+	)
+
+
+func test_a_guest_sees_the_same_heading_as_the_host() -> void:
+	# The name travels with the settings in the opening snapshot, so both ends
+	# have it without anything being sent for the heading's sake.
+	_harness = NetHarness.new()
+	add_child(_harness)
+	var settings: GameSettings = StalksFixture.make_settings()
+	settings.game_name = "Friday night"
+	if not _harness.start(settings, _library, "Murph", "Guest").is_empty():
+		fail_test("harness did not start")
+		return
+	if not await _harness.await_join(self):
+		fail_test("the client did not connect")
+		return
+
+	var guest: LobbyScreen = LobbyScene.instantiate()
+	add_child_autofree(guest)
+	guest.setup(_harness.client)
+
+	assert_string_contains(
+		(guest.get_node("%Title") as Label).text.to_lower(), "friday night"
+	)
+
+
+func test_an_unnamed_match_still_has_a_heading() -> void:
+	# `Main` names every match it creates, so this should be unreachable in
+	# play. It is here because a blank heading is the worst outcome and the
+	# cheapest to rule out.
+	var lobby: LobbyScreen = await _lobby_on_host()
+	if lobby == null:
+		return
+	_harness.host.state().settings.game_name = "   "
+	lobby.refresh()
+
+	assert_false((lobby.get_node("%Title") as Label).text.strip_edges().is_empty())
 
 
 func test_the_lobby_lists_every_player() -> void:
@@ -387,9 +558,8 @@ func test_a_failed_host_leaves_the_player_on_the_menu_with_the_reason() -> void:
 	if menu == null:
 		return
 
-	menu.show_mode(MainMenu.Mode.HOST)
-	menu.get_node("%PortSpin").value = port
-	menu.get_node("%HostButton").pressed.emit()
+	menu.get_node("%HostPortSpin").value = port
+	menu.get_node("%HostLocalButton").pressed.emit()
 	squatter.close()
 
 	assert_same(main.current_screen(), menu, "the player should still be on the menu")
@@ -687,3 +857,62 @@ func test_the_host_is_told_how_to_get_unstuck() -> void:
 		return
 	assert_string_contains(lobby.get_node("%Status").text, "Guest")
 	assert_string_contains(lobby.get_node("%Status").text.to_lower(), "remove")
+
+
+# ---------------------------------------------- joining, before the host answers
+#
+# Found in play: the host left while somebody was joining, and that player sat
+# on the lobby for ever. It showed the normal waiting message and a Ready
+# button that refused every press, so nothing on screen said anything was
+# wrong. The only way out was LEAVE. See decisions.md D67.
+
+## A client with a socket but no welcome: exactly the state a join sits in.
+func _client_awaiting_welcome() -> ClientSession:
+	var result: Dictionary = ClientSession.join(StubTransport.new(), _library, "Guest")
+	var client: ClientSession = result["session"]
+	add_child_autofree(client)
+	return client
+
+
+func test_a_joining_client_says_it_is_connecting() -> void:
+	var client: ClientSession = _client_awaiting_welcome()
+	var lobby: LobbyScreen = LobbyScene.instantiate()
+	add_child_autofree(lobby)
+	lobby.setup(client)
+
+	assert_false(client.has_joined(), "the test needs an unwelcomed client")
+	assert_string_contains((lobby.get_node("%Status") as Label).text.to_lower(), "connecting")
+	assert_true((lobby.get_node("%ReadyButton") as Button).disabled,
+		"there is nothing to be ready for until the host answers")
+
+
+func test_a_join_that_never_completes_gives_up() -> void:
+	# Over ENet a vanished host produces a disconnect signal. Over Steam the
+	# session just goes quiet, so a clock is the only thing that catches it.
+	var client: ClientSession = _client_awaiting_welcome()
+	var endings: Array[String] = []
+	client.connection_lost.connect(func(reason: String) -> void: endings.append(reason))
+
+	client._process(ClientSession.JOIN_TIMEOUT_SECONDS - 1.0)
+	assert_eq(endings.size(), 0, "it must not give up early")
+
+	client._process(2.0)
+	assert_eq(endings.size(), 1, "it must give up eventually")
+	if endings.is_empty():
+		return
+	assert_string_contains(endings[0].to_lower(), "host")
+
+
+func test_the_clock_stops_once_the_host_answers() -> void:
+	# Otherwise a seated player would be thrown out mid-lobby.
+	var client: ClientSession = _client_awaiting_welcome()
+	var endings: Array[String] = []
+	client.connection_lost.connect(func(reason: String) -> void: endings.append(reason))
+
+	client._on_welcomed(&"p1", StateSync.encode_state(
+		StalksFixture.make_state(10, 2), &"p1"
+	))
+	assert_true(client.has_joined(), "the test needs a welcomed client")
+
+	client._process(ClientSession.JOIN_TIMEOUT_SECONDS * 2.0)
+	assert_eq(endings, [] as Array[String])

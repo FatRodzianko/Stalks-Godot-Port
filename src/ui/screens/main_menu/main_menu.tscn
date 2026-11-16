@@ -6,20 +6,21 @@
 [node name="MainMenu" type="MarginContainer"]
 theme = ExtResource("2_theme")
 theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 12
+theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 12
+theme_override_constants/margin_bottom = 8
 script = ExtResource("1_menu")
 
 [node name="Centre" type="CenterContainer" parent="."]
 layout_mode = 2
 
 [node name="Card" type="PanelContainer" parent="Centre"]
-custom_minimum_size = Vector2(420, 0)
+custom_minimum_size = Vector2(440, 0)
 layout_mode = 2
 
 [node name="Body" type="VBoxContainer" parent="Centre/Card"]
 layout_mode = 2
+theme_type_variation = &"TightVBox"
 
 [node name="Title" type="Label" parent="Centre/Card/Body"]
 layout_mode = 2
@@ -37,92 +38,68 @@ horizontal_alignment = 1
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="SoloTab" type="Button" parent="Centre/Card/Body/ModeTabs"]
+[node name="CreateTab" type="Button" parent="Centre/Card/Body/ModeTabs"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
 button_pressed = true
-text = "SOLO"
-
-[node name="HostTab" type="Button" parent="Centre/Card/Body/ModeTabs"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-toggle_mode = true
-text = "HOST"
+text = "CREATE GAME"
 
 [node name="JoinTab" type="Button" parent="Centre/Card/Body/ModeTabs"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
-text = "JOIN"
+text = "JOIN GAME"
 
 [node name="Divider" type="HSeparator" parent="Centre/Card/Body"]
 layout_mode = 2
 
-[node name="NetworkBox" type="VBoxContainer" parent="Centre/Card/Body"]
-unique_name_in_owner = true
-visible = false
+[node name="NameRow" type="HBoxContainer" parent="Centre/Card/Body"]
 layout_mode = 2
-theme_type_variation = &"TightVBox"
 
-[node name="NetworkGrid" type="GridContainer" parent="Centre/Card/Body/NetworkBox"]
-layout_mode = 2
-columns = 2
-
-[node name="NameLabel" type="Label" parent="Centre/Card/Body/NetworkBox/NetworkGrid"]
+[node name="NameLabel" type="Label" parent="Centre/Card/Body/NameRow"]
+custom_minimum_size = Vector2(96, 0)
 layout_mode = 2
 text = "Your name"
 
-[node name="NameField" type="LineEdit" parent="Centre/Card/Body/NetworkBox/NetworkGrid"]
+[node name="NameField" type="LineEdit" parent="Centre/Card/Body/NameRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 max_length = 16
-placeholder_text = "Player"
+placeholder_text = "Player (online games use your Steam name)"
 
-[node name="PortRow" type="Label" parent="Centre/Card/Body/NetworkBox/NetworkGrid"]
-layout_mode = 2
-text = "Port"
-
-[node name="PortSpin" type="SpinBox" parent="Centre/Card/Body/NetworkBox/NetworkGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = 1024.0
-max_value = 65535.0
-value = 42420.0
-
-[node name="AddressRow" type="HBoxContainer" parent="Centre/Card/Body/NetworkBox"]
-layout_mode = 2
-
-[node name="AddressLabel" type="Label" parent="Centre/Card/Body/NetworkBox/AddressRow"]
-custom_minimum_size = Vector2(96, 0)
-layout_mode = 2
-text = "Host address"
-
-[node name="AddressField" type="LineEdit" parent="Centre/Card/Body/NetworkBox/AddressRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-placeholder_text = "127.0.0.1"
-
-[node name="SettingsBox" type="VBoxContainer" parent="Centre/Card/Body"]
+[node name="CreateBox" type="VBoxContainer" parent="Centre/Card/Body"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"TightVBox"
 
-[node name="Settings" type="GridContainer" parent="Centre/Card/Body/SettingsBox"]
+[node name="Settings" type="GridContainer" parent="Centre/Card/Body/CreateBox"]
+unique_name_in_owner = true
 layout_mode = 2
 columns = 2
 
-[node name="YearsLabel" type="Label" parent="Centre/Card/Body/SettingsBox/Settings"]
+[node name="GameNameLabel" type="Label" parent="Centre/Card/Body/CreateBox/Settings"]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+text = "Game name"
+
+[node name="GameNameField" type="LineEdit" parent="Centre/Card/Body/CreateBox/Settings"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_length = 24
+placeholder_text = "named after you"
+
+[node name="YearsLabel" type="Label" parent="Centre/Card/Body/CreateBox/Settings"]
 layout_mode = 2
 text = "Years"
 
-[node name="YearsSpin" type="SpinBox" parent="Centre/Card/Body/SettingsBox/Settings"]
+[node name="YearsSpin" type="SpinBox" parent="Centre/Card/Body/CreateBox/Settings"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -130,11 +107,11 @@ min_value = 2.0
 max_value = 99.0
 value = 10.0
 
-[node name="CashLabel" type="Label" parent="Centre/Card/Body/SettingsBox/Settings"]
+[node name="CashLabel" type="Label" parent="Centre/Card/Body/CreateBox/Settings"]
 layout_mode = 2
 text = "Starting cash"
 
-[node name="CashSpin" type="SpinBox" parent="Centre/Card/Body/SettingsBox/Settings"]
+[node name="CashSpin" type="SpinBox" parent="Centre/Card/Body/CreateBox/Settings"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -143,25 +120,119 @@ max_value = 1000000.0
 step = 100.0
 value = 10000.0
 
-[node name="LoansLabel" type="Label" parent="Centre/Card/Body/SettingsBox/Settings"]
+[node name="LoansLabel" type="Label" parent="Centre/Card/Body/CreateBox/Settings"]
 layout_mode = 2
 text = "Loans"
 
-[node name="LoansCheck" type="CheckBox" parent="Centre/Card/Body/SettingsBox/Settings"]
+[node name="LoansCheck" type="CheckBox" parent="Centre/Card/Body/CreateBox/Settings"]
 unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
 text = "Enabled from year 2"
 
-[node name="SeedLabel" type="Label" parent="Centre/Card/Body/SettingsBox/Settings"]
+[node name="SeedLabel" type="Label" parent="Centre/Card/Body/CreateBox/Settings"]
 layout_mode = 2
 text = "Seed"
 
-[node name="SeedField" type="LineEdit" parent="Centre/Card/Body/SettingsBox/Settings"]
+[node name="SeedField" type="LineEdit" parent="Centre/Card/Body/CreateBox/Settings"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "blank for random"
+
+[node name="CreateSpacer" type="Control" parent="Centre/Card/Body/CreateBox"]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="SinglePlayerButton" type="Button" parent="Centre/Card/Body/CreateBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+text = "SINGLE PLAYER"
+
+[node name="HostOnlineButton" type="Button" parent="Centre/Card/Body/CreateBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "HOST ONLINE"
+
+[node name="HostLocalRow" type="HBoxContainer" parent="Centre/Card/Body/CreateBox"]
+layout_mode = 2
+
+[node name="HostPortLabel" type="Label" parent="Centre/Card/Body/CreateBox/HostLocalRow"]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "Local port"
+
+[node name="HostPortSpin" type="SpinBox" parent="Centre/Card/Body/CreateBox/HostLocalRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+min_value = 1024.0
+max_value = 65535.0
+value = 42420.0
+
+[node name="HostLocalButton" type="Button" parent="Centre/Card/Body/CreateBox/HostLocalRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "HOST LOCALLY"
+
+[node name="JoinBox" type="VBoxContainer" parent="Centre/Card/Body"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="BrowseOnlineButton" type="Button" parent="Centre/Card/Body/JoinBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "BROWSE ONLINE GAMES"
+
+[node name="JoinDivider" type="HSeparator" parent="Centre/Card/Body/JoinBox"]
+layout_mode = 2
+
+[node name="AddressRow" type="HBoxContainer" parent="Centre/Card/Body/JoinBox"]
+layout_mode = 2
+
+[node name="AddressLabel" type="Label" parent="Centre/Card/Body/JoinBox/AddressRow"]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "Host address"
+
+[node name="AddressField" type="LineEdit" parent="Centre/Card/Body/JoinBox/AddressRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "127.0.0.1"
+
+[node name="JoinLocalRow" type="HBoxContainer" parent="Centre/Card/Body/JoinBox"]
+layout_mode = 2
+
+[node name="JoinPortLabel" type="Label" parent="Centre/Card/Body/JoinBox/JoinLocalRow"]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "Local port"
+
+[node name="JoinPortSpin" type="SpinBox" parent="Centre/Card/Body/JoinBox/JoinLocalRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+min_value = 1024.0
+max_value = 65535.0
+value = 42420.0
+
+[node name="JoinLocalButton" type="Button" parent="Centre/Card/Body/JoinBox/JoinLocalRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "JOIN LOCALLY"
 
 [node name="ContentWarning" type="Label" parent="Centre/Card/Body"]
 unique_name_in_owner = true
@@ -170,38 +241,5 @@ layout_mode = 2
 theme_type_variation = &"Danger"
 text = ""
 autowrap_mode = 3
-
-[node name="StartButton" type="Button" parent="Centre/Card/Body"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-theme_type_variation = &"PrimaryButton"
-text = "Start"
-
-[node name="HostButton" type="Button" parent="Centre/Card/Body"]
-unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-theme_type_variation = &"PrimaryButton"
-text = "Open a lobby"
-
-[node name="JoinButton" type="Button" parent="Centre/Card/Body"]
-unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-theme_type_variation = &"PrimaryButton"
-text = "Join"
-
-[node name="SteamButton" type="Button" parent="Centre/Card/Body"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-text = "Play on Steam"
-
-[node name="Note" type="Label" parent="Centre/Card/Body"]
-layout_mode = 2
-theme_type_variation = &"Faint"
-text = "Solo and direct connection need no Steam."
+max_lines_visible = 2
 horizontal_alignment = 1

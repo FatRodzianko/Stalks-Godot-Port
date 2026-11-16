@@ -25,14 +25,31 @@ func configure_as_header() -> void:
 	%ReadyHeading.visible = true
 
 
-func display(player: PlayerState, is_local: bool, is_ready: bool) -> void:
+## `is_host` marks the player whose machine is running the match.
+##
+## Said in a word rather than with a symbol. The first version used a leading
+## `*` and explained itself in a tooltip, which meant the only clue on screen
+## was a punctuation mark you had to hover to understand.
+##
+## Both tags go in one bracket — "(Host, you)" rather than "(Host) (you)" —
+## because this column is a few characters wide at the game's resolution.
+func display(
+	player: PlayerState,
+	is_local: bool,
+	is_ready: bool,
+	is_host: bool = false,
+) -> void:
 	if _is_header:
 		return
 
-	_name_label.text = player.display_name
-	if is_local:
-		_name_label.text += " (you)"
-	_name_label.tooltip_text = player.display_name
+	# The same text in both places, and the tooltip is the only one of them
+	# that is never cut short: this column is a few characters wide, so a name
+	# of any length ends in an ellipsis. Hovering is how you read it, and the
+	# tags belong there too — the first version put the bare name in the
+	# tooltip, so hovering a truncated row told you less than the row did.
+	var full: String = player.display_name + _tags_for(player, is_local, is_host)
+	_name_label.text = full
+	_name_label.tooltip_text = full
 
 	if player.is_bankrupt:
 		_net_worth_label.text = "BANKRUPT"
@@ -45,3 +62,18 @@ func display(player: PlayerState, is_local: bool, is_ready: bool) -> void:
 	_ready_dot.visible = true
 	_ready_dot.modulate = Palette.BULL if is_ready else Palette.DANGER
 	_ready_dot.tooltip_text = "Ready for the new year" if is_ready else "Not ready yet"
+
+
+## "", " (Host)", " (you)" or " (Host, you)".
+##
+## "you" is left off when the name already says it, which it does in a solo
+## game where the only player is called "You": "You (you)" was nonsense.
+func _tags_for(player: PlayerState, is_local: bool, is_host: bool) -> String:
+	var tags: PackedStringArray = []
+	if is_host:
+		tags.append("Host")
+	if is_local and player.display_name.to_lower() != "you":
+		tags.append("you")
+	if tags.is_empty():
+		return ""
+	return " (%s)" % ", ".join(tags)

@@ -433,7 +433,7 @@ them turned up five things. All are fixed and covered by tests:
 |---|---|
 | Losing the host mid-match left the client on a board that answered every click with "Not connected" | The playing screen now reports a lost connection and `Main` returns to the title screen with the reason (D61) |
 | A player leaving mid-match simply vanished from the host's standings | The host is told who left (D61) |
-| A Steam match always had loans off | The title screen's settings travel, and the browser says what hosting would start (D62) |
+| A Steam match always had loans off | The title screen was rebuilt: one Create Game panel, with single player, host online and host locally as choices on it (D65, replacing the same-day D62) |
 | The bottom bar was taller at year 0 than afterwards | It reserves its tallest shape permanently (D63) |
 | No way out of a match but closing the window | Escape backs out, asking first when a match is running (D64) |
 

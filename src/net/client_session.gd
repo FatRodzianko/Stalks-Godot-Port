@@ -28,6 +28,21 @@ signal connection_lost(reason: String)
 signal match_started
 
 
+## How long to wait for the host's welcome before giving up.
+##
+## **Why a timeout and not a disconnect signal.** Over ENet, a host that goes
+## away produces `connection_failed` or `server_disconnected` and this would
+## not be needed. Over Steam it does not: the peer-to-peer session simply goes
+## quiet, so a client whose host left mid-join sat on the lobby for ever,
+## looking connected, with a Ready button that answered "Not connected." to
+## every press. A clock is the only thing that catches every way of not
+## arriving. See docs/decisions.md D67.
+##
+## Twelve seconds because Steam's relay can take several to negotiate a route
+## and a false failure is worse than a slow one.
+const JOIN_TIMEOUT_SECONDS: float = 12.0
+
+
 var _state: GameState
 var _library: ContentLibrary
 var _local_player_id: StringName = &""
@@ -40,6 +55,10 @@ var _chosen_name: String = ""
 ## Set when the host turned this client away, so a subsequent disconnect is
 ## reported with the host's reason rather than a generic one.
 var _refusal: String = ""
+
+## Seconds spent waiting for the welcome, or -1 when not waiting. See
+## `JOIN_TIMEOUT_SECONDS`.
+var _waiting_for: float = -1.0
 
 
 ## Builds a client and its transport. Returns `{session, peer, error}` in the same
@@ -64,6 +83,10 @@ static func join(
 	if not String(opened["error"]).is_empty():
 		return {"session": null, "error": String(opened["error"])}
 
+	# The clock starts here rather than at `attach_peer`, which happens a line
+	# later in every caller: this way it also covers the gap in between, and a
+	# test can exercise the timeout without touching a multiplayer peer.
+	session._waiting_for = 0.0
 	return {"session": session, "error": "", "peer": opened["peer"]}
 
 
@@ -79,6 +102,18 @@ func attach_peer(peer: MultiplayerPeer) -> void:
 
 ## The socket is up. The host does not seat this client until it says who it is,
 ## so the name goes out immediately.
+## Counts the wait for the welcome, and gives up if it never comes.
+func _process(delta: float) -> void:
+	if _waiting_for < 0.0:
+		return
+	_waiting_for += delta
+	if _waiting_for < JOIN_TIMEOUT_SECONDS:
+		return
+	_waiting_for = -1.0
+	connection_lost.emit("Could not reach the host. They may have left.")
+	close()
+
+
 func _on_connected() -> void:
 	_rpc_introduce.rpc_id(HOST_PEER_ID, _chosen_name)
 
@@ -162,6 +197,7 @@ func _on_welcomed(player_id: StringName, state_data: Dictionary) -> void:
 		close()
 		return
 	_has_joined = true
+	_waiting_for = -1.0
 	joined.emit(player_id)
 
 
@@ -241,9 +277,11 @@ func _may_act(player_id: StringName) -> bool:
 
 
 func _on_connection_failed() -> void:
+	_waiting_for = -1.0
 	connection_lost.emit("Could not connect to the host.")
 
 
 func _on_server_disconnected() -> void:
 	_has_joined = false
+	_waiting_for = -1.0
 	connection_lost.emit(_refusal if not _refusal.is_empty() else "The host closed the game.")

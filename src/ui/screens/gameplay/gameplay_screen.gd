@@ -367,13 +367,19 @@ func _refresh_rankings(game: GameState) -> void:
 		latest.rankings if latest != null else TradeRules.rank(game.players)
 	)
 
+	var host_id: StringName = game.host_player_id()
 	for player_id: StringName in order:
 		var player: PlayerState = game.player_by_id(player_id)
 		if player == null:
 			continue
 		var row: RankingRow = RankingRowScene.instantiate()
 		_ranking_list.add_child(row)
-		row.display(player, player.id == _session.local_player_id(), player.is_ready)
+		row.display(
+			player,
+			player.id == _session.local_player_id(),
+			player.is_ready,
+			player.id == host_id,
+		)
 
 
 func _refresh_bottom_bar(game: GameState, player: PlayerState) -> void:

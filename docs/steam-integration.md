@@ -42,9 +42,17 @@ up on a transport that is deliberately **not** ENet. If somebody reaches for
   solo game and every test run never touch Steam at all.
 - **`SteamTransport`** (`src/net/steam_transport.gd`) — turns a lobby into a
   `MultiplayerPeer`. Thin, because all the waiting happens before it exists.
-- **The lobby browser** (`src/ui/screens/steam_browser/`) — lists joinable
+- **Lobby lifetime.** Steam has no call to destroy a lobby: one exists until
+  its last member leaves, and an owner who leaves is replaced automatically.
+  The host therefore shuts its lobby (`setLobbyJoinable(false)` plus a `state`
+  key the browser filters on) before leaving, and departures are reported to
+  everyone else by `lobby_chat_update`. See decisions.md D68.
+- **The online games list** (`src/ui/screens/online_games/`) — lists joinable
   games, hosts a new one, and survives Steam being absent by saying so.
-- **Menu entry**: "Play on Steam" sits alongside Solo, Host and Join.
+- **Menu entry**: none of its own. Hosting online is a button on **Create
+  Game** beside single player and local hosting, and the list of online games
+  is reached from **Join Game**. Steam is a transport, not a thing a player
+  sets out to do — see decisions.md D65.
 
 Nothing in the economy, the RPCs, the authority checks, the redaction or the
 lobby flow changed to accommodate any of it. That was the point of the

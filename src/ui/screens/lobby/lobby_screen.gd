@@ -84,7 +84,11 @@ func refresh() -> void:
 		# gives them no `_ready`, and every `@onready` in them stays null.
 		return
 
-	_title.text = "LOBBY" if is_hosting() else "JOINED"
+	# The match's own name, which both ends have: it travels with the settings
+	# in the opening snapshot. It used to read "LOBBY" or "JOINED" — a word
+	# for which side of the connection you were on, which is not news to you
+	# and is not what a heading is for.
+	_title.text = _match_name()
 	# The transport says how to be joined — a port now, a Steam invite later.
 	# This screen does not know which, and should not grow a branch for it.
 	_subtitle.text = (
@@ -129,7 +133,29 @@ func _refresh_for_host() -> void:
 		)
 
 
+## What this match is called, in capitals to match the rest of the headings.
+## Falls back to a plain word only if a match somehow arrived unnamed, which
+## `Main` is supposed to prevent.
+func _match_name() -> String:
+	if _client != null and not _client.has_joined():
+		return "CONNECTING"
+	var settings: GameSettings = _session.state().settings
+	if settings == null or settings.game_name.strip_edges().is_empty():
+		return "LOBBY"
+	return settings.game_name.strip_edges().to_upper()
+
+
 func _refresh_for_guest() -> void:
+	# Until the host answers there is no seat, no roster and nothing to be
+	# ready for. Saying so beats a Ready button that refuses every press,
+	# which is what a joining client used to be given.
+	if _client != null and not _client.has_joined():
+		_ready_button.disabled = true
+		_ready_button.text = "READY"
+		_status.text = "Connecting to the host..."
+		return
+	_ready_button.disabled = false
+
 	var local: PlayerState = _session.state().player_by_id(_session.local_player_id())
 	var is_ready: bool = local != null and local.is_ready
 	if is_ready:
@@ -198,12 +224,13 @@ func _exit_tree() -> void:
 func _rebuild_list() -> void:
 	_clear_list()
 	var players: Array[PlayerState] = _session.state().players
+	var host_id: StringName = _session.state().host_player_id()
 	for index: int in players.size():
 		var player: PlayerState = players[index]
 		var row: LobbyRow = LobbyRowScene.instantiate()
 		_player_list.add_child(row)
 		var is_you: bool = player.id == _session.local_player_id()
-		row.display(player, is_you, index == 0, is_hosting() and not is_you)
+		row.display(player, is_you, player.id == host_id, is_hosting() and not is_you)
 		row.kick_requested.connect(_on_kick_requested)
 
 

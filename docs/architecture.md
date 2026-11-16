@@ -481,7 +481,16 @@ delivers unhandled input from the deepest node upwards. See decisions.md D64.
 decisions.md D35. The first version anchored a Control and produced dead space at the
 top and bottom of the window.
 
-- **Screens** in `src/ui/screens/<name>/`, scene and script together.
+- **Screens** in `src/ui/screens/<name>/`, scene and script together. A
+  *screen* is this project's word, not Godot's: a top-level scene that fills
+  the window and is swapped in and out by `Main`. Godot's own unit is a
+  *scene*, and a widget is a scene too — the distinction is what owns the
+  whole window. See the glossary.
+- The screens are: the **title screen** (`main_menu`), which is Create Game
+  and Join Game; the **online games** list reached from Join Game; the
+  **lobby**; the **playing screen**; and the **result screen**. Every match
+  setting lives on Create Game, whatever kind of game it turns into — see
+  decisions.md D65.
 - **Widgets** in `src/ui/widgets/` — one reusable scene per repeated row (stalk
   board row, holdings row, ranking row, lobby member). Instantiated into containers,
   never duplicated by hand.

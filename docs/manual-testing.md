@@ -57,7 +57,7 @@ first conflates the two and you learn less from a failure.
 
 | Step | Expected |
 |---|---|
-| Host: **HOST** → **Open a lobby** | Lobby screen. Subtitle names an address and port. |
+| Host: **CREATE GAME** → **HOST LOCALLY** | Lobby screen. Subtitle names an address and port. |
 | Guest: **JOIN**, type that address, **Join** | Guest reaches the lobby; both players listed on both screens. |
 
 **Windows will probably ask to allow the game through the firewall the first
@@ -233,7 +233,7 @@ proven in Test A and does not change with the transport.
 
 | Step | Expected |
 |---|---|
-| **Play on Steam** from the menu | The browser screen says "Signed in as <your persona name>". |
+| **JOIN GAME** → **BROWSE ONLINE GAMES** | The list says "Signed in as <your persona name>". |
 
 **Failure signs:** a message saying Steam is not running, or not installed.
 If Steam *is* running, suspect the account ownership above.
@@ -242,27 +242,51 @@ If Steam *is* running, suspect the account ownership above.
 
 | Step | Expected |
 |---|---|
-| Machine 1: **HOST** | Lobby screen. Subtitle mentions invites, not a port. |
-| Machine 2: **Play on Steam**, then **REFRESH** | Machine 1's game appears in the list, named after their persona. |
+| Machine 1: **CREATE GAME** → **HOST ONLINE** | Lobby screen. Subtitle mentions invites, not a port. |
+| Machine 2: **JOIN GAME** → **BROWSE ONLINE GAMES**, then **REFRESH** | Machine 1's game appears in the list, under the name they gave it. |
+| Both: look at the lobby heading | The game's name, the same on both machines — not "LOBBY" or "JOINED". |
+| Both: look at the player list | Steam names, not "Player". Type something in **Your name** first and check it is ignored for an online game. |
 | Machine 2: **JOIN** on that row | Both reach the lobby, as in A1. |
 
 **Failure signs:** the lobby never appearing in the list. Both accounts must be
 running the same App ID, and the lobby is filtered on a `game=stalks` tag.
 
-### B3. The settings follow you to Steam
+### B3. The settings reach an online game
+
+The bug from the first Steam game: a match hosted through Steam always had
+loans off, whatever the title screen said. The settings now sit on the same
+panel as the button that starts the game, so there is nothing to carry.
 
 | Step | Expected |
 |---|---|
-| On the title screen, set the years and tick **loans**, then **Play on Steam** | The browser says what HOST would start: the years, the starting cash, and loans on. |
-| **HOST**, start the match, and look for the **LOAN** button | It is there. |
-| Back out, untick loans, **Play on Steam** again | The summary now says loans off. |
+| **CREATE GAME**, set Years to 25, tick **Loans** | — |
+| **HOST ONLINE**, then **Start** in the lobby | The board reads **Year: 0/25** and the **LOANS** button is there. |
+| Leave, untick **Loans**, **HOST ONLINE**, **Start** | No **LOANS** button. |
 
-**Failure signs:** the summary disagreeing with the title screen, or a Steam
-match having no loans when loans were ticked. That was the bug in the first
-Steam game played — see decisions.md D62.
+You do not need the second account for this — a host can start alone.
 
-The settings are **not** editable on the browser screen, deliberately. A match
-is configured in one place, and that place is the title screen.
+**Failure signs:** the match not matching what you ticked. See decisions.md
+D65.
+
+**There are no settings on the online games list**, deliberately. It is for
+finding a game to join; a joiner is told the settings by the host.
+
+### B3b. The host leaving ends the game
+
+Steam has no way to destroy a lobby — one lives until its last member leaves
+— so the host shuts theirs on the way out and tells everyone. See
+decisions.md D68.
+
+| Step | Expected |
+|---|---|
+| Both in a lobby. Machine 1 (host) presses **LEAVE** | Machine 2 lands on the title screen, told the host left. |
+| Machine 2: **BROWSE ONLINE GAMES**, **REFRESH** | The game is gone from the list. |
+| Repeat, but have the host **close the window** instead of pressing LEAVE | Same outcome on machine 2. |
+| Host starts a match, then machine 2 browses | The started game is not listed. |
+
+**Failure signs:** machine 2 sitting on the lobby with a Ready button that
+does nothing — the fault this was written for. A game still listed after it
+started or after its host left.
 
 ### B4. Playing
 

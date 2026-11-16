@@ -906,6 +906,241 @@ the board.
 
 ---
 
+### D68 — A Steam lobby cannot be destroyed, so the host shuts it instead
+**2026-11-15 · Accepted · extends D67**
+
+When the host leaves, they call `setLobbyJoinable(false)` and set the lobby's
+`state` to `playing` **before** calling `leaveLobby`. Members are told the host
+has gone by `lobby_chat_update`, and leave too, at which point Steam disposes
+of the lobby itself. This game has no host migration and is not getting any:
+the host leaving ends the match.
+
+**This replaces a guess.** D67 was written without reading Steamworks'
+documentation — the twelve-second join timeout in it was a number I chose,
+and the comment justifying it was written after the fact. The owner asked
+where it came from, and whether a host could simply tell Steam to destroy the
+lobby. Both were fair questions and I had not looked.
+
+**What the documentation actually says**, from
+`partner.steamgames.com/doc/api/ISteamMatchmaking` and the matchmaking feature
+page:
+
+- **There is no destroy or delete call.** "Once all users have left a lobby,
+  it is automatically destroyed." So a host cannot end a lobby; it can only
+  stop being in it.
+- **Ownership migrates automatically and cannot be prevented.** "There always
+  one lobby owner — if the current owner leaves, another user in the lobby
+  will become the owner automatically."
+- **`setLobbyJoinable(false)`** stops new members, including invited ones, and
+  per the documentation takes the lobby out of search results.
+- **`lobby_chat_update`** reports a member entering, leaving, disconnecting,
+  being kicked or being banned, as a bitfield.
+
+**So "the host leaving kills the lobby" is a thing the game does, not a thing
+Steam does.** The sequence above is as close as the platform allows, and the
+lobby's last moments belong to clients who are already on their way out.
+
+**Steam lobby ownership is not this game's host.** When the host leaves, Steam
+hands the lobby to somebody else within milliseconds. A client therefore
+cannot ask `getLobbyOwner` who the host was — by the time it asks, the answer
+has changed. `Main` records the owner's Steam id when it joins and compares
+departures against that.
+
+**The timeout stays, demoted.** `lobby_chat_update` covers the case that was
+actually reported, and joining a lobby that no longer exists was already
+covered by `lobby_joined`'s response code. The clock now catches only what
+neither of those does — a host who stops responding without leaving. Twelve
+seconds is still an arbitrary number, and it is now in a place where being
+arbitrary costs little.
+
+**Both shutting mechanisms are used**, which is not redundancy: they stop
+different things. `setLobbyJoinable` blocks somebody holding an invite or a
+stale lobby id; the `state` key is what the browser's own string filter reads.
+One caveat recorded honestly: the sentence about non-joinable lobbies being
+excluded from search came from a summary of the page rather than text I could
+read verbatim, whereas string filters on lobby data are plainly documented.
+Keeping both means the part I verified carries the result either way.
+
+**What it rules out.** Host migration. If it is ever wanted, the lobby is the
+wrong place to build it — Steam has already moved the lobby on by then. It
+would need the game to nominate a successor and the clients to reconnect to
+them, which is Phase 8 work and much larger than it sounds.
+
+---
+
+### D67 — A join gives up on a clock, and a started game leaves the list
+**2026-11-15 · Accepted**
+
+A client that has opened a socket but not been welcomed gives up after
+`ClientSession.JOIN_TIMEOUT_SECONDS` (twelve). While it waits, the lobby says
+"Connecting to the host..." and its Ready button is disabled. Separately, a
+host marks its Steam lobby `state=playing` when the match starts, and the
+browser lists only lobbies still reading `state=open`.
+
+**Two faults from the same session, both about a player being offered
+something that is not there.**
+
+**1. A host leaving mid-join left the client stuck for ever.** It showed the
+ordinary "Waiting for the host to start" and a Ready button that answered
+"Not connected." to every press. Nothing said anything was wrong; LEAVE was
+the only way out.
+
+Over ENet this could not happen: a host that goes away produces
+`connection_failed` or `server_disconnected`, and the lobby already acts on
+both. **Over Steam it does not.** The peer-to-peer session simply stops
+carrying traffic, and nothing tells the client. So a signal-based fix would
+have worked on the transport that was not broken and not on the one that was.
+
+A clock catches every way of not arriving, including ones neither transport
+has thought of yet. Twelve seconds because Steam's relay can take several to
+negotiate a route, and a false failure is worse than a slow one.
+
+**The Ready button is disabled while waiting**, which is the smaller half of
+the fix and the half a player notices first. A control that refuses every
+press reads as a broken game; a disabled one with "Connecting..." beside it
+reads as a game that is working.
+
+**2. Games already under way were still listed as joinable.** Joining one put
+the player through a lobby and back to the title screen a few seconds later,
+when the host refused them. The refusal was right — `HostSession` has always
+turned away a latecomer, because a client accumulates its own history (D42)
+and somebody arriving at year 5 has none. Offering the game at all was the
+fault.
+
+**Marked with lobby data rather than `setLobbyJoinable`,** because the browser
+already filters on lobby data for the game tag, so this is one more string
+filter on a request that was being made anyway, and it is visible to anybody
+debugging a lobby from Steam's own tools.
+
+**What it rules out.** Joining a match in progress, which was already ruled
+out, and is now ruled out one step earlier. If a rejoin ever arrives (see
+porting-plan Phase 8) this filter is what it has to change: a lobby would need
+a third state, open to the player who dropped out of it and closed to
+everybody else.
+
+---
+
+### D66 — Steam names the players; the host names the game
+**2026-11-15 · Accepted**
+
+In an online game every player is named by their Steam account. The title
+screen's **Your name** field applies to local games only, where there is no
+account to ask. Separately, the host names the **match**, and that name heads
+the lobby on every machine in it and labels the row in the online games list.
+
+**Three faults, found in the first game after the title screen was rebuilt,
+and all three are mine from that rebuild or older than it.**
+
+**1. Steam players showed as "Player".** The old menu asked
+`SteamService.persona_name()` when hosting or joining a Steam match. The
+rebuild replaced that with the name typed on the title screen, which defaults
+to the stand-in "Player". Worse, a name typed for an unrelated local game
+earlier in the session was still in the field, so it became your name in a
+Steam lobby — which does not read as a bug, it reads as a deliberate choice
+somebody made for you.
+
+The fix is not a better fallback. It is that **the field has no say at all**
+in an online game, so `host_online_requested` no longer carries a name and
+`browse_online_requested` carries nothing. A value that is only sometimes
+honoured is worse than one that is never sent: the first is confusing, the
+second is explainable. The field's placeholder now says where it applies.
+
+**2. There was no way to name a game.** A lobby was always
+`"<persona>'s game"`, hardcoded at the point Steam created it. A player could
+name themselves but not the thing they were making, which is backwards — your
+name is already on your Steam account, and the match is the thing other people
+are choosing between in a list.
+
+`game_name` is a **`GameSettings` field**, not Steam lobby data, because it has
+to reach the clients and the settings already do: they travel in the opening
+snapshot. Steam lobby data only reaches somebody browsing, not somebody
+already in the lobby, so a heading built from it would be blank for everyone
+who had joined. It also means a local game has a name, which Steam metadata
+could never give it.
+
+Blank is allowed, and `Main._name_the_match` fills it in from whoever is
+hosting — for an online game, that is the Steam account, which the title
+screen has not asked about and should not have to.
+
+**3. The lobby was headed "LOBBY" or "JOINED".** A word for which end of the
+connection you were on. You know which end you are on; you pressed the button.
+It now reads the name of the match, which is the thing a heading is for and is
+the same on both machines.
+
+**And the host is marked**, as "(Host)" after their name in the rankings and
+on the result screen, on every machine. It rests on one rule — the host is
+always the first player — which is now written once as
+`GameState.host_player_id()` rather than spelled `players[0]` by each screen
+that wants it.
+
+The first attempt used a leading `*` and put the explanation in a tooltip, on
+the grounds that the column is only a few characters wide. The owner's answer
+was that a symbol nobody can read without hovering is not a marker, and that
+the width was my problem to solve rather than theirs to decode. Both tags go
+in one bracket — "(Host, you)" rather than "(Host) (you)" — which is where
+the width saving actually comes from.
+
+**What it rules out.** Playing online under a name of your choosing. That is a
+real thing some games offer, and if it is ever wanted it belongs next to the
+online controls and labelled as an alias — not as a field that silently
+overrides your Steam identity, which is what it had become.
+
+---
+
+### D65 — Create Game owns the settings; the kind of game is a choice on it
+**2026-11-15 · Accepted · replaces D62**
+
+One **Create Game** panel holds every match setting — years, starting cash,
+loans, seed — and three ways to begin with them: single player, host online
+through Steam, host on the local network. **Join Game** holds the list of
+online games and a direct address for a local one, and no settings at all.
+There is no Steam screen.
+
+**What was wrong.** The title screen had SOLO / HOST / JOIN tabs with the
+settings on the first two, and a separate "Play on Steam" screen with a HOST
+button and no settings. Steam is how this game is actually played; hosting
+locally exists so two windows can be tested without Steam running. So the
+configuration lived on the development path and was absent from the real one,
+and a Steam match was hosted with a default `GameSettings` — ten years, loans
+**off** — whatever the player had chosen.
+
+**D62 did not fix that.** It carried the settings across and put a read-only
+summary on the Steam screen. That made loans work and left the shape wrong: a
+game was still being created on a screen whose job is finding games, by a
+player looking at numbers they could not change, chosen on a screen they had
+left. The summary was an admission that the player could not see where they
+were. The owner's objection, which is the right one: *when you make a game,
+the settings should be there.* I could not name a single game that splits them
+this way, and did not look for one before shipping it.
+
+**The original did it the other way**, and this project's own
+`game-rules.md` §2 records it: these were "lobby settings", chosen where the
+game was made. The reference material said so and I departed from it without
+noticing.
+
+**Steam is a transport, not a menu item.** "Play on Steam" was a category
+invented to hold the Steam code, not something a player wants to do. A player
+wants to make a game or find one. Which transport carries it is a detail of
+*how*, so it is a button on Create Game, and the list of games to join does
+not care at all.
+
+**Settings are read once and used three ways.** `chosen_settings()` serves all
+three buttons, so they cannot drift apart. The failure mode this replaces was
+exactly a second path with its own idea of the settings.
+
+**What it rules out.** Changing the settings after a game exists. A lobby is
+created from settings, so by the time anyone is in it they are fixed; to
+change them, leave and make another. If in-lobby editing is ever wanted it is
+a real feature — host-only controls plus a push to every client — not a
+tweak to this.
+
+**Also fixed by the same change.** Hosting and joining locally are now plain
+options rather than the only visible way to play, and `src/ui/screens/
+steam_browser/` became `online_games/`, because a folder named after the
+transport is the same mistake in the file tree.
+
+---
+
 ### D64 — Escape backs out, and the screen host decides what that means
 **2026-11-15 · Accepted**
 
@@ -979,7 +1214,9 @@ removing them one at a time and watching it fail.
 ---
 
 ### D62 — The title screen's settings travel to a Steam match
-**2026-11-15 · Accepted**
+**2026-11-15 · Superseded by D65 the same day**
+
+> Kept for the reasoning about what was broken, which is still accurate. The fix was not: it carried the settings to a screen that should not have been creating games at all. See D65.
 
 `MainMenu.steam_requested` carries a `GameSettings`. `Main` keeps it and hosts
 the Steam match with it. The Steam browser shows a one-line summary of what

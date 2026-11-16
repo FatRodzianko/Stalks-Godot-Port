@@ -5,8 +5,8 @@ extends GutTest
 const MainScene: PackedScene = preload("res://src/ui/screens/main/main.tscn")
 const MenuScene: PackedScene = preload("res://src/ui/screens/main_menu/main_menu.tscn")
 const GameOverScene: PackedScene = preload("res://src/ui/screens/game_over/game_over_screen.tscn")
-const SteamBrowserScene: PackedScene = preload(
-	"res://src/ui/screens/steam_browser/steam_browser_screen.tscn"
+const OnlineGamesScene: PackedScene = preload(
+	"res://src/ui/screens/online_games/online_games_screen.tscn"
 )
 
 
@@ -142,13 +142,13 @@ func test_the_menu_settings_are_read_from_the_controls() -> void:
 	assert_false(settings.loans_enabled)
 
 
-func test_pressing_start_emits_the_chosen_settings() -> void:
+func test_pressing_single_player_emits_the_chosen_settings() -> void:
 	var menu: MainMenu = MenuScene.instantiate()
 	add_child_autofree(menu)
 	watch_signals(menu)
 	(menu.get_node("%YearsSpin") as SpinBox).value = 7
 
-	(menu.get_node("%StartButton") as Button).pressed.emit()
+	(menu.get_node("%SinglePlayerButton") as Button).pressed.emit()
 
 	assert_signal_emitted(menu, "start_requested")
 	var params: Array = get_signal_parameters(menu, "start_requested", 0)
@@ -874,65 +874,125 @@ func test_escape_closes_the_loan_panel_rather_than_offering_to_leave() -> void:
 	assert_null(main.leave_prompt(), "and nothing should have asked about leaving")
 
 
-# ------------------------------------------- the settings reach a Steam match
+# ----------------------------------------- the settings reach every game type
 #
-# Found in play: there was no way to enable loans for a Steam lobby, and
+# Found in play: there was no way to enable loans for a Steam lobby, and the
 # settings chosen on the title screen did not carry over to one.
 #
-# They did not travel at all. The browser had no settings of its own and
-# nothing filled `_last_settings` in on the way there, so every Steam match was
-# hosted with a default GameSettings — which has loans OFF. See
-# decisions.md D62.
+# The first fix carried them across and showed a read-only summary on the
+# Steam screen, which was the wrong shape: Steam is how the game is actually
+# played, local hosting is for testing, and the settings were sitting on the
+# testing path. There is now one Create Game panel and the kind of game is a
+# choice on it. See decisions.md D65, which replaces D62.
 
-func test_the_menu_sends_its_settings_with_the_steam_request() -> void:
+
+func test_the_menu_offers_every_game_type_beside_the_settings() -> void:
+	var menu: MainMenu = MenuScene.instantiate()
+	add_child_autofree(menu)
+
+	assert_true(menu.get_node("%Settings").is_visible_in_tree())
+	assert_true(menu.get_node("%SinglePlayerButton").is_visible_in_tree())
+	assert_true(menu.get_node("%HostOnlineButton").is_visible_in_tree())
+	assert_true(menu.get_node("%HostLocalButton").is_visible_in_tree())
+
+
+func test_hosting_online_carries_the_settings_straight_from_the_menu() -> void:
 	var menu: MainMenu = MenuScene.instantiate()
 	add_child_autofree(menu)
 	(menu.get_node("%LoansCheck") as CheckBox).button_pressed = true
 	(menu.get_node("%YearsSpin") as SpinBox).value = 25
 
 	var carried: Array[GameSettings] = []
-	menu.steam_requested.connect(func(s: GameSettings) -> void: carried.append(s))
-	(menu.get_node("%SteamButton") as Button).pressed.emit()
+	menu.host_online_requested.connect(
+		func(s: GameSettings) -> void: carried.append(s)
+	)
+	(menu.get_node("%HostOnlineButton") as Button).pressed.emit()
 
 	assert_eq(carried.size(), 1)
 	if carried.is_empty():
 		return
-	assert_true(carried[0].loans_enabled, "loans were on, so they should travel")
+	assert_true(carried[0].loans_enabled, "loans were ticked, so loans are on")
 	assert_eq(carried[0].max_years, 25)
 
 
-## The browser with no Steam behind it at all.
+## The online list with no Steam behind it at all.
 ##
 ## Deliberately not driven through `Main`, which would start Steam for real:
 ## no test may touch Steam (decisions.md D59), and on a machine where Steam
 ## happens to be running one that did would initialise it twice and fail.
 ## A null service is the build-without-the-plugin case, which this screen is
 ## required to survive anyway.
-func _browser_showing(settings: GameSettings) -> SteamBrowserScreen:
-	var browser: SteamBrowserScreen = SteamBrowserScene.instantiate()
+func _online_list() -> OnlineGamesScreen:
+	var browser: OnlineGamesScreen = OnlineGamesScene.instantiate()
 	add_child_autofree(browser)
-	browser.setup(null, settings)
+	browser.setup(null)
 	return browser
 
 
-func test_the_steam_browser_says_what_hosting_would_start() -> void:
-	var browser: SteamBrowserScreen = _browser_showing(_settings(25, true))
-	var summary: String = (browser.get_node("%HostingSummary") as Label).text.to_lower()
-	assert_string_contains(summary, "25", "the year limit chosen on the title screen")
-	assert_string_contains(summary, "loans on", "and whether loans are on")
+func test_the_online_list_does_not_offer_to_create_a_game() -> void:
+	# It used to have a HOST button and a read-only summary of settings chosen
+	# on another screen. Creating a game belongs under Create Game.
+	var browser: OnlineGamesScreen = _online_list()
+	assert_false(browser.has_node("%HostButton"), "hosting does not belong here")
+	assert_false(browser.has_node("%HostingSummary"),
+		"nor does a copy of settings owned somewhere else")
 
 
-func test_the_steam_browser_says_so_when_loans_are_off() -> void:
-	# The case that was wrong in play, inverted: it used to say nothing at all
-	# and host with loans off whatever the player had chosen.
-	var browser: SteamBrowserScreen = _browser_showing(_settings(10, false))
-	assert_string_contains(
-		(browser.get_node("%HostingSummary") as Label).text.to_lower(),
-		"loans off",
-	)
-
-
-func test_the_steam_browser_still_comes_up_with_no_steam_at_all() -> void:
-	var browser: SteamBrowserScreen = _browser_showing(_settings())
+func test_the_online_list_still_comes_up_with_no_steam_at_all() -> void:
+	var browser: OnlineGamesScreen = _online_list()
 	assert_false((browser.get_node("%Status") as Label).text.is_empty(),
 		"it should explain itself rather than sit there empty")
+
+
+# ------------------------------------------------------------ who is hosting
+#
+# Asked for after play: the rankings named everybody the same way, so there
+# was no telling whose machine the game was running on. Said in a word — the
+# first attempt used a leading `*` explained only by a tooltip, which left
+# the sole on-screen clue a punctuation mark.
+
+func test_the_host_is_marked_in_the_rankings() -> void:
+	var bits: Array = _playing()
+	var screen: GameplayScreen = bits[1]
+
+	var rows: Array[Node] = screen.get_node("%RankingList").get_children()
+	assert_eq(rows.size(), 1, "a solo game has one player, who is hosting it")
+	if rows.is_empty():
+		return
+	assert_string_contains((rows[0].get_node("%Name") as Label).text, "(Host)")
+
+
+func test_the_tooltip_says_everything_the_row_says() -> void:
+	# The row is cut short at this width, so hovering has to tell you at least
+	# as much as the row does, not less.
+	var bits: Array = _playing()
+	var screen: GameplayScreen = bits[1]
+	var rows: Array[Node] = screen.get_node("%RankingList").get_children()
+	if rows.is_empty():
+		return
+	var label: Label = rows[0].get_node("%Name")
+	assert_eq(label.tooltip_text, label.text)
+	assert_string_contains(label.tooltip_text, "(Host)")
+
+
+func test_the_first_player_is_the_host() -> void:
+	# The rule the marker rests on, asserted where it lives rather than being
+	# re-derived as `players[0]` by every screen that needs it.
+	var state: GameState = StalksFixture.make_state(10, 3)
+	assert_eq(state.host_player_id(), state.players[0].id)
+
+
+func test_an_empty_match_has_no_host_rather_than_crashing() -> void:
+	var state: GameState = GameState.new(null)
+	assert_eq(state.host_player_id(), &"")
+
+
+func test_a_player_called_you_is_not_labelled_you_twice() -> void:
+	# A solo player is called "You", so appending "(you)" read "You (you)".
+	var bits: Array = _playing()
+	var screen: GameplayScreen = bits[1]
+	var rows: Array[Node] = screen.get_node("%RankingList").get_children()
+	if rows.is_empty():
+		return
+	var shown: String = (rows[0].get_node("%Name") as Label).text.to_lower()
+	assert_false(shown.contains("(you)"), "got: %s" % shown)

@@ -274,7 +274,7 @@ In the Godot editor:
 4. Click **OK**.
 5. Press **F5** (or the play button, top right). Two windows open.
 
-Then, in one window click **HOST** and **Open a lobby**; in the other click
+Then, in one window click **HOST LOCALLY**; in the other click **JOIN GAME** and
 **JOIN** and **Join**. The address and port are pre-filled for the same machine,
 so neither needs typing.
 
@@ -292,7 +292,7 @@ named "Host" and the joiner "Guest" so the windows are told apart at a glance.
 
 | Flag | Meaning |
 |---|---|
-| `--host` | Open a lobby immediately |
+| `--host` | Open a local lobby immediately |
 | `--join` | Join `127.0.0.1` immediately |
 | `--join=<address>` | Join a specific host |
 | `--port=<n>` | Listen on, or connect to, this port (default 42420) |
@@ -391,7 +391,7 @@ addresses no other computer can reach.
 
 Then:
 
-1. On the host machine: **HOST** — **Open a lobby**. The lobby names the
+1. On the host machine: **CREATE GAME** — **HOST LOCALLY**. The lobby names the
    address, which is the same one the tool printed.
 2. On the other machine: **JOIN**, type that address, **Join**.
 

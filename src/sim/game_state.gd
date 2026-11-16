@@ -53,6 +53,19 @@ func stalk_by_id(stalk_id: StringName) -> StalkState:
 	return null
 
 
+## Who is hosting, or an empty id in a solo game with nobody to host for.
+##
+## **The host is always the first player**, on every machine. The host seats
+## themselves before anybody can connect (`HostSession`), and the roster order
+## is preserved through the snapshot, so a client's copy agrees. Written down
+## here once rather than spelled `players[0]` at each screen that needs it,
+## because it is a rule about how a match is built and not a fact about lists.
+func host_player_id() -> StringName:
+	if players.is_empty():
+		return &""
+	return players[0].id
+
+
 func player_by_id(player_id: StringName) -> PlayerState:
 	for player: PlayerState in players:
 		if player.id == player_id:

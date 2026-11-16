@@ -15,7 +15,7 @@ extends RefCounted
 ##
 ## | Flag | Meaning |
 ## |---|---|
-## | `--host` | Open a lobby immediately |
+## | `--host` | Open a local lobby immediately |
 ## | `--join` | Join `127.0.0.1` immediately |
 ## | `--join=<address>` | Join a specific host |
 ## | `--port=<n>` | Listen on, or connect to, this port |
