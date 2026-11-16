@@ -438,6 +438,10 @@ var _is_online_match: bool = false
 ## arrives on a signal with no memory of who asked.
 var _pending_join_lobby: int = 0
 
+## Reports what the local player earns in the match on screen. Replaced with
+## each new match, so it never reports against a session that has ended.
+var _achievements: AchievementReporter
+
 
 ## The player's Steam display name.
 ##
@@ -601,6 +605,22 @@ func _name_the_match(settings: GameSettings, host_name: String) -> void:
 func _mount_session(session: GameSession) -> void:
 	_session = session
 	add_child(_session)
+	_watch_for_achievements()
+
+
+## Starts reporting the local player's achievements for this match.
+##
+## Created for every match, including a solo one: achievements are earned by
+## playing, not by playing online. It does nothing when Steam is not running,
+## which is why there is no condition here — one path rather than two.
+func _watch_for_achievements() -> void:
+	if _achievements != null:
+		remove_child(_achievements)
+		_achievements.queue_free()
+	_achievements = AchievementReporter.new()
+	_achievements.name = "Achievements"
+	add_child(_achievements)
+	_achievements.setup(_session, _steam)
 
 
 ## A busy port or an unreachable host is a normal thing for a player to run into,

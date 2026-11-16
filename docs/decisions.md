@@ -906,6 +906,54 @@ the board.
 
 ---
 
+### D70 — Achievements are decided by pure rules and reported by a thin node
+**2026-11-15 · Accepted**
+
+`AchievementRules` (`src/sim/`) takes a match and returns the ids earned. It
+has never heard of Steam. `AchievementReporter` (`src/net/`) watches a session
+and hands whatever it returns to `SteamService`, which does nothing at all
+when Steam is not running.
+
+**Why the split is sharper here than elsewhere.** Every rule in `src/sim/` is
+pure so it can be tested without a window; this one has a second reason. The
+only other way to check an achievement is to unlock it for real on somebody's
+Steam account, and because the App ID is the published game's (D57), that is
+permanent and public. An achievement cannot be un-earned one test at a time
+— `resetAllStats(true)` wipes the lot or nothing. So the thresholds have to
+be right *before* anything is ever sent, which means they have to be provable
+without sending anything.
+
+**Per-player and local.** Each machine judges its own player from the replica
+it already has. Nothing crosses the wire, no RPC was added, and a client does
+not wait on the host to be given anything. The host is authoritative over the
+economy; it is not authoritative over somebody else's Steam account.
+
+**Holdings are remembered from before each year**, because `YearResolver` sets
+a bankrupt stalk's shares to zero. Asking the current state whether you held
+the stalk that just went under would answer no, every time, and
+`SSS_BANKRUPT` would never unlock — silently, since Steam does not complain
+about an achievement you simply never set. The reporter keeps the previous
+holdings and `AchievementRules.for_year` takes them as an argument rather than
+reaching for live state.
+
+**Everything reached, not only what was just crossed.** A returning player
+whose Steam stats are already past a threshold from the original game is given
+those achievements the first time they finish a match here. Setting one that
+is already set is harmless, which is what makes this safe.
+
+**Deliberately untested.** The owner declined to test them, and was right to:
+testing would unlock achievements on their own account for the published game.
+28 tests cover the thresholds instead. What is unproven is the wiring — that
+Steam receives what the rules decide — and that is one `setAchievement` call
+behind a `_initialised` check.
+
+**What it rules out.** Achievements awarded by the host on a client's behalf,
+and any achievement that depends on something only the host can see. Every one
+of the 25 is decidable from what a player's own machine already knows, which
+is not a coincidence — the original worked the same way.
+
+---
+
 ### D69 — Getting into a lobby belongs to the screen host, not to a screen
 **2026-11-15 · Accepted**
 
@@ -1461,6 +1509,22 @@ confirmed against `steam_appid.txt` in the original project.
 **Why.** The store page, its reviews, and every achievement players have already
 unlocked carry over. A new App ID would mean a fresh store page with no reviews
 and the Steam Direct fee again, for a game that is the same game.
+
+**It also makes accepting an invite untestable until the port is uploaded.**
+Found on 2026-11-15, when invites were first tried. Steam's "Join game" and
+`+connect_lobby` launch **the build Steam has installed for 1821800**, which
+is the published Unity original — so an invite accepted on a development
+machine starts the old game, whatever is running locally. *Sending* an invite
+works and was confirmed; accepting one cannot be tried until the port is what
+that App ID installs, which means a Steam branch upload. Nothing can be done
+in code about this. A new App ID would not have had this problem, which is a
+cost of this decision nobody foresaw when it was taken.
+
+**Achievements are the opposite case**, and the difference is worth knowing.
+They do not go through Steam's launcher: a locally run build that initialises
+as 1821800 *is* that app as far as the API is concerned, so `setAchievement`
+would unlock on the real account, for the published game, permanently. That
+makes them testable here and unpleasant to test here. See D70.
 
 **What it rules out, and this is the important part.** The achievement ids are
 no longer ours to choose. Whatever the partner backend holds is correct, and a

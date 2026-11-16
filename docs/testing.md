@@ -107,7 +107,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-500 tests, 14,353 asserts, about 21 seconds.
+528 tests, 14,412 asserts, about 21 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -127,6 +127,7 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_networked_session.gd` | **Networked tests** with a real host and client in one process: joining and seating, yeehaw in both directions, a refused self-yeehaw, a client's buy applied by the host, an unaffordable and a nonsense request refused, a refusal reaching only the asker, a client unable to act as another player, redaction end to end, the all-ready gate, both sides agreeing on every price after a year, and the disconnect behaviour including the deadlock it used to cause | 40 |
 | `test_lobby_screen.gd` | **Scene tests** for the title screen (Create Game and Join Game; one settings panel serving all three ways to start a game; a joiner offered none of them; the lobby's invite button and invite-only games; the host naming the match, that name heading the lobby on both machines, and an online game taking its player names from Steam rather than from the title screen) and the lobby over a live host session: the player list, who you are and who is hosting, arrivals and departures, ready-up both ways, Start being the host's alone, the all-ready gate and the host's kick that escapes it, that the host has no ready button because Start is their readiness, and `Main` opening a lobby, reporting a busy port and carrying on into the match | 62 |
 | `test_client_board.gd` | The client's path from lobby to board, which nothing covered before two windows were played for real: the board building and filling for a `ClientSession`, a swapped-out lobby or board ignoring the signals that follow it, a live one still updating, a removed player returned to the menu with the reason, the board visibly acknowledging a Ready press — readying, un-readying, naming who it waits for, and showing another player's dot — and the host going away mid-match, which leaves the board reporting it and `Main` listening | 25 |
+| `test_achievement_rules.gd` | What a match earns, decided without Steam: the all-in and diversified thresholds and their near-misses, borrowing and settling, a split or bankruptcy judged from the holdings **before** the year (a bankrupt stalk's shares are zeroed, so the current state would never award it), winning and losing being exclusive, the net-worth targets including the starting-cash guard that stops one being bought, doubling and halving, long-match ids, the lifetime ladders awarding every rung reached, and that every id these rules can award is in the catalogue | 28 |
 | `test_achievements.gd` | The achievement catalogue: 25 distinct ids, none differing only by case (the bug the original shipped), none padded, and the win achievement keeping the spelling that actually fired | 10 |
 | `test_conventions.gd` | Readability rules checked by machine rather than memory: no inline function connected to a signal, no signal connected to another signal's `emit`, no conditional expression split across lines, no leftover placeholder in `src/` **or in `docs/`**, no stray `print` | 8 |
 | `test_steam_transport.gd` | The Steam transport and the online games list **without touching Steam**: that the transport satisfies the `Transport` contract, refuses a missing lobby or host, offers invites rather than a port, and that the browser renders a list, an empty list, a full lobby and a failure, and the decoding of Steam lobby departures (left, dropped, kicked, and an arrival not being one), Steam's join refusals turned into sentences, and the `+connect_lobby` parse an invite from a closed game arrives as | 31 |
@@ -231,17 +232,17 @@ actually releases the socket; the stale path registration is inert.
 
 ### Testing by hand
 
-What only a person can check @@ two separate machines, Steam's relay, and
-whether anything feels right @@ has its own document, written to be worked
+What only a person can check — two separate machines, Steam's relay, and
+whether anything feels right — has its own document, written to be worked
 through in order: [manual-testing.md](manual-testing.md).
 
 **Looking at the screen without playing the game.** Godot draws nothing with
 `--headless`, so a purely visual question used to mean building and playing.
 `tools/loan_shot.gd` puts the board into a chosen state and Godot's Movie Maker
 writes the frames to PNG files; the script's own header has the command. It was
-written to answer three questions at once @@ does "Min $339" fit under the LOAN
+written to answer three questions at once — does "Min $339" fit under the LOAN
 button, does the bottom bar sit at the same height at year 0 as at year 3, and
-is the year-0 sentence clipped (it was) @@ and all three took one run. Point it
+is the year-0 sentence clipped (it was) — and all three took one run. Point it
 at a different state by changing what its `_process` presses.
 
 Being able to see the screen does not replace asserting about it: a picture

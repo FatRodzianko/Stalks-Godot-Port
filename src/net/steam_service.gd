@@ -268,6 +268,47 @@ static func lobby_from_command_line(arguments: PackedStringArray) -> int:
 	return 0
 
 
+# ------------------------------------------------- achievements and counters
+#
+# Thin by design: which achievements a match has earned is decided by
+# `AchievementRules`, which is pure and has no idea Steam exists. These four
+# are the only place the game tells Steam anything about a player.
+#
+# All are no-ops when Steam is not running, so a game played offline simply
+# earns nothing rather than needing to ask first.
+
+## Unlocks an achievement. Setting one that is already set is harmless, which
+## is what lets the rules hand over everything earned rather than tracking
+## what has been awarded before.
+##
+## Nothing is sent to Steam until `store_progress`.
+func unlock(achievement_id: StringName) -> void:
+	if not _initialised:
+		return
+	Steam.setAchievement(String(achievement_id))
+
+
+## A lifetime counter, or 0 when Steam is not running.
+func stat(stat_name: StringName) -> int:
+	if not _initialised:
+		return 0
+	return Steam.getStatInt(String(stat_name))
+
+
+func set_stat(stat_name: StringName, value: int) -> void:
+	if not _initialised:
+		return
+	Steam.setStatInt(String(stat_name), value)
+
+
+## Sends everything set since the last call. Steam batches, and an achievement
+## that is never stored is never actually awarded.
+func store_progress() -> void:
+	if not _initialised:
+		return
+	Steam.storeStats()
+
+
 ## Who owns a lobby. A client needs this: it connects to the owner, not to the
 ## lobby itself.
 func lobby_owner(lobby_id: int) -> int:

@@ -138,10 +138,14 @@ func test_no_conditional_expression_is_split_across_lines() -> void:
 
 func test_no_source_file_has_a_leftover_placeholder() -> void:
 	# A substitution that did not happen. Thirteen literal "DASH" markers once
-	# shipped in doc comments this way.
+	# shipped in doc comments this way, and later five "—" ones — a second
+	# placeholder, used by the same kind of script, that this check did not
+	# know to look for. Add the marker here the moment you invent it.
 	var offenders: PackedStringArray = _offenders(
 		func(line: String) -> bool:
-			return line.contains("DASH") or line.contains("{WARN}") or line.contains("ARROW")
+			if line.contains("{WARN}") or line.contains("ARROW"):
+				return true
+			return line.contains("DASH") or line.contains("@@")
 	)
 	assert_eq(offenders, PackedStringArray(), "unsubstituted placeholders")
 
@@ -176,7 +180,7 @@ func test_no_document_has_a_leftover_placeholder() -> void:
 		func(line: String) -> bool:
 			# "DASH" as a word, so prose that legitimately contains the letters
 			# inside a longer word is left alone.
-			if line.contains(" DASH ") or line.contains("{WARN}"):
+			if line.contains(" DASH ") or line.contains("{WARN}") or line.contains("@@"):
 				return true
 			return line.begins_with("DASH ") or line.ends_with(" DASH")
 	)

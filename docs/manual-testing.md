@@ -296,13 +296,19 @@ the browser. See decisions.md D69.
 | Step | Expected |
 |---|---|
 | Machine 1: host online, then press **INVITE** in the lobby | Steam's own friend picker opens. |
-| Invite the second account, which has the game **running** on the title screen | Accepting takes machine 2 straight into the lobby. |
-| Leave. Now **close** the game on machine 2 entirely, and invite again | Accepting launches the game and it lands in the lobby. |
-| Machine 1: tick **Invite only** on Create Game, host, and have machine 2 **REFRESH** the online list | The game is not listed. An invite still gets them in. |
+| Host **locally** instead | No INVITE button. |
+| Invite the second account | The invitation arrives. |
+| Machine 1: tick **Invite only** on Create Game, host, and have machine 2 **REFRESH** the online list | The game is not listed. |
 
-**Failure signs:** no INVITE button (it only appears for an online game); the
-picker opening but accepting doing nothing; a cold launch landing on the title
-screen instead of in the lobby; an invite-only game appearing in the list.
+**Failure signs:** no INVITE button on an online game, or one on a local game;
+the picker not opening; an invite-only game appearing in the list.
+
+> **Accepting an invite cannot be tested before the port is uploaded.** Steam
+> launches whatever is installed for App ID 1821800, which is the published
+> Unity original, so following an invitation starts the old game no matter
+> what is running locally. The same goes for a cold start through
+> `+connect_lobby`. Both are written and both wait on a Steam branch upload.
+> See decisions.md D57.
 
 ### B4. Playing
 
@@ -316,7 +322,11 @@ Steam transport specifically, which is a much narrower place to look.
 
 - **Steam invites do not work yet.** Accepting an invite reports to the game,
   but nothing acts on it. Use the browser.
-- **No achievements unlock.** They are catalogued but nothing calls Steam yet.
+- **Achievements are not being tested, on purpose.** They are implemented and
+  their thresholds are covered by 28 tests, but the App ID is the published
+  game's, so unlocking one here awards it for real on the tester's Steam
+  account. `resetAllStats(true)` is the only undo and it wipes everything.
+  See decisions.md D70.
 - **No sound.**
 - **A kick takes a few seconds to land over Steam**, where it is immediate over
   a direct connection. Steam's lobby callbacks are not instant and the game

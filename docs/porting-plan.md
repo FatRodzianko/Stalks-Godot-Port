@@ -425,10 +425,24 @@ Full detail, including the setup steps, is in
   joins that lobby, and one accepted while the game is **closed** launches it
   with `+connect_lobby` and joins from there. Invite-only lobbies too, which
   was the last setting in game-rules.md §2 without an implementation. See
-  decisions.md D69. **Untested against Steam.**
-- **Still to write:** unlocking achievements. 25 ids are catalogued and
-  checked for casing; nothing calls Steam to set one. The four Steam *stat*
-  names are also still unverified against the backend.
+  decisions.md D69.
+
+  **Half-tested, and the other half cannot be tested here.** Confirmed on
+  2026-11-15: the INVITE button appears only for an online game, Steam's
+  friend picker opens, an invitation is sent and arrives, and an invite-only
+  lobby is absent from the browser. *Accepting* an invite could not be tried
+  — Steam launches whatever is installed for App ID 1821800, which is the
+  published Unity original (D57). That needs a Steam branch upload, not a code
+  change.
+- **Done:** achievements. `AchievementRules` decides what a match earned and
+  `AchievementReporter` tells Steam, including the four lifetime counters.
+  28 tests cover the thresholds. **Deliberately untested against Steam**: the
+  App ID is the published game's, so trying one would unlock it for real on
+  the tester's account. See decisions.md D70.
+- **Still open:** the four Steam *stat* names (`sss_wins`, `sss_loses`,
+  `lifetime_networth`, `sss_yeehaws`) have never been checked against the
+  partner backend. They are unambiguous in the original's source, but a wrong
+  stat name fails the same silent way a wrong achievement name does.
 
 ### Found by playing, fixed on 2026-11-15
 
@@ -472,6 +486,13 @@ see steam-integration.md 2.
 **Done when:** two Steam accounts can find each other through the in-game browser
 and through a Steam invite, play a full game, and unlock at least one achievement —
 while single-player still runs with Steam closed.
+
+⚠️ **Two of those cannot be met on a development machine**, both because of
+D57. *Accepting* an invite needs the port to be what App ID 1821800 installs,
+which means a Steam branch upload. *Unlocking an achievement* can be done here
+but would award it for real on the tester's account, so it is being left
+alone. Everything else in this phase is built and tested. Read Phase 6 as
+complete **pending an upload**, with those two as what the upload is for.
 
 🖱️ Owner needed for: Steamworks SDK download from the partner site, app ID decision,
 and testing with a second Steam account.
