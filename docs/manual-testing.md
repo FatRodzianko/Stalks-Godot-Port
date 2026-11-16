@@ -372,6 +372,23 @@ See decisions.md D85.
 37. Click **REFRESH** with text still in the search box.
 38. Check the filter is still applied and the list is not stale.
 
+### A8g. The final board, after the match
+
+1. Play a short single-player game through to the end.
+2. Check the result screen appears.
+3. Check there is a **View board** button beside Main menu and Play again.
+4. Click **View board**.
+5. Check the board comes back with the final prices.
+6. Check your holdings are still listed as they ended.
+7. Check the rankings show the final net worth of every player.
+8. Check the bottom bar button reads **BACK TO RESULTS**.
+9. Try to buy a stalk.
+10. Check it is refused - the match is over.
+11. Click **BACK TO RESULTS**.
+12. Check the result screen comes back, with the standings still right.
+13. Click **View board** and **BACK TO RESULTS** twice more.
+14. Check nothing breaks or goes blank.
+
 ### A9. Disconnection
 
 | Step | Expected |

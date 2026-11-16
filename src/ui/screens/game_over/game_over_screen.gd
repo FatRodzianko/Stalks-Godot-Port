@@ -9,6 +9,11 @@ extends MarginContainer
 signal play_again_requested
 signal menu_requested
 
+## Stand aside and let the player look at the board as it ended. The original
+## did this by closing its winner panel; this screen has to step out of the
+## way instead, because it replaced the board rather than sitting over it.
+signal view_board_requested
+
 const RankingRowScene: PackedScene = preload("res://src/ui/widgets/ranking_row.tscn")
 const HistoryRowScene: PackedScene = preload("res://src/ui/widgets/history_row.tscn")
 
@@ -18,6 +23,7 @@ const HistoryRowScene: PackedScene = preload("res://src/ui/widgets/history_row.t
 @onready var _seed_label: Label = %SeedLabel
 @onready var _again_button: Button = %PlayAgainButton
 @onready var _menu_button: Button = %MenuButton
+@onready var _board_button: Button = %ViewBoardButton
 @onready var _standings_tab: Button = %StandingsTab
 @onready var _history_tab: Button = %HistoryTab
 @onready var _ranking_scroll: ScrollContainer = %RankingScroll
@@ -32,6 +38,7 @@ var _local_player_id: StringName = &""
 func _ready() -> void:
 	_again_button.pressed.connect(_on_again_button_pressed)
 	_menu_button.pressed.connect(_on_menu_button_pressed)
+	_board_button.pressed.connect(_on_board_button_pressed)
 	_standings_tab.pressed.connect(_on_standings_tab_pressed)
 	_history_tab.pressed.connect(_on_history_tab_pressed)
 
@@ -231,3 +238,8 @@ func _on_again_button_pressed() -> void:
 
 func _on_menu_button_pressed() -> void:
 	menu_requested.emit()
+
+
+## The player wants the finished board rather than the summary of it.
+func _on_board_button_pressed() -> void:
+	view_board_requested.emit()

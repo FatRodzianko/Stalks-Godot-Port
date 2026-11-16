@@ -578,7 +578,7 @@ miss it:
 | 6 | ~~No search box in the lobby browser~~ | **Done 2026-11-16.** Filters as you type, and does not stick across refreshes |
 | 7 | No Steam avatars on lobby rows | Port it — no choice to make |
 | 8 | No supporter DLC thank-you message (*"Thanks for Supporting the Devs!"*) | Decided 2026-11-16: check Steam DLC ownership, show the message |
-| 9 | The final board cannot be inspected after the result screen appears | Decided 2026-11-16: add a view-board button |
+| 9 | ~~The final board cannot be inspected after the result screen appears~~ | **Done 2026-11-16.** View board on the result screen, BACK TO RESULTS on the board. D90 |
 | 10 | ~~**The window is resizable and nobody chose that.**~~ | **Done 2026-11-16.** `window/size/resizable=false`. See audit §17.10 |
 
 **Every gap on this list is to be ported.** "Port it — no choice to make" means the

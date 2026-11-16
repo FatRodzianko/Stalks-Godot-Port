@@ -779,16 +779,47 @@ func _on_start_requested(settings: GameSettings) -> void:
 
 
 func _on_match_finished(_winners: Array[StringName]) -> void:
-	# The state is read from the session, which this node owns, so it is still
-	# alive after the playing screen goes away.
-	var finished_state: GameState = _session.state()
-	var local_id: StringName = _session.local_player_id()
+	show_results()
+
+
+## Shows the result screen for the finished match.
+##
+## Public and separate from `_on_match_finished` because the player can leave
+## it to look at the board and come back, so this is reached twice.
+##
+## The state is read from the session, which this node owns, so it is still
+## alive after the playing screen goes away.
+func show_results() -> void:
+	if _session == null:
+		show_menu()
+		return
 
 	var over: GameOverScreen = GameOverScene.instantiate()
 	over.play_again_requested.connect(_on_play_again)
 	over.menu_requested.connect(show_menu)
+	over.view_board_requested.connect(show_final_board)
 	_swap(over)
-	over.display(finished_state, local_id)
+	over.display(_session.state(), _session.local_player_id())
+
+
+## Puts the finished board back on screen, to be looked over rather than
+## played.
+##
+## The original let you close its winner panel and study the board underneath;
+## the port's result screen replaced the board instead of covering it, so
+## getting back to it means rebuilding it (audit 17.9, D81). The session is
+## still alive, so the board renders the match exactly as it ended.
+func show_final_board() -> void:
+	if _session == null:
+		show_menu()
+		return
+
+	var gameplay: GameplayScreen = GameplayScene.instantiate()
+	gameplay.setup(_session)
+	gameplay.results_requested.connect(show_results)
+	gameplay.connection_ended.connect(_on_connection_ended)
+	_swap(gameplay)
+	gameplay.show_as_final_board()
 
 
 func _on_play_again() -> void:

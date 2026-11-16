@@ -25,6 +25,10 @@ const MESSAGE_SECONDS: float = 5.0
 
 signal match_finished(winners: Array[StringName])
 
+## The player is done looking at the finished board and wants the result
+## screen back. Only ever emitted while `show_as_final_board` is in force.
+signal results_requested
+
 ## The connection ended while the match was running - the host quit, or this
 ## client was dropped. Carries text to show the player on the way out.
 signal connection_ended(reason: String)
@@ -55,6 +59,10 @@ signal connection_ended(reason: String)
 @onready var _loan_button: Button = %LoanButton
 @onready var _loan_min_label: Label = %LoanMinLabel
 @onready var _loan_nag: Label = %LoanNag
+## True when this screen is being shown *after* the match, as something to
+## look over rather than play. See `show_as_final_board`.
+var _viewing_final_board: bool = false
+
 @onready var _ready_button: Button = %ReadyButton
 @onready var _message_timer: Timer = %MessageTimer
 
@@ -106,6 +114,23 @@ func setup(session: GameSession) -> void:
 
 func session() -> GameSession:
 	return _session
+
+
+## Shows this board as a finished one: something to look over rather than play.
+##
+## The original let you dismiss its winner panel and study the final board —
+## prices, your holdings, the rankings as they ended — and the port's result
+## screen had replaced that with a summary (audit 17.9). This is how the board
+## comes back.
+##
+## Nothing is disabled here, because nothing needs to be: trading is already
+## refused once the year counter passes the limit, and the loan panels hide
+## themselves at game over. The only change is that the bottom bar's button
+## becomes the way back instead of saying "Game Over" at you.
+func show_as_final_board() -> void:
+	_viewing_final_board = true
+	if is_node_ready():
+		refresh()
 
 
 func _build_default_session() -> GameSession:
@@ -383,7 +408,14 @@ func _refresh_rankings(game: GameState) -> void:
 
 
 func _refresh_bottom_bar(game: GameState, player: PlayerState) -> void:
-	if game.is_over:
+	if game.is_over and _viewing_final_board:
+		# The one control on a finished board that still does anything. The
+		# original put a second Quit Game button here when its winner panel was
+		# dismissed, for the same reason: once the panel is gone there has to
+		# be a way back out of the board.
+		_ready_button.text = "BACK TO RESULTS"
+		_ready_button.disabled = false
+	elif game.is_over:
 		_ready_button.text = "Game Over"
 		_ready_button.disabled = true
 	elif player != null and player.is_ready:
@@ -583,6 +615,13 @@ func _on_sell_all_requested(stalk_id: StringName) -> void:
 ## easy to miss, so a player could lose 10% of their net worth without ever
 ## noticing there was a decision to make. See docs/decisions.md D53.
 func _on_ready_pressed() -> void:
+	# On a finished board this button is the way back to the result screen, not
+	# a ready-up. Checked before anything reads the roster, because there is
+	# nothing to be ready for.
+	if _viewing_final_board:
+		results_requested.emit()
+		return
+
 	var player: PlayerState = _session.state().player_by_id(_session.local_player_id())
 	var now_ready: bool = player == null or not player.is_ready
 

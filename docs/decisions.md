@@ -2594,3 +2594,35 @@ raising, that is a change to the game and belongs in its own entry.
 
 **What it rules out.** Bounds that live only on a `SpinBox`. Starting a match
 outside the original's range by any route.
+
+---
+
+### D90 - The finished board is rebuilt, not uncovered
+**2026-11-16 - Accepted - implements D81**
+
+**View board** on the result screen shows the board as the match ended;
+the bottom bar's button, which otherwise reads "Game Over" and does nothing,
+becomes **BACK TO RESULTS**.
+
+**Why rebuilt.** The original's winner panel sat *over* the board, so dismissing
+it revealed what was already there. The port's result screen replaced the board,
+and it earns that: it carries final standings and a year-by-year history the
+original never kept (D73). Making it an overlay instead would mean giving up the
+screen it has become. So the board is built again from the finished state.
+
+**What makes that honest.** `Main` owns the session, not the playing screen, and
+always has - the result screen reads the same state. Rebuilding the board from it
+shows the match as it ended rather than a new one, which a test asserts by
+comparing the session identity and the year.
+
+**Nothing is switched off for it.** Trading is already refused once the year
+counter passes the limit, and the loan panels hide themselves at game over, so a
+finished board is inert on its own. The only change is the one button.
+
+**Why that button rather than a new one.** The bottom bar already had a control
+sitting there saying "Game Over" at the player, and the original used that same
+space for the second Quit Game button it added when the panel was dismissed. A
+second button would be a second thing to lay out for no gain.
+
+**What it rules out.** A result screen that is an overlay. Disabling controls on
+the finished board that the rules already refuse.

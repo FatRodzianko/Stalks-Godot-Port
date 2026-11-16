@@ -787,15 +787,22 @@ GodotSteam exposes this directly — `Steam.isDlcInstalled(dlc_app_id)`. The DLC
 App ID is read off the Steam partner backend, the same place the achievement names
 came from.
 
-### 17.9 The final board cannot be inspected — **Changed**
+### 17.9 The final board cannot be inspected - **Ported 2026-11-16**
 
-The original let you dismiss the winner panel and study the finished board. The port
-goes to a result screen instead, with final standings and a year-by-year history —
-more information, but not the board itself.
+The result screen has a **View board** button. It puts the finished board back on
+screen - prices as they ended, your holdings, the rankings - and the bottom bar's
+button becomes **BACK TO RESULTS**, which is the way out of it again.
 
-**Decided 2026-11-16:** add a view-board button (§20.3). The history does not replace
-studying the finished board, so the result screen needs a way to stand aside and a way
-back.
+The original did this by closing its winner panel to reveal the board underneath,
+and put a second Quit Game button in the bottom bar so there was still a way out.
+The port's result screen **replaced** the board rather than covering it, so getting
+back means rebuilding it. That works because `Main` owns the session, which outlives
+the playing screen: the board renders the match exactly as it ended rather than a
+fresh one. See decisions.md D90.
+
+Nothing is disabled on the way in. Trading is already refused once the year counter
+passes the limit, and the loan panels hide themselves at game over, so a finished
+board is inert without anybody switching it off.
 
 ### 17.10 The window is resizable, and nobody chose that — **Fixed 2026-11-16**
 
