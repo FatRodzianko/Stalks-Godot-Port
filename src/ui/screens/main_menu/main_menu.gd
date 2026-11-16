@@ -51,6 +51,7 @@ signal join_local_requested(address: String, port: int, player_name: String)
 const DEFAULT_PORT: int = 42420
 
 @onready var _name_field: LineEdit = %NameField
+@onready var _name_row: HBoxContainer = %NameRow
 @onready var _game_name_field: LineEdit = %GameNameField
 @onready var _years_spin: SpinBox = %YearsSpin
 @onready var _cash_spin: SpinBox = %CashSpin
@@ -70,10 +71,16 @@ const DEFAULT_PORT: int = 42420
 @onready var _join_port_spin: SpinBox = %JoinPortSpin
 @onready var _address_field: LineEdit = %AddressField
 @onready var _message: Label = %ContentWarning
+@onready var _settings_tab: Button = %SettingsTab
+@onready var _settings_box: VBoxContainer = %SettingsBox
+@onready var _volume_slider: HSlider = %VolumeSlider
+@onready var _volume_value: Label = %VolumeValue
 
 
-## Which half of the screen is showing.
-enum Mode { CREATE, JOIN }
+## Which part of the screen is showing. Settings sits beside the two things
+## you can do with a game rather than behind a cog, because it is one of the
+## three places a player goes from here.
+enum Mode { CREATE, JOIN, SETTINGS }
 
 var _mode: Mode = Mode.CREATE
 
@@ -86,6 +93,9 @@ func _ready() -> void:
 	_join_local_button.pressed.connect(_on_join_local_pressed)
 	_create_tab.pressed.connect(_on_create_tab_pressed)
 	_join_tab.pressed.connect(_on_join_tab_pressed)
+	_settings_tab.pressed.connect(_on_settings_tab_pressed)
+	_volume_slider.value_changed.connect(_on_volume_changed)
+	_show_current_volume()
 
 	show_mode(Mode.CREATE)
 
@@ -184,8 +194,13 @@ func show_mode(mode: Mode) -> void:
 	_mode = mode
 	_create_box.visible = mode == Mode.CREATE
 	_join_box.visible = mode == Mode.JOIN
+	_settings_box.visible = mode == Mode.SETTINGS
+	# Nothing under Settings is done under a name, so the field would just be
+	# sitting there inviting a player to wonder what it was for.
+	_name_row.visible = mode != Mode.SETTINGS
 	_create_tab.button_pressed = mode == Mode.CREATE
 	_join_tab.button_pressed = mode == Mode.JOIN
+	_settings_tab.button_pressed = mode == Mode.SETTINGS
 
 
 func current_mode() -> Mode:
@@ -198,6 +213,32 @@ func _on_create_tab_pressed() -> void:
 
 func _on_join_tab_pressed() -> void:
 	show_mode(Mode.JOIN)
+
+
+func _on_settings_tab_pressed() -> void:
+	show_mode(Mode.SETTINGS)
+
+
+# ------------------------------------------------------------------- settings
+
+## Puts the slider where the volume actually is, rather than where the scene
+## file happens to have left it.
+func _show_current_volume() -> void:
+	_volume_slider.set_value_no_signal(Audio.volume_percent())
+	_volume_value.text = "%d%%" % int(_volume_slider.value)
+
+
+## Applies, saves, and plays something so you can hear what you chose.
+##
+## The preview is the original's behaviour — its settings screen played
+## `bull2` on every change. It is bearable here because the slider moves in
+## steps of five, so a full drag is twenty sounds rather than one per frame;
+## the same step is why saving on every change is a few writes and not
+## hundreds.
+func _on_volume_changed(value: float) -> void:
+	Audio.set_volume_percent(int(value))
+	_volume_value.text = "%d%%" % int(value)
+	Audio.play_volume_preview()
 
 
 func _on_single_player_pressed() -> void:

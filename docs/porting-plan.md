@@ -508,16 +508,15 @@ GDExtension**, not the module build and not Foundation for Steamworks — see
 
 ---
 
-## Phase 7 — Polish
+## Phase 7 — Polish ✅ Complete
 
 - ~~Sound: bull, bear, bankruptcy, yeehaw~~ — **done 2026-11-15** (D72).
   The original's seven effects are in `assets/audio/`, copied on the owner's
   instruction after the licensing question was put to them. A mood plays two
   clips layered and a bankruptcy plays glass and a scream once per year, both
-  as the original did. **Still open from this item:** a volume control on
-  screen. The volume exists, persists and applies at startup, but nothing lets
-  a player change it, because there is no settings screen and the owner has
-  not asked for one.
+  as the original did. A volume control followed the same day (D74): a
+  **SETTINGS** tab beside Create Game and Join Game, with a slider that
+  previews what it is doing, as the original's did.
 - ~~Loan button: minimum payment underneath, "PAY LOAN" whenever a loan is
   outstanding~~ — **done 2026-11-15**, brought forward after a second request
 - ~~Esc as a way out of a match~~ — **done 2026-11-15** (D64)
@@ -526,7 +525,10 @@ GDExtension**, not the module build and not Foundation for Steamworks — see
   shuts the Steam lobby and the peer instead of vanishing. Match settings are
   deliberately **not** remembered — the first version did and it was removed
   the same day; D71 says why. There is no pause menu and no settings screen
-- Error and edge-case presentation — **the only item left in this phase**
+- ~~Error and edge-case presentation~~ — **done 2026-11-15** (D74).
+  Network failures say what went wrong instead of carrying a bare code, and a
+  damaged install names what a player can do about it instead of pointing at
+  a log they cannot open
 - ~~Export presets and a Windows build, excluding `steam_appid.txt`~~ —
   **done**. `export_presets.cfg` has excluded it since the preset was written
   (Valve's guidance is that it is a development-only file) and builds have

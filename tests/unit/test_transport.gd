@@ -102,6 +102,12 @@ func test_the_enet_transport_refuses_a_port_already_in_use() -> void:
 
 	assert_null(opened["peer"])
 	assert_string_contains(String(opened["error"]), str(port))
+	# And in words. ENet reports a taken port as ERR_CANT_CREATE rather than
+	# ERR_ALREADY_IN_USE, which is why the transport decides this itself
+	# instead of leaving it to the generic description — found by writing the
+	# obvious mapping and watching this fail. See decisions.md D74.
+	assert_string_contains(String(opened["error"]).to_lower(), "already be using")
+	assert_false(String(opened["error"]).contains("("), String(opened["error"]))
 	assert_engine_error("host", "ENet reports the failed bind")
 
 
@@ -195,3 +201,27 @@ func test_the_hint_names_an_address_not_just_a_port() -> void:
 	# On a machine with no network this degrades to the port alone, which is
 	# why this does not assert a specific address.
 	assert_true(hint.to_lower().contains("join"), "got: %s" % hint)
+
+
+# ----------------------------------------------------- failures, in words
+#
+# Every failure in this layer used to reach the screen as a bare number:
+# "Could not listen on port 42420 (24)". That helps nobody, including whoever
+# receives the screenshot. See decisions.md D74.
+
+func test_a_busy_port_says_what_is_wrong() -> void:
+	assert_string_contains(
+		Transport.describe_error(ERR_ALREADY_IN_USE).to_lower(), "already using"
+	)
+
+
+func test_nothing_listening_says_so() -> void:
+	assert_string_contains(
+		Transport.describe_error(ERR_CANT_CONNECT).to_lower(), "nothing listening"
+	)
+
+
+func test_an_unknown_code_keeps_its_number() -> void:
+	# More honest than inventing a sentence for a case nobody has seen, and
+	# the number is the only thing a bug report could use.
+	assert_string_contains(Transport.describe_error(9999), "9999")

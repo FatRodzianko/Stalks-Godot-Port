@@ -215,7 +215,7 @@ func host_match(settings: GameSettings, player_name: String, port: int) -> Strin
 
 	var library: ContentLibrary = _loaded_library()
 	if library == null:
-		return "The game's content is broken — see the log."
+		return BROKEN_CONTENT
 
 	_is_online_match = false
 	var result: Dictionary = HostSession.host(
@@ -239,7 +239,7 @@ func join_match(address: String, port: int, player_name: String) -> String:
 
 	var library: ContentLibrary = _loaded_library()
 	if library == null:
-		return "The game's content is broken — see the log."
+		return BROKEN_CONTENT
 
 	_is_online_match = false
 	var result: Dictionary = ClientSession.join(
@@ -290,7 +290,7 @@ func host_steam_match(lobby_id: int, settings: GameSettings, player_name: String
 
 	var library: ContentLibrary = _loaded_library()
 	if library == null:
-		return "The game's content is broken — see the log."
+		return BROKEN_CONTENT
 
 	_is_online_match = true
 	var result: Dictionary = HostSession.host(
@@ -313,7 +313,7 @@ func join_steam_match(lobby_id: int, owner_steam_id: int, player_name: String) -
 
 	var library: ContentLibrary = _loaded_library()
 	if library == null:
-		return "The game's content is broken — see the log."
+		return BROKEN_CONTENT
 
 	_is_online_match = true
 	var result: Dictionary = ClientSession.join(
@@ -707,6 +707,18 @@ func _swap(next: Control) -> void:
 		_screen.queue_free()
 	_screen = next
 	add_child(next)
+
+
+## What to tell a player whose install is damaged.
+##
+## It used to say "see the log", which is advice a player cannot take: there
+## is no log window, and the file is somewhere they have never been told
+## about. The detail still goes to the log for whoever is debugging; the
+## sentence on screen is the one thing they can actually do about it.
+const BROKEN_CONTENT: String = (
+	"The game's content files are missing or damaged. "
+	+ "Verifying or reinstalling the game should fix it."
+)
 
 
 ## The validated content, or null with the problems already logged.

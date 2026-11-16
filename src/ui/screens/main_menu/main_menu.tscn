@@ -55,10 +55,19 @@ size_flags_horizontal = 3
 toggle_mode = true
 text = "JOIN GAME"
 
+[node name="SettingsTab" type="Button" parent="Centre/Card/Body/ModeTabs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "SETTINGS"
+
 [node name="Divider" type="HSeparator" parent="Centre/Card/Body"]
 layout_mode = 2
 
 [node name="NameRow" type="HBoxContainer" parent="Centre/Card/Body"]
+unique_name_in_owner = true
 layout_mode = 2
 
 [node name="NameLabel" type="Label" parent="Centre/Card/Body/NameRow"]
@@ -242,6 +251,44 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "JOIN LOCALLY"
+
+[node name="SettingsBox" type="VBoxContainer" parent="Centre/Card/Body"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="VolumeRow" type="HBoxContainer" parent="Centre/Card/Body/SettingsBox"]
+layout_mode = 2
+
+[node name="VolumeLabel" type="Label" parent="Centre/Card/Body/SettingsBox/VolumeRow"]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+text = "Sound"
+
+[node name="VolumeSlider" type="HSlider" parent="Centre/Card/Body/SettingsBox/VolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 100.0
+step = 5.0
+value = 100.0
+
+[node name="VolumeValue" type="Label" parent="Centre/Card/Body/SettingsBox/VolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+theme_type_variation = &"Numeric"
+text = "100%"
+horizontal_alignment = 2
+
+[node name="SettingsNote" type="Label" parent="Centre/Card/Body/SettingsBox"]
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "Kept between sessions. Drag to hear it."
+autowrap_mode = 3
 
 [node name="ContentWarning" type="Label" parent="Centre/Card/Body"]
 unique_name_in_owner = true

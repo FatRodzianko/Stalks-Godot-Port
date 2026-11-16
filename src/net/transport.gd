@@ -34,6 +34,35 @@ func open_client() -> Dictionary:
 
 ## One line telling the host what to pass on so others can join: a port for a
 ## direct connection, an invite for Steam. Empty when there is nothing to say.
+## Godot's `Error` code, in words a player can act on.
+##
+## **Why this exists.** Every failure in this layer used to end up on screen as
+## a bare number: "Could not listen on port 42420 (24)". That tells a player
+## nothing and tells somebody reporting a bug almost as little — nobody knows
+## which enum 24 belongs to either.
+##
+## The number is kept on the end, because the sentence is for the player and
+## the number is for whoever they send a screenshot to.
+##
+## Only the codes this layer can actually produce are named. Anything else
+## keeps its number and says so plainly, which is more honest than inventing a
+## sentence for a case nobody has seen.
+static func describe_error(code: int) -> String:
+	if code == ERR_ALREADY_IN_USE:
+		return "something else is already using that port"
+	if code == ERR_CANT_CREATE:
+		return "the connection could not be opened"
+	if code == ERR_CANT_CONNECT:
+		return "there was nothing listening"
+	if code == ERR_CANT_RESOLVE:
+		return "that address could not be found"
+	if code == ERR_CONNECTION_ERROR:
+		return "the connection failed"
+	if code == ERR_UNAVAILABLE:
+		return "that is not available on this machine"
+	return "error %d" % code
+
+
 func joining_hint() -> String:
 	return ""
 

@@ -906,6 +906,58 @@ the board.
 
 ---
 
+### D74 — Settings is a third tab, and failures say what went wrong
+**2026-11-15 · Accepted**
+
+Two things, both about what the title screen tells you.
+
+**Settings sits beside Create Game and Join Game**, as a third tab rather than
+behind a cog. That is the owner's own description of this screen: make a game,
+join a game, settings. It holds the effect volume and nothing else — display
+options can join it when somebody wants them.
+
+The volume had existed, persisted and applied itself at startup since D71,
+with nothing on screen able to change it. This is the control that was
+missing.
+
+**Moving the slider plays a clip**, which is the original's behaviour: its
+settings screen played `bull2` on every change. Bearable here because the
+slider steps in fives, so a full drag is twenty sounds rather than one per
+frame — the same step is why saving on every change is a handful of writes
+and not hundreds.
+
+**The name field is hidden under Settings.** Nothing there is done under a
+name, and a field with no purpose invites a player to wonder what it is for.
+
+---
+
+**Failures say what went wrong.** Every error from the network layer used to
+reach the screen as a bare number: *"Could not listen on port 42420 (24)"*.
+That helps nobody — not the player, and barely the person receiving the
+screenshot, since nobody knows which enum 24 belongs to either.
+`Transport.describe_error` turns the codes this layer can produce into a
+clause, and unknown codes keep their number rather than being given an
+invented sentence.
+
+**A taken port is `ERR_CANT_CREATE`, not `ERR_ALREADY_IN_USE`.** Found by
+writing the obvious mapping and watching the end-to-end test fail with "the
+connection could not be opened" — which is true, useless, and exactly what a
+player hitting the commonest networking failure would have been told. The
+generic description cannot name the cause, because on the client side the same
+code means something else, so `EnetTransport` decides that one itself.
+
+**"See the log" is gone.** A broken install used to be reported as *"The
+game's content is broken — see the log"*, which is advice a player cannot
+take: there is no log window and the file is somewhere nobody has told them
+about. It now names the thing they can actually do, and the detail still goes
+to the log for whoever is debugging.
+
+**What it rules out.** A settings screen of its own, for now. One tab holding
+one row does not need to be a whole screen, and making it one would be
+building the thing the owner declined twice.
+
+---
+
 ### D73 — The year history shares the result screen rather than the board
 **2026-11-15 · Accepted**
 

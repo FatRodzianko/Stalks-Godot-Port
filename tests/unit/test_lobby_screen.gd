@@ -965,3 +965,54 @@ func test_the_menu_offers_invite_only_games() -> void:
 
 	menu.get_node("%InviteOnlyCheck").button_pressed = true
 	assert_true(menu.chosen_settings().invite_only)
+
+
+# ------------------------------------------------------------- the settings tab
+#
+# Volume had existed, persisted and applied at startup for a while with
+# nothing on screen to change it. Settings sits beside Create Game and Join
+# Game rather than behind a cog, because it is one of the three places a
+# player goes from the title screen. See decisions.md D74.
+
+func test_settings_is_a_third_tab() -> void:
+	var menu: MainMenu = _menu()
+	assert_false(menu.get_node("%SettingsBox").is_visible_in_tree())
+
+	menu.get_node("%SettingsTab").pressed.emit()
+	assert_eq(menu.current_mode(), MainMenu.Mode.SETTINGS)
+	assert_true(menu.get_node("%SettingsBox").is_visible_in_tree())
+	assert_false(menu.get_node("%Settings").is_visible_in_tree(),
+		"the match settings are not these settings")
+
+
+func test_the_name_field_is_not_offered_under_settings() -> void:
+	# Nothing there is done under a name, so the field would only invite a
+	# player to wonder what it was for.
+	var menu: MainMenu = _menu()
+	assert_true(menu.get_node("%NameField").is_visible_in_tree())
+
+	menu.show_mode(MainMenu.Mode.SETTINGS)
+	assert_false(menu.get_node("%NameField").is_visible_in_tree())
+
+
+func test_the_slider_starts_where_the_volume_actually_is() -> void:
+	# Rather than wherever the scene file last left it.
+	var before: int = Audio.volume_percent()
+	Audio.set_volume_percent(35)
+
+	var menu: MainMenu = _menu()
+	assert_almost_eq(int((menu.get_node("%VolumeSlider") as HSlider).value), 35, 5)
+
+	Audio.set_volume_percent(before)
+
+
+func test_moving_the_slider_changes_the_volume_and_says_so() -> void:
+	var before: int = Audio.volume_percent()
+	var menu: MainMenu = _menu()
+
+	(menu.get_node("%VolumeSlider") as HSlider).value = 50
+	assert_almost_eq(Audio.volume_percent(), 50, 5)
+	assert_string_contains((menu.get_node("%VolumeValue") as Label).text, "50")
+
+	Audio.set_volume_percent(before)
+

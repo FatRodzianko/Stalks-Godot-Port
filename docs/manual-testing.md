@@ -171,6 +171,24 @@ Needs year 2 or later.
 no visible reason; readying up with a payment due asking nothing; the minimum
 under the button disagreeing with the panel.
 
+### A8a. Sound and the volume control
+
+One machine, no Steam, no second player.
+
+| Step | Expected |
+|---|---|
+| Start a single-player game and advance a year | **Two** clips together — a bull pair or a bear pair, not one sound. |
+| Keep advancing until a stalk goes bankrupt | Breaking glass **and** a scream, once for the year. |
+| Give a yeehaw (needs a second player, so skip if alone) | The yeehaw clip. |
+| Title screen: **SETTINGS** | A **Sound** slider, and no "Your name" field. |
+| Drag the slider | A clip plays at each step, and the percentage follows it. |
+| Set it to 0, start a game, advance a year | Silence, not a faint sound. |
+| Quit, relaunch, open **SETTINGS** | The slider is where you left it. |
+
+**Failure signs:** one clip where there should be two; a bankruptcy sounding
+once per stalk rather than once per year; the slider not moving the volume;
+the volume forgotten between runs.
+
 ### A8b. The bottom bar holds still
 
 | Step | Expected |
@@ -202,6 +220,18 @@ panel instead).
 | Mid-match, close the guest's window entirely | Host's rankings drop to one player, and a message names who left. |
 | Host readies up | **The year still advances.** |
 | Start again, and this time close the **host's** window | Guest lands on the title screen, told the host closed the game. |
+
+### A9a. Failures say what went wrong
+
+| Step | Expected |
+|---|---|
+| Host locally on a port, then from a second window host locally on the same port | "Could not listen on port NNNNN: something else may already be using it." |
+| **JOIN GAME**, type an address nothing is listening on, **JOIN LOCALLY** | A sentence naming the address, not a code. |
+
+**Failure signs:** any message ending in a number in brackets, like "(24)".
+See decisions.md D74.
+
+### A9 continued
 
 **Failure signs:** the host stuck unable to advance — that was the deadlock
 behind D46/D47 and is the single most important thing in this test. On the

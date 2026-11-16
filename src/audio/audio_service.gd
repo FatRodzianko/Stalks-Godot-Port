@@ -82,6 +82,14 @@ func play_yeehaw() -> void:
 	_play(YEEHAW)
 
 
+## A single clip, so somebody moving the volume slider can hear the result.
+##
+## `bull2` because that is what the original's settings screen played. One
+## clip rather than the layered pair: this is feedback, not a bull market.
+func play_volume_preview() -> void:
+	_play(BULL[1])
+
+
 # ------------------------------------------------------------------- volume
 
 ## 0 to 100. Anything outside that is clamped rather than refused, because a

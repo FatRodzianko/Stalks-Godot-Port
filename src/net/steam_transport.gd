@@ -41,7 +41,10 @@ func open_server(_max_clients: int) -> Dictionary:
 	var peer: SteamMultiplayerPeer = SteamMultiplayerPeer.new()
 	var error: int = peer.host_with_lobby(_lobby_id)
 	if error != OK:
-		return {"peer": null, "error": "Could not host on Steam (%d)." % error}
+		return {
+			"peer": null,
+			"error": "Could not host on Steam: %s." % Transport.describe_error(error),
+		}
 	return {"peer": peer, "error": ""}
 
 
@@ -54,7 +57,13 @@ func open_client() -> Dictionary:
 	var peer: SteamMultiplayerPeer = SteamMultiplayerPeer.new()
 	var error: int = peer.create_client(_owner_steam_id, VIRTUAL_PORT)
 	if error != OK:
-		return {"peer": null, "error": "Could not reach that game on Steam (%d)." % error}
+		return {
+			"peer": null,
+			"error": (
+				"Could not reach that game on Steam: %s."
+				% Transport.describe_error(error)
+			),
+		}
 	return {"peer": peer, "error": ""}
 
 

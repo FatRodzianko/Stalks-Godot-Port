@@ -29,7 +29,7 @@ func open_server(max_clients: int) -> Dictionary:
 	if error != OK:
 		return {
 			"peer": null,
-			"error": "Could not listen on port %d (%d)." % [_port, error],
+			"error": _why_the_port_refused(error),
 		}
 	return {"peer": peer, "error": ""}
 
@@ -40,7 +40,9 @@ func open_client() -> Dictionary:
 	if error != OK:
 		return {
 			"peer": null,
-			"error": "Could not reach %s:%d (%d)." % [_address, _port, error],
+			"error": "Could not reach %s:%d: %s." % [
+				_address, _port, Transport.describe_error(error)
+			],
 		}
 	return {"peer": peer, "error": ""}
 
@@ -51,6 +53,19 @@ func open_client() -> Dictionary:
 ## on port 42420" is useless from a second computer, which is exactly where a
 ## direct connection earns its keep — two machines on a desk, no Steam, no
 ## accounts, fast enough to test a gameplay change on.
+## Why a bind failed, for the one failure players actually hit.
+##
+## **ENet reports a taken port as `ERR_CANT_CREATE`**, not
+## `ERR_ALREADY_IN_USE` — established by binding twice in
+## `test_transport.gd` rather than assumed. The generic description cannot
+## say "that port is taken" for that code, because on the client side the same
+## code means something else entirely.
+func _why_the_port_refused(error: int) -> String:
+	if error == ERR_CANT_CREATE or error == ERR_ALREADY_IN_USE:
+		return "Could not listen on port %d: something else may already be using it." % _port
+	return "Could not listen on port %d: %s." % [_port, Transport.describe_error(error)]
+
+
 func joining_hint() -> String:
 	var address: String = local_address()
 	if address.is_empty():
