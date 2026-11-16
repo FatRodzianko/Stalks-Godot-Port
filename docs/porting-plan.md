@@ -518,14 +518,6 @@ GDExtension**, not the module build and not Foundation for Steamworks — see
   screen. The volume exists, persists and applies at startup, but nothing lets
   a player change it, because there is no settings screen and the owner has
   not asked for one.
-- ~~Blocked on an asset decision~~ — resolved. The original's seven
-  effects live in its `Assets/SFX/` (`bull1`, `bull2`, `bear1`, `bear2`,
-  `glass-shattering`, `wilhelm-scream`, `yeehaw`). They have not been copied
-  into this repository and should not be until the owner says so: this
-  repository is public, and at least two of those are recognisable stock
-  sounds whose licensing is unknown — the same reason `reference-images/` is
-  gitignored. The port's `assets/audio/` is empty and waiting. Also wanted:
-  mixer and volume settings, which now have somewhere to persist (D71).
 - ~~Loan button: minimum payment underneath, "PAY LOAN" whenever a loan is
   outstanding~~ — **done 2026-11-15**, brought forward after a second request
 - ~~Esc as a way out of a match~~ — **done 2026-11-15** (D64)
@@ -534,10 +526,17 @@ GDExtension**, not the module build and not Foundation for Steamworks — see
   shuts the Steam lobby and the peer instead of vanishing. Match settings are
   deliberately **not** remembered — the first version did and it was removed
   the same day; D71 says why. There is no pause menu and no settings screen
-- Error and edge-case presentation
-- Export presets and a Windows build, **excluding `steam_appid.txt`** — Valve's
-  guidance is that it is a development-only file
-- Year history retained and inspectable (groundwork already laid for charts)
+- Error and edge-case presentation — **the only item left in this phase**
+- ~~Export presets and a Windows build, excluding `steam_appid.txt`~~ —
+  **done**. `export_presets.cfg` has excluded it since the preset was written
+  (Valve's guidance is that it is a development-only file) and builds have
+  been produced from it all through Phases 6 and 7. See exporting.md
+- ~~Year history retained and inspectable~~ — **done 2026-11-15** (D73).
+  The result screen has a **YEAR BY YEAR** tab beside the final standings: one
+  row per year with its mood, what you were worth at the end of it, and what
+  the market did. Nothing new crosses the wire — every machine already kept
+  the history. Not available *during* a match; that is a layout question and
+  the board is full
 
 ---
 

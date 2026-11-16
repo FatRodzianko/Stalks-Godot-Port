@@ -906,6 +906,49 @@ the board.
 
 ---
 
+### D73 — The year history shares the result screen rather than the board
+**2026-11-15 · Accepted**
+
+The result screen has two tabs over one list: **FINAL STANDINGS** and **YEAR
+BY YEAR**. The second is one row per year — the year, its mood, what you were
+worth at the end of it, and what the market did.
+
+**The original had no such view.** This is a port addition, so the shape was
+chosen rather than copied, and the plan's note that the groundwork was "laid
+for charts" is what it answers.
+
+**Nothing new crosses the wire.** Every machine already keeps the history: a
+client appends each year's result as it arrives and the host keeps its own.
+The feature is entirely presentation over data that was already there, which
+is why it needed no RPC and no change to `StateSync`.
+
+**On the result screen, not the board.** The board is dense already and its
+bottom bar is full; adding a control there is the kind of unasked-for change
+that has gone badly in this project before. The result screen is also where
+the question actually gets asked — "how did that happen?" is a thing you
+wonder when it is over.
+
+**Tabbed over the standings, not added below them.** The card is 520x310
+inside a 640x360 window and there was no room for a second list. A tab costs
+one row.
+
+**What it rules out, for now.** Looking at the history *during* a match. If
+that is wanted it needs somewhere on the board to live, which is a layout
+question rather than a data one.
+
+**A quiet year says "a quiet year"** rather than leaving the column blank,
+because a blank cell reads as missing data.
+
+**Two faults the rendering caught that the assertions could not.** The verdict
+read "**You wins**" — the solo player is literally called "You", and that is
+the first line of the screen every single-player game ends on. And the column
+headings ran together as "NET WORTHWHAT HAPPENED": the gap was real but six
+pixels, which at this font is narrower than a space. Both were found by
+photographing the screen, not by testing it, which is the argument for
+`tools/history_shot.gd` existing at all.
+
+---
+
 ### D72 — Sound is an autoload, and plays what the original played
 **2026-11-15 · Accepted**
 

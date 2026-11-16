@@ -252,7 +252,9 @@ func test_the_result_screen_names_the_winner_and_the_outcome() -> void:
 	add_child_autofree(over)
 	over.display(session.state(), &"p0")
 
-	assert_true(over.verdict_text().contains("wins"), "got: %s" % over.verdict_text())
+	# "You win" in a solo game, not "wins": the player is literally called
+	# "You". The third-person wording is covered by its own test below.
+	assert_eq(over.verdict_text(), "You win", "got: %s" % over.verdict_text())
 	assert_true(over.detail_text().contains("finished on"), "got: %s" % over.detail_text())
 	assert_eq(over.ranking_count(), 1)
 
@@ -1044,4 +1046,98 @@ func test_a_year_with_nothing_going_bankrupt_does_not_break_glass() -> void:
 
 	for clip: AudioStream in AudioService.BANKRUPTCY:
 		assert_false(_clips_sounding().has(clip))
+
+
+# ----------------------------------------------------- the year-by-year history
+#
+# The match keeps every year's result already — a client appends each one as
+# it arrives and the host keeps its own — and until now there was no way to
+# look at any of it after the fact. The original had no such view; this is a
+# port addition. See decisions.md D73.
+
+func _finished_screen(years: int = 10) -> GameOverScreen:
+	var session: LocalSession = _finished_state(years)
+	var over: GameOverScreen = GameOverScene.instantiate()
+	add_child_autofree(over)
+	over.display(session.state(), &"p0")
+	return over
+
+
+func test_the_result_screen_opens_on_the_standings() -> void:
+	var over: GameOverScreen = _finished_screen()
+	assert_true((over.get_node("%RankingScroll") as Control).visible)
+	assert_false((over.get_node("%HistoryBox") as Control).visible)
+
+
+func test_the_history_tab_swaps_the_two_lists() -> void:
+	# They share the space rather than stacking: the card is 520x310 inside a
+	# 640x360 window and a second list does not fit.
+	var over: GameOverScreen = _finished_screen()
+
+	(over.get_node("%HistoryTab") as Button).pressed.emit()
+	assert_false((over.get_node("%RankingScroll") as Control).visible)
+	assert_true((over.get_node("%HistoryBox") as Control).visible)
+
+	(over.get_node("%StandingsTab") as Button).pressed.emit()
+	assert_true((over.get_node("%RankingScroll") as Control).visible)
+	assert_false((over.get_node("%HistoryBox") as Control).visible)
+
+
+func test_there_is_a_row_for_every_year_played() -> void:
+	# Eleven, not ten. A ten-year match settles once more and ends at year
+	# eleven — that final settlement moves prices and decides the winner, so
+	# it is a year like any other and belongs in the list. See
+	# test_year_resolver.gd, which pins the same thing from the other end.
+	var over: GameOverScreen = _finished_screen(10)
+	assert_eq(over.history_rows().size(), 11)
+
+
+func test_each_row_names_its_year_and_what_you_were_worth() -> void:
+	var over: GameOverScreen = _finished_screen()
+	var rows: Array[Node] = over.history_rows()
+	if rows.is_empty():
+		return
+
+	assert_eq((rows[0].get_node("%Year") as Label).text, "Y1")
+	assert_ne((rows[0].get_node("%NetWorth") as Label).text, "",
+		"what you were worth at the end of that year")
+	assert_ne((rows[0].get_node("%Mood") as Label).text, "")
+
+
+func test_a_year_always_says_something_happened() -> void:
+	# A blank column reads as missing data rather than as a quiet year.
+	var over: GameOverScreen = _finished_screen()
+	for row: Node in over.history_rows():
+		assert_false((row.get_node("%Summary") as Label).text.strip_edges().is_empty())
+
+
+func test_the_summary_is_repeated_on_hover_because_the_column_is_narrow() -> void:
+	var over: GameOverScreen = _finished_screen()
+	var rows: Array[Node] = over.history_rows()
+	if rows.is_empty():
+		return
+	var summary: Label = rows[0].get_node("%Summary")
+	assert_eq(summary.tooltip_text, summary.text)
+
+
+func test_a_solo_winner_is_told_they_win_not_that_they_wins() -> void:
+	# The solo player is called "You", and the verdict used to read
+	# "You wins". It is the first line of the screen and the last thing every
+	# single-player game shows.
+	var over: GameOverScreen = _finished_screen()
+	assert_eq(over.verdict_text(), "You win")
+
+
+func test_somebody_else_winning_still_reads_in_the_third_person() -> void:
+	var session: LocalSession = _finished_state(10)
+	# Given a name, and shown to somebody who is not them. Renaming rather
+	# than standing up a second player because the wording is all that is
+	# under test, and "You wins" would still contain "You win".
+	session.state().players[0].display_name = "Bob"
+
+	var over: GameOverScreen = GameOverScene.instantiate()
+	add_child_autofree(over)
+	over.display(session.state(), &"p9")
+
+	assert_eq(over.verdict_text(), "Bob wins")
 
