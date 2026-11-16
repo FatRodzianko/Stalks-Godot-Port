@@ -293,8 +293,11 @@ because "Steam is not installed" is a legitimate answer on a fresh checkout.
 
 ### The red run that could not be reproduced, 2026-11-15 — resolved 2026-11-16
 
-**It was two tests drawing the same port.** Left here in full because the way
-it was found is the lesson, not the bug.
+**Almost certainly two tests drawing the same port**, though the 2026-11-15
+run's failing test was never named, so this is a matching fingerprint rather
+than proof: a lone test, three asserts failing together, gone on the next run.
+A failure with that fingerprint was diagnosed on 2026-11-16 and fixed. Left
+here in full because the way it was found is the lesson, not the bug.
 
 A full run reported **536 of 537 passing**, the next run with no code change
 was clean, and so were ten after it. The failing test's name had not been
