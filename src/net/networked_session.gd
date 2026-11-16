@@ -38,14 +38,24 @@ const HOST_PEER_ID: int = 1
 # Economy traffic is `reliable`: losing a buy is not acceptable.
 
 ## Sent by a client immediately on connecting, carrying the name the player
-## typed. Nothing else is sent with it: the host assigns the slot.
+## typed and, over Steam, the account it belongs to. The host assigns the slot.
 ##
 ## A slot is created when this arrives rather than when the socket connects, so
 ## that a player appears in the lobby already named instead of flickering through
 ## a placeholder.
+##
+## **`steam_id` is 0 for anyone not playing through Steam**, which is every
+## direct connection. It is used for one thing — fetching an avatar for the
+## lobby list (audit 17.7) — and no rule may branch on it.
+##
+## **The client states its own Steam ID rather than the host deriving it.** The
+## host could ask the peer, but only when the transport happens to be Steam,
+## and this has to work the same way over a direct connection where the answer
+## is simply 0. A client could lie about it; the worst that buys is somebody
+## else's avatar beside your name, which is not worth a round of validation.
 @rpc("any_peer", "call_remote", "reliable")
-func _rpc_introduce(player_name: String) -> void:
-	_on_introduced(_sender(), player_name)
+func _rpc_introduce(player_name: String, steam_id: int = 0) -> void:
+	_on_introduced(_sender(), player_name, steam_id)
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -172,7 +182,7 @@ func _on_yeehaw_offered(_peer: int) -> void:
 	pass
 
 
-func _on_introduced(_peer: int, _player_name: String) -> void:
+func _on_introduced(_peer: int, _player_name: String, _steam_id: int = 0) -> void:
 	pass
 
 

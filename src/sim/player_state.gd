@@ -9,6 +9,18 @@ var id: StringName = &""
 
 var display_name: String = ""
 
+## This player's Steam account, or 0 when they are not playing through Steam.
+##
+## **Identity for display, nothing else.** It sits beside `display_name`, which
+## is the same kind of thing: an online game reads both from Steam, a local one
+## has no Steam at all. No rule may branch on it, and nothing in `src/sim`
+## does — it exists so the lobby can show an avatar (audit 17.7).
+##
+## Public on purpose. A Steam ID is already visible to everyone in a lobby
+## through Steam itself, so redacting it from the snapshot would protect
+## nothing (see `state_sync.gd`).
+var steam_id: int = 0
+
 var cash: int = 0
 
 ## Shares held, keyed by StalkDefinition.id. A stalk absent from this dictionary

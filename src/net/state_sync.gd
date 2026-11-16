@@ -32,7 +32,8 @@ extends RefCounted
 ## point of the board. Cash and holdings are not, because knowing exactly what a
 ## rival holds would change how the game is played.
 const PUBLIC_PLAYER_FIELDS: PackedStringArray = [
-	"id", "display_name", "net_worth", "is_bankrupt", "is_ready", "has_loan",
+	"id", "display_name", "steam_id", "net_worth", "is_bankrupt", "is_ready",
+	"has_loan",
 ]
 
 
@@ -66,6 +67,7 @@ static func encode_player(player: PlayerState, is_own: bool) -> Dictionary:
 	var data: Dictionary = {
 		"id": String(player.id),
 		"display_name": player.display_name,
+		"steam_id": player.steam_id,
 		"net_worth": player.net_worth,
 		"is_bankrupt": player.is_bankrupt,
 		"is_ready": player.is_ready,
@@ -204,6 +206,7 @@ static func apply_stalk(stalk: StalkState, data: Dictionary) -> void:
 static func apply_player(player: PlayerState, data: Dictionary) -> void:
 	player.id = StringName(data.get("id", ""))
 	player.display_name = String(data.get("display_name", ""))
+	player.steam_id = int(data.get("steam_id", 0))
 	player.net_worth = int(data.get("net_worth", 0))
 	player.is_bankrupt = bool(data.get("is_bankrupt", false))
 	player.is_ready = bool(data.get("is_ready", false))

@@ -47,9 +47,24 @@ signal lobby_list(lobbies: Array[Dictionary])
 ## screen host should take them straight into that lobby.
 signal invited_to(lobby_id: int)
 
+## A player's Steam avatar has arrived. Asked for with `request_avatar`, which
+## answers through this because Steam fetches it asynchronously — a portrait
+## that is not cached yet takes a moment, and may arrive after the lobby row
+## that wanted it already exists.
+signal avatar_ready(steam_id: int, texture: Texture2D)
+
 
 ## The port's own App ID. See decisions.md D57.
 const APP_ID: int = 1821800
+
+## The supporter DLC's App ID, which is its own number and not the game's.
+## Steam issues one per DLC; owning the game says nothing about owning this.
+const SUPPORTER_DLC_APP_ID: int = 1856290
+
+## Steam offers three portrait sizes: 32, 64 and 184 pixels square. The lobby
+## draws on a 640x360 grid where a row is sixteen pixels tall, so the smallest
+## is already larger than the space for it.
+const AVATAR_SIZE: int = 1
 
 ## Lobby visibility. 2 is `k_ELobbyTypePublic`, which is what the in-game
 ## browser lists. 0 is `k_ELobbyTypePrivate`, which the browser never sees:
@@ -172,6 +187,7 @@ func start() -> String:
 	Steam.lobby_match_list.connect(_on_lobby_match_list)
 	Steam.lobby_chat_update.connect(_on_lobby_chat_update)
 	Steam.join_requested.connect(_on_join_requested)
+	Steam.avatar_loaded.connect(_on_avatar_loaded)
 
 	ready_to_play.emit(Steam.getPersonaName())
 	return ""
@@ -184,6 +200,41 @@ func is_running() -> bool:
 ## This player's Steam display name, or empty before `start()` succeeds.
 func persona_name() -> String:
 	return Steam.getPersonaName() if _initialised else ""
+
+
+## Whether this player owns the supporter DLC.
+##
+## **False whenever Steam is not running**, which includes every offline game
+## and every test. A thank-you that appears because the question could not be
+## asked would be worse than no thank-you.
+##
+## The original checked for a file called `support-dlc.txt` next to the
+## executable, which anybody could create. Ownership is the real test; see
+## decisions.md D91.
+## This player's own Steam account, or 0 before `start()` succeeds.
+func local_steam_id() -> int:
+	return Steam.getSteamID() if _initialised else 0
+
+
+## Asks Steam for somebody's avatar. Answers on `avatar_ready`.
+##
+## **Does nothing without Steam, and nothing for id 0**, which is what a player
+## on a direct connection has. A lobby of such players simply shows no
+## portraits, which is how every local game looks.
+func request_avatar(steam_id: int) -> void:
+	if not _initialised or steam_id == 0:
+		return
+	Steam.getPlayerAvatar(AVATAR_SIZE, steam_id)
+
+
+func owns_supporter_dlc() -> bool:
+	if not _initialised:
+		return false
+	# `isDLCInstalled`, not `isDlcInstalled`. GodotSteam capitalises the
+	# acronym here and the wrong spelling is a *parse* error, not a runtime
+	# one, so it takes the whole script down with it. Read off the plugin
+	# binary on 2026-11-16 rather than guessed.
+	return Steam.isDLCInstalled(SUPPORTER_DLC_APP_ID)
 
 
 ## Shuts this process's lobby to anybody else, by both means Steam offers.
@@ -463,3 +514,21 @@ func _on_join_requested(lobby_id: int, _steam_id: int) -> void:
 func _process(_delta: float) -> void:
 	if _initialised:
 		Steam.run_callbacks()
+
+
+## Steam answered a `request_avatar`, with raw pixels rather than an image.
+##
+## `buffer` is RGBA8, `width` pixels square — Steam gives the size back rather
+## than the caller assuming the one it asked for, because a portrait that was
+## not cached can come back at whatever size Steam had.
+##
+## A zero-sized or short buffer means Steam had nothing: the account has no
+## avatar, or it is still downloading. Dropped rather than reported, because
+## a missing portrait is not a failure anybody can act on.
+func _on_avatar_loaded(steam_id: int, width: int, buffer: PackedByteArray) -> void:
+	if width <= 0 or buffer.size() < width * width * 4:
+		return
+	var image: Image = Image.create_from_data(
+		width, width, false, Image.FORMAT_RGBA8, buffer
+	)
+	avatar_ready.emit(steam_id, ImageTexture.create_from_image(image))

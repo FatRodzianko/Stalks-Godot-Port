@@ -2626,3 +2626,79 @@ second button would be a second thing to lay out for no gain.
 
 **What it rules out.** A result screen that is an overlay. Disabling controls on
 the finished board that the rules already refuse.
+
+---
+
+### D91 - The supporter message asks Steam, and the DLC has its own App ID
+**2026-11-16 - Accepted**
+
+**Thanks for Supporting the Devs!** shows on the title screen when
+`Steam.isDLCInstalled(1856290)` says this player owns the supporter DLC.
+
+**1856290 is the DLC, 1821800 is the game.** Steam issues a separate App ID per
+DLC and owning the game says nothing about owning this one. The owner supplied
+the number on 2026-11-16, after first giving the game's by mistake, which is
+exactly the confusion worth recording.
+
+**Not a file check.** The original showed the label if a file called
+`support-dlc.txt` sat next to the executable - a stand-in anybody could satisfy
+by making a file. Ownership is the real test.
+
+**`isDLCInstalled`, not `isDlcInstalled`.** GodotSteam capitalises the acronym,
+and the wrong spelling is a **parse** error rather than a runtime one, so it
+takes the whole script down and 86 tests with it. The correct name was read out
+of the plugin binary rather than guessed; do the same for any other Steam call
+whose casing is not obvious.
+
+**False whenever Steam is not running**, which is every offline game and every
+test run. A thank-you that appeared because the question could not be asked
+would be worse than no thank-you.
+
+**The title screen is told, not asked.** `Main` owns Steam and passes the answer
+in, because the title screen has to come up identically with Steam closed and a
+screen that reaches for Steam on its own cannot promise that.
+
+**What it rules out.** A file, or anything else a player can satisfy themselves.
+Using the game's App ID for a DLC question.
+
+---
+
+### D92 - A player carries a Steam id, beside their display name
+**2026-11-16 - Accepted**
+
+`PlayerState.steam_id` holds the Steam account a player is playing as, or 0 for
+anybody not playing through Steam. It exists so the lobby can show a portrait
+(audit 17.7), and nothing else reads it.
+
+**Why it is allowed in the simulation layer.** It looks like transport-specific
+data in a place that forbids it. It is the same kind of thing as
+`display_name`, which has always lived there and is equally transport-shaped -
+an online game reads the name from Steam, a local one from a text field. Both
+are *identity for display*. The rule that matters is that no game rule may
+branch on either, and none does: `src/sim` never reads `steam_id`.
+
+**Why not keep it out and map it in the lobby screen.** Two routes were
+possible. The host could ask the Steam peer for each connection's account, but
+only when the transport happens to be Steam, which puts a transport check in
+`HostSession`; and a *client* has no such mapping at all, so no client could
+draw anybody's portrait but its own. Matching by persona name instead breaks on
+two players with the same name. Carrying it with the player is the only one of
+the three that works for everybody in the lobby.
+
+**The client states its own.** It travels with the introduction, defaulting to
+0, so a direct connection needs no special case. A client could lie; the worst
+that buys is somebody else's face beside their name, which is not worth
+validating.
+
+**Not redacted.** Every account in a Steam lobby is already visible to everyone
+in it through Steam itself, so hiding it from the snapshot would protect nothing
+and would stop the portraits working.
+
+**Portraits are cached by the lobby screen**, because the player list is rebuilt
+from scratch whenever anything changes - somebody readying up throws away every
+row - and asking Steam again each time would be a request per player per event.
+An arriving portrait is offered to every row and each decides whether it is
+theirs, which is cheaper than tracking requests for a list of at most ten.
+
+**What it rules out.** A rule that reads `steam_id`. A transport check inside
+`HostSession`. Matching players to accounts by name.

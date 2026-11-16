@@ -294,6 +294,9 @@ func show_menu() -> void:
 	menu.join_online_requested.connect(join_online_game)
 	menu.quit_requested.connect(quit_to_desktop)
 	_swap(menu)
+	# After the swap: the label is a child of the menu, which has to be in the
+	# tree before its scene-unique names resolve.
+	menu.show_supporter_note(_steam != null and _steam.owns_supporter_dlc())
 
 
 ## Starts a match. Public so a test can begin one without driving the menu.
@@ -381,6 +384,16 @@ func steam_service() -> SteamService:
 	return _steam
 
 
+## This player's Steam account, or 0 when Steam is not running.
+##
+## Carried into an online match so the lobby can show avatars (audit 17.7).
+## Nothing else reads it, and a direct connection never has one.
+func local_steam_id() -> int:
+	if _steam == null or not _steam.is_running():
+		return 0
+	return _steam.local_steam_id()
+
+
 ## Hands the title screen's lobby list a Steam service.
 ##
 ## **The list lives on the title screen now**, under Join Game, rather than on
@@ -410,7 +423,7 @@ func host_steam_match(lobby_id: int, settings: GameSettings, player_name: String
 
 	_is_online_match = true
 	var result: Dictionary = HostSession.host(
-		SteamTransport.new(lobby_id), settings, library, player_name
+		SteamTransport.new(lobby_id), settings, library, player_name, local_steam_id()
 	)
 	if not String(result["error"]).is_empty():
 		return String(result["error"])
@@ -433,7 +446,10 @@ func join_steam_match(lobby_id: int, owner_steam_id: int, player_name: String) -
 
 	_is_online_match = true
 	var result: Dictionary = ClientSession.join(
-		SteamTransport.new(lobby_id, owner_steam_id), library, player_name
+		SteamTransport.new(lobby_id, owner_steam_id),
+		library,
+		player_name,
+		local_steam_id(),
 	)
 	if not String(result["error"]).is_empty():
 		return String(result["error"])
@@ -644,7 +660,7 @@ func _show_lobby() -> void:
 		lobby.offer_invites()
 	_swap(lobby)
 	# After the swap, so the screen is in the tree and its @onready nodes exist.
-	lobby.setup(_session, _listening_port)
+	lobby.setup(_session, _listening_port, _steam)
 	_apply_lobby_automation(lobby)
 
 

@@ -52,6 +52,11 @@ var _has_joined: bool = false
 ## and may hand back something different, which is what the replica then shows.
 var _chosen_name: String = ""
 
+## The Steam account this client is playing as, or 0 when it is not playing
+## through Steam. Sent once, with the introduction, purely so the lobby can
+## show an avatar. See `networked_session.gd`.
+var _steam_id: int = 0
+
 ## Set when the host turned this client away, so a subsequent disconnect is
 ## reported with the host's reason rather than a generic one.
 var _refusal: String = ""
@@ -70,11 +75,13 @@ static func join(
 	transport: Transport,
 	library: ContentLibrary,
 	player_name: String = "",
+	steam_id: int = 0,
 ) -> Dictionary:
 	var session: ClientSession = ClientSession.new()
 	session.name = NODE_NAME
 	session._library = library
 	session._chosen_name = player_name
+	session._steam_id = steam_id
 	# An empty state until the host's first snapshot. Settings arrive with it, so
 	# there is nothing to guess at locally.
 	session._state = GameState.new(null)
@@ -115,7 +122,7 @@ func _process(delta: float) -> void:
 
 
 func _on_connected() -> void:
-	_rpc_introduce.rpc_id(HOST_PEER_ID, _chosen_name)
+	_rpc_introduce.rpc_id(HOST_PEER_ID, _chosen_name, _steam_id)
 
 
 func state() -> GameState:

@@ -32,6 +32,14 @@ theme_type_variation = &"Faint"
 text = "Buy low. Sell high. Try not to go bankrupt."
 horizontal_alignment = 1
 
+[node name="SupporterNote" type="Label" parent="Centre/Shell"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"Bull"
+text = "Thanks for Supporting the Devs!"
+horizontal_alignment = 1
+
 [node name="ModeTabs" type="HBoxContainer" parent="Centre/Shell"]
 unique_name_in_owner = true
 layout_mode = 2

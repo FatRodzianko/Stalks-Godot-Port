@@ -82,6 +82,7 @@ enum Mode { SINGLE, HOST, JOIN, SETTINGS }
 @onready var _settings: SettingsPanel = %Settings
 @onready var _message: Label = %ContentWarning
 @onready var _quit_button: Button = %QuitButton
+@onready var _supporter_note: Label = %SupporterNote
 
 
 var _mode: Mode = Mode.SINGLE
@@ -176,6 +177,17 @@ func settings_panel() -> SettingsPanel:
 ## The lobby list. For tests.
 func lobby_browser() -> LobbyBrowser:
 	return _browser
+
+
+## Shows the supporter thank-you, if this player has earned one.
+##
+## Called by the screen host, which owns Steam, rather than asked for here —
+## the title screen must come up identically with Steam closed, and a screen
+## that reaches for Steam on its own cannot promise that.
+##
+## **Hidden unless told otherwise**, so the ordinary case needs no call at all.
+func show_supporter_note(owns_dlc: bool) -> void:
+	_supporter_note.visible = owns_dlc
 
 
 ## Gives the lobby list a Steam service to work with. Called by the screen host

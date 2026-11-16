@@ -80,6 +80,7 @@ static func host(
 	settings: GameSettings,
 	library: ContentLibrary,
 	host_name: String,
+	steam_id: int = 0,
 ) -> Dictionary:
 	var session: HostSession = HostSession.new()
 	session.name = NODE_NAME
@@ -93,6 +94,10 @@ static func host(
 	# when the peer is attached, once there is a MultiplayerAPI to read the host's
 	# own peer id from.
 	session._roster = session._authority.state.players.duplicate()
+	# The host's own Steam account, so their avatar appears beside everybody
+	# else's. 0 for a direct connection, which has no Steam at all.
+	if not session._roster.is_empty():
+		session._roster[0].steam_id = steam_id
 
 	var opened: Dictionary = transport.open_server(MAX_CLIENTS)
 	if not String(opened["error"]).is_empty():
@@ -471,7 +476,7 @@ func _on_peer_connected(_peer_id: int) -> void:
 ## Everything that can refuse a joiner is decided here, and each refusal sends a
 ## reason before disconnecting: a player turned away in silence has no idea
 ## whether the game is full, already running, or simply broken.
-func _on_introduced(peer_id: int, player_name: String) -> void:
+func _on_introduced(peer_id: int, player_name: String, steam_id: int = 0) -> void:
 	if _player_by_peer.has(peer_id):
 		# A second introduction from the same peer. Ignored rather than treated as
 		# a rename: the lobby is not a place to change your name, and honouring it
@@ -482,7 +487,7 @@ func _on_introduced(peer_id: int, player_name: String) -> void:
 		_turn_away(peer_id, "That game has already started.")
 		return
 
-	var player_id: StringName = _seat_new_player(peer_id, player_name)
+	var player_id: StringName = _seat_new_player(peer_id, player_name, steam_id)
 	if player_id.is_empty():
 		_turn_away(peer_id, "That game is full.")
 		return
@@ -504,7 +509,9 @@ func _on_introduced(peer_id: int, player_name: String) -> void:
 ## exist; see porting-plan Phase 8 and D47. In practice no arrival gets this far
 ## once a match has started anyway, because `_on_introduced` turns latecomers
 ## away.
-func _seat_new_player(peer_id: int, player_name: String) -> StringName:
+func _seat_new_player(
+	peer_id: int, player_name: String, steam_id: int = 0
+) -> StringName:
 	if _roster.size() >= seat_count():
 		return &""
 
@@ -514,6 +521,7 @@ func _seat_new_player(peer_id: int, player_name: String) -> StringName:
 		sanitised_name(player_name, index),
 		_authority.state.settings.starting_cash,
 	)
+	player.steam_id = steam_id
 	_roster.append(player)
 	_rebuild_active_players()
 	_seat(peer_id, player.id)

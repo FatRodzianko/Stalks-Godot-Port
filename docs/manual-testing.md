@@ -541,10 +541,33 @@ and the same code; what is being checked is that the traffic arrives.
 **Failure signs:** anything that worked in Test A failing here points at the
 Steam transport specifically, which is a much narrower place to look.
 
+### B5. Avatars and the supporter message
+
+With two Steam accounts, in a lobby:
+
+1. Host a game from one account and join from the other.
+2. Check each player row shows that account's Steam portrait.
+3. Check your own row shows your portrait too, not only the other player's.
+4. Have the other player press Ready.
+5. Check the portraits stay put - the list is rebuilt whenever anything
+   changes, so this is where they would vanish.
+6. Have them leave and rejoin.
+7. Check their portrait comes back.
+8. Start a single-player game instead.
+9. Check the lobby shows no portraits and no blank squares where they would
+   be.
+
+On the title screen:
+
+10. Sign in as an account that owns the supporter DLC.
+11. Check **Thanks for Supporting the Devs!** appears under the tagline.
+12. Sign in as an account that does not own it.
+13. Check the message is absent.
+14. Close Steam entirely and start the game.
+15. Check the message is absent rather than shown by default.
+
 ### Known gaps, so they are not surprises
 
-- **Steam invites do not work yet.** Accepting an invite reports to the game,
-  but nothing acts on it. Use the browser.
 - **Achievements are not being tested, on purpose.** They are implemented and
   their thresholds are covered by 28 tests, but the App ID is the published
   game's, so unlocking one here awards it for real on the tester's Steam

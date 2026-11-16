@@ -12,12 +12,17 @@ extends PanelContainer
 signal kick_requested(player_id: StringName)
 
 
+@onready var _avatar: TextureRect = %Avatar
 @onready var _name_label: Label = %Name
 @onready var _tag_label: Label = %Tag
 @onready var _ready_label: Label = %Ready
 @onready var _kick_button: Button = %Kick
 
 var _player_id: StringName = &""
+
+## Whose portrait this row is waiting for, or 0 if it wants none. Kept so an
+## avatar arriving after the row was built can be matched to it.
+var _steam_id: int = 0
 
 
 ## Godot calls this once, when the row has been created and added to the
@@ -43,8 +48,12 @@ func display(
 	can_kick: bool = false,
 ) -> void:
 	_player_id = player.id
+	_steam_id = player.steam_id
 	_kick_button.visible = can_kick
 	_name_label.text = player.display_name
+	# Hidden until a portrait arrives, so a local game — where nobody has a
+	# Steam account — shows no gap where one would have been.
+	_avatar.visible = false
 
 	var tags: PackedStringArray = []
 	if is_host:
@@ -70,3 +79,20 @@ func player_id() -> StringName:
 ## player involves; it says who was clicked and the lobby screen decides.
 func _on_kick_button_pressed() -> void:
 	kick_requested.emit(_player_id)
+
+
+## Which Steam account this row is showing, or 0 for a player who has none.
+func steam_id() -> int:
+	return _steam_id
+
+
+## Puts a portrait on this row.
+##
+## Takes the id as well as the picture and checks it, so a lobby screen can
+## hand every row every avatar that arrives without keeping track of which row
+## wanted which.
+func show_avatar(for_steam_id: int, texture: Texture2D) -> void:
+	if for_steam_id == 0 or for_steam_id != _steam_id or texture == null:
+		return
+	_avatar.texture = texture
+	_avatar.visible = true

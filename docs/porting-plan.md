@@ -576,8 +576,8 @@ miss it:
 | 4 | ~~The host cannot choose a player limit~~ | **Done 2026-11-16.** Max players 1-10 on Host Online, applied as the Steam lobby limit and enforced for direct connections. D87 |
 | 5 | ~~The lobby browser omits the year limit and whether loans are on~~ | **Done 2026-11-16.** Years, starting cash and loans published as lobby data and shown on the row. D88 |
 | 6 | ~~No search box in the lobby browser~~ | **Done 2026-11-16.** Filters as you type, and does not stick across refreshes |
-| 7 | No Steam avatars on lobby rows | Port it — no choice to make |
-| 8 | No supporter DLC thank-you message (*"Thanks for Supporting the Devs!"*) | Decided 2026-11-16: check Steam DLC ownership, show the message |
+| 7 | ~~No Steam avatars on lobby rows~~ | **Done 2026-11-16.** A player carries a Steam id; the lobby row shows the portrait. D92 |
+| 8 | ~~No supporter DLC thank-you message~~ | **Done 2026-11-16.** Steam DLC ownership, App ID 1856290. D91 |
 | 9 | ~~The final board cannot be inspected after the result screen appears~~ | **Done 2026-11-16.** View board on the result screen, BACK TO RESULTS on the board. D90 |
 | 10 | ~~**The window is resizable and nobody chose that.**~~ | **Done 2026-11-16.** `window/size/resizable=false`. See audit §17.10 |
 

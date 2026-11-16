@@ -767,25 +767,33 @@ a "did the player search" flag that was cleared only on a path the normal flow n
 reached, so once you had searched the filter went on applying to every later refresh
 for the rest of the session (3.3).
 
-### 17.7 No Steam avatars — **Missing**
+### 17.7 No Steam avatars - **Ported 2026-11-16**
 
-The original fetched each player's Steam avatar for their lobby row, including the
-asynchronous case where the image was not yet cached. Cosmetic, and it makes a lobby
-of four strangers much easier to read.
+Each lobby row shows that player's Steam portrait, as the original's did, including
+the case where Steam has not cached it yet and it arrives after the row was built.
 
-### 17.8 No supporter DLC thank-you message — **Missing**
+**What it needed.** Nothing in the port knew which Steam account a player was. A
+player now carries a `steam_id`, which is 0 for anybody on a direct connection; a
+client states its own when it introduces itself, and it travels in the snapshot so
+every client can draw every portrait. See decisions.md D92 for why that sits beside
+`display_name` rather than being kept out of the simulation.
 
-The original showed a **"Thanks for Supporting the Devs!"** label on the title screen
-if a file named `support-dlc.txt` sat next to the executable (§3.7). The port shows
-nothing.
+**A lobby with no portraits looks like a lobby with no portraits.** Nothing reserves
+space for one, so a local game is unchanged.
 
-**Decided 2026-11-16:** check whether the player owns the supporter DLC on Steam, and
-show the message if they do. The original's file check was a stand-in; ownership is
-the real test.
+### 17.8 No supporter DLC thank-you message - **Ported 2026-11-16**
 
-GodotSteam exposes this directly — `Steam.isDlcInstalled(dlc_app_id)`. The DLC's own
-App ID is read off the Steam partner backend, the same place the achievement names
-came from.
+**Thanks for Supporting the Devs!** appears under the tagline on the title screen
+for a player who owns the supporter DLC.
+
+The original checked for a file called `support-dlc.txt` next to the executable,
+which anybody could create. The port asks Steam whether the DLC is owned, using the
+DLC's own App ID - **1856290**, which is its own number and not the game's 1821800.
+Owning the game says nothing about owning this.
+
+**False whenever Steam is not running**, which includes every offline game and every
+test. A thank-you that appeared because the question could not be asked would be
+worse than no thank-you. See decisions.md D91.
 
 ### 17.9 The final board cannot be inspected - **Ported 2026-11-16**
 

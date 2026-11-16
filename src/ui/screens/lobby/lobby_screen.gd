@@ -51,6 +51,17 @@ var _client: ClientSession
 ## connect. Zero on a client, which has no use for it.
 var _listening_port: int = 0
 
+## Steam, when this is an online lobby. Null for a direct connection and for
+## every test, which is why every use of it is guarded. Held only to ask for
+## avatars (audit 17.7); the screen host owns it.
+var _steam: SteamService
+
+## Portraits that have already arrived, keyed by Steam account. Kept because
+## the player list is rebuilt from scratch on every change — somebody readying
+## up throws away every row — and asking Steam again each time would be a
+## request per player per keystroke-sized event.
+var _avatars: Dictionary[int, Texture2D] = {}
+
 ## Set when `offer_invites` is called before the button exists. See `_ready`.
 var _offer_invites_when_ready: bool = false
 
@@ -71,8 +82,11 @@ func _ready() -> void:
 ##
 ## The session is passed as a `GameSession` and narrowed here, so the screen host
 ## does not need two code paths for hosting and joining.
-func setup(session: GameSession, listening_port: int = 0) -> void:
+func setup(
+	session: GameSession, listening_port: int = 0, steam: SteamService = null
+) -> void:
 	_session = session
+	_steam = steam
 	_host = session as HostSession
 	_client = session as ClientSession
 	_listening_port = listening_port
@@ -259,6 +273,7 @@ func _rebuild_list() -> void:
 		var is_you: bool = player.id == _session.local_player_id()
 		row.display(player, is_you, player.id == host_id, is_hosting() and not is_you)
 		row.kick_requested.connect(_on_kick_requested)
+		_ask_for_avatar(player.steam_id)
 
 
 ## Removes rows immediately rather than only queueing them. `queue_free()` is
@@ -344,3 +359,39 @@ func _on_connection_lost(reason: String) -> void:
 	_status.text = reason
 	_ready_button.disabled = true
 	connection_ended.emit(reason)
+
+
+## Asks Steam for a portrait, or uses the one already in hand.
+##
+## **Does nothing for id 0**, which is everybody on a direct connection, and
+## nothing without Steam. A lobby with no portraits in it looks like a lobby
+## with no portraits in it, which is correct for a local game.
+func _ask_for_avatar(steam_id: int) -> void:
+	if steam_id == 0:
+		return
+	if _avatars.has(steam_id):
+		_show_avatar(steam_id, _avatars[steam_id])
+		return
+	if _steam == null:
+		return
+	if not _steam.avatar_ready.is_connected(_on_avatar_ready):
+		_steam.avatar_ready.connect(_on_avatar_ready)
+	_steam.request_avatar(steam_id)
+
+
+## Steam answered. The portrait may belong to a row built since the request, or
+## to no row at all if that player has left, so it is kept either way.
+func _on_avatar_ready(steam_id: int, texture: Texture2D) -> void:
+	_avatars[steam_id] = texture
+	_show_avatar(steam_id, texture)
+
+
+## Offers the portrait to every row and lets each decide whether it is theirs.
+##
+## Cheaper than tracking which row wanted which: a lobby holds ten rows at the
+## very most, and a row already knows its own account.
+func _show_avatar(steam_id: int, texture: Texture2D) -> void:
+	for child: Node in _player_list.get_children():
+		var row: LobbyRow = child as LobbyRow
+		if row != null:
+			row.show_avatar(steam_id, texture)
