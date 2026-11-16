@@ -14,10 +14,13 @@ const MenuScene: PackedScene = preload("res://src/ui/screens/main_menu/main_menu
 const GameplayScene: PackedScene = preload("res://src/ui/screens/gameplay/gameplay_screen.tscn")
 const GameOverScene: PackedScene = preload("res://src/ui/screens/game_over/game_over_screen.tscn")
 const LobbyScene: PackedScene = preload("res://src/ui/screens/lobby/lobby_screen.tscn")
-const OnlineGamesScene: PackedScene = preload(
-	"res://src/ui/screens/online_games/online_games_screen.tscn"
-)
 const ConfirmPanelScene: PackedScene = preload("res://src/ui/widgets/confirm_panel.tscn")
+const PauseMenuScene: PackedScene = preload("res://src/ui/widgets/pause_menu.tscn")
+const DevOverlayScene: PackedScene = preload("res://src/ui/widgets/dev_overlay.tscn")
+
+## Well above anything the game draws, so the development overlay is never
+## underneath a screen. Godot sorts canvas layers by this number.
+const DEV_OVERLAY_LAYER: int = 128
 
 var _screen: Control
 
@@ -53,12 +56,24 @@ var _pending_host_settings: GameSettings
 ## never pays for it.
 var _leave_prompt: ConfirmPanel
 
+## The pause overlay, built the first time Escape is pressed during a match.
+var _pause_menu: PauseMenu
+
+## The direct-connection panel, in development builds only. Null otherwise.
+var _dev_overlay: DevOverlay
+
+## The layer it sits on, so it can be hidden away from the title screen.
+var _dev_layer: CanvasLayer
+
 
 func _ready() -> void:
 	# Godot closes the window the moment it is asked unless told otherwise.
 	# This game has a Steam lobby to shut and a peer to close first — see
 	# `_notification` and docs/decisions.md D71.
 	get_tree().auto_accept_quit = false
+
+	apply_stored_display()
+	add_dev_overlay_if_wanted()
 
 	# An invite accepted while the game was closed launches it with
 	# `+connect_lobby <id>`, and that has to work in a release build — which
@@ -68,6 +83,55 @@ func _ready() -> void:
 		join_online_game(invited_lobby)
 		return
 	apply_launch_args(LaunchArgs.from_command_line())
+
+
+## Puts the saved resolution and fullscreen state onto the window.
+##
+## **Runs before anything is shown**, so a player never sees one frame of the
+## default window before it jumps to their own size.
+##
+## `DisplayMode` does nothing under the headless display server, so a test
+## that instantiates `Main` does not put the test runner fullscreen.
+func apply_stored_display() -> void:
+	var stored: UserSettings = UserSettings.load_from()
+	DisplayMode.apply(get_window(), stored.resolution, stored.fullscreen)
+
+
+## Pins the direct-connection panel to the corner, in development builds only.
+##
+## `OS.is_debug_build()` is false in anything the `Windows Release` preset
+## produces, so a player who bought the game never sees it.
+##
+## **It goes on a `CanvasLayer` of its own, and that matters twice.** The first
+## version made it an ordinary child of this node, which is a
+## `MarginContainer`, and it was unusable: a container lays out its `Control`
+## children, so the panel was stretched to fill the screen instead of sitting
+## where its offsets said, and every screen swap added the new screen *after*
+## it, so the screen drew on top and swallowed the clicks. A `CanvasLayer` is
+## not a `Control`, so no container touches it, and a high `layer` draws above
+## everything regardless of child order. This is the same arrangement as the
+## separate canvas such overlays get in Unity.
+##
+## **It shows on the title screen only**, like the Unity original that this
+## follows: a session can only be started from there, and in a match it would
+## be sitting over the board.
+func add_dev_overlay_if_wanted() -> void:
+	if not OS.is_debug_build():
+		return
+
+	_dev_layer = CanvasLayer.new()
+	_dev_layer.layer = DEV_OVERLAY_LAYER
+	add_child(_dev_layer)
+
+	_dev_overlay = DevOverlayScene.instantiate()
+	_dev_overlay.host_requested.connect(_on_dev_host_requested)
+	_dev_overlay.join_requested.connect(_on_dev_join_requested)
+	_dev_layer.add_child(_dev_overlay)
+
+
+## The direct-connection panel, or null in a release build. For tests.
+func dev_overlay() -> DevOverlay:
+	return _dev_overlay
 
 
 ## Obeys `--host` / `--join` if they were given, otherwise shows the menu.
@@ -132,7 +196,24 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		# so backing out of them needs no ceremony.
 		show_menu()
 		return
-	_ask_about_leaving()
+	show_pause_menu()
+
+
+## Opens the pause overlay over a match.
+##
+## **Escape used to go straight to "leave the game?"**, which made the only key
+## that does anything mid-match a key that offers to end your game. It now
+## opens a menu, and leaving is one choice on it — behind the same
+## confirmation as before.
+func show_pause_menu() -> void:
+	if _pause_menu == null:
+		_pause_menu = PauseMenuScene.instantiate()
+		add_child(_pause_menu)
+		_pause_menu.leave_requested.connect(_ask_about_leaving)
+		_pause_menu.quit_requested.connect(quit_to_desktop)
+	# Each screen swap adds the new screen last, which would cover this.
+	move_child(_pause_menu, -1)
+	_pause_menu.open()
 
 
 ## Leaving a match in progress is not undoable — there is no reconnection yet —
@@ -170,14 +251,20 @@ func leave_prompt() -> ConfirmPanel:
 	return _leave_prompt
 
 
+## The pause overlay, or null if Escape has never been pressed during a match.
+## For tests.
+func pause_menu() -> PauseMenu:
+	return _pause_menu
+
+
 func show_menu() -> void:
 	_discard_session()
 	var menu: MainMenu = MenuScene.instantiate()
 	menu.start_requested.connect(_on_start_requested)
 	menu.host_online_requested.connect(_on_host_online_requested)
-	menu.host_local_requested.connect(_on_host_local_requested)
 	menu.browse_online_requested.connect(_on_browse_online_requested)
-	menu.join_local_requested.connect(_on_join_local_requested)
+	menu.join_online_requested.connect(join_online_game)
+	menu.quit_requested.connect(quit_to_desktop)
 	_swap(menu)
 
 
@@ -266,19 +353,20 @@ func steam_service() -> SteamService:
 	return _steam
 
 
-## The list of games being hosted online. Reachable even when Steam is
-## unavailable — the screen explains why rather than the menu silently
-## refusing.
+## Hands the title screen's lobby list a Steam service.
 ##
+## **The list lives on the title screen now**, under Join Game, rather than on
+## a screen of its own reached by a button. Steam is still started here,
+## because it is initialised once per process and outlives any screen, and the
+## browser has to come up and explain itself on a machine with no Steam at all
+## (D14) rather than be refused by the menu.
 func show_online_games() -> void:
-	_discard_session()
-	var browser: OnlineGamesScreen = OnlineGamesScene.instantiate()
-	browser.back_requested.connect(show_menu)
-	browser.join_requested.connect(join_online_game)
-	_swap(browser)
+	var menu: MainMenu = _screen as MainMenu
+	if menu == null:
+		return
 	var service: SteamService = steam_service()
 	_watch_the_service(service)
-	browser.setup(service)
+	menu.show_online_games(service)
 
 
 ## Hosts inside a Steam lobby that already exists. Whoever asked for the lobby
@@ -363,8 +451,13 @@ func _on_host_online_requested(settings: GameSettings) -> void:
 
 	# Ten players including the host, matching the match limit. The lobby
 	# carries the host's chosen name so the browser can show it.
+	# The host's chosen limit, clamped to what a match can actually hold. The
+	# port used to pass the maximum unconditionally, so a host who wanted a
+	# three-player game could not stop a fourth joining (audit 17.4).
 	service.create_lobby(
-		NetworkedSession.MAX_CLIENTS + 1, settings.game_name, settings.invite_only
+		clampi(settings.player_count, 1, HostSession.MAX_PLAYERS),
+		settings.game_name,
+		settings.invite_only,
 	)
 
 
@@ -632,13 +725,13 @@ func _watch_for_achievements() -> void:
 ## not a fault in the game, so it goes on the screen rather than into the log.
 ## `push_error` is reserved for things that mean the build is broken — bad
 ## content, say.
-func _on_host_local_requested(settings: GameSettings, player_name: String, port: int) -> void:
-	var problem: String = host_match(settings, player_name, port)
+func _on_dev_host_requested(port: int, player_name: String) -> void:
+	var problem: String = host_match(GameSettings.new(), player_name, port)
 	if not problem.is_empty():
 		_report_to_menu(problem)
 
 
-func _on_join_local_requested(address: String, port: int, player_name: String) -> void:
+func _on_dev_join_requested(address: String, port: int, player_name: String) -> void:
 	var problem: String = join_match(address, port, player_name)
 	if not problem.is_empty():
 		_report_to_menu(problem)
@@ -694,6 +787,20 @@ func _on_play_again() -> void:
 func _notification(what: int) -> void:
 	if what != NOTIFICATION_WM_CLOSE_REQUEST:
 		return
+	quit_to_desktop()
+
+
+## Shuts the game down the way closing the window does.
+##
+## **A button for this is not optional.** Fullscreen has no window to close, so
+## without one the only way out is Alt+F4 — which a player should never have to
+## discover. The original had `Quit to Desktop` on the title screen and
+## `Exit to Desktop` in the pause menu, and this is both of them.
+##
+## Goes through `_discard_session` for the same reason the close handler does:
+## a host that vanishes without shutting its Steam lobby leaves that lobby
+## standing until Steam notices it is empty. See docs/decisions.md D71.
+func quit_to_desktop() -> void:
 	_discard_session()
 	get_tree().quit()
 
@@ -702,6 +809,15 @@ func _notification(what: int) -> void:
 ## rather than only queueing it, so nothing briefly sees two screens at once —
 ## the same deferred-free trap described in docs/architecture.md §6.
 func _swap(next: Control) -> void:
+	# A pause overlay belongs to the match under it. Leaving one open across a
+	# swap would put it over the title screen, where none of its buttons mean
+	# anything.
+	if _pause_menu != null:
+		_pause_menu.close()
+	# The development overlay can only start a session, so it belongs on the
+	# screen a session is started from and nowhere else.
+	if _dev_layer != null:
+		_dev_layer.visible = next is MainMenu
 	if _screen != null:
 		remove_child(_screen)
 		_screen.queue_free()

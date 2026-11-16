@@ -510,6 +510,47 @@ top and bottom of the window.
 - Currency and signed-change formatting live in `Palette.format_money()` and
   `format_change()`, so every figure on screen is written the same way.
 
+### Widgets shared between screens
+
+Three things are shown in more than one place and are therefore widgets rather
+than parts of a screen:
+
+- **`SettingsPanel`** — sound, resolution, fullscreen. The title screen's
+  Settings tab and the in-match `PauseMenu` both instantiate it, as the
+  original reused one settings panel in both places. Its `preview_volume`
+  export is the only difference between them: the pause menu turns the volume
+  audition off, because a bull-market clip arriving mid-match in a bear year,
+  heard by one player, is worse than silence.
+- **`LobbyBrowser`** — the list of online games, inside the title screen's Join
+  Game panel. It was a screen of its own until 2026-11-16 (D86).
+- **`ConfirmPanel`** — any yes/no question, including the display revert
+  countdown.
+
+A widget knows nothing about the screen holding it: each emits what was asked
+for and the owner decides. `SettingsPanel` is the one exception, and knowingly
+so — it applies and saves its own settings, because nothing above it should
+have to know that volume goes to a bus and resolution goes to a window.
+
+### Display settings are split the same way as everything else
+
+The resolution a player picks is handled by two pieces that do not know about
+each other, for the same reason the economy is kept out of the scene tree.
+
+- **`DisplaySettings`** (`src/data/`) is arithmetic. Hand it a monitor size as
+  a `Vector2i` and it answers with the list of resolutions worth offering, the
+  one a first run should get, and how much bigger a chosen one is than the
+  640x360 layout grid. It never touches a window, so the whole list is testable
+  for monitors nobody owns.
+- **`DisplayMode`** (`src/ui/`) is the only place in the project that sets a
+  window size or asks `DisplayServer` anything. It resolves a request through
+  `DisplaySettings` and puts the answer on a real `Window` — and does nothing
+  at all under the headless driver, which is what keeps the test suite from
+  resizing the runner.
+
+`Main` applies the stored settings before the first screen is shown; the title
+screen's Settings tab changes them. What the three steps from layout grid to
+screen pixels actually are is in decisions.md D85.
+
 ### A Godot gotcha worth knowing
 
 `queue_free()` is **deferred to the end of the frame**. Emptying a container with it

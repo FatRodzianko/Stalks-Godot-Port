@@ -1,0 +1,63 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/widgets/lobby_browser.gd" id="1_browser"]
+
+[node name="LobbyBrowser" type="VBoxContainer"]
+theme_type_variation = &"TightVBox"
+script = ExtResource("1_browser")
+
+[node name="ListScroll" type="ScrollContainer" parent="."]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="Inner" type="VBoxContainer" parent="ListScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="EmptyNote" type="Label" parent="ListScroll/Inner"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "Nobody is hosting. Host one yourself from Host Online, and your friends can join from here."
+autowrap_mode = 3
+
+[node name="LobbyList" type="VBoxContainer" parent="ListScroll/Inner"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="Status" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = ""
+autowrap_mode = 3
+max_lines_visible = 2
+
+[node name="Persona" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = ""
+
+[node name="SearchRow" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="SearchField" type="LineEdit" parent="SearchRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_length = 24
+placeholder_text = "Search by name..."
+
+[node name="RefreshButton" type="Button" parent="SearchRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "REFRESH"

@@ -13,7 +13,7 @@ extends GutTest
 
 
 const BrowserScene: PackedScene = preload(
-	"res://src/ui/screens/online_games/online_games_screen.tscn"
+	"res://src/ui/widgets/lobby_browser.tscn"
 )
 const RowScene: PackedScene = preload("res://src/ui/widgets/steam_lobby_row.tscn")
 
@@ -102,21 +102,21 @@ func test_pressing_join_carries_the_lobby_id() -> void:
 
 ## The browser with no service attached. It has to survive that state: `Main`
 ## shows the screen first and hands it Steam afterwards.
-func _browser() -> OnlineGamesScreen:
-	var browser: OnlineGamesScreen = BrowserScene.instantiate()
+func _browser() -> LobbyBrowser:
+	var browser: LobbyBrowser = BrowserScene.instantiate()
 	add_child_autofree(browser)
 	return browser
 
 
 func test_the_browser_survives_having_no_service() -> void:
-	var browser: OnlineGamesScreen = _browser()
+	var browser: LobbyBrowser = _browser()
 	assert_eq(browser.lobby_rows().size(), 0)
 	browser.get_node("%RefreshButton").pressed.emit()
 	assert_true(true, "pressing things with no service must not crash")
 
 
 func test_the_browser_lists_what_steam_reports() -> void:
-	var browser: OnlineGamesScreen = _browser()
+	var browser: LobbyBrowser = _browser()
 	browser._on_lobby_list([
 		{"id": 1, "name": "First", "players": 1, "capacity": 10},
 		{"id": 2, "name": "Second", "players": 3, "capacity": 10},
@@ -128,7 +128,7 @@ func test_the_browser_lists_what_steam_reports() -> void:
 
 
 func test_an_empty_list_says_so_rather_than_looking_broken() -> void:
-	var browser: OnlineGamesScreen = _browser()
+	var browser: LobbyBrowser = _browser()
 	browser._on_lobby_list([] as Array[Dictionary])
 
 	assert_eq(browser.lobby_rows().size(), 0)
@@ -138,7 +138,7 @@ func test_an_empty_list_says_so_rather_than_looking_broken() -> void:
 func test_refreshing_replaces_the_list_rather_than_doubling_it() -> void:
 	# Rows are removed immediately, not queued, or a refresh briefly shows every
 	# lobby twice. The same trap as D50.
-	var browser: OnlineGamesScreen = _browser()
+	var browser: LobbyBrowser = _browser()
 	browser._on_lobby_list([
 		{"id": 1, "name": "First", "players": 1, "capacity": 10},
 	] as Array[Dictionary])
@@ -151,7 +151,7 @@ func test_refreshing_replaces_the_list_rather_than_doubling_it() -> void:
 
 
 func test_one_game_is_not_described_as_one_games() -> void:
-	var browser: OnlineGamesScreen = _browser()
+	var browser: LobbyBrowser = _browser()
 	browser._on_lobby_list([
 		{"id": 1, "name": "Only", "players": 1, "capacity": 10},
 	] as Array[Dictionary])
@@ -159,7 +159,7 @@ func test_one_game_is_not_described_as_one_games() -> void:
 
 
 func test_a_failure_is_reported_rather_than_swallowed() -> void:
-	var browser: OnlineGamesScreen = _browser()
+	var browser: LobbyBrowser = _browser()
 
 	browser._on_lobby_failed("Steam could not reach that lobby.")
 
@@ -172,14 +172,14 @@ func test_a_failure_is_reported_rather_than_swallowed() -> void:
 
 func test_the_empty_note_points_at_where_games_are_made() -> void:
 	# This screen no longer hosts, so an empty list has to say where to go.
-	var browser: OnlineGamesScreen = _browser()
+	var browser: LobbyBrowser = _browser()
 	browser._on_lobby_list([] as Array[Dictionary])
 
 	var said: String = (
 		(browser.get_node("%EmptyNote") as Label).text
 		+ " " + (browser.get_node("%Status") as Label).text
 	).to_lower()
-	assert_string_contains(said, "create game")
+	assert_string_contains(said, "host online")
 
 
 # ------------------------------------------------ lobby departures, decoded
@@ -324,7 +324,7 @@ func test_the_lobby_is_found_among_other_arguments() -> void:
 # work from an invite, when this screen is not on display at all.
 
 func test_a_row_asks_to_join_and_nothing_more() -> void:
-	var browser: OnlineGamesScreen = _browser()
+	var browser: LobbyBrowser = _browser()
 	var asked: Array = []
 	browser.join_requested.connect(func(lobby_id: int) -> void: asked.append(lobby_id))
 

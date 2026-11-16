@@ -117,6 +117,20 @@ func attach_peer(peer: MultiplayerPeer) -> void:
 const MAX_PLAYERS: int = MAX_CLIENTS + 1
 
 
+## How many players this match will hold.
+##
+## The host picks it on the title screen, 1 to 10, as the original did (audit
+## 17.4). It is clamped here rather than trusted: the settings arrive from a
+## screen, and a limit of zero or of eleven would be a lobby nobody can join
+## or a roster the rankings cannot draw.
+##
+## **A Steam lobby has its own limit** set at creation from the same number, so
+## Steam usually turns a latecomer away before this does. This is the check
+## that holds for a direct connection, where nothing else is counting.
+func seat_count() -> int:
+	return clampi(_authority.state.settings.player_count, 1, MAX_PLAYERS)
+
+
 ## Longest player name the boards have room for. Terminus is a fixed-width font
 ## and the rankings column is sized in characters, so this is a layout constant
 ## rather than an arbitrary limit.
@@ -491,7 +505,7 @@ func _on_introduced(peer_id: int, player_name: String) -> void:
 ## once a match has started anyway, because `_on_introduced` turns latecomers
 ## away.
 func _seat_new_player(peer_id: int, player_name: String) -> StringName:
-	if _roster.size() >= MAX_PLAYERS:
+	if _roster.size() >= seat_count():
 		return &""
 
 	var index: int = _roster.size()

@@ -1,0 +1,116 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/widgets/pause_menu.gd" id="1_pause"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/settings_panel.tscn" id="2_settings"]
+
+[node name="PauseMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_pause")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="Centre" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Card" type="PanelContainer" parent="Centre"]
+custom_minimum_size = Vector2(320, 150)
+layout_mode = 2
+
+[node name="Pad" type="MarginContainer" parent="Centre/Card"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 6
+
+[node name="Body" type="VBoxContainer" parent="Centre/Card/Pad"]
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="Title" type="Label" parent="Centre/Card/Pad/Body"]
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "PAUSED"
+horizontal_alignment = 1
+
+[node name="ButtonsPage" type="VBoxContainer" parent="Centre/Card/Pad/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"TightVBox"
+
+[node name="Note" type="Label" parent="Centre/Card/Pad/Body/ButtonsPage"]
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "The year waits for everyone, not for this menu."
+autowrap_mode = 3
+horizontal_alignment = 1
+
+[node name="Filler" type="Control" parent="Centre/Card/Pad/Body/ButtonsPage"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ResumeButton" type="Button" parent="Centre/Card/Pad/Body/ButtonsPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "BACK TO THE GAME"
+
+[node name="SettingsButton" type="Button" parent="Centre/Card/Pad/Body/ButtonsPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+text = "SETTINGS"
+
+[node name="LeaveButton" type="Button" parent="Centre/Card/Pad/Body/ButtonsPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+text = "LEAVE TO TITLE SCREEN"
+
+[node name="QuitButton" type="Button" parent="Centre/Card/Pad/Body/ButtonsPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+text = "QUIT TO DESKTOP"
+
+[node name="SettingsPage" type="VBoxContainer" parent="Centre/Card/Pad/Body"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"TightVBox"
+
+[node name="Settings" parent="Centre/Card/Pad/Body/SettingsPage" instance=ExtResource("2_settings")]
+unique_name_in_owner = true
+layout_mode = 2
+preview_volume = false
+
+[node name="Filler" type="Control" parent="Centre/Card/Pad/Body/SettingsPage"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BackButton" type="Button" parent="Centre/Card/Pad/Body/SettingsPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+text = "BACK"

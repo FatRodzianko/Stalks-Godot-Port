@@ -664,58 +664,81 @@ Original functionality that a player would notice is absent or different. This i
 part of the document a porting plan should consume. Ordered by how much a player
 would miss it.
 
-### 17.1 No in-game pause menu — **Missing**
+### 17.1 No in-game pause menu — **Ported 2026-11-16**
 
-The original's Escape menu is the only way, mid-match, to change the volume, toggle
-fullscreen, or exit to desktop. The port's Escape offers a single choice: leave the
-match or keep playing.
+Escape during a match opens an overlay with **BACK TO THE GAME**, **SETTINGS**,
+**LEAVE TO TITLE SCREEN** and **QUIT TO DESKTOP**. Escape backs out one step: from
+the settings page to the buttons, from the buttons to the game.
 
-`ui-reference.md` already lists the Esc menu as "Phase 7" work. Phase 7 closed without
-it. This is the largest single gap.
+**Settings is the same panel the title screen shows** - sound, resolution and
+fullscreen - as the original's pause menu reused the title screen's. A volume slider
+on the pause menu by itself was the first attempt and answered a third of the
+question.
 
-**Suggested scope:** an overlay with Resume, Settings (volume at minimum), Leave to
-Title, and Exit to Desktop. The leave confirmation already exists and can sit behind
-the Leave button.
+Before this, Escape went straight to "leave the game?" — so the only key that did
+anything mid-match was one that offered to end your game. Leaving still asks, behind
+the same confirmation; the pause menu emits the request and `Main` owns the question,
+because the session being abandoned lives there.
 
-### 17.2 No way to quit the game from inside it — **Missing**
+**Differences from the original, both deliberate:**
 
-Neither the title screen's `Quit to Desktop` nor the pause menu's `Exit to Desktop`
-exists. Closing the window works and shuts down cleanly (`main.gd` handles the close
-request, D71), but a player looking for a quit button will not find one. Small, and
-conspicuous on a Steam release.
+- Resolution and fullscreen are not offered here, only volume. The original's pause
+  menu reused the whole settings panel. Changing resolution mid-match is a larger
+  change than it looks (see §17.3's known faults) and was not worth carrying into a
+  live game before it works on the title screen.
+- It does not pause anything, and neither did the original's: a year only advances
+  when every player readies, so there is no clock to stop. The overlay says so.
 
-### 17.3 No resolution or fullscreen settings — **Missing**
+### 17.2 No way to quit the game from inside it — **Ported 2026-11-16**
 
-The original's settings offered a resolution dropdown and a fullscreen toggle (§3.5).
-The port's settings are volume alone.
+**QUIT TO DESKTOP** on the title screen, and the same on the pause menu. Both go
+through the session shutdown that closing the window uses (D71), so a host's Steam
+lobby is closed properly rather than left standing.
 
-**Decided 2026-11-16:** build the resolution dropdown. It lists **window sizes that
-fit the current monitor**, because the game never changes the monitor's video mode —
-the window is fixed (§17.10) and fullscreen is borderless. No native extension is
-needed for it (D77).
+Found the hard way on 2026-11-16: with fullscreen shipped and no quit button
+anywhere, Alt+F4 was the only way out of the game.
 
-**Decided 2026-11-16:** build the fullscreen toggle too, borderless at the desktop
-resolution, letterboxed on a monitor that is not 16:9 so that every player sees the
-same content (D84).
+### 17.3 No resolution or fullscreen settings — **Partly ported 2026-11-16**
 
-The display settings this depends on are settled in **decisions.md D83**: everything
-is drawn at the window's native resolution (`canvas_items` + `aspect = keep`).
-**Pixel-perfect rendering remains a hard requirement (D76)** and this satisfies it —
-nothing is upscaled, so there is no resampling to come out uneven at a fractional
-multiple.
+The original's settings offered a resolution dropdown and a fullscreen toggle
+(§3.5). The port now has both, on the same Settings tab as the volume slider.
 
-### 17.4 The host cannot choose a player limit — **Missing**
+**How it works** is in decisions.md D85. In short: the chosen resolution is the size
+of the image the game is drawn into, that image is stretched to fill the screen with
+black bars where the monitor is not 16:9, and the window cannot be dragged to resize
+(§17.10).
 
-The original's `Max. Number of Players` field (1–10, default 4) set the Steam lobby
-member limit and the connection cap. The port always creates a 10-slot lobby
-(`main.gd` passes the maximum unconditionally), so a host who wants a three-player
-game cannot stop a fourth joining.
+**Differences from the original, all deliberate:**
 
-`GameSettings.player_count` exists and is hardcoded to 1 at both call sites, so the
-field is half-built already.
+- The list is exact 16:9 sizes capped at what the monitor can show, rather than the
+  original's four hardcoded options. The original's 852×480 was an approximation of
+  16:9; the port offers 960×540 instead.
+- A change is applied and then confirmed, reverting after fifteen seconds if nobody
+  answers. The original applied immediately with no way back if the result was
+  unreadable.
+- Settings are saved when kept, rather than by a separate **Save Settings** button.
+- A first run is the monitor's own largest 16:9 size, fullscreen. The original's
+  fallback was 1920×1080 windowed.
 
-**Decided 2026-11-16:** restore the host's field, 1–10, applied as the Steam lobby
-member limit exactly as the original did (§20.1).
+**Known broken, found in play on 2026-11-16 and deliberately left:**
+
+- **The resolution does nothing in fullscreen.** The game renders at 640×360 and
+  stretches to the screen whatever is selected. Decisions.md D85 explains why and
+  what fixing it would take.
+- **The list is capped on the taskbar-free area rather than the screen**, so a
+  2560×1440 monitor is not offered 2560×1440. One line in `DisplayMode.screen_size`.
+
+The owner chose to take these on themselves rather than have them rebuilt here.
+
+### 17.4 The host cannot choose a player limit - **Ported 2026-11-16**
+
+**Max players**, 1 to 10, default 4, on the Host Online panel. It sets the Steam
+lobby's member limit at creation as the original did, and `HostSession.seat_count()`
+enforces it for a direct connection too, which the original had no equivalent of.
+
+A single-player game is one player whatever the hidden control holds. See
+decisions.md D87, which also records why `GameSettings.player_count` defaults to ten
+rather than to the form's four.
 
 ### 17.5 The lobby browser shows less than the original's — **Missing**
 
@@ -728,11 +751,17 @@ creation, and show all three on the row (§20.2). Starting cash goes further tha
 original, which never published it — a joiner could not tell a 10,000 game from a 150
 one until they were already in the lobby.
 
-### 17.6 No search in the lobby browser — **Missing**
+### 17.6 No search in the lobby browser - **Ported 2026-11-16**
 
-The original had a search box filtering by lobby name, matching case-insensitively on
-a substring (§3.3). The port has Refresh only. To be ported as the original had it;
-where it falls in the schedule is the owner's call, not this document's.
+A search box above the list, filtering by name, case-insensitive substring, as the
+original did.
+
+**Two deliberate improvements.** It filters as you type rather than behind a Search
+button, and **the filter does not stick**: emptying the box puts the whole list back
+at once, and a refresh re-applies whatever is in the box right now. The original kept
+a "did the player search" flag that was cleared only on a path the normal flow never
+reached, so once you had searched the filter went on applying to every later refresh
+for the rest of the session (3.3).
 
 ### 17.7 No Steam avatars — **Missing**
 
@@ -764,7 +793,7 @@ more information, but not the board itself.
 studying the finished board, so the result screen needs a way to stand aside and a way
 back.
 
-### 17.10 The window is resizable, and nobody chose that — **Changed by default**
+### 17.10 The window is resizable, and nobody chose that — **Fixed 2026-11-16**
 
 The original explicitly set `resizableWindow: 0` in its Unity player settings: a fixed
 1920×1080 window that the player could not drag. The port's window resizes freely.
@@ -778,8 +807,8 @@ deliberately differs", describing an engine default as a design choice. That cla
 been corrected; the behaviour has not been changed, because changing it is a decision
 for the owner and this audit changes nothing.
 
-**Decided 2026-11-16: fix the window, as the original had it.** One line —
-`window/size/resizable=false` in `project.godot`.
+**Done 2026-11-16.** `window/size/resizable=false` in `project.godot`. The
+resolution dropdown added with it (§17.3) is how a player changes the size now.
 
 **The reason, from play, and it is a bug rather than a preference.** Dragging a window
 by its title bar in Windows means passing close to the resize handle. Catch it and
@@ -848,8 +877,8 @@ All are already built.
 Decisions for the project owner, not a developer's judgement. All raised and answered
 on 2026-11-16, recorded here so the answer travels with the finding.
 
-**Only one is implemented: the display settings in `project.godot`** (§17.10 and the
-stretch mode behind §17.3). Everything else below is decided and unbuilt.
+**Items 4, 4a and 5 are built** (§17.3, §17.10; decisions.md D85). Everything else
+below is decided and unbuilt.
 
 ### Answered
 

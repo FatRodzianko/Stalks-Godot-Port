@@ -32,7 +32,7 @@ func test_godots_own_arguments_are_ignored() -> void:
 func test_the_default_port_matches_the_menus() -> void:
 	# A flag-launched instance and a clicked one must meet on the same port, or
 	# the flags are a trap.
-	assert_eq(LaunchArgs.DEFAULT_PORT, MainMenu.DEFAULT_PORT)
+	assert_eq(LaunchArgs.DEFAULT_PORT, DevOverlay.DEFAULT_PORT)
 
 
 # ---------------------------------------------------------------------- hosting

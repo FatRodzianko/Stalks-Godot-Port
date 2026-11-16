@@ -1,6 +1,13 @@
-class_name OnlineGamesScreen
-extends MarginContainer
-## The list of games being hosted online, reached from Join Game.
+class_name LobbyBrowser
+extends VBoxContainer
+## The list of games being hosted online. Lives inside the title screen's
+## **Join Game** panel.
+##
+## **It used to be a screen of its own**, reached by a BROWSE ONLINE GAMES
+## button on a Join panel that otherwise held a direct-connection form. That
+## was a button whose only job was to show the thing the player had already
+## asked for. The list now loads when Join Game is selected, and the direct
+## connection moved to the development overlay (`dev_overlay.gd`).
 ##
 ## It lists and it joins. It does not create a game and it has no settings on
 ## it, because neither belongs to somebody looking for a match to join: the
@@ -27,8 +34,6 @@ extends MarginContainer
 ## invite, when this screen is not on display at all.
 signal join_requested(lobby_id: int)
 
-signal back_requested
-
 
 const LobbyRowScene: PackedScene = preload("res://src/ui/widgets/steam_lobby_row.tscn")
 
@@ -38,7 +43,7 @@ const LobbyRowScene: PackedScene = preload("res://src/ui/widgets/steam_lobby_row
 @onready var _list: VBoxContainer = %LobbyList
 @onready var _empty: Label = %EmptyNote
 @onready var _refresh_button: Button = %RefreshButton
-@onready var _back_button: Button = %BackButton
+@onready var _search_field: LineEdit = %SearchField
 
 var _service: SteamService
 
@@ -47,10 +52,15 @@ var _service: SteamService
 ## case still has to reach `_attach` and be reported.
 var _was_set_up: bool = false
 
+## The last list Steam sent, unfiltered. Kept so typing in the search box can
+## narrow it without asking Steam again — and so clearing the box puts
+## everything back without a round trip.
+var _found: Array[Dictionary] = []
+
 
 func _ready() -> void:
 	_refresh_button.pressed.connect(_on_refresh_pressed)
-	_back_button.pressed.connect(_on_back_button_pressed)
+	_search_field.text_changed.connect(_on_search_changed)
 	if _was_set_up:
 		_attach()
 
@@ -108,12 +118,10 @@ func _show_unavailable(reason: String) -> void:
 	_persona.text = ""
 	_status.text = reason
 	_refresh_button.disabled = true
+	_search_field.editable = false
 	_empty.visible = false
+	_found = []
 	_clear_list()
-
-
-func _on_back_button_pressed() -> void:
-	back_requested.emit()
 
 
 func _on_refresh_pressed() -> void:
@@ -135,24 +143,53 @@ func _on_lobby_failed(reason: String) -> void:
 
 
 func _on_lobby_list(lobbies: Array[Dictionary]) -> void:
+	_found = lobbies
+	_show_matching()
+
+
+## Narrows the list as the player types.
+##
+## **Filtered here rather than asked of Steam**, because Steam's lobby list
+## has no name filter worth the name and a round trip per keystroke would be
+## absurd. Case-insensitive substring, as the original's Search button did.
+##
+## **The filter does not stick.** Emptying the box puts the whole list back
+## immediately, and a refresh re-applies whatever is in the box right now.
+## The original kept a "did the player search" flag that was never cleared on
+## any path the normal flow reached, so once you had searched the filter went
+## on applying to later refreshes for ever (audit §3.3).
+func _on_search_changed(_text: String) -> void:
+	_show_matching()
+
+
+func _show_matching() -> void:
 	_clear_list()
 
-	for lobby: Dictionary in lobbies:
+	var wanted: String = _search_field.text.strip_edges().to_lower()
+	var shown: int = 0
+	for lobby: Dictionary in _found:
+		var name: String = String(lobby.get("name", "")).to_lower()
+		if not wanted.is_empty() and not name.contains(wanted):
+			continue
 		var row: SteamLobbyRow = LobbyRowScene.instantiate()
 		_list.add_child(row)
 		row.display(lobby)
 		row.join_requested.connect(_on_row_join_requested)
+		shown += 1
 
-	_empty.visible = lobbies.is_empty()
-	_status.text = _count_of(lobbies.size())
+	_empty.visible = shown == 0
+	_status.text = _count_of(shown, wanted)
 
 
-func _count_of(found: int) -> String:
-	if found == 0:
-		return "No games right now. Host one from Create Game."
-	if found == 1:
+## How many games are on screen, and why there are none if there are none.
+func _count_of(shown: int, wanted: String) -> String:
+	if shown == 0 and not wanted.is_empty():
+		return "No games match \"%s\"." % wanted
+	if shown == 0:
+		return "No games right now. Host one from Host Online."
+	if shown == 1:
 		return "1 game available"
-	return "%d games available" % found
+	return "%d games available" % shown
 
 
 ## Removes rows immediately rather than only queueing them, so a refresh never

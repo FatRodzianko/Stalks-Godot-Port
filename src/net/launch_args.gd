@@ -41,7 +41,7 @@ const DEFAULT_ADDRESS: String = "127.0.0.1"
 
 ## Matches the menu's default, so a flag-launched game and a clicked one meet on
 ## the same port.
-const DEFAULT_PORT: int = MainMenu.DEFAULT_PORT
+const DEFAULT_PORT: int = DevOverlay.DEFAULT_PORT
 
 
 var mode: Mode = Mode.MENU

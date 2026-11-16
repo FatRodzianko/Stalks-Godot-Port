@@ -29,7 +29,14 @@ extends Resource
 
 @export_range(2, 99) var max_years: int = 10
 
-@export_range(1, 10) var player_count: int = 1
+## How many players the match will hold, host included.
+##
+## **Ten by default, which is "no limit".** The title screen's field defaults
+## to 4, as the original's did, but that is a default of the *form*: anything
+## that builds settings without going through the form — a test, a launch
+## flag, a single-player match — means "do not get in my way", and a default
+## of 1 would silently make every such match refuse its second player.
+@export_range(1, 10) var player_count: int = 10
 
 @export var loans_enabled: bool = false
 

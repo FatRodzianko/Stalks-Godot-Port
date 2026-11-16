@@ -74,6 +74,59 @@ func test_saving_twice_replaces_rather_than_accumulates() -> void:
 	assert_eq(UserSettings.load_from(TEST_PATH).volume_percent, 90)
 
 
+func test_a_first_run_asks_for_the_monitors_own_size_in_fullscreen() -> void:
+	# What every other game does. A player who launches into a small window in
+	# the corner of a large screen assumes something is broken.
+	var fresh: UserSettings = UserSettings.load_from("user://no_such_file.cfg")
+
+	assert_eq(fresh.resolution, UserSettings.USE_NATIVE)
+	assert_true(fresh.fullscreen)
+
+
+func test_a_resolution_survives_a_round_trip() -> void:
+	var settings: UserSettings = UserSettings.new()
+	settings.resolution = Vector2i(1280, 720)
+	settings.fullscreen = false
+	settings.save_to(TEST_PATH)
+
+	var read_back: UserSettings = UserSettings.load_from(TEST_PATH)
+	assert_eq(read_back.resolution, Vector2i(1280, 720))
+	assert_false(read_back.fullscreen)
+
+
+func test_a_negative_size_in_a_hand_edited_file_reads_as_native() -> void:
+	var file: ConfigFile = ConfigFile.new()
+	file.set_value(UserSettings.SECTION_DISPLAY, "resolution_width", -900)
+	file.set_value(UserSettings.SECTION_DISPLAY, "resolution_height", -5)
+	file.save(TEST_PATH)
+
+	assert_eq(UserSettings.load_from(TEST_PATH).resolution, UserSettings.USE_NATIVE)
+
+
+## Changing the volume must not quietly reset the display.
+##
+## It did. `Audio.set_volume_percent` built a fresh `UserSettings`, set the
+## volume on it and saved, which wrote the *defaults* for every other key in
+## the file. Before there was anything else in the file that was harmless;
+## the moment resolution arrived it meant every touch of the slider threw the
+## player back to fullscreen at their monitor's size.
+func test_saving_one_setting_leaves_the_others_alone() -> void:
+	var settings: UserSettings = UserSettings.new()
+	settings.resolution = Vector2i(1280, 720)
+	settings.fullscreen = false
+	settings.volume_percent = 100
+	settings.save_to(TEST_PATH)
+
+	var changing_volume: UserSettings = UserSettings.load_from(TEST_PATH)
+	changing_volume.volume_percent = 25
+	changing_volume.save_to(TEST_PATH)
+
+	var read_back: UserSettings = UserSettings.load_from(TEST_PATH)
+	assert_eq(read_back.volume_percent, 25, "the thing that changed")
+	assert_eq(read_back.resolution, Vector2i(1280, 720), "and nothing else")
+	assert_false(read_back.fullscreen)
+
+
 ## The title screen does not read or write this file, and should not start.
 ##
 ## Match settings are chosen fresh each time from documented defaults. A
@@ -89,7 +142,7 @@ func test_the_title_screen_remembers_nothing() -> void:
 
 	(menu.get_node("%YearsSpin") as SpinBox).value = 33
 	(menu.get_node("%SeedField") as LineEdit).text = "4242"
-	(menu.get_node("%SinglePlayerButton") as Button).pressed.emit()
+	(menu.get_node("%StartButton") as Button).pressed.emit()
 
 	var next_time: MainMenu = preload(
 		"res://src/ui/screens/main_menu/main_menu.tscn"

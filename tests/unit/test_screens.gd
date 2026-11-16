@@ -6,7 +6,7 @@ const MainScene: PackedScene = preload("res://src/ui/screens/main/main.tscn")
 const MenuScene: PackedScene = preload("res://src/ui/screens/main_menu/main_menu.tscn")
 const GameOverScene: PackedScene = preload("res://src/ui/screens/game_over/game_over_screen.tscn")
 const OnlineGamesScene: PackedScene = preload(
-	"res://src/ui/screens/online_games/online_games_screen.tscn"
+	"res://src/ui/widgets/lobby_browser.tscn"
 )
 
 
@@ -148,7 +148,7 @@ func test_pressing_single_player_emits_the_chosen_settings() -> void:
 	watch_signals(menu)
 	(menu.get_node("%YearsSpin") as SpinBox).value = 7
 
-	(menu.get_node("%SinglePlayerButton") as Button).pressed.emit()
+	(menu.get_node("%StartButton") as Button).pressed.emit()
 
 	assert_signal_emitted(menu, "start_requested")
 	var params: Array = get_signal_parameters(menu, "start_requested", 0)
@@ -802,6 +802,10 @@ func test_the_minimum_keeps_up_with_what_is_actually_owed() -> void:
 # Asked for after play: there must be a way back to the title screen without
 # restarting the game. There was none — closing the window was the only way
 # out of a match.
+#
+# Escape now opens the pause menu rather than asking about leaving straight
+# away (see test_pause_menu.gd), so these press Escape and then the menu's
+# Leave button. Leaving still asks, which is what these are really about.
 
 func _press_escape() -> void:
 	var event: InputEventKey = InputEventKey.new()
@@ -811,11 +815,19 @@ func _press_escape() -> void:
 	await wait_process_frames(1)
 
 
+## Escape, then Leave on the pause menu it opens.
+func _ask_to_leave(main: Main) -> void:
+	await _press_escape()
+	if main.pause_menu() == null:
+		return
+	(main.pause_menu().get_node("%LeaveButton") as Button).pressed.emit()
+
+
 func test_escape_during_a_match_asks_before_leaving() -> void:
 	var main: Main = MainScene.instantiate()
 	add_child_autofree(main)
 	main.start_match(_settings())
-	await _press_escape()
+	await _ask_to_leave(main)
 
 	assert_true(main.leave_prompt() != null and main.leave_prompt().is_open(),
 		"leaving a game in progress should ask first")
@@ -827,7 +839,7 @@ func test_saying_yes_to_that_question_goes_back_to_the_title_screen() -> void:
 	var main: Main = MainScene.instantiate()
 	add_child_autofree(main)
 	main.start_match(_settings())
-	await _press_escape()
+	await _ask_to_leave(main)
 	if main.leave_prompt() == null:
 		fail_test("no prompt to answer")
 		return
@@ -841,7 +853,7 @@ func test_saying_no_keeps_the_match() -> void:
 	var main: Main = MainScene.instantiate()
 	add_child_autofree(main)
 	main.start_match(_settings())
-	await _press_escape()
+	await _ask_to_leave(main)
 	if main.leave_prompt() == null:
 		fail_test("no prompt to answer")
 		return
@@ -858,6 +870,7 @@ func test_escape_on_the_title_screen_does_nothing() -> void:
 
 	assert_true(main.current_screen() is MainMenu)
 	assert_null(main.leave_prompt(), "there is nothing to leave, so nothing to ask")
+	assert_null(main.pause_menu(), "and nothing to pause")
 
 
 func test_escape_closes_the_loan_panel_rather_than_offering_to_leave() -> void:
@@ -888,19 +901,18 @@ func test_escape_closes_the_loan_panel_rather_than_offering_to_leave() -> void:
 # choice on it. See decisions.md D65, which replaces D62.
 
 
-func test_the_menu_offers_every_game_type_beside_the_settings() -> void:
+func test_the_menu_offers_every_game_type_across_the_top() -> void:
 	var menu: MainMenu = MenuScene.instantiate()
 	add_child_autofree(menu)
 
-	assert_true(menu.get_node("%Settings").is_visible_in_tree())
-	assert_true(menu.get_node("%SinglePlayerButton").is_visible_in_tree())
-	assert_true(menu.get_node("%HostOnlineButton").is_visible_in_tree())
-	assert_true(menu.get_node("%HostLocalButton").is_visible_in_tree())
+	for tab: String in ["%SinglePlayerTab", "%HostOnlineTab", "%JoinTab", "%SettingsTab"]:
+		assert_true((menu.get_node(tab) as Button).is_visible_in_tree(), tab)
 
 
 func test_hosting_online_carries_the_settings_straight_from_the_menu() -> void:
 	var menu: MainMenu = MenuScene.instantiate()
 	add_child_autofree(menu)
+	menu.show_mode(MainMenu.Mode.HOST)
 	(menu.get_node("%LoansCheck") as CheckBox).button_pressed = true
 	(menu.get_node("%YearsSpin") as SpinBox).value = 25
 
@@ -908,7 +920,7 @@ func test_hosting_online_carries_the_settings_straight_from_the_menu() -> void:
 	menu.host_online_requested.connect(
 		func(s: GameSettings) -> void: carried.append(s)
 	)
-	(menu.get_node("%HostOnlineButton") as Button).pressed.emit()
+	(menu.get_node("%StartButton") as Button).pressed.emit()
 
 	assert_eq(carried.size(), 1)
 	if carried.is_empty():
@@ -924,8 +936,8 @@ func test_hosting_online_carries_the_settings_straight_from_the_menu() -> void:
 ## happens to be running one that did would initialise it twice and fail.
 ## A null service is the build-without-the-plugin case, which this screen is
 ## required to survive anyway.
-func _online_list() -> OnlineGamesScreen:
-	var browser: OnlineGamesScreen = OnlineGamesScene.instantiate()
+func _online_list() -> LobbyBrowser:
+	var browser: LobbyBrowser = OnlineGamesScene.instantiate()
 	add_child_autofree(browser)
 	browser.setup(null)
 	return browser
@@ -934,14 +946,14 @@ func _online_list() -> OnlineGamesScreen:
 func test_the_online_list_does_not_offer_to_create_a_game() -> void:
 	# It used to have a HOST button and a read-only summary of settings chosen
 	# on another screen. Creating a game belongs under Create Game.
-	var browser: OnlineGamesScreen = _online_list()
+	var browser: LobbyBrowser = _online_list()
 	assert_false(browser.has_node("%HostButton"), "hosting does not belong here")
 	assert_false(browser.has_node("%HostingSummary"),
 		"nor does a copy of settings owned somewhere else")
 
 
 func test_the_online_list_still_comes_up_with_no_steam_at_all() -> void:
-	var browser: OnlineGamesScreen = _online_list()
+	var browser: LobbyBrowser = _online_list()
 	assert_false((browser.get_node("%Status") as Label).text.is_empty(),
 		"it should explain itself rather than sit there empty")
 

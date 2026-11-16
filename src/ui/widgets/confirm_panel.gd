@@ -19,6 +19,23 @@ signal confirmed
 signal cancelled
 
 
+## How long a change that could make the game unreadable gets to be confirmed
+## before it is undone. Fifteen seconds is the convention every other game
+## uses for a resolution change, and it is long enough to find the mouse on a
+## display that has just gone black.
+const REVERT_SECONDS: int = 15
+
+
+## Seconds left before this answers "no" by itself, or 0 when nothing is
+## counting down.
+var _remaining: int = 0
+
+## The question without the countdown line, so the line can be rewritten each
+## second without the question being lost.
+var _question: String = ""
+
+var _countdown: Timer
+
 @onready var _message: Label = %Message
 @onready var _confirm_button: Button = %ConfirmButton
 @onready var _cancel_button: Button = %CancelButton
@@ -27,6 +44,15 @@ signal cancelled
 func _ready() -> void:
 	_confirm_button.pressed.connect(_on_confirm)
 	_cancel_button.pressed.connect(_on_cancel)
+
+	# Built here rather than in the scene because it is machinery, not layout,
+	# and a reader looking for why this panel can answer itself should find it
+	# next to the code that does it.
+	_countdown = Timer.new()
+	_countdown.wait_time = 1.0
+	add_child(_countdown)
+	_countdown.timeout.connect(_on_countdown_tick)
+
 	hide_panel()
 
 
@@ -34,6 +60,8 @@ func _ready() -> void:
 ## will happen ("End the year anyway") rather than a bare "OK" — a player
 ## reading only the buttons should still understand the choice.
 func ask(question: String, confirm_text: String, cancel_text: String) -> void:
+	_stop_countdown()
+	_question = question
 	_message.text = question
 	_confirm_button.text = confirm_text
 	_cancel_button.text = cancel_text
@@ -43,12 +71,33 @@ func ask(question: String, confirm_text: String, cancel_text: String) -> void:
 	_cancel_button.grab_focus()
 
 
+## Asks, and answers "no" itself if nobody replies within `seconds`.
+##
+## For a change the player might not be able to undo by hand — a resolution
+## their monitor cannot display, where the settings screen they would need is
+## the thing that has just become unreadable. Waiting it out is the safe move,
+## so waiting is what doing nothing does.
+func ask_with_countdown(
+	question: String, confirm_text: String, cancel_text: String, seconds: int = REVERT_SECONDS
+) -> void:
+	ask(question, confirm_text, cancel_text)
+	_remaining = maxi(seconds, 1)
+	_show_remaining()
+	_countdown.start()
+
+
 func hide_panel() -> void:
+	_stop_countdown()
 	visible = false
 
 
 func is_open() -> bool:
 	return visible
+
+
+## Seconds left on the countdown, or 0 if nothing is counting down.
+func seconds_remaining() -> int:
+	return _remaining
 
 
 func _on_confirm() -> void:
@@ -59,6 +108,25 @@ func _on_confirm() -> void:
 func _on_cancel() -> void:
 	hide_panel()
 	cancelled.emit()
+
+
+## One second gone. At zero this says no on the player's behalf.
+func _on_countdown_tick() -> void:
+	_remaining -= 1
+	if _remaining <= 0:
+		_on_cancel()
+		return
+	_show_remaining()
+
+
+func _show_remaining() -> void:
+	_message.text = "%s\n\nGoing back in %d..." % [_question, _remaining]
+
+
+func _stop_countdown() -> void:
+	_remaining = 0
+	if _countdown != null:
+		_countdown.stop()
 
 
 ## Escape dismisses, which is the same as saying no.

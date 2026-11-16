@@ -23,11 +23,28 @@ const PATH: String = "user://settings.cfg"
 
 const SECTION_AUDIO: String = "audio"
 
+const SECTION_DISPLAY: String = "display"
+
 ## Full volume. A player who has never touched it hears the game as intended.
 const DEFAULT_VOLUME: int = 100
 
+## What a first run looks like: fullscreen, at whatever the monitor's own
+## largest 16:9 size is. Written as a zero rather than a number because the
+## answer depends on the monitor and this file does not know about monitors —
+## `DisplayMode` resolves it. Every other game starts this way and a player
+## who launches into a small window in the corner assumes something is wrong.
+const USE_NATIVE: Vector2i = Vector2i.ZERO
+
+const DEFAULT_FULLSCREEN: bool = true
+
 
 var volume_percent: int = DEFAULT_VOLUME
+
+## The size of the image the game renders, or `USE_NATIVE`. See
+## `DisplaySettings` for what that means.
+var resolution: Vector2i = USE_NATIVE
+
+var fullscreen: bool = DEFAULT_FULLSCREEN
 
 
 ## Reads the file, or returns the defaults above if there is not one.
@@ -44,6 +61,15 @@ static func load_from(path: String = PATH) -> UserSettings:
 	settings.volume_percent = clampi(
 		int(file.get_value(SECTION_AUDIO, "volume_percent", DEFAULT_VOLUME)), 0, 100
 	)
+	settings.fullscreen = bool(
+		file.get_value(SECTION_DISPLAY, "fullscreen", DEFAULT_FULLSCREEN)
+	)
+	# Stored as two integers rather than a Vector2i so the file stays something
+	# a person can read and correct by hand after a bad resolution has locked
+	# them out of the settings screen.
+	var width: int = int(file.get_value(SECTION_DISPLAY, "resolution_width", 0))
+	var height: int = int(file.get_value(SECTION_DISPLAY, "resolution_height", 0))
+	settings.resolution = Vector2i(maxi(width, 0), maxi(height, 0))
 	return settings
 
 
@@ -53,4 +79,7 @@ static func load_from(path: String = PATH) -> UserSettings:
 func save_to(path: String = PATH) -> void:
 	var file: ConfigFile = ConfigFile.new()
 	file.set_value(SECTION_AUDIO, "volume_percent", volume_percent)
+	file.set_value(SECTION_DISPLAY, "fullscreen", fullscreen)
+	file.set_value(SECTION_DISPLAY, "resolution_width", resolution.x)
+	file.set_value(SECTION_DISPLAY, "resolution_height", resolution.y)
 	file.save(path)

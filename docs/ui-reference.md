@@ -159,14 +159,40 @@ Loans live in `LoanArea`, an overlay, plus a persistent nag in the bottom bar.
 
 ---
 
+## The title screen
+
+Four buttons across the top, and **one fixed panel size behind all of them** so
+that the heading, the tab bar and the quit button never move as you click
+between them (decisions.md D86).
+
+| Tab | Holds |
+|---|---|
+| **SINGLE PLAYER** | Your name, years, starting cash, loans, seed, **START** |
+| **HOST ONLINE** | Game name, years, starting cash, max players, loans, invite only, seed, **HOST ONLINE** |
+| **JOIN GAME** | The lobby list, with a search box and REFRESH. Loads when the tab is opened |
+| **SETTINGS** | Sound, resolution, fullscreen |
+
+Single Player and Host Online are **one panel**, not two. Years, starting cash,
+loans and seed are settings of the match and identical either way; what differs
+is hidden. An online game takes your display name from Steam (D66), so the name
+field is single-player only; a solo game has no second player, so the limit and
+the privacy toggle are online only.
+
+`QUIT TO DESKTOP` sits below the panel, outside it, as the original's did.
+
+**The development overlay** (`DevOverlay`) is pinned to the top-left corner in
+debug builds only, and holds the direct host/join form that used to be on the
+Join panel.
+
 ## Other screens
 
 - **`GameOverPanel`** — `GameWinnerText`, `DidLocalPlayerWinText`,
-  `EndGameMessageText`, `BackButton`
+  `EndGameMessageText`, `BackButton`. The port has a fuller result screen with
+  final standings and a year-by-year history (D73)
 - **`EscMenuPanel`** — `ResumeGame`, `SettingsButton`, `ExitToDesktop`, and a
-  settings menu with a fullscreen toggle, resolution, and a volume slider
-
-Neither exists in the port yet beyond a basic result screen. The esc menu is Phase 7.
+  settings menu with a fullscreen toggle, resolution, and a volume slider.
+  **Built 2026-11-16** as `PauseMenu`, showing the same `SettingsPanel` widget
+  the title screen does, exactly as the original reused its settings panel
 
 ---
 

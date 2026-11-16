@@ -233,6 +233,135 @@ bar gets shorter or longer. See decisions.md D63.
 replaces. Escape offering to leave while a panel is open (it should shut the
 panel instead).
 
+### A8d. Resolution and fullscreen
+
+Nothing here has been seen running. These steps are the first look.
+
+1. Start the game.
+2. Check that it opens **fullscreen**, filling the screen.
+3. Check that the picture is not stretched out of shape.
+4. If your monitor is not 16:9, check there are even black bars and no
+   distortion.
+5. Press **Escape** to reach the title screen if the game opened elsewhere.
+6. Click the **SETTINGS** tab.
+7. Check there is a **Resolution** dropdown and a **Fullscreen** tick box.
+8. Open the Resolution dropdown.
+9. Check every entry is 16:9 and none is larger than your monitor.
+10. Select **1280 x 720**.
+11. Check the picture changes immediately.
+12. Check a "Keep this display setting?" prompt appears with a countdown.
+13. Do nothing for fifteen seconds.
+14. Check the display goes back to what it was by itself.
+15. Select **1280 x 720** again.
+16. Click **Keep it**.
+17. Check the prompt closes and the display stays.
+18. Untick **Fullscreen**.
+19. Click **Keep it**.
+20. Check the game is now a 1280x720 window, centred.
+21. Try to drag the window's edge or corner to resize it.
+22. Check it cannot be resized.
+23. Drag the window by its title bar.
+24. Check the picture does not jump in size while dragging.
+25. Close the game.
+26. Start it again.
+27. Check it opens as a 1280x720 window, not fullscreen.
+28. Open **SETTINGS** and move the volume slider.
+29. Close the game, start it again, and check it is **still** a 1280x720
+    window — changing the volume must not reset the display.
+30. Set the resolution back to the largest on the list and tick Fullscreen.
+
+**Known broken as of 2026-11-16, left deliberately — do not re-report:**
+
+- The resolution does nothing in fullscreen. The game draws at 640 x 360 and
+  stretches, whatever is selected.
+- A 2560 x 1440 monitor is not offered 2560 x 1440, because the list is capped
+  on the taskbar-free height.
+
+Steps 8 to 17 and 20 to 29 therefore only mean something in windowed mode.
+See decisions.md D85.
+
+### A8e. Getting out of the game
+
+1. Start the game and reach the title screen.
+2. Check there is a **QUIT TO DESKTOP** button at the bottom of the panel.
+3. Click it.
+4. Check the game closes.
+5. Start the game again and begin a single-player match.
+6. Press **Escape**.
+7. Check a **PAUSED** panel appears with **BACK TO THE GAME**, **SETTINGS**,
+   **LEAVE TO TITLE SCREEN** and **QUIT TO DESKTOP**.
+8. Click **SETTINGS**.
+9. Check it holds Sound, Resolution and Fullscreen, the same as the title
+   screen.
+10. Move the Sound slider.
+11. Check no sound clip plays while you move it.
+12. Press **Escape**.
+13. Check it goes back to the four buttons rather than closing altogether.
+14. Press **Escape** again.
+15. Check the panel closes and the board is still there.
+16. Press **Escape** once more.
+17. Click **LEAVE TO TITLE SCREEN**.
+18. Check it asks before leaving.
+19. Click the cancel option.
+20. Check you are still in the match.
+21. Press **Escape**, click **LEAVE TO TITLE SCREEN**, and confirm it this time.
+22. Check you are on the title screen.
+23. Begin another match, press **Escape**, and click **QUIT TO DESKTOP**.
+24. Check the game closes.
+
+### A8f. The rebuilt title screen
+
+1. Start the game.
+2. Check the top of the panel reads **SINGLE PLAYER**, **HOST ONLINE**,
+   **JOIN GAME**, **SETTINGS**.
+3. Check **SINGLE PLAYER** is the one already selected.
+4. Click each of the four in turn.
+5. Check the panel stays exactly the same size on all four.
+6. Check the title text does not move as you click between them.
+7. Check the **QUIT TO DESKTOP** button does not move either.
+8. Click **SINGLE PLAYER**.
+9. Check there is a **Your name** field.
+10. Check there is no game name, no max players and no invite-only control.
+11. Click **HOST ONLINE**.
+12. Check **Your name** is gone.
+13. Check there is a **Game name**, a **Max players** and an **Invite only**
+    control.
+14. Check **Max players** starts at 4.
+15. Check the years, starting cash, loans and seed controls are the same on
+    both panels.
+16. Check the button at the bottom reads **HOST ONLINE** here and **START** on
+    the Single Player panel.
+17. Click **JOIN GAME**.
+18. Check the lobby list is already loading, with no button to press first.
+19. Check there is a search box and a **REFRESH** button.
+20. Check there is no address or port field anywhere on the title screen.
+21. Look at the top-left corner of the window.
+22. Check there is a small **DEV** panel with Host, Port, and HOST and JOIN
+    buttons.
+22a. Click into its **Host** field and type something.
+22b. Check the field accepts the typing - it must not be behind the title
+     screen.
+23. Press **F1**.
+24. Check the development panel disappears, leaving the title screen clear.
+25. Press **F1** again and check it comes back.
+26. Click **SETTINGS**.
+27. Check it holds Sound, Resolution and Fullscreen.
+28. Change the resolution.
+29. Check the "Keep this display setting?" prompt is in the game's own font and
+    colours, not a plain white system dialog.
+
+**With a second Steam account hosting**, in Test B:
+
+30. Open **JOIN GAME** and check the search box is **below** the list.
+31. Check their game is listed.
+32. Type part of their lobby name into the search box.
+33. Check the list narrows as you type.
+34. Clear the search box.
+35. Check the whole list comes back.
+36. Type something that matches nothing and check it says so.
+37. Click **REFRESH** with text still in the search box.
+38. Check the filter is still applied and the list is not stale.
+
 ### A9. Disconnection
 
 | Step | Expected |
@@ -394,7 +523,6 @@ Steam transport specifically, which is a much narrower place to look.
   game's, so unlocking one here awards it for real on the tester's Steam
   account. `resetAllStats(true)` is the only undo and it wipes everything.
   See decisions.md D70.
-- **No sound.**
 - **A kick takes a few seconds to land over Steam**, where it is immediate over
   a direct connection. Steam's lobby callbacks are not instant and the game
   waits for them rather than guessing; it is slow, not broken. Observed in the

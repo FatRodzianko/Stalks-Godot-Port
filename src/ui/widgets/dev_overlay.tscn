@@ -1,0 +1,67 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/widgets/dev_overlay.gd" id="1_dev"]
+
+[node name="DevOverlay" type="PanelContainer"]
+anchors_preset = 0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 140.0
+offset_bottom = 4.0
+script = ExtResource("1_dev")
+
+[node name="Body" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="Heading" type="Label" parent="Body"]
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "DEV (F1 hides)"
+
+[node name="AddressRow" type="HBoxContainer" parent="Body"]
+layout_mode = 2
+
+[node name="AddressLabel" type="Label" parent="Body/AddressRow"]
+custom_minimum_size = Vector2(30, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "Host"
+
+[node name="DevAddressField" type="LineEdit" parent="Body/AddressRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "127.0.0.1"
+
+[node name="PortRow" type="HBoxContainer" parent="Body"]
+layout_mode = 2
+
+[node name="PortLabel" type="Label" parent="Body/PortRow"]
+custom_minimum_size = Vector2(30, 0)
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "Port"
+
+[node name="DevPortSpin" type="SpinBox" parent="Body/PortRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1024.0
+max_value = 65535.0
+value = 42420.0
+
+[node name="Buttons" type="HBoxContainer" parent="Body"]
+layout_mode = 2
+
+[node name="DevHostButton" type="Button" parent="Body/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "HOST"
+
+[node name="DevJoinButton" type="Button" parent="Body/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "JOIN"

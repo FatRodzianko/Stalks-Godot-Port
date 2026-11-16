@@ -31,28 +31,48 @@ func _menu() -> MainMenu:
 	return menu
 
 
-func test_the_menu_opens_on_create_game() -> void:
+func test_the_menu_opens_on_single_player() -> void:
 	var menu: MainMenu = _menu()
-	assert_eq(menu.current_mode(), MainMenu.Mode.CREATE)
+	assert_eq(menu.current_mode(), MainMenu.Mode.SINGLE)
 
 
-## The fault this whole screen was rebuilt for.
+## The fault this screen was rebuilt for.
 ##
-## Steam is how the game is played; hosting locally is for testing two windows
-## without it. The settings used to sit on the solo and local-host tabs only,
-## so the configuration lived on the development path and the real one had
-## none — and a Steam match was hosted with defaults, loans off, whatever the
-## player had chosen. See decisions.md D65.
-func test_every_way_of_creating_a_game_is_offered_the_same_settings() -> void:
+## Steam is how the game is played; the settings used to sit on the solo and
+## local-host tabs only, so the configuration lived on the development path
+## and the real one had none - a Steam match was hosted with defaults, loans
+## off, whatever the player had chosen. See decisions.md D65.
+func test_both_ways_of_making_a_game_are_offered_the_same_settings() -> void:
 	var menu: MainMenu = _menu()
-	assert_true(menu.get_node("%Settings").is_visible_in_tree(),
-		"settings belong to Create Game, not to one kind of game")
+	for mode: int in [MainMenu.Mode.SINGLE, MainMenu.Mode.HOST]:
+		menu.show_mode(mode)
+		for field: String in ["%YearsSpin", "%CashSpin", "%LoansCheck", "%SeedField"]:
+			assert_true((menu.get_node(field) as Control).is_visible_in_tree(),
+				"%s belongs to the match, not to one kind of game" % field)
 
-	for button_name: String in [
-		"%SinglePlayerButton", "%HostOnlineButton", "%HostLocalButton"
-	]:
-		assert_true((menu.get_node(button_name) as Button).is_visible_in_tree(),
-			"%s should be on Create Game beside the settings" % button_name)
+
+## A single-player game has no second player, so a limit and a privacy setting
+## would be decoration, and the player names themselves.
+func test_a_single_player_game_is_not_asked_about_other_players() -> void:
+	var menu: MainMenu = _menu()
+	menu.show_mode(MainMenu.Mode.SINGLE)
+
+	assert_true(menu.get_node("%NameField").is_visible_in_tree(), "names themselves")
+	assert_false(menu.get_node("%PlayersSpin").is_visible_in_tree())
+	assert_false(menu.get_node("%InviteOnlyCheck").is_visible_in_tree())
+	assert_false(menu.get_node("%GameNameField").is_visible_in_tree())
+
+
+## An online game is named from the Steam account, so a name field there would
+## be a control that silently does nothing (D66).
+func test_hosting_online_asks_about_players_and_not_about_your_name() -> void:
+	var menu: MainMenu = _menu()
+	menu.show_mode(MainMenu.Mode.HOST)
+
+	assert_false(menu.get_node("%NameField").is_visible_in_tree(), "Steam says who you are")
+	assert_true(menu.get_node("%PlayersSpin").is_visible_in_tree())
+	assert_true(menu.get_node("%InviteOnlyCheck").is_visible_in_tree())
+	assert_true(menu.get_node("%GameNameField").is_visible_in_tree())
 
 
 func test_a_joiner_is_not_offered_the_match_settings() -> void:
@@ -61,18 +81,8 @@ func test_a_joiner_is_not_offered_the_match_settings() -> void:
 	var menu: MainMenu = _menu()
 	menu.show_mode(MainMenu.Mode.JOIN)
 
-	assert_false(menu.get_node("%Settings").is_visible_in_tree())
-	assert_true(menu.get_node("%JoinLocalButton").is_visible_in_tree())
-	assert_true(menu.get_node("%BrowseOnlineButton").is_visible_in_tree())
-	assert_true(menu.get_node("%AddressField").is_visible_in_tree())
-
-
-func test_creating_a_game_does_not_ask_for_an_address() -> void:
-	var menu: MainMenu = _menu()
-	assert_false(
-		menu.get_node("%AddressField").is_visible_in_tree(),
-		"somebody making a game has nowhere to connect to",
-	)
+	assert_false(menu.get_node("%YearsSpin").is_visible_in_tree())
+	assert_true(menu.lobby_browser().is_visible_in_tree(), "the list, instead")
 
 
 func test_a_single_player_game_carries_the_settings() -> void:
@@ -85,7 +95,7 @@ func test_a_single_player_game_carries_the_settings() -> void:
 		func(settings: GameSettings) -> void:
 			seen.append([settings.max_years, settings.loans_enabled])
 	)
-	menu.get_node("%SinglePlayerButton").pressed.emit()
+	menu.get_node("%StartButton").pressed.emit()
 
 	assert_eq(seen, [[12, true]])
 
@@ -93,6 +103,7 @@ func test_a_single_player_game_carries_the_settings() -> void:
 func test_hosting_online_carries_the_same_settings() -> void:
 	# The one that was broken in play: loans ticked here, loans off in the game.
 	var menu: MainMenu = _menu()
+	menu.show_mode(MainMenu.Mode.HOST)
 	menu.get_node("%YearsSpin").value = 25
 	menu.get_node("%LoansCheck").button_pressed = true
 
@@ -101,20 +112,61 @@ func test_hosting_online_carries_the_same_settings() -> void:
 		func(settings: GameSettings) -> void:
 			seen.append([settings.max_years, settings.loans_enabled])
 	)
-	menu.get_node("%HostOnlineButton").pressed.emit()
+	menu.get_node("%StartButton").pressed.emit()
 
 	assert_eq(seen, [[25, true]])
+
+
+## One button, two meanings, decided by the tab. If this ever stops switching,
+## Host Online silently starts a solo game instead.
+func test_the_start_button_follows_the_tab() -> void:
+	var menu: MainMenu = _menu()
+	var solo: Array = []
+	var online: Array = []
+	menu.start_requested.connect(func(_s: GameSettings) -> void: solo.append(true))
+	menu.host_online_requested.connect(func(_s: GameSettings) -> void: online.append(true))
+
+	menu.show_mode(MainMenu.Mode.SINGLE)
+	menu.get_node("%StartButton").pressed.emit()
+	menu.show_mode(MainMenu.Mode.HOST)
+	menu.get_node("%StartButton").pressed.emit()
+
+	assert_eq(solo.size(), 1)
+	assert_eq(online.size(), 1)
+
+
+## Restores the original's Max. Number of Players field, 1 to 10, default 4
+## (audit 17.4). The port used to create every lobby with ten slots.
+func test_hosting_online_carries_the_player_limit() -> void:
+	var menu: MainMenu = _menu()
+	menu.show_mode(MainMenu.Mode.HOST)
+	menu.get_node("%PlayersSpin").value = 3
+
+	assert_eq(menu.chosen_settings().player_count, 3)
+
+
+func test_a_single_player_game_is_one_player_and_never_private() -> void:
+	# The controls are hidden rather than reset, so whatever they hold must not
+	# reach the settings.
+	var menu: MainMenu = _menu()
+	menu.show_mode(MainMenu.Mode.HOST)
+	menu.get_node("%PlayersSpin").value = 8
+	menu.get_node("%InviteOnlyCheck").button_pressed = true
+	menu.show_mode(MainMenu.Mode.SINGLE)
+
+	var settings: GameSettings = menu.chosen_settings()
+	assert_eq(settings.player_count, 1)
+	assert_false(settings.invite_only)
 
 
 ## Found in play: every player in a Steam game showed as "Player", and typing
 ## a name for an earlier local game made everyone show as that instead.
 ##
 ## An online game names you from your Steam account, so the title screen's
-## name field has no say in it — and therefore nothing to send. See
+## name field has no say in it - and therefore nothing to send. See
 ## decisions.md D66.
 func test_hosting_online_sends_no_player_name_at_all() -> void:
 	var menu: MainMenu = _menu()
-	menu.get_node("%NameField").text = "NotMySteamName"
 
 	for entry: Dictionary in menu.get_signal_list():
 		if entry["name"] != "host_online_requested":
@@ -126,9 +178,10 @@ func test_hosting_online_sends_no_player_name_at_all() -> void:
 
 
 func test_the_host_can_name_the_game() -> void:
-	# There was no way to: a lobby was always "<persona>'s game", and the
+	# There was no way to: a lobby was always the persona's game, and the
 	# player could name themselves but not the thing they were making.
 	var menu: MainMenu = _menu()
+	menu.show_mode(MainMenu.Mode.HOST)
 	menu.get_node("%GameNameField").text = "  Friday night  "
 
 	assert_eq(menu.chosen_settings().game_name, "Friday night",
@@ -141,93 +194,33 @@ func test_a_blank_game_name_is_left_for_the_host_to_be_named_after() -> void:
 	assert_eq(_menu().chosen_settings().game_name, "")
 
 
-func test_hosting_locally_emits_the_name_port_and_settings() -> void:
+## The lobby list loads because you opened Join Game, not because you then
+## pressed a button asking for the thing you had just asked for. The separate
+## BROWSE ONLINE GAMES button is gone.
+func test_opening_join_game_asks_for_the_lobby_list() -> void:
 	var menu: MainMenu = _menu()
-	menu.get_node("%NameField").text = "Murph"
-	menu.get_node("%HostPortSpin").value = 43000
-	menu.get_node("%YearsSpin").value = 12
-
-	var seen: Array = []
-	menu.host_local_requested.connect(
-		func(settings: GameSettings, player_name: String, port: int) -> void:
-			seen.append([settings.max_years, player_name, port])
-	)
-	menu.get_node("%HostLocalButton").pressed.emit()
-
-	assert_eq(seen, [[12, "Murph", 43000]])
-
-
-func test_the_three_ways_to_create_a_game_agree_on_the_settings() -> void:
-	# Read once, used three ways. If these ever diverge, one path has grown its
-	# own copy of the controls, which is how the first version went wrong.
-	var menu: MainMenu = _menu()
-	menu.get_node("%YearsSpin").value = 33
-	menu.get_node("%CashSpin").value = 5000
-	menu.get_node("%LoansCheck").button_pressed = false
-
-	var solo: Array = []
-	var online: Array = []
-	var local: Array = []
-	menu.start_requested.connect(func(s: GameSettings) -> void: solo.append(s))
-	menu.host_online_requested.connect(
-		func(s: GameSettings) -> void: online.append(s)
-	)
-	menu.host_local_requested.connect(
-		func(s: GameSettings, _n: String, _p: int) -> void: local.append(s)
-	)
-
-	menu.get_node("%SinglePlayerButton").pressed.emit()
-	menu.get_node("%HostOnlineButton").pressed.emit()
-	menu.get_node("%HostLocalButton").pressed.emit()
-
-	for batch: Array in [solo, online, local]:
-		assert_eq(batch.size(), 1)
-		if batch.is_empty():
-			continue
-		var settings: GameSettings = batch[0]
-		assert_eq(settings.max_years, 33)
-		assert_eq(settings.starting_cash, 5000)
-		assert_false(settings.loans_enabled)
-
-
-func test_joining_locally_emits_the_address_port_and_name() -> void:
-	var menu: MainMenu = _menu()
-	menu.show_mode(MainMenu.Mode.JOIN)
-	menu.get_node("%AddressField").text = "10.0.0.5"
-	menu.get_node("%JoinPortSpin").value = 43001
-	menu.get_node("%NameField").text = "Guest"
-
-	var seen: Array = []
-	menu.join_local_requested.connect(
-		func(address: String, port: int, player_name: String) -> void:
-			seen.append([address, port, player_name])
-	)
-	menu.get_node("%JoinLocalButton").pressed.emit()
-
-	assert_eq(seen, [["10.0.0.5", 43001, "Guest"]])
-
-
-func test_browsing_online_games_carries_nothing() -> void:
-	# It used to carry the typed name, which is how a name meant for a local
-	# game ended up on a Steam player. Steam says who you are. D66.
-	var menu: MainMenu = _menu()
-	menu.show_mode(MainMenu.Mode.JOIN)
-	menu.get_node("%NameField").text = "NotMySteamName"
 
 	# An Array, not an int: GDScript lambdas capture by value, so incrementing
 	# a captured integer changes the copy and the test watches nothing.
 	var seen: Array = []
 	menu.browse_online_requested.connect(func() -> void: seen.append(true))
-	menu.get_node("%BrowseOnlineButton").pressed.emit()
+	menu.show_mode(MainMenu.Mode.JOIN)
 
 	assert_eq(seen.size(), 1)
 
 
-func test_a_blank_address_means_this_machine() -> void:
-	# Two windows on one computer is the commonest case, so it should need no
-	# typing at all.
+func test_going_back_to_join_game_does_not_ask_twice() -> void:
+	# Asking again would start Steam again. REFRESH is how a player asks for a
+	# fresh list.
 	var menu: MainMenu = _menu()
-	assert_eq(menu.chosen_address(), "127.0.0.1")
+	var seen: Array = []
+	menu.browse_online_requested.connect(func() -> void: seen.append(true))
+
+	menu.show_mode(MainMenu.Mode.JOIN)
+	menu.show_mode(MainMenu.Mode.SINGLE)
+	menu.show_mode(MainMenu.Mode.JOIN)
+
+	assert_eq(seen.size(), 1)
 
 
 func test_a_blank_name_gets_a_stand_in() -> void:
@@ -558,8 +551,12 @@ func test_a_failed_host_leaves_the_player_on_the_menu_with_the_reason() -> void:
 	if menu == null:
 		return
 
-	menu.get_node("%HostPortSpin").value = port
-	menu.get_node("%HostLocalButton").pressed.emit()
+	var overlay: DevOverlay = main.dev_overlay()
+	assert_not_null(overlay, "the development overlay hosts direct games now")
+	if overlay == null:
+		return
+	overlay.get_node("%DevPortSpin").value = port
+	overlay.get_node("%DevHostButton").pressed.emit()
 	squatter.close()
 
 	assert_same(main.current_screen(), menu, "the player should still be on the menu")
@@ -960,7 +957,11 @@ func test_the_invite_button_asks_rather_than_acting() -> void:
 func test_the_menu_offers_invite_only_games() -> void:
 	# Listed in game-rules.md §2 since the port began, and until now it was the
 	# one setting there with no implementation.
+	# An online game only: a private lobby means nothing without a lobby, so
+	# the control is hidden under Single Player and its value never reaches
+	# the settings there.
 	var menu: MainMenu = _menu()
+	menu.show_mode(MainMenu.Mode.HOST)
 	assert_false(menu.chosen_settings().invite_only, "public by default")
 
 	menu.get_node("%InviteOnlyCheck").button_pressed = true
@@ -974,14 +975,14 @@ func test_the_menu_offers_invite_only_games() -> void:
 # Game rather than behind a cog, because it is one of the three places a
 # player goes from the title screen. See decisions.md D74.
 
-func test_settings_is_a_third_tab() -> void:
+func test_settings_is_its_own_tab() -> void:
 	var menu: MainMenu = _menu()
 	assert_false(menu.get_node("%SettingsBox").is_visible_in_tree())
 
 	menu.get_node("%SettingsTab").pressed.emit()
 	assert_eq(menu.current_mode(), MainMenu.Mode.SETTINGS)
 	assert_true(menu.get_node("%SettingsBox").is_visible_in_tree())
-	assert_false(menu.get_node("%Settings").is_visible_in_tree(),
+	assert_false(menu.get_node("%YearsSpin").is_visible_in_tree(),
 		"the match settings are not these settings")
 
 
@@ -1001,7 +1002,7 @@ func test_the_slider_starts_where_the_volume_actually_is() -> void:
 	Audio.set_volume_percent(35)
 
 	var menu: MainMenu = _menu()
-	assert_almost_eq(int((menu.get_node("%VolumeSlider") as HSlider).value), 35, 5)
+	assert_almost_eq(int((menu.settings_panel().get_node("%VolumeSlider") as HSlider).value), 35, 5)
 
 	Audio.set_volume_percent(before)
 
@@ -1010,9 +1011,9 @@ func test_moving_the_slider_changes_the_volume_and_says_so() -> void:
 	var before: int = Audio.volume_percent()
 	var menu: MainMenu = _menu()
 
-	(menu.get_node("%VolumeSlider") as HSlider).value = 50
+	(menu.settings_panel().get_node("%VolumeSlider") as HSlider).value = 50
 	assert_almost_eq(Audio.volume_percent(), 50, 5)
-	assert_string_contains((menu.get_node("%VolumeValue") as Label).text, "50")
+	assert_string_contains((menu.settings_panel().get_node("%VolumeValue") as Label).text, "50")
 
 	Audio.set_volume_percent(before)
 
@@ -1022,7 +1023,7 @@ func test_moving_the_slider_changes_the_volume_and_says_so() -> void:
 func test_dragging_the_slider_does_not_preview_until_it_is_let_go() -> void:
 	var before: int = Audio.volume_percent()
 	var menu: MainMenu = _menu()
-	var slider: HSlider = menu.get_node("%VolumeSlider") as HSlider
+	var slider: HSlider = menu.settings_panel().get_node("%VolumeSlider") as HSlider
 	Audio.preview_voice().stop()
 	Audio.preview_voice().stream = null
 
@@ -1045,7 +1046,7 @@ func test_a_change_with_no_drag_previews_straight_away() -> void:
 	Audio.preview_voice().stop()
 	Audio.preview_voice().stream = null
 
-	(menu.get_node("%VolumeSlider") as HSlider).value = 65
+	(menu.settings_panel().get_node("%VolumeSlider") as HSlider).value = 65
 
 	assert_eq(Audio.preview_voice().stream, AudioService.BULL[1])
 
@@ -1054,7 +1055,7 @@ func test_a_change_with_no_drag_previews_straight_away() -> void:
 
 func test_letting_go_without_moving_anything_is_silent() -> void:
 	var menu: MainMenu = _menu()
-	var slider: HSlider = menu.get_node("%VolumeSlider") as HSlider
+	var slider: HSlider = menu.settings_panel().get_node("%VolumeSlider") as HSlider
 	Audio.preview_voice().stop()
 	Audio.preview_voice().stream = null
 
@@ -1071,7 +1072,7 @@ func test_letting_go_without_moving_anything_is_silent() -> void:
 func test_starting_a_drag_silences_the_last_preview() -> void:
 	var before: int = Audio.volume_percent()
 	var menu: MainMenu = _menu()
-	var slider: HSlider = menu.get_node("%VolumeSlider") as HSlider
+	var slider: HSlider = menu.settings_panel().get_node("%VolumeSlider") as HSlider
 	Audio.play_volume_preview()
 	assert_not_null(Audio.preview_voice().stream, "the test needs a clip loaded")
 

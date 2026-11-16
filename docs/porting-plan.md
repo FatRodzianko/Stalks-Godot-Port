@@ -570,16 +570,16 @@ miss it:
 
 | # | Gap | Decision |
 |---|---|---|
-| 1 | No in-game pause menu — the original's Escape menu held Resume, Settings, Quit Game and Exit to Desktop. `ui-reference.md` listed this as Phase 7 work and Phase 7 closed without it | Port it — no choice to make |
-| 2 | No quit button anywhere; closing the window is the only way out | Port it — no choice to make |
-| 3 | No fullscreen toggle, and no resolution dropdown | Decided 2026-11-16: build the dropdown, populated from the system. Revises D40; see audit §17.3 |
-| 4 | The host cannot choose a player limit; every lobby is created with ten slots | Decided 2026-11-16: restore the 1–10 field |
+| 1 | ~~No in-game pause menu~~ | **Done 2026-11-16.** Escape opens Back to the Game / volume / Leave to Title / Quit to Desktop |
+| 2 | ~~No quit button anywhere~~ | **Done 2026-11-16.** On the title screen and the pause menu |
+| 3 | ~~No fullscreen toggle, and no resolution dropdown~~ | **Done 2026-11-16.** Dropdown of exact 16:9 sizes the monitor can show, fullscreen toggle, revert countdown. See D85 |
+| 4 | ~~The host cannot choose a player limit~~ | **Done 2026-11-16.** Max players 1-10 on Host Online, applied as the Steam lobby limit and enforced for direct connections. D87 |
 | 5 | The lobby browser omits the year limit and whether loans are on, both of which the original published for exactly that purpose | Decided 2026-11-16: publish years, loans **and** starting cash |
-| 6 | No search box in the lobby browser | Port it — no choice to make |
+| 6 | ~~No search box in the lobby browser~~ | **Done 2026-11-16.** Filters as you type, and does not stick across refreshes |
 | 7 | No Steam avatars on lobby rows | Port it — no choice to make |
 | 8 | No supporter DLC thank-you message (*"Thanks for Supporting the Devs!"*) | Decided 2026-11-16: check Steam DLC ownership, show the message |
 | 9 | The final board cannot be inspected after the result screen appears | Decided 2026-11-16: add a view-board button |
-| 10 | **The window is resizable and nobody chose that.** The original explicitly disabled resizing; `window/size/resizable` is unset, so Godot's default applies | Decided 2026-11-16: fix the window. Driven by a reported bug — see audit §17.10 |
+| 10 | ~~**The window is resizable and nobody chose that.**~~ | **Done 2026-11-16.** `window/size/resizable=false`. See audit §17.10 |
 
 **Every gap on this list is to be ported.** "Port it — no choice to make" means the
 original had the thing, the port does not, and restoring it needs no decision from

@@ -141,7 +141,11 @@ func set_volume_percent(percent: int) -> void:
 	var safe: int = clampi(percent, 0, 100)
 	_apply(safe)
 
-	var stored: UserSettings = UserSettings.new()
+	# Read the file back before writing it. Building a fresh `UserSettings`
+	# here would save this volume alongside the *defaults* for everything else
+	# in the file, silently resetting the player's resolution and fullscreen
+	# every time they touched the slider.
+	var stored: UserSettings = UserSettings.load_from()
 	stored.volume_percent = safe
 	stored.save_to()
 

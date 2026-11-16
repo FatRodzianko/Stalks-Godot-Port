@@ -108,7 +108,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-570 tests, 14,499 asserts, about 38 seconds.
+623 tests, 14,598 asserts, about 43 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -128,6 +128,10 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_networked_session.gd` | **Networked tests** with a real host and client in one process: joining and seating, yeehaw in both directions, a refused self-yeehaw, a client's buy applied by the host, an unaffordable and a nonsense request refused, a refusal reaching only the asker, a client unable to act as another player, redaction end to end, the all-ready gate, both sides agreeing on every price after a year, and the disconnect behaviour including the deadlock it used to cause | 40 |
 | `test_lobby_screen.gd` | **Scene tests** for the title screen (Create Game and Join Game; one settings panel serving all three ways to start a game; a joiner offered none of them; the lobby's invite button and invite-only games; the host naming the match, that name heading the lobby on both machines, and an online game taking its player names from Steam rather than from the title screen) and the lobby over a live host session: the player list, who you are and who is hosting, arrivals and departures, ready-up both ways, Start being the host's alone, the all-ready gate and the host's kick that escapes it, that the host has no ready button because Start is their readiness, and `Main` opening a lobby, reporting a busy port and carrying on into the match; and the volume slider neither previewing until it is let go nor leaving a clip sounding into the next drag, both reported from play | 70 |
 | `test_client_board.gd` | The client's path from lobby to board, which nothing covered before two windows were played for real: the board building and filling for a `ClientSession`, a swapped-out lobby or board ignoring the signals that follow it, a live one still updating, a removed player returned to the menu with the reason, the board visibly acknowledging a Ready press — readying, un-readying, naming who it waits for, and showing another player's dot — and the host going away mid-match, which leaves the board reporting it and `Main` listening | 25 |
+| `test_display_settings.gd` | The resolution list as arithmetic over a monitor size handed in as a number: every offer being exactly 16:9, a monitor offered only what it can show, a 16:10 and an odd laptop panel both resolving to the tallest 16:9 that fits, a saved size too big for a replaced monitor being reduced, and the layout scale including the 1.5x half-step | 14 |
+| `test_confirm_panel.gd` | The yes/no overlay and its revert countdown: starting at the number given, stopped by an answer, cleared when the panel is reused for a plain question, visible in the message, and — the one that matters — nobody answering counting as no | 6 |
+| `test_pause_menu.gd` | Escape during a match opening the pause overlay rather than offering to end the game, leaving still asking first, the overlay not surviving a screen change, its volume slider applying without a preview clip, and both quit buttons being present and wired | 10 |
+| `test_title_screen_shape.gd` | The rebuilt title screen: the card being the same size on every tab and the heading and quit button not moving, no address form anywhere on it, the development overlay hosting and joining, the lobby list's search filtering and not sticking across a refresh, the pause menu showing the same settings panel as the title screen, and the layout corrections from play: a start button narrower than the panel and over to the right, a quit button clear of the panel, a confirmation that carries the theme wherever it is parented, and the development overlay being on a canvas layer above the game rather than inside a container that swallowed its clicks | 18 |
 | `test_audio_service.gd` | Sound, checked without listening: a mood being **two** clips layered rather than one, a bankruptcy being glass **and** a scream, a yeehaw being one, six voices surviving a year and a yeehaw landing together, volume round-tripping with zero meaning silence rather than quiet, the volume preview having a voice of its own so a second one replaces the first instead of echoing over it, and the SFX bus existing at all — without which every volume assertion would agree with itself and mean nothing | 12 |
 | `test_user_settings.gd` | Preferences kept between runs: full volume on a first run, a volume round trip, silence staying silent, a hand-edited nonsense value clamped, a corrupt file reading as a first run rather than crashing, and the title screen remembering **nothing** — the guard on a convenience that was added and then removed the same day | 7 |
 | `test_achievement_rules.gd` | What a match earns, decided without Steam: the all-in and diversified thresholds and their near-misses, borrowing and settling, a split or bankruptcy judged from the holdings **before** the year (a bankrupt stalk's shares are zeroed, so the current state would never award it), winning and losing being exclusive, the net-worth targets including the starting-cash guard that stops one being bought, doubling and halving, long-match ids, the lifetime ladders awarding every rung reached, and that every id these rules can award is in the catalogue | 28 |
@@ -271,6 +275,23 @@ which is the real build-without-the-plugin case the screen is required to
 survive. What is left uncovered is the single line in `Main` that stores the
 settings on the way through — covered at both ends instead: the menu emits
 them, and the browser displays them.
+
+### Display settings are tested as arithmetic, not as pixels
+
+`DisplaySettings` takes a monitor size as a plain `Vector2i` and answers with
+numbers. That is deliberate: it means the resolution list can be tested for a
+1920×1200 panel, a 1366×768 laptop and a 4K display on a machine that has none
+of them, and it means the suite never touches a window.
+
+`DisplayMode` is the other half — the only place in the project that sets a
+window size or asks `DisplayServer` anything — and it **does nothing at all
+under the headless driver**, returning the resolution it would have used. That
+is what stops a scene test putting the test runner fullscreen.
+
+**What this does not cover, and no test can:** whether the game actually looks
+right at a given resolution. Godot renders nothing headless, so sharpness,
+black-bar placement and whether text is legible at 640×360 are all answered by
+looking at it. See `manual-testing.md`.
 
 ### What the suite deliberately will not test
 

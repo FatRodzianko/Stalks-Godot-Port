@@ -2242,7 +2242,12 @@ creating a file.
 ---
 
 ### D83 — Render at native resolution, in a fixed window
-**2026-11-16 · Accepted · supersedes the scaling half of D40 and D77**
+**2026-11-16 · Partly superseded by D85 · supersedes the scaling half of D40 and D77**
+
+**The stretch settings below were replaced the same day by D85**, which
+makes the chosen resolution the size of the rendered image rather than
+the size of the window. What stands here is the fixed window, the bars
+rather than extra content, and that D76 was never superseded.
 
 **D76 stands. Pixel-perfect rendering is still a hard requirement**, and this
 entry does not relax it. An earlier version of D83 claimed to supersede D76 on
@@ -2250,7 +2255,7 @@ the grounds that the game would never have pixel art; that claim was wrong and
 was removed on 2026-11-16 at the owner's instruction. Nothing below depends on
 it.
 
-Display settings are now:
+Display settings as this entry left them, since replaced by D85:
 
 ```
 window/stretch/mode="canvas_items"
@@ -2323,3 +2328,191 @@ every display — and fullscreen is not an exception to it.
 
 **What it rules out.** Exclusive fullscreen. Any fullscreen path that changes
 how much of the game is visible.
+
+---
+
+### D85 — The dropdown picks the render resolution, and that image is stretched
+**2026-11-16 · Accepted · supersedes the stretch settings in D83**
+
+The settings screen offers a resolution dropdown and a fullscreen toggle. The
+resolution a player picks is **the size of the image the game is drawn into**,
+and that image is then stretched to fill the window or the screen.
+
+```
+window/stretch/mode="viewport"
+window/stretch/aspect="keep"
+window/stretch/scale_mode="fractional"
+window/size/resizable=false
+```
+
+**This entry describes an intent the build does not achieve.** Corrected
+2026-11-16 after it was played. `DisplayMode` sets `content_scale_size` to the
+chosen resolution and `content_scale_factor` to that resolution divided by 640,
+in the belief that the first sets the image size and the second keeps the
+layout on the 640×360 grid. They cancel: in Godot's `viewport` stretch mode the
+render target is `content_scale_size ÷ content_scale_factor`, so the game always
+renders at 640×360 whatever is picked.
+
+**What that means in practice.** In fullscreen the dropdown changes nothing at
+all. In a window it appears to work, but only because the window itself is
+resized — the image inside is still 640×360 stretched to fit.
+
+**Why it was not then fixed.** Godot's built-in stretch has one knob: the
+logical layout size *is* the render size. "Lay out on 640×360, render at
+2560×1440" needs a `SubViewport` at the chosen size displayed by a `TextureRect`
+filling the window, with the filter set explicitly. The owner chose on
+2026-11-16 to leave the built-in behaviour in place rather than have that
+rebuilt here. **Anyone picking this up should start from that paragraph, not
+from the three steps below**, which describe the intended design rather than the
+shipped one.
+
+**Three steps, and the whole of every scaling argument on this project has been
+about the difference between them:**
+
+1. The interface lays out on the 640×360 grid. Never changes. Every player sees
+   the same rows and columns at every resolution.
+2. That layout is drawn into an image of the chosen resolution.
+3. The image is stretched to fill the screen, shape preserved, black bars in
+   any leftover space.
+
+**Why this and not `canvas_items`.** `canvas_items` has no step 2 — it draws
+straight onto the screen at whatever size the window is, so a resolution
+setting has nothing to control and would do nothing in fullscreen. The owner
+asked for the resolution to be the render size, explicitly and more than once,
+including the case of 720p stretched over a 1080p display and 720p with bars on
+a 1920×1200 one. That requires a real image of that size. D83 chose
+`canvas_items` before that requirement was stated.
+
+**What this means for D76.** At the default — the monitor's own largest 16:9
+size, fullscreen — step 3 is a one-to-one copy and nothing is resampled at all.
+Pixel-perfect, with no caveat. A player who deliberately chooses a smaller
+render resolution has opted into a stretch, and at a fractional one (720p on a
+1080p screen is 1.5×) the pixels of that image cannot all be the same size on
+screen. That is the ordinary cost of a lower render resolution in any game, it
+is the player's choice to pay it, and it is not a reason to shorten the list.
+**The filter on that stretch has never been established.**
+`rendering/textures/canvas_textures/default_texture_filter=0` is set, and this
+entry originally claimed it governs the final blit. That was an assumption, not
+a finding, and Godot 4.7.2 exposes no setting for the blit filter. A non-integer
+stretch should be filtered linearly; whether it currently is, nobody has looked.
+
+**Only exact 16:9 sizes are offered**, from a fixed ladder capped at what the
+monitor can show: 640×360, 960×540, 1280×720, 1600×900, 1920×1080, 2560×1440,
+3840×2160. Not 854×480, which is the usual approximation and is 16:9.0075 — one
+near-miss in the list gives one resolution whose bars are a different size from
+everybody else's.
+
+**First run is the monitor's own size, fullscreen.** As every other game does.
+A player who launches into a small window in the corner of a large screen
+assumes something is broken. Stored as a zero in `settings.cfg`, meaning "ask
+the monitor", so moving the file to another machine still does the right thing.
+
+**A change is applied, then asked about, and undone if nobody answers.** The
+question is whether the monitor can show it, and the only way to answer that is
+to try it; a player reading "are you sure?" over an unchanged screen has nothing
+to go on. `ConfirmPanel.ask_with_countdown` reverts after fifteen seconds, so
+doing nothing is the safe outcome when the screen has gone black.
+
+**What it rules out.** A resolution setting that does nothing in fullscreen.
+Shortening the list to sizes that happen to scale exactly. Stretching the image
+to a monitor's own shape when that is not 16:9.
+
+---
+
+### D86 — The title screen is four things across the top, in one fixed panel
+**2026-11-16 · Accepted · replaces the shape chosen in D65**
+
+The tab bar reads **SINGLE PLAYER · HOST ONLINE · JOIN GAME · SETTINGS**, and
+every one of them draws into a card of one fixed size.
+
+**Why the panel size is fixed.** It was not, and each tab sized the card to its
+own contents, so the heading, the tab bar and the quit button all jumped as you
+clicked between them. Reported from play. `test_title_screen_shape.gd` asserts
+the card size and the position of the title and the quit button are the same on
+every tab, because this is the kind of thing that comes back the next time
+somebody adds a field.
+
+**Why Single Player and Host Online are two buttons.** D65 put both behind one
+**Create Game** tab with the kind of game chosen underneath. "What do you want
+to do" is the question a title screen exists to ask, and half the answer was a
+level down. They are still **one panel**: years, starting cash, loans and seed
+are settings of the *match* and identical either way, so there is one set of
+controls and `_show_fields_for` hides what does not apply.
+
+- Single player hides the game name, the player limit and the privacy toggle,
+  and shows the name field.
+- Host Online does the reverse: an online game is named from the Steam account
+  (D66), so a name field there would silently do nothing.
+
+**Single player forces `player_count = 1` and `invite_only = false`** rather
+than reading hidden controls, so whatever the online fields were left holding
+cannot leak into a solo match.
+
+**Join Game loads the list when it is opened**, rather than showing a BROWSE
+ONLINE GAMES button whose only job was to ask for the thing the player had just
+asked for. The browser moved from a screen of its own to a widget inside the
+panel (`lobby_browser.gd`) and gained a search box. It asks for the list once
+per visit to the title screen; REFRESH is how a player asks again.
+
+**The direct-connection form is gone from the title screen.** Hosting and
+joining by address and port is a development tool: it means nothing to somebody
+who bought the game on Steam, and it was taking up a third of the Join panel.
+It is now `dev_overlay.gd`, a small panel pinned to the top-left corner that
+`Main` adds only when `OS.is_debug_build()` — false in anything the
+`Windows Release` preset produces. The shape is borrowed from the
+network-manager overlays Unity networking libraries ship for the same job.
+
+**Layout corrections from the first look at it running**, all reported the same
+day and all now asserted in `test_title_screen_shape.gd`:
+
+- **START and HOST ONLINE are narrow and over to the right**, not the width of
+  the panel. A full-width action button directly above a full-width QUIT TO
+  DESKTOP is an accidental click waiting to happen.
+- **QUIT TO DESKTOP is detached from the panel**, in a row of its own with a
+  gap above it, narrow, and over to the left — the opposite corner from the
+  button that starts a game.
+- **The lobby search box is below the list**, not above it.
+- **`ConfirmPanel` carries the theme on its own scene root.** `SettingsPanel`
+  parents the revert prompt to the window so it can dim the whole screen, which
+  put it outside the themed tree and drew it in Godot's default font. A
+  confirmation must not depend on who happens to be its parent.
+- **F1 hides the development overlay**, which sits exactly where the heading is.
+- **The development overlay lives on a `CanvasLayer` of its own, layer 128, and
+  only on the title screen.** The first version was an ordinary child of `Main`
+  and could not be used at all: `Main` is a `MarginContainer`, so it stretched
+  the panel to fill the screen instead of honouring its offsets, and every
+  screen swap added the new screen *after* it, so the screen drew on top and
+  took the clicks. A `CanvasLayer` is not a `Control`, so no container lays it
+  out, and a high layer number draws above everything whatever the child order.
+  This is the same arrangement as the separate canvas such overlays get in
+  Unity, which is where the shape came from.
+
+  **It cannot be a fixed number of screen pixels**, unlike the Unity one. The
+  whole game renders into a 640x360 image which is then scaled to the window
+  (D85), so nothing drawn can escape that scaling — a canvas layer included.
+  It is small in game pixels instead.
+
+**What it rules out.** A tab that resizes the panel. A second copy of the match
+settings for a second kind of game. A button that loads a list the player has
+already asked to see. Direct-connection controls in a shipped build.
+
+---
+
+### D87 — The host chooses the player limit, and the data default is ten
+**2026-11-16 · Accepted**
+
+The original's `Max. Number of Players` field is restored: 1 to 10, default 4,
+on the Host Online panel (audit 17.4). It sets the Steam lobby's member limit at
+creation, exactly as the original did, and `HostSession.seat_count()` enforces
+the same number for a direct connection, where Steam is not there to turn
+anybody away.
+
+**`GameSettings.player_count` defaults to 10, not to 4.** The form's default is
+4, which is what a player sees; the *data* default is the maximum, because
+anything that builds settings without going through the form — a test, a launch
+flag, a single-player match — means "do not get in my way". It was 1, which was
+harmless only while nothing read it: the moment `seat_count()` did, 79 tests
+failed because every host session would seat one player and refuse the rest.
+
+**What it rules out.** Creating every lobby with ten slots. Trusting a number
+that came from a screen without clamping it.

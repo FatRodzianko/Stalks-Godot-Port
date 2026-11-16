@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/ui/widgets/confirm_panel.gd" id="1_confirm"]
+[ext_resource type="Theme" path="res://assets/themes/stalks_theme.tres" id="2_theme"]
 
 [node name="ConfirmPanel" type="Control"]
 layout_mode = 3
@@ -10,6 +11,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 0
+theme = ExtResource("2_theme")
 script = ExtResource("1_confirm")
 
 [node name="Dim" type="ColorRect" parent="."]
