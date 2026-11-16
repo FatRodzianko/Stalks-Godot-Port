@@ -263,6 +263,26 @@ matters because a *release* build would silently ignore the flag and show the
 menu instead, which looks like the flag not existing rather than being
 disabled.
 
+### The executable's icon
+
+The `.exe` shows a **green line graph on a dark rounded square**. That is this
+project's own icon, not anything Godot supplies — Godot's default is a blue
+robot head, and seeing one of those on a finished game is how you know nobody
+set an icon.
+
+It lives at `icon.svg` in the project root and is four elements of hand-written
+SVG: a rounded dark panel, a polyline stepping up to a peak, and a dot on the
+peak. The stroke is `#6ee7a0`, which is **the theme's bull green** — the colour
+the board uses for a price that went up. It matches the game by construction
+rather than by luck, and anybody changing the palette should change it too.
+
+**How it reaches the executable.** `project.godot` sets
+`config/icon="res://icon.svg"`, and both export presets leave
+`application/icon` **empty**. An empty preset icon makes the Windows exporter
+fall back to the project icon and convert it, so there is no `.ico` file in the
+repository and none is needed. Setting `application/icon` would override this
+silently, which is worth knowing before anybody "fixes" the blank field.
+
 ---
 
 ## 6. Checking the build on the far machine

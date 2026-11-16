@@ -1081,3 +1081,19 @@ func test_starting_a_drag_silences_the_last_preview() -> void:
 	assert_null(Audio.preview_voice().stream, "the drag should begin in silence")
 
 	Audio.set_volume_percent(before)
+
+
+## Reported from play: typing 1,234 produced a game that started with 1,200.
+##
+## The spin box carried `step = 100`, which is not a rounding rule anybody
+## chose — it is what the control does with a step. The original's field was
+## free text and took any whole number in range.
+func test_starting_cash_is_taken_as_typed() -> void:
+	var menu: MainMenu = _menu()
+	var cash: SpinBox = menu.get_node("%CashSpin")
+
+	cash.value = 1234
+	assert_eq(menu.chosen_settings().starting_cash, 1234)
+
+	cash.value = 10001
+	assert_eq(menu.chosen_settings().starting_cash, 10001)

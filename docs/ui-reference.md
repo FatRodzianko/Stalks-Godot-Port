@@ -184,6 +184,16 @@ the privacy toggle are online only.
 debug builds only, and holds the direct host/join form that used to be on the
 Join panel.
 
+## The icon
+
+`icon.svg` at the project root: a green line graph on a dark rounded square,
+hand-written, four elements. The stroke is `#6ee7a0`, the same bull green the
+board uses for a price that went up, so it belongs to the palette rather than
+sitting beside it. Change one and change the other.
+
+It becomes the `.exe` icon through `config/icon` in `project.godot`; see
+[exporting.md](exporting.md).
+
 ## Other screens
 
 - **`GameOverPanel`** — `GameWinnerText`, `DidLocalPlayerWinText`,

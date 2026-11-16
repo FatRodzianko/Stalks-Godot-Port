@@ -141,7 +141,6 @@ layout_mode = 2
 size_flags_horizontal = 3
 min_value = 100.0
 max_value = 1000000.0
-step = 100.0
 value = 10000.0
 
 [node name="PlayersLabel" type="Label" parent="Centre/Shell/Card/Pad/Pages/GameBox/Fields"]
