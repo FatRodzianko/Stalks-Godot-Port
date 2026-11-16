@@ -345,3 +345,17 @@ func _objects_in(value: Variant, path: String) -> PackedStringArray:
 		for index: int in items.size():
 			found.append_array(_objects_in(items[index], "%s[%d]" % [path, index]))
 	return found
+
+
+func test_the_lobbys_privacy_crosses_the_wire() -> void:
+	# Not a rule, but a client that showed the wrong thing would be lying
+	# about the game it is in.
+	var state: GameState = StalksFixture.make_state(10, 2)
+	state.settings.invite_only = true
+	state.settings.game_name = "Friday night"
+
+	var replica: GameState = GameState.new(null)
+	assert_eq(StateSync.apply_state(replica, StateSync.encode_state(state, &"p1"), _library), "")
+	assert_true(replica.settings.invite_only)
+	assert_eq(replica.settings.game_name, "Friday night")
+

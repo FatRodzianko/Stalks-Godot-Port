@@ -116,6 +116,7 @@ static func encode_settings(settings: GameSettings) -> Dictionary:
 		return {}
 	return {
 		"game_name": settings.game_name,
+		"invite_only": settings.invite_only,
 		"starting_cash": settings.starting_cash,
 		"max_years": settings.max_years,
 		"loans_enabled": settings.loans_enabled,
@@ -183,6 +184,7 @@ static func apply_settings(state: GameState, data: Dictionary) -> void:
 	if state.settings == null:
 		state.settings = GameSettings.new()
 	state.settings.game_name = String(data.get("game_name", state.settings.game_name))
+	state.settings.invite_only = bool(data.get("invite_only", state.settings.invite_only))
 	state.settings.starting_cash = int(data.get("starting_cash", state.settings.starting_cash))
 	state.settings.max_years = int(data.get("max_years", state.settings.max_years))
 	state.settings.loans_enabled = bool(data.get("loans_enabled", state.settings.loans_enabled))

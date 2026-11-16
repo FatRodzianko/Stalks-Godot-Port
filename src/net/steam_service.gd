@@ -52,8 +52,15 @@ signal invited_to(lobby_id: int)
 const APP_ID: int = 1821800
 
 ## Lobby visibility. 2 is `k_ELobbyTypePublic`, which is what the in-game
-## browser lists. Private lobbies are reachable by invite only.
+## browser lists. 0 is `k_ELobbyTypePrivate`, which the browser never sees:
+## the only way in is an invite.
 const LOBBY_PUBLIC: int = 2
+const LOBBY_PRIVATE: int = 0
+
+## The command-line argument Steam appends when somebody accepts an invite to
+## a game that is not running yet. Steam launches the game with it, which is
+## the only way an invite can work from a cold start.
+const CONNECT_LOBBY_ARG: String = "+connect_lobby"
 
 ## Why Steam refused to let us into a lobby — `EChatRoomEnterResponse`.
 ##
@@ -188,12 +195,19 @@ func current_lobby() -> int:
 ##
 ## The name is held until Steam answers, because it can only be written to a
 ## lobby that exists and Steam creates one asynchronously.
-func create_lobby(max_players: int, lobby_name: String = "") -> void:
+func create_lobby(
+	max_players: int,
+	lobby_name: String = "",
+	invite_only: bool = false,
+) -> void:
 	if not _initialised:
 		lobby_failed.emit("Steam is not running.")
 		return
 	_pending_lobby_name = lobby_name
-	Steam.createLobby(LOBBY_PUBLIC, max_players)
+	var lobby_type: int = LOBBY_PUBLIC
+	if invite_only:
+		lobby_type = LOBBY_PRIVATE
+	Steam.createLobby(lobby_type, max_players)
 
 
 func join_lobby(lobby_id: int) -> void:
@@ -220,6 +234,38 @@ func refresh_lobbies() -> void:
 	Steam.addRequestLobbyListStringFilter(String(KEY_STATE), STATE_OPEN, 0)
 	Steam.addRequestLobbyListFilterSlotsAvailable(1)
 	Steam.requestLobbyList()
+
+
+## Opens Steam's own friend picker for this lobby.
+##
+## Steam's dialog rather than a friend list of our own: it already knows who
+## is online, who is playing this game, and how to word an invitation. The
+## alternative is `inviteUserToLobby`, which needs a Steam id we would have to
+## build a whole screen to collect.
+func open_invite_overlay() -> void:
+	if not _initialised or _lobby_id == 0:
+		return
+	Steam.activateGameOverlayInviteDialog(_lobby_id)
+
+
+## The lobby Steam was told to join on the command line, or 0.
+##
+## Accepting an invite to a game that is not running launches it with
+## `+connect_lobby <id>`. Parsed here rather than in `LaunchArgs`, which
+## deliberately ignores everything in a release build — this has to work in
+## the shipped game, because that is the only build an invite will ever
+## launch.
+static func lobby_from_command_line(arguments: PackedStringArray) -> int:
+	for index: int in arguments.size():
+		if arguments[index] != CONNECT_LOBBY_ARG:
+			continue
+		if index + 1 >= arguments.size():
+			return 0
+		var value: String = arguments[index + 1]
+		if not value.is_valid_int():
+			return 0
+		return value.to_int()
+	return 0
 
 
 ## Who owns a lobby. A client needs this: it connects to the owner, not to the

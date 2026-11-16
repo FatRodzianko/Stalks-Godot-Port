@@ -55,6 +55,13 @@ var _leave_prompt: ConfirmPanel
 
 
 func _ready() -> void:
+	# An invite accepted while the game was closed launches it with
+	# `+connect_lobby <id>`, and that has to work in a release build — which
+	# is why it is not a `LaunchArgs` flag. See docs/decisions.md D69.
+	var invited_lobby: int = SteamService.lobby_from_command_line(OS.get_cmdline_args())
+	if invited_lobby != 0:
+		join_online_game(invited_lobby)
+		return
 	apply_launch_args(LaunchArgs.from_command_line())
 
 
@@ -145,6 +152,12 @@ func _on_leave_confirmed() -> void:
 	show_menu()
 
 
+## Hands the asking to Steam's own friend picker, which knows who is online.
+func _on_invite_requested() -> void:
+	if _steam != null and _steam.is_running():
+		_steam.open_invite_overlay()
+
+
 ## The "leave the game?" overlay, or null if Escape has never been pressed
 ## during a match. For tests, and for anything that needs to know whether a
 ## question is already on screen.
@@ -199,6 +212,7 @@ func host_match(settings: GameSettings, player_name: String, port: int) -> Strin
 	if library == null:
 		return "The game's content is broken — see the log."
 
+	_is_online_match = false
 	var result: Dictionary = HostSession.host(
 		EnetTransport.new(port), settings, library, player_name
 	)
@@ -222,6 +236,7 @@ func join_match(address: String, port: int, player_name: String) -> String:
 	if library == null:
 		return "The game's content is broken — see the log."
 
+	_is_online_match = false
 	var result: Dictionary = ClientSession.join(
 		EnetTransport.new(port, address), library, player_name
 	)
@@ -254,10 +269,10 @@ func show_online_games() -> void:
 	_discard_session()
 	var browser: OnlineGamesScreen = OnlineGamesScene.instantiate()
 	browser.back_requested.connect(show_menu)
-	browser.join_requested.connect(_on_online_join_requested)
+	browser.join_requested.connect(join_online_game)
 	_swap(browser)
 	var service: SteamService = steam_service()
-	_watch_for_departures(service)
+	_watch_the_service(service)
 	browser.setup(service)
 
 
@@ -272,6 +287,7 @@ func host_steam_match(lobby_id: int, settings: GameSettings, player_name: String
 	if library == null:
 		return "The game's content is broken — see the log."
 
+	_is_online_match = true
 	var result: Dictionary = HostSession.host(
 		SteamTransport.new(lobby_id), settings, library, player_name
 	)
@@ -294,6 +310,7 @@ func join_steam_match(lobby_id: int, owner_steam_id: int, player_name: String) -
 	if library == null:
 		return "The game's content is broken — see the log."
 
+	_is_online_match = true
 	var result: Dictionary = ClientSession.join(
 		SteamTransport.new(lobby_id, owner_steam_id), library, player_name
 	)
@@ -331,7 +348,7 @@ func _on_host_online_requested(settings: GameSettings) -> void:
 	if not service.lobby_created.is_connected(_on_steam_lobby_created):
 		service.lobby_created.connect(_on_steam_lobby_created)
 		service.lobby_failed.connect(_on_steam_lobby_failed)
-	_watch_for_departures(service)
+	_watch_the_service(service)
 
 	# Steam takes a moment, and a button that does nothing visible reads as
 	# broken.
@@ -341,15 +358,20 @@ func _on_host_online_requested(settings: GameSettings) -> void:
 
 	# Ten players including the host, matching the match limit. The lobby
 	# carries the host's chosen name so the browser can show it.
-	service.create_lobby(NetworkedSession.MAX_CLIENTS + 1, settings.game_name)
+	service.create_lobby(
+		NetworkedSession.MAX_CLIENTS + 1, settings.game_name, settings.invite_only
+	)
 
 
-## Listens for members leaving the Steam lobby. Connected once, from wherever
-## Steam is first needed.
-func _watch_for_departures(service: SteamService) -> void:
+## Listens to the Steam service. Connected once, from wherever Steam is first
+## needed, because these answers can arrive when no screen is expecting them:
+## an invite accepted mid-menu, a host leaving mid-lobby.
+func _watch_the_service(service: SteamService) -> void:
 	if service.lobby_member_left.is_connected(_on_steam_lobby_member_left):
 		return
 	service.lobby_member_left.connect(_on_steam_lobby_member_left)
+	service.lobby_joined.connect(_on_steam_lobby_joined)
+	service.invited_to.connect(_on_steam_invited_to)
 
 
 ## Somebody left the Steam lobby. Only the host leaving matters: this game has
@@ -407,6 +429,15 @@ func _on_browse_online_requested() -> void:
 ## only the second one matters here. See docs/decisions.md D68.
 var _online_host_steam_id: int = 0
 
+## Whether the match on screen is being carried by Steam. Decides whether a
+## lobby offers to invite anybody: there is nothing to invite through on a
+## local game.
+var _is_online_match: bool = false
+
+## The Steam lobby we have asked to be let into, or 0. Held because the answer
+## arrives on a signal with no memory of who asked.
+var _pending_join_lobby: int = 0
+
 
 ## The player's Steam display name.
 ##
@@ -425,11 +456,51 @@ func _steam_name() -> String:
 	return persona
 
 
-func _on_online_join_requested(lobby_id: int, owner_steam_id: int) -> void:
-	var problem: String = join_steam_match(lobby_id, owner_steam_id, _steam_name())
-	if not problem.is_empty():
-		show_menu()
-		_report_to_menu(problem)
+## Gets into a Steam lobby and then into the match inside it.
+##
+## Public and taking only a lobby id, because there are three ways to arrive
+## here and only one of them has a screen attached: picking a game from the
+## list, accepting an invite while the game is running, and being launched by
+## an invite from cold. See docs/decisions.md D69.
+##
+## Joining is asynchronous — the owner cannot be read until Steam says we are
+## in — so this asks and continues in `_on_steam_lobby_joined`.
+func join_online_game(lobby_id: int) -> void:
+	if lobby_id == 0:
+		return
+	_pending_join_lobby = lobby_id
+
+	var service: SteamService = steam_service()
+	if not service.is_running():
+		var problem: String = service.start()
+		if not problem.is_empty():
+			_pending_join_lobby = 0
+			show_menu()
+			_report_to_menu(problem)
+			return
+
+	_watch_the_service(service)
+	service.join_lobby(lobby_id)
+
+
+## Steam has let us into the lobby. Now there is an owner to connect to.
+func _on_steam_lobby_joined(lobby_id: int) -> void:
+	if _pending_join_lobby != lobby_id:
+		return
+	_pending_join_lobby = 0
+
+	var problem: String = join_steam_match(
+		lobby_id, _steam.lobby_owner(lobby_id), _steam_name()
+	)
+	if problem.is_empty():
+		return
+	show_menu()
+	_report_to_menu(problem)
+
+
+## Somebody accepted an invitation while the game was already running.
+func _on_steam_invited_to(lobby_id: int) -> void:
+	join_online_game(lobby_id)
 
 
 func _show_lobby() -> void:
@@ -437,6 +508,9 @@ func _show_lobby() -> void:
 	lobby.leave_requested.connect(show_menu)
 	lobby.play_requested.connect(_on_play_requested)
 	lobby.connection_ended.connect(_on_connection_ended)
+	lobby.invite_requested.connect(_on_invite_requested)
+	if _is_online_match:
+		lobby.offer_invites()
 	_swap(lobby)
 	# After the swap, so the screen is in the tree and its @onready nodes exist.
 	lobby.setup(_session, _listening_port)

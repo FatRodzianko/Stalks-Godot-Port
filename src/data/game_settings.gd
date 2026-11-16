@@ -20,6 +20,11 @@ extends Resource
 ## is created, so by the time anybody sees this it always says something.
 @export var game_name: String = ""
 
+## Whether an online game is reachable only by invitation. Steam-only and
+## meaningless offline — see docs/game-rules.md §2. An invite-only lobby is
+## created `k_ELobbyTypePrivate`, which the in-game browser never lists.
+@export var invite_only: bool = false
+
 @export var starting_cash: int = 10000
 
 @export_range(2, 99) var max_years: int = 10

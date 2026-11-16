@@ -22,8 +22,10 @@ extends MarginContainer
 ## without Steam — applied to the one screen that cannot.
 
 
-## Join this lobby. `owner_steam_id` is who to connect to.
-signal join_requested(lobby_id: int, owner_steam_id: int)
+## The player picked a game. Only the asking happens here: getting into a
+## Steam lobby is `Main`'s job, because the same thing has to work from an
+## invite, when this screen is not on display at all.
+signal join_requested(lobby_id: int)
 
 signal back_requested
 
@@ -69,7 +71,6 @@ func _attach() -> void:
 		_show_unavailable("Steam is not available in this build.")
 		return
 
-	_service.lobby_joined.connect(_on_lobby_joined)
 	_service.lobby_failed.connect(_on_lobby_failed)
 	_service.lobby_list.connect(_on_lobby_list)
 
@@ -89,8 +90,7 @@ func _attach() -> void:
 func _detach() -> void:
 	if _service == null:
 		return
-	if _service.lobby_joined.is_connected(_on_lobby_joined):
-		_service.lobby_joined.disconnect(_on_lobby_joined)
+	if _service.lobby_failed.is_connected(_on_lobby_failed):
 		_service.lobby_failed.disconnect(_on_lobby_failed)
 		_service.lobby_list.disconnect(_on_lobby_list)
 
@@ -125,15 +125,10 @@ func _on_refresh_pressed() -> void:
 
 func _on_row_join_requested(lobby_id: int) -> void:
 	_status.text = "Joining..."
-	_service.join_lobby(lobby_id)
+	join_requested.emit(lobby_id)
 
 
 # ------------------------------------------------------------- what Steam says
-
-func _on_lobby_joined(lobby_id: int) -> void:
-	# A client connects to the lobby's *owner*, not to the lobby.
-	join_requested.emit(lobby_id, _service.lobby_owner(lobby_id))
-
 
 func _on_lobby_failed(reason: String) -> void:
 	_status.text = reason

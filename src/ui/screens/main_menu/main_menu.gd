@@ -55,6 +55,7 @@ const DEFAULT_PORT: int = 42420
 @onready var _years_spin: SpinBox = %YearsSpin
 @onready var _cash_spin: SpinBox = %CashSpin
 @onready var _loans_check: CheckBox = %LoansCheck
+@onready var _invite_only_check: CheckBox = %InviteOnlyCheck
 @onready var _seed_field: LineEdit = %SeedField
 @onready var _create_box: VBoxContainer = %CreateBox
 @onready var _join_box: VBoxContainer = %JoinBox
@@ -112,6 +113,9 @@ func chosen_settings() -> GameSettings:
 	settings.starting_cash = int(_cash_spin.value)
 	settings.player_count = 1
 	settings.loans_enabled = _loans_check.button_pressed
+	# Steam-only, and harmless to carry on a game that never reaches Steam:
+	# a private lobby is one the browser never lists.
+	settings.invite_only = _invite_only_check.button_pressed
 
 	# A blank or non-numeric seed means "choose one", which LocalSession does
 	# and records, so every match stays reproducible afterwards.

@@ -268,3 +268,66 @@ func test_an_unexpected_refusal_keeps_its_number() -> void:
 	# A ban or a rate limit. Rare enough not to deserve wording, common enough
 	# that the player needs something to report.
 	assert_string_contains(_refusal_for(15), "15")
+
+
+# ------------------------------------------------- invites, from a cold start
+#
+# Accepting an invite to a game that is not running launches it with
+# `+connect_lobby <id>`. That is the only way an invite can work from closed,
+# and it has to work in a **release** build — which is why it is not a
+# `LaunchArgs` flag, since those are ignored outside a debug build. The parse
+# is pure, so it is tested without Steam. See decisions.md D69.
+
+func test_an_invite_launch_names_the_lobby() -> void:
+	assert_eq(
+		SteamService.lobby_from_command_line(
+			PackedStringArray(["+connect_lobby", "109775241009"])
+		),
+		109775241009,
+	)
+
+
+func test_an_ordinary_launch_names_no_lobby() -> void:
+	assert_eq(
+		SteamService.lobby_from_command_line(PackedStringArray(["--host", "--ready"])),
+		0,
+	)
+
+
+func test_a_connect_lobby_with_nothing_after_it_is_ignored() -> void:
+	assert_eq(
+		SteamService.lobby_from_command_line(PackedStringArray(["+connect_lobby"])), 0
+	)
+
+
+func test_a_nonsense_lobby_id_is_ignored_rather_than_crashing() -> void:
+	assert_eq(
+		SteamService.lobby_from_command_line(
+			PackedStringArray(["+connect_lobby", "not-a-number"])
+		),
+		0,
+	)
+
+
+func test_the_lobby_is_found_among_other_arguments() -> void:
+	assert_eq(
+		SteamService.lobby_from_command_line(
+			PackedStringArray(["--verbose", "+connect_lobby", "42", "--fullscreen"])
+		),
+		42,
+	)
+
+
+# -------------------------------------------------- the list only asks to join
+#
+# Getting into a Steam lobby moved to `Main`, because the same thing has to
+# work from an invite, when this screen is not on display at all.
+
+func test_a_row_asks_to_join_and_nothing_more() -> void:
+	var browser: OnlineGamesScreen = _browser()
+	var asked: Array = []
+	browser.join_requested.connect(func(lobby_id: int) -> void: asked.append(lobby_id))
+
+	browser._on_row_join_requested(4242)
+
+	assert_eq(asked, [4242])

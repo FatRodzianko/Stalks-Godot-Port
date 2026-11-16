@@ -916,3 +916,52 @@ func test_the_clock_stops_once_the_host_answers() -> void:
 
 	client._process(ClientSession.JOIN_TIMEOUT_SECONDS * 2.0)
 	assert_eq(endings, [] as Array[String])
+
+
+# -------------------------------------------------------------- inviting people
+#
+# Phase 6 is not done until two accounts can meet through an invite as well as
+# through the browser. The lobby does the asking; Steam's own friend picker
+# does the choosing.
+
+func test_a_lobby_does_not_offer_invites_by_default() -> void:
+	# A local game has nobody to invite through.
+	var lobby: LobbyScreen = LobbyScene.instantiate()
+	add_child_autofree(lobby)
+	assert_false((lobby.get_node("%InviteButton") as Button).visible)
+
+
+func test_a_lobby_told_to_offer_invites_shows_the_button() -> void:
+	var lobby: LobbyScreen = LobbyScene.instantiate()
+	add_child_autofree(lobby)
+	lobby.offer_invites()
+	assert_true((lobby.get_node("%InviteButton") as Button).visible)
+
+
+func test_offering_invites_before_the_screen_exists_still_works() -> void:
+	# `Main` sets this up before the swap, as it does everything else.
+	var lobby: LobbyScreen = LobbyScene.instantiate()
+	lobby.offer_invites()
+	add_child_autofree(lobby)
+	assert_true((lobby.get_node("%InviteButton") as Button).visible)
+
+
+func test_the_invite_button_asks_rather_than_acting() -> void:
+	var lobby: LobbyScreen = LobbyScene.instantiate()
+	add_child_autofree(lobby)
+	var asked: Array = []
+	lobby.invite_requested.connect(func() -> void: asked.append(true))
+
+	(lobby.get_node("%InviteButton") as Button).pressed.emit()
+
+	assert_eq(asked.size(), 1)
+
+
+func test_the_menu_offers_invite_only_games() -> void:
+	# Listed in game-rules.md §2 since the port began, and until now it was the
+	# one setting there with no implementation.
+	var menu: MainMenu = _menu()
+	assert_false(menu.chosen_settings().invite_only, "public by default")
+
+	menu.get_node("%InviteOnlyCheck").button_pressed = true
+	assert_true(menu.chosen_settings().invite_only)

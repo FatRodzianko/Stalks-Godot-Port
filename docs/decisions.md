@@ -906,6 +906,50 @@ the board.
 
 ---
 
+### D69 — Getting into a lobby belongs to the screen host, not to a screen
+**2026-11-15 · Accepted**
+
+`Main.join_online_game(lobby_id)` owns the whole business of getting into a
+Steam lobby and then into the match inside it. The online games list only
+emits which lobby was picked.
+
+**Because there are three ways in and only one has a screen attached.** You
+can pick a game from the list; you can accept an invite while the game is
+running, with the list nowhere in sight; and you can accept an invite while
+the game is **closed**, in which case Steam launches it for you. The list
+screen used to call `join_lobby` and wait for `lobby_joined` itself, which
+works for exactly the first of those.
+
+**An invite from cold is a command-line argument.** Steam starts the game with
+`+connect_lobby <id>`. That is parsed by `SteamService.lobby_from_command_line`
+and acted on in `Main._ready` before anything else happens — deliberately not
+through `LaunchArgs`, which ignores everything in a release build so that a
+shipped game cannot be made to auto-host by a stray argument. An invite has to
+work in precisely the build `LaunchArgs` refuses to read.
+
+**Sending an invite opens Steam's own dialog**
+(`activateGameOverlayInviteDialog`), rather than building a friend list.
+Steam's picker already knows who is online, who owns the game and how to word
+an invitation; `inviteUserToLobby` would need a Steam id we have no screen to
+collect. The lobby's INVITE button emits `invite_requested` and knows nothing
+about how inviting works, like every other control on it.
+
+**Any member may invite, not just the host**, so the button is shown for an
+online match rather than for a hosted one.
+
+**Invite-only lobbies** are `k_ELobbyTypePrivate` at creation. A private lobby
+is never returned by a lobby list search, so "invite only" and "not listed"
+are the same switch rather than two. The setting has been in
+`game-rules.md` §2 since the port began and was the only one there with no
+implementation.
+
+**What it rules out.** Inviting somebody to a match already under way. The
+host shuts the lobby on Start (D68), so an invite sent afterwards leads to a
+lobby that refuses the join — reported now as "That game is not open to new
+players" rather than a bare code.
+
+---
+
 ### D68 — A Steam lobby cannot be destroyed, so the host shuts it instead
 **2026-11-15 · Accepted · extends D67**
 

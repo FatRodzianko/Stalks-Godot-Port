@@ -420,8 +420,15 @@ Full detail, including the setup steps, is in
 - **Fixed after that session:** the title screen's settings never reached a
   Steam match, so every Steam game was played with loans off whatever the
   player had chosen (D62). The browser now states what HOST would start.
-- **Still to write:** acting on Steam invites (`SteamService` reports them,
-  `Main` ignores them), and unlocking achievements.
+- **Done:** Steam invites, both directions. The lobby's INVITE button opens
+  Steam's own friend picker, an invite accepted while the game is running
+  joins that lobby, and one accepted while the game is **closed** launches it
+  with `+connect_lobby` and joins from there. Invite-only lobbies too, which
+  was the last setting in game-rules.md §2 without an implementation. See
+  decisions.md D69. **Untested against Steam.**
+- **Still to write:** unlocking achievements. 25 ids are catalogued and
+  checked for casing; nothing calls Steam to set one. The four Steam *stat*
+  names are also still unverified against the backend.
 
 ### Found by playing, fixed on 2026-11-15
 

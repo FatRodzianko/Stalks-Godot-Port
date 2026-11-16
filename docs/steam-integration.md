@@ -49,6 +49,9 @@ up on a transport that is deliberately **not** ENet. If somebody reaches for
   everyone else by `lobby_chat_update`. See decisions.md D68.
 - **The online games list** (`src/ui/screens/online_games/`) — lists joinable
   games, hosts a new one, and survives Steam being absent by saying so.
+- **Invites** go through Steam's own overlay dialog, and an invite accepted
+  from a closed game arrives as `+connect_lobby` on the command line. Both end
+  up in `Main.join_online_game`. See decisions.md D69.
 - **Menu entry**: none of its own. Hosting online is a button on **Create
   Game** beside single player and local hosting, and the list of online games
   is reached from **Join Game**. Steam is a transport, not a thing a player

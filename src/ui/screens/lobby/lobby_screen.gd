@@ -11,6 +11,10 @@ extends MarginContainer
 ## It reads the session it is given and never mutates the match.
 
 
+## The player wants to invite somebody. Only shown for an online game, and
+## the screen does not know how inviting works — it says it was asked.
+signal invite_requested
+
 ## The player asked to leave. The screen host decides whether that means closing
 ## a server or disconnecting a client.
 signal leave_requested
@@ -33,6 +37,7 @@ const LobbyRowScene: PackedScene = preload("res://src/ui/widgets/lobby_row.tscn"
 @onready var _ready_button: Button = %ReadyButton
 @onready var _start_button: Button = %StartButton
 @onready var _leave_button: Button = %LeaveButton
+@onready var _invite_button: Button = %InviteButton
 @onready var _status: Label = %Status
 
 var _session: GameSession
@@ -46,11 +51,17 @@ var _client: ClientSession
 ## connect. Zero on a client, which has no use for it.
 var _listening_port: int = 0
 
+## Set when `offer_invites` is called before the button exists. See `_ready`.
+var _offer_invites_when_ready: bool = false
+
 
 func _ready() -> void:
 	_ready_button.pressed.connect(_on_ready_pressed)
 	_start_button.pressed.connect(_on_start_pressed)
 	_leave_button.pressed.connect(_on_leave_button_pressed)
+	_invite_button.pressed.connect(_on_invite_button_pressed)
+	if _offer_invites_when_ready:
+		_invite_button.visible = true
 	if _session != null:
 		_attach()
 
@@ -67,6 +78,22 @@ func setup(session: GameSession, listening_port: int = 0) -> void:
 	_listening_port = listening_port
 	if is_node_ready():
 		_attach()
+
+
+## Shows the invite button. Off unless the screen host says otherwise,
+## because a local game has nobody to invite through.
+##
+## Any member of a Steam lobby may invite, not just the host, so this is not
+## tied to hosting.
+func offer_invites() -> void:
+	if is_node_ready():
+		_invite_button.visible = true
+	else:
+		_offer_invites_when_ready = true
+
+
+func _on_invite_button_pressed() -> void:
+	invite_requested.emit()
 
 
 func is_hosting() -> bool:

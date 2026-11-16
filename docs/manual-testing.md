@@ -288,6 +288,22 @@ decisions.md D68.
 does nothing — the fault this was written for. A game still listed after it
 started or after its host left.
 
+### B3c. Invites
+
+Phase 6 is not done until two accounts can meet this way as well as through
+the browser. See decisions.md D69.
+
+| Step | Expected |
+|---|---|
+| Machine 1: host online, then press **INVITE** in the lobby | Steam's own friend picker opens. |
+| Invite the second account, which has the game **running** on the title screen | Accepting takes machine 2 straight into the lobby. |
+| Leave. Now **close** the game on machine 2 entirely, and invite again | Accepting launches the game and it lands in the lobby. |
+| Machine 1: tick **Invite only** on Create Game, host, and have machine 2 **REFRESH** the online list | The game is not listed. An invite still gets them in. |
+
+**Failure signs:** no INVITE button (it only appears for an online game); the
+picker opening but accepting doing nothing; a cold launch landing on the title
+screen instead of in the lobby; an invite-only game appearing in the list.
+
 ### B4. Playing
 
 Repeat **A3 through A7** over the Steam connection. They are the same screens

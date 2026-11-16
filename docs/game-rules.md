@@ -47,7 +47,7 @@ with no Steam dependency at all.
 | Number of years | 2–99 | — |
 | Number of players | 1–10 | — |
 | Loans enabled | on/off | — |
-| Invite only | on/off | (Steam only; meaningless offline) |
+| Invite only | on/off | **off** (Steam only; meaningless offline) |
 
 ---
 
