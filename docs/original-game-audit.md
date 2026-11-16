@@ -781,6 +781,11 @@ every client can draw every portrait. See decisions.md D92 for why that sits bes
 **A lobby with no portraits looks like a lobby with no portraits.** Nothing reserves
 space for one, so a local game is unchanged.
 
+**Confirmed in play 2026-11-16.** Portraits appear in the lobby. They are visibly
+pixelated, because the smallest size Steam offers is 32 pixels square and the lobby
+draws on a 640x360 grid where a row is sixteen tall. The owner looked at it and left
+it alone deliberately, so do not "fix" it by asking Steam for a larger portrait.
+
 ### 17.8 No supporter DLC thank-you message - **Ported 2026-11-16**
 
 **Thanks for Supporting the Devs!** appears under the tagline on the title screen
@@ -794,6 +799,8 @@ Owning the game says nothing about owning this.
 **False whenever Steam is not running**, which includes every offline game and every
 test. A thank-you that appeared because the question could not be asked would be
 worse than no thank-you. See decisions.md D91.
+
+**Confirmed in play 2026-11-16** against an account that owns the DLC.
 
 ### 17.9 The final board cannot be inspected - **Ported 2026-11-16**
 

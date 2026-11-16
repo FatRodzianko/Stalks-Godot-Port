@@ -543,6 +543,10 @@ Steam transport specifically, which is a much narrower place to look.
 
 ### B5. Avatars and the supporter message
 
+**Steps 1-3 and 10-11 passed on 2026-11-16.** The portraits are pixelated and
+that is expected: Steam's smallest portrait is 32 pixels square and a lobby row
+is sixteen tall on the game's grid. Left as it is on purpose.
+
 With two Steam accounts, in a lobby:
 
 1. Host a game from one account and join from the other.
