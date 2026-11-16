@@ -329,6 +329,10 @@ See decisions.md D85.
 14. Check **Max players** starts at 4.
 15. Check the years, starting cash, loans and seed controls are the same on
     both panels.
+15a. Type 1234 into starting cash and check it stays 1234 rather than
+     rounding to 1200.
+15b. Type 70000 and check it is held at 69420.
+15c. Type 1 and check it is raised to 150.
 16. Check the button at the bottom reads **HOST ONLINE** here and **START** on
     the Single Player panel.
 17. Click **JOIN GAME**.

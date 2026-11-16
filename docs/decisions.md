@@ -2566,3 +2566,31 @@ host to remember to make.
 
 **What it rules out.** Filling a gap in lobby data with a default. A joiner
 having to enter a lobby to find out what the match is.
+
+---
+
+### D89 — The original's starting-cash bounds, restored
+**2026-11-16 · Accepted**
+
+Starting cash is **150 to 69,420**, as the original's create-game form had it
+(`wealth > 149 && wealth < 69421`). 150 and 69,420 are both legal, 69,421 is
+not, and 69,420 is a joke that was the ceiling on purpose.
+
+**What it replaces.** The port's field was 100 to 1,000,000. Nobody chose those
+either: they were a guess made while building the form, at a time when nothing
+in `docs/` recorded what the original allowed — `game-rules.md` had the range
+as an em dash until the 2026-11-16 audit read it out of the source. The audit
+marked the field **Ported**, which was generous.
+
+**The bounds live on `GameSettings`**, as `MIN_STARTING_CASH` and
+`MAX_STARTING_CASH`, with `@export_range` on the property. The title screen's
+spin box uses them and `chosen_settings()` clamps again. Belt and braces on
+purpose: a match can be built without going through the form — a launch flag, a
+test, a lobby setting somebody adds later — and the bounds are a rule of the
+game, not a property of one control.
+
+**This is a port decision, not a design one.** If the ceiling ever wants
+raising, that is a change to the game and belongs in its own entry.
+
+**What it rules out.** Bounds that live only on a `SpinBox`. Starting a match
+outside the original's range by any route.

@@ -43,17 +43,19 @@ with no Steam dependency at all.
 | Setting | Range | Default |
 |---|---|---|
 | Game name | up to 24 characters | named after the host |
-| Starting cash | **150–69,420** in the original | **10,000** |
+| Starting cash | **150–69,420** | **10,000** |
 | Number of years | 2–99 | — |
 | Number of players | 1–10 | — |
 | Loans enabled | on/off | — |
 | Invite only | on/off | **off** (Steam only; meaningless offline) |
 
-**The port's starting-cash range is 100 to 1,000,000**, which is wider at both
-ends than the original's 150 to 69,420. The original's bounds were read out of
-its source during the 2026-11-16 audit (`original-game-audit.md` §3.1), after
-the port's field had already been built to a guess; 69,420 is a joke number
-and was the ceiling on purpose. Whether to restore it is open.
+**Read the bounds exactly:** the original tested
+`wealth > 149 && wealth < 69421`, so 150 and 69,420 are both legal and 69,421
+is not. 69,420 is a joke and it is the ceiling on purpose.
+
+The port ran with 100 to 1,000,000 for a while — bounds guessed before the
+2026-11-16 audit read the real ones out of the original's source
+(`original-game-audit.md` §3.1). Restored the same day; see decisions.md D89.
 
 **Any whole number in range is accepted.** The field briefly rounded to the
 nearest 100, which was a spin-box step nobody chose rather than a rule.

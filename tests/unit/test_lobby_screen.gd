@@ -1088,6 +1088,37 @@ func test_starting_a_drag_silences_the_last_preview() -> void:
 ## The spin box carried `step = 100`, which is not a rounding rule anybody
 ## chose — it is what the control does with a step. The original's field was
 ## free text and took any whole number in range.
+## The original's bounds, restored 2026-11-16: its create-game form tested
+## `wealth > 149 && wealth < 69421`. The port had 100 to 1,000,000, guessed
+## before the audit read the real ones.
+func test_the_starting_cash_field_holds_the_originals_bounds() -> void:
+	var menu: MainMenu = _menu()
+	var cash: SpinBox = menu.get_node("%CashSpin")
+
+	assert_eq(int(cash.min_value), GameSettings.MIN_STARTING_CASH)
+	assert_eq(int(cash.max_value), GameSettings.MAX_STARTING_CASH)
+
+
+func test_the_joke_ceiling_is_itself_allowed() -> void:
+	# 69,420 is legal and 69,421 is not, which is the whole point of it.
+	var menu: MainMenu = _menu()
+	var cash: SpinBox = menu.get_node("%CashSpin")
+
+	cash.value = 69420
+	assert_eq(menu.chosen_settings().starting_cash, 69420)
+
+	cash.value = 69421
+	assert_eq(menu.chosen_settings().starting_cash, 69420, "clamped, not accepted")
+
+
+func test_too_little_to_start_with_is_raised_to_the_floor() -> void:
+	var menu: MainMenu = _menu()
+	var cash: SpinBox = menu.get_node("%CashSpin")
+
+	cash.value = 1
+	assert_eq(menu.chosen_settings().starting_cash, 150)
+
+
 func test_starting_cash_is_taken_as_typed() -> void:
 	var menu: MainMenu = _menu()
 	var cash: SpinBox = menu.get_node("%CashSpin")

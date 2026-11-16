@@ -25,7 +25,17 @@ extends Resource
 ## created `k_ELobbyTypePrivate`, which the in-game browser never lists.
 @export var invite_only: bool = false
 
-@export var starting_cash: int = 10000
+## The least and the most a match can start anybody with, from the original:
+## its create-game form tested `wealth > 149 && wealth < 69421`. 69,420 is a
+## joke and it is the ceiling on purpose.
+##
+## Here rather than on the title screen's spin box alone, so that a match
+## built any other way — a launch flag, a test, a future lobby setting — is
+## held to the same bounds as one a player typed.
+const MIN_STARTING_CASH: int = 150
+const MAX_STARTING_CASH: int = 69420
+
+@export_range(150, 69420) var starting_cash: int = 10000
 
 @export_range(2, 99) var max_years: int = 10
 

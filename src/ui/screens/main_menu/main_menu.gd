@@ -195,7 +195,11 @@ func chosen_settings() -> GameSettings:
 	# account rather than anything typed here.
 	settings.game_name = _game_name_field.text.strip_edges()
 	settings.max_years = int(_years_spin.value)
-	settings.starting_cash = int(_cash_spin.value)
+	settings.starting_cash = clampi(
+		int(_cash_spin.value),
+		GameSettings.MIN_STARTING_CASH,
+		GameSettings.MAX_STARTING_CASH,
+	)
 	settings.loans_enabled = _loans_check.button_pressed
 
 	# A single-player game is one player whatever the hidden control says, and

@@ -125,7 +125,7 @@ default and the limits.
 | Name of Lobby | `Lobby Name...` | any text | named after the host (§3.2) | **Ported** |
 | Number of Years | `Default 10. Max 99.` | **2–99** | 10 | **Ported** |
 | Max. Number of Players | `Default 4. Max 10.` | **1–10** | 4 | **Missing** (§17.4) |
-| Starting Wealth | `Default $10k. Min $150. Max $69420` | **150–69,420** | 10,000 | **Ported** |
+| Starting Wealth | `Default $10k. Min $150. Max $69420` | **150–69,420** | 10,000 | **Ported** (bounds restored 2026-11-16, D89) |
 | Enable Loans | — (toggle) | on/off | off | **Ported** |
 | Invite Only | — (toggle) | on/off | off | **Ported** |
 
