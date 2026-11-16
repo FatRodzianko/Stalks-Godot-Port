@@ -724,7 +724,8 @@ black bars where the monitor is not 16:9, and the window cannot be dragged to re
 
 - **The resolution does nothing in fullscreen.** The game renders at 640×360 and
   stretches to the screen whatever is selected. Decisions.md D85 explains why and
-  what fixing it would take.
+  what fixing it would take. **The dropdown is greyed out in fullscreen** so that
+  it does not look broken while that is true.
 - **The list is capped on the taskbar-free area rather than the screen**, so a
   2560×1440 monitor is not offered 2560×1440. One line in `DisplayMode.screen_size`.
 

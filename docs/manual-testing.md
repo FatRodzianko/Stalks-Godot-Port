@@ -270,6 +270,9 @@ Nothing here has been seen running. These steps are the first look.
     window — changing the volume must not reset the display.
 30. Set the resolution back to the largest on the list and tick Fullscreen.
 
+27a. Tick **Fullscreen** and check the Resolution dropdown greys out.
+27b. Untick it and check the dropdown becomes usable again.
+
 **Known broken as of 2026-11-16, left deliberately — do not re-report:**
 
 - The resolution does nothing in fullscreen. The game draws at 640 x 360 and

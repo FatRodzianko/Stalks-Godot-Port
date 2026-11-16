@@ -63,5 +63,5 @@ text = "Fill the screen"
 [node name="SettingsNote" type="Label" parent="."]
 layout_mode = 2
 theme_type_variation = &"Faint"
-text = "Kept between sessions. Drag the slider to hear it."
+text = "Kept between sessions. Resolution applies in a window; fullscreen uses the whole screen."
 autowrap_mode = 3

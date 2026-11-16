@@ -309,3 +309,35 @@ func test_the_pause_menu_always_opens_on_its_buttons() -> void:
 	pause.open()
 
 	assert_false(pause.is_showing_settings())
+
+
+# ------------------------------------------------- resolution and fullscreen
+
+func _settings() -> SettingsPanel:
+	var menu: MainMenu = _menu()
+	menu.show_mode(MainMenu.Mode.SETTINGS)
+	return menu.settings_panel()
+
+
+## Reported from play: the dropdown does nothing in fullscreen, so a player
+## could pick a size, watch nothing happen, and reasonably conclude the game
+## was broken. Greying it out is a true statement about what the setting
+## currently does. See decisions.md D85.
+func test_the_resolution_is_greyed_out_in_fullscreen() -> void:
+	var panel: SettingsPanel = _settings()
+	var dropdown: OptionButton = panel.get_node("%ResolutionOption")
+	var fullscreen: CheckBox = panel.get_node("%FullscreenCheck")
+
+	fullscreen.button_pressed = true
+	assert_true(dropdown.disabled, "it does nothing in fullscreen")
+
+
+func test_the_resolution_comes_back_in_a_window() -> void:
+	var panel: SettingsPanel = _settings()
+	var dropdown: OptionButton = panel.get_node("%ResolutionOption")
+	var fullscreen: CheckBox = panel.get_node("%FullscreenCheck")
+
+	fullscreen.button_pressed = true
+	fullscreen.button_pressed = false
+
+	assert_false(dropdown.disabled, "a window is the case where it applies")

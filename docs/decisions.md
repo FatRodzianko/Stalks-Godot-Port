@@ -2407,6 +2407,12 @@ render resolution has opted into a stretch, and at a fractional one (720p on a
 1080p screen is 1.5×) the pixels of that image cannot all be the same size on
 screen. That is the ordinary cost of a lower render resolution in any game, it
 is the player's choice to pay it, and it is not a reason to shorten the list.
+**The resolution dropdown is greyed out in fullscreen** (added 2026-11-16).
+It does nothing there, and a live control that does nothing invites a player to
+pick a size, watch the screen not change, and conclude the game is broken. The
+greying is a true statement about what the setting currently does, so **it
+should be removed the day the resolution works in fullscreen and not before.**
+
 **The filter on that stretch has never been established.**
 `rendering/textures/canvas_textures/default_texture_filter=0` is set, and this
 entry originally claimed it governs the final blit. That was an assumption, not

@@ -125,6 +125,7 @@ func _show_current_display() -> void:
 		_resolution_option.add_item(DisplaySettings.describe(_offered[index]), index)
 	_resolution_option.select(_offered.find(current))
 	_fullscreen_check.set_pressed_no_signal(stored.fullscreen)
+	_show_whether_resolution_applies(stored.fullscreen)
 
 
 ## A new resolution, applied at once and then asked about.
@@ -139,7 +140,27 @@ func _on_resolution_selected(index: int) -> void:
 
 
 func _on_fullscreen_toggled(on: bool) -> void:
+	_show_whether_resolution_applies(on)
 	_change_display(_chosen_resolution(), on)
+
+
+## Greys the resolution out in fullscreen, where it does nothing.
+##
+## **This is honesty, not polish.** The chosen resolution only reaches the
+## screen in a window; fullscreen draws at the desktop's own size whatever the
+## dropdown says (decisions.md D85). Leaving the control live meant a player
+## could pick a size, watch nothing happen, and reasonably conclude the game
+## was broken. Reported from play on 2026-11-16.
+##
+## It greys out the moment the box is ticked, before the change is confirmed,
+## because the display has already changed by then — the confirmation asks
+## whether to keep it, not whether to make it.
+##
+## **Remove this when the resolution works in fullscreen**, not before: the
+## greying is a true statement about what the setting currently does, so it
+## stops being true the day that is fixed.
+func _show_whether_resolution_applies(fullscreen: bool) -> void:
+	_resolution_option.disabled = fullscreen
 
 
 func _chosen_resolution() -> Vector2i:
