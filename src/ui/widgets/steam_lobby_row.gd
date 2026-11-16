@@ -10,6 +10,7 @@ signal join_requested(lobby_id: int)
 
 
 @onready var _name_label: Label = %Name
+@onready var _detail_label: Label = %Detail
 @onready var _players_label: Label = %Players
 @onready var _join_button: Button = %JoinButton
 
@@ -34,6 +35,39 @@ func display(lobby: Dictionary) -> void:
 	)
 	# A lobby reporting itself full should not offer a button that will fail.
 	_join_button.disabled = capacity > 0 and players >= capacity
+
+	_detail_label.text = _describe(lobby)
+
+
+## The second line: what kind of match this is.
+##
+## The original's row showed `Years: N` and `Loans: Y/N`, published as lobby
+## data for exactly this reason (audit 17.5). Starting cash is added because it
+## changes how a game plays and the original left a joiner unable to tell a
+## 10,000 game from a 150 one until they were already in the lobby.
+##
+## **Anything a lobby did not publish is left out rather than guessed.** A
+## lobby made by an older build has none of these, and a row claiming ten years
+## because that is the usual answer would be worse than a row that says
+## nothing.
+func _describe(lobby: Dictionary) -> String:
+	var parts: Array[String] = []
+
+	var years: int = int(lobby.get("years", 0))
+	if years > 0:
+		parts.append("%d years" % years)
+
+	var cash: int = int(lobby.get("cash", 0))
+	if cash > 0:
+		parts.append("start %s" % Palette.format_money(cash))
+
+	var loans: String = String(lobby.get("loans", ""))
+	if loans == SteamService.LOANS_ON:
+		parts.append("loans")
+	elif loans == SteamService.LOANS_OFF:
+		parts.append("no loans")
+
+	return "  ".join(parts)
 
 
 func lobby_id() -> int:

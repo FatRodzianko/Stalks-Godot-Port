@@ -78,6 +78,26 @@ const ENTER_FULL: int = 4
 const KEY_NAME: StringName = &"name"
 const KEY_GAME: StringName = &"game"
 
+## What the match is set up to be, published so a joiner can choose before
+## committing. The original published the year limit and whether loans were on
+## for exactly this purpose (audit 17.5).
+##
+## **Starting cash goes further than the original did.** It never published it,
+## so a joiner could not tell a 10,000 game from a 150 one until they were
+## already in the lobby, where there is nothing showing the settings either.
+##
+## Steam lobby data is strings. These are written as plain integers and read
+## back with `to_int()`, which answers 0 for anything unparseable — including
+## a lobby from an older build that never wrote them. 0 means "not published"
+## and the row leaves that part out rather than showing a wrong number.
+const KEY_YEARS: StringName = &"years"
+const KEY_LOANS: StringName = &"loans"
+const KEY_CASH: StringName = &"cash"
+
+## `KEY_LOANS` is a string like everything else in lobby data.
+const LOANS_ON: String = "1"
+const LOANS_OFF: String = "0"
+
 ## Whether the match in this lobby has begun. The browser lists only lobbies
 ## still reading `STATE_OPEN`.
 ##
@@ -106,6 +126,11 @@ var _lobby_id: int = 0
 
 ## What to call the lobby currently being created. See `create_lobby`.
 var _pending_lobby_name: String = ""
+
+## The match settings to publish once Steam has made the lobby. Held for the
+## same reason the name is: lobby data can only be written to a lobby that
+## exists, and Steam creates one asynchronously.
+var _pending_settings: GameSettings = null
 
 
 ## Whether the plugin is even present. False on a checkout that has not
@@ -199,11 +224,13 @@ func create_lobby(
 	max_players: int,
 	lobby_name: String = "",
 	invite_only: bool = false,
+	settings: GameSettings = null,
 ) -> void:
 	if not _initialised:
 		lobby_failed.emit("Steam is not running.")
 		return
 	_pending_lobby_name = lobby_name
+	_pending_settings = settings
 	var lobby_type: int = LOBBY_PUBLIC
 	if invite_only:
 		lobby_type = LOBBY_PRIVATE
@@ -326,7 +353,26 @@ func _on_lobby_created(connect_result: int, lobby_id: int) -> void:
 	Steam.setLobbyData(lobby_id, String(KEY_GAME), GAME_TAG)
 	Steam.setLobbyData(lobby_id, String(KEY_STATE), STATE_OPEN)
 	Steam.setLobbyData(lobby_id, String(KEY_NAME), _lobby_name_or_default())
+	_publish_settings(lobby_id)
 	lobby_created.emit(lobby_id)
+
+
+## Writes the match settings a joiner should see before deciding.
+##
+## Cleared after use so a later lobby cannot inherit the last one's numbers.
+## Nothing is written at all when no settings were supplied, which leaves the
+## row showing only what it can stand behind.
+func _publish_settings(lobby_id: int) -> void:
+	var settings: GameSettings = _pending_settings
+	_pending_settings = null
+	if settings == null:
+		return
+	Steam.setLobbyData(lobby_id, String(KEY_YEARS), str(settings.max_years))
+	Steam.setLobbyData(lobby_id, String(KEY_CASH), str(settings.starting_cash))
+	var loans: String = LOANS_OFF
+	if settings.loans_enabled:
+		loans = LOANS_ON
+	Steam.setLobbyData(lobby_id, String(KEY_LOANS), loans)
 
 
 ## The host's chosen name, or one made from their Steam name. Cleared after
@@ -398,6 +444,11 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 			"name": name if not name.is_empty() else "Unnamed game",
 			"players": Steam.getNumLobbyMembers(id),
 			"capacity": Steam.getLobbyMemberLimit(id),
+			# 0 and "" both mean "this lobby did not say", which an older
+			# build's lobby will not have.
+			"years": Steam.getLobbyData(id, String(KEY_YEARS)).to_int(),
+			"cash": Steam.getLobbyData(id, String(KEY_CASH)).to_int(),
+			"loans": Steam.getLobbyData(id, String(KEY_LOANS)),
 		})
 	lobby_list.emit(rows)
 

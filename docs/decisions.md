@@ -1734,6 +1734,16 @@ would initialise Steam for every run, including offline play and every test.
 The port's whole point is that it works with Steam closed (D14), and the suite
 must pass on a machine with no Steam client and no plugin.
 
+**Amended 2026-11-16: it is now started at launch, and still is not an
+autoload.** Initialising Steam takes long enough to see, and it was happening
+on the click that opens the lobby list, so Join Game visibly stalled the first
+time it was opened in a session. Reported from play. `Main.warm_up_steam()`
+does it in `_ready` instead, where the pause hides inside the time the window
+takes to appear, and skips it entirely under the headless display server so the
+suite still never touches Steam. The paragraph above ruled out one line more
+than it had to: not being an autoload is what keeps Steam out of the tests, not
+being started late.
+
 **What it rules out.** A transport that has to negotiate before it can produce
 a peer does not fit this interface — it would have to do that negotiation in
 its constructor's caller, as Steam now does. If a future transport cannot, the
@@ -2345,6 +2355,13 @@ window/stretch/scale_mode="fractional"
 window/size/resizable=false
 ```
 
+**Two of those four are not in `project.godot`.** `aspect = "keep"` and
+`scale_mode = "fractional"` are Godot's own defaults, and the engine omits any
+setting left at its default when it rewrites the file — which it does whenever
+the project is opened or run. They are listed here because they are part of the
+decision; do not re-add them to the file expecting them to stay. Same class of
+thing as the comments Godot strips (D72).
+
 **This entry describes an intent the build does not achieve.** Corrected
 2026-11-16 after it was played. `DisplayMode` sets `content_scale_size` to the
 chosen resolution and `content_scale_factor` to that resolution divided by 640,
@@ -2516,3 +2533,36 @@ failed because every host session would seat one player and refuse the rest.
 
 **What it rules out.** Creating every lobby with ten slots. Trusting a number
 that came from a screen without clamping it.
+
+---
+
+### D88 — A browser row says what kind of match it is
+**2026-11-16 · Accepted**
+
+A row in the lobby browser carries the game's name and `n/max`, and underneath
+them the year limit, the starting cash and whether loans are on. The three are
+written into Steam lobby data when the lobby is created.
+
+**The original did this**, with `NumberOfYears` and `LoansEnabled` lobby keys
+written for no other purpose than the browser row (audit 17.5). The port had
+dropped both.
+
+**Starting cash is published although the original never published it.** Its
+absence left a joiner unable to tell a 10,000 game from a 150 one until they
+were already in the lobby — and the lobby shows no settings either, so the
+first they would know of it is the opening board. It changes how a game plays
+and it belongs on the row.
+
+**A lobby that did not publish something has that part left out.** Steam lobby
+data is strings, read back with `to_int()`, which answers 0 for an absent or
+unparseable value — which is exactly what a lobby from an older build looks
+like. The row omits whatever came back empty. Guessing a default would put a
+number on screen that nothing stands behind, and "25 years" written under a
+game that is actually ten is worse than nothing written at all.
+
+**`create_lobby` takes the settings as an optional argument**, and publishes
+nothing when it is not given one. The alternative was a second call for the
+host to remember to make.
+
+**What it rules out.** Filling a gap in lobby data with a default. A joiner
+having to enter a lobby to find out what the match is.

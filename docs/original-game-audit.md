@@ -740,16 +740,20 @@ A single-player game is one player whatever the hidden control holds. See
 decisions.md D87, which also records why `GameSettings.player_count` defaults to ten
 rather than to the form's four.
 
-### 17.5 The lobby browser shows less than the original's — **Missing**
+### 17.5 The lobby browser shows less than the original's - **Ported 2026-11-16**
 
-The original's row: name, `Years: N`, `Players: n/max`, `Loans: Y/N`. The port's row:
-name and `n/max`. Years and loans were deliberate lobby metadata in the original
-precisely so a joiner could choose.
+A row now carries the game's name and `n/max` as before, and underneath them the
+year limit, the starting cash and whether loans are on.
 
-**Decided 2026-11-16:** publish years, loans **and starting cash** as lobby data at
-creation, and show all three on the row (§20.2). Starting cash goes further than the
-original, which never published it — a joiner could not tell a 10,000 game from a 150
-one until they were already in the lobby.
+Published as Steam lobby data when the lobby is created, which is how the original
+did it: `NumberOfYears` and `LoansEnabled` existed for exactly this. **Starting cash
+goes further than the original**, which never published it - a joiner could not tell a
+10,000 game from a 150 one until they were already in the lobby, where nothing shows
+the settings either (4).
+
+**Anything a lobby did not publish is left out rather than guessed.** A lobby created
+by a build that predates this has none of the three, and a row claiming ten years
+because that is the usual answer would be worse than a row that says nothing.
 
 ### 17.6 No search in the lobby browser - **Ported 2026-11-16**
 

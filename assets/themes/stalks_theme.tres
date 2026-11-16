@@ -1,7 +1,7 @@
-[gd_resource type="Theme" format=3]
+[gd_resource type="Theme" format=3 uid="uid://b56fpw7rgev1f"]
 
-[ext_resource type="FontFile" path="res://assets/fonts/Terminus.ttf" id="1_pr7vg"]
-[ext_resource type="FontFile" path="res://assets/fonts/Terminus-Bold.ttf" id="2_8rq4n"]
+[ext_resource type="FontFile" uid="uid://ccfps8600otkd" path="res://assets/fonts/Terminus.ttf" id="1_pr7vg"]
+[ext_resource type="FontFile" uid="uid://blbk8q2rlet0o" path="res://assets/fonts/Terminus-Bold.ttf" id="2_8rq4n"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_a5imo"]
 content_margin_left = 2.0

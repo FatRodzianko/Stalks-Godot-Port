@@ -331,3 +331,19 @@ func test_a_row_asks_to_join_and_nothing_more() -> void:
 	browser._on_row_join_requested(4242)
 
 	assert_eq(asked, [4242])
+
+
+## Steam is started at launch now rather than on the first click of Join Game,
+## which visibly stalled the panel (D59, amended). The suite still must not
+## reach for Steam, so the warm-up skips itself without a display.
+func test_warming_up_steam_does_nothing_without_a_display() -> void:
+	var main: Main = preload("res://src/ui/screens/main/main.tscn").instantiate()
+	add_child_autofree(main)
+
+	main.warm_up_steam()
+
+	assert_false(
+		DisplayMode.has_a_real_window(),
+		"this assertion only means anything headless, which is where the suite runs",
+	)
+	assert_null(main.session(), "and nothing about the game changed")

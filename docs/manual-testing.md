@@ -333,6 +333,8 @@ See decisions.md D85.
     the Single Player panel.
 17. Click **JOIN GAME**.
 18. Check the lobby list is already loading, with no button to press first.
+18a. Check there is no noticeable pause before the panel appears - Steam is
+     started at launch now, not on this click.
 19. Check there is a search box and a **REFRESH** button.
 20. Check there is no address or port field anywhere on the title screen.
 21. Look at the top-left corner of the window.
@@ -352,7 +354,11 @@ See decisions.md D85.
 
 **With a second Steam account hosting**, in Test B:
 
+29a. Have the other account host a game with a year limit and starting cash
+     that are not the defaults, and loans on.
 30. Open **JOIN GAME** and check the search box is **below** the list.
+30a. Check their row shows the year limit, the starting cash and "loans".
+30b. Have them host again with loans off and check the row says "no loans".
 31. Check their game is listed.
 32. Type part of their lobby name into the search box.
 33. Check the list narrows as you type.

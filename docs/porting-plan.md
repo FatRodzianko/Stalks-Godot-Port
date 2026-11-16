@@ -574,7 +574,7 @@ miss it:
 | 2 | ~~No quit button anywhere~~ | **Done 2026-11-16.** On the title screen and the pause menu |
 | 3 | ~~No fullscreen toggle, and no resolution dropdown~~ | **Done 2026-11-16.** Dropdown of exact 16:9 sizes the monitor can show, fullscreen toggle, revert countdown. See D85 |
 | 4 | ~~The host cannot choose a player limit~~ | **Done 2026-11-16.** Max players 1-10 on Host Online, applied as the Steam lobby limit and enforced for direct connections. D87 |
-| 5 | The lobby browser omits the year limit and whether loans are on, both of which the original published for exactly that purpose | Decided 2026-11-16: publish years, loans **and** starting cash |
+| 5 | ~~The lobby browser omits the year limit and whether loans are on~~ | **Done 2026-11-16.** Years, starting cash and loans published as lobby data and shown on the row. D88 |
 | 6 | ~~No search box in the lobby browser~~ | **Done 2026-11-16.** Filters as you type, and does not stick across refreshes |
 | 7 | No Steam avatars on lobby rows | Port it — no choice to make |
 | 8 | No supporter DLC thank-you message (*"Thanks for Supporting the Devs!"*) | Decided 2026-11-16: check Steam DLC ownership, show the message |

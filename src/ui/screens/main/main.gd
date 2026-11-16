@@ -74,6 +74,7 @@ func _ready() -> void:
 
 	apply_stored_display()
 	add_dev_overlay_if_wanted()
+	warm_up_steam()
 
 	# An invite accepted while the game was closed launches it with
 	# `+connect_lobby <id>`, and that has to work in a release build — which
@@ -95,6 +96,33 @@ func _ready() -> void:
 func apply_stored_display() -> void:
 	var stored: UserSettings = UserSettings.load_from()
 	DisplayMode.apply(get_window(), stored.resolution, stored.fullscreen)
+
+
+## Starts Steam now rather than the first time somebody opens Join Game.
+##
+## **The fault this fixes.** Initialising Steam takes long enough to see, and it
+## was happening on the click that opens the lobby list, so the panel visibly
+## stalled the first time it was opened in a session. Reported from play. At
+## launch the same pause hides inside the time the window takes to appear.
+##
+## **Why it was not already done.** D59 ruled out making `SteamService` an
+## autoload, because an autoload would initialise Steam for every run including
+## every test. That is still right, and it ruled out slightly more than it
+## needed to: the service can be started early in a real game without being an
+## autoload.
+##
+## **Does nothing under the headless display server**, which is the whole test
+## suite. The suite has to pass on a machine with no Steam client and no plugin
+## (D14), so a run that instantiates `Main` must not reach for Steam.
+##
+## **The answer is deliberately thrown away.** Steam being closed is an
+## ordinary thing, not a failure to report, and the player finds out when they
+## go looking for a game — the browser already explains it there. Announcing it
+## at launch would be reporting a problem nobody has yet.
+func warm_up_steam() -> void:
+	if not DisplayMode.has_a_real_window():
+		return
+	steam_service().start()
 
 
 ## Pins the direct-connection panel to the corner, in development builds only.
@@ -458,6 +486,7 @@ func _on_host_online_requested(settings: GameSettings) -> void:
 		clampi(settings.player_count, 1, HostSession.MAX_PLAYERS),
 		settings.game_name,
 		settings.invite_only,
+		settings,
 	)
 
 

@@ -9,7 +9,12 @@ script = ExtResource("1_row")
 [node name="Row" type="HBoxContainer" parent="."]
 layout_mode = 2
 
-[node name="Name" type="Label" parent="Row"]
+[node name="Lines" type="VBoxContainer" parent="Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="Name" type="Label" parent="Row/Lines"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
@@ -17,10 +22,19 @@ size_flags_horizontal = 3
 text = "GAME"
 text_overrun_behavior = 3
 
+[node name="Detail" type="Label" parent="Row/Lines"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Faint"
+text = ""
+text_overrun_behavior = 3
+
 [node name="Players" type="Label" parent="Row"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(36, 0)
 layout_mode = 2
+size_flags_vertical = 4
 theme_type_variation = &"Faint"
 text = "0/0"
 horizontal_alignment = 2
