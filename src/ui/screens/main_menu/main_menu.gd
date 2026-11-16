@@ -77,10 +77,6 @@ enum Mode { CREATE, JOIN }
 
 var _mode: Mode = Mode.CREATE
 
-## Where this screen reads and writes what the player last typed. Empty until
-## `recall_settings` sets it, and an empty one means remember nothing.
-var _settings_path: String = ""
-
 
 func _ready() -> void:
 	_single_player_button.pressed.connect(_on_single_player_pressed)
@@ -204,67 +200,22 @@ func _on_join_tab_pressed() -> void:
 	show_mode(Mode.JOIN)
 
 
-# ------------------------------------------------------- between sessions
-#
-# What you typed last time comes back, so a second run does not start from
-# defaults. The **seed does not**, deliberately: a remembered seed would make
-# every match identical and the player would have no reason to suspect why.
-
-## Fills the controls in from what was saved, and makes this screen save to
-## the same place from now on.
-##
-## **Called by `Main`, not by `_ready`.** A screen that read the file the
-## moment it existed would make every test of the menu depend on whatever the
-## developer last typed — the default-value tests would pass or fail by
-## accident. Until this is called the screen neither reads nor writes
-## anything, which is also what makes it safe to put one in a test.
-func recall_settings(path: String = UserSettings.PATH) -> void:
-	_settings_path = path
-	var remembered: UserSettings = UserSettings.load_from(path)
-	_name_field.text = remembered.player_name
-	_game_name_field.text = remembered.game_name
-	_years_spin.value = remembered.years
-	_cash_spin.value = remembered.starting_cash
-	_loans_check.button_pressed = remembered.loans_enabled
-	_invite_only_check.button_pressed = remembered.invite_only
-
-
-## Called whenever a game is started or joined, which is the moment the
-## player has settled on these values.
-func _remember_what_was_typed() -> void:
-	if _settings_path.is_empty():
-		return
-	var remembered: UserSettings = UserSettings.new()
-	remembered.player_name = _name_field.text.strip_edges()
-	remembered.game_name = _game_name_field.text.strip_edges()
-	remembered.years = int(_years_spin.value)
-	remembered.starting_cash = int(_cash_spin.value)
-	remembered.loans_enabled = _loans_check.button_pressed
-	remembered.invite_only = _invite_only_check.button_pressed
-	remembered.save_to(_settings_path)
-
-
 func _on_single_player_pressed() -> void:
-	_remember_what_was_typed()
 	start_requested.emit(chosen_settings())
 
 
 ## No name goes with this: an online game takes it from Steam.
 func _on_host_online_pressed() -> void:
-	_remember_what_was_typed()
 	host_online_requested.emit(chosen_settings())
 
 
 func _on_host_local_pressed() -> void:
-	_remember_what_was_typed()
 	host_local_requested.emit(chosen_settings(), chosen_name(), chosen_host_port())
 
 
 func _on_browse_online_pressed() -> void:
-	_remember_what_was_typed()
 	browse_online_requested.emit()
 
 
 func _on_join_local_pressed() -> void:
-	_remember_what_was_typed()
 	join_local_requested.emit(chosen_address(), chosen_join_port(), chosen_name())

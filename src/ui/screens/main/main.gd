@@ -179,10 +179,6 @@ func show_menu() -> void:
 	menu.browse_online_requested.connect(_on_browse_online_requested)
 	menu.join_local_requested.connect(_on_join_local_requested)
 	_swap(menu)
-	# After the swap, so the screen is in the tree and its @onready nodes
-	# exist — the same ordering the lobby needs. Done here rather than in the
-	# screen's own _ready so that a menu in a test starts from the defaults.
-	menu.recall_settings()
 
 
 ## Starts a match. Public so a test can begin one without driving the menu.

@@ -996,3 +996,52 @@ func test_a_player_called_you_is_not_labelled_you_twice() -> void:
 		return
 	var shown: String = (rows[0].get_node("%Name") as Label).text.to_lower()
 	assert_false(shown.contains("(you)"), "got: %s" % shown)
+
+
+# ------------------------------------------------------- the board makes noise
+#
+# The service has its own tests; these prove the board actually calls it. A
+# correct service nobody calls sounds exactly like no service at all.
+
+func _clips_sounding() -> Array[AudioStream]:
+	var streams: Array[AudioStream] = []
+	for player: AudioStreamPlayer in Audio.voices():
+		if player.stream != null:
+			streams.append(player.stream)
+	return streams
+
+
+func _hush() -> void:
+	for player: AudioStreamPlayer in Audio.voices():
+		player.stop()
+		player.stream = null
+
+
+func test_advancing_a_year_plays_the_mood() -> void:
+	var bits: Array = _playing()
+	var screen: GameplayScreen = bits[1]
+	_hush()
+
+	(screen.get_node("%ReadyButton") as Button).pressed.emit()
+
+	var sounding: Array[AudioStream] = _clips_sounding()
+	assert_eq(sounding.size(), 2, "a mood is two clips")
+	var mood_clips: Array[AudioStream] = AudioService.BULL
+	if bits[2].state().latest_result().mood == MarketMood.Value.BEAR:
+		mood_clips = AudioService.BEAR
+	for clip: AudioStream in mood_clips:
+		assert_true(sounding.has(clip), "the year resolved without its own sound")
+
+
+func test_a_year_with_nothing_going_bankrupt_does_not_break_glass() -> void:
+	var bits: Array = _playing()
+	var screen: GameplayScreen = bits[1]
+	_hush()
+
+	(screen.get_node("%ReadyButton") as Button).pressed.emit()
+	assert_eq(bits[2].state().latest_result().bankrupt_ids().size(), 0,
+		"this seed should not bankrupt anything in year 1")
+
+	for clip: AudioStream in AudioService.BANKRUPTCY:
+		assert_false(_clips_sounding().has(clip))
+

@@ -1,9 +1,10 @@
 extends GutTest
-## What the game remembers between runs.
+## Preferences kept between runs.
 ##
-## Nothing here changes how a match plays: it fills in the controls a player
-## can then change. That is why a wrong value is a nuisance rather than a bug,
-## and why the seed is deliberately **not** among them.
+## Only things a player sets once and expects to stay set live here. An
+## earlier version also remembered the Create Game fields; that was removed,
+## and `test_the_title_screen_remembers_nothing` is what stops it coming back
+## by accident. See docs/decisions.md D71.
 
 
 ## A real file, in a real writable directory, under a name no shipped build
@@ -13,71 +14,42 @@ const TEST_PATH: String = "user://test_settings.cfg"
 
 
 func after_each() -> void:
-	# Only if it is there: several tests never create one, and asking Godot to
-	# remove a file that does not exist logs an error, which GUT counts as a
-	# failure of whichever test happened to run last.
+	# Only if it is there: several tests never create one.
 	if FileAccess.file_exists(TEST_PATH):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 
 
-## A menu that has not been told where its settings live, so it neither reads
-## nor writes anything until a test says so.
-func _menu() -> MainMenu:
-	var menu: MainMenu = preload(
-		"res://src/ui/screens/main_menu/main_menu.tscn"
-	).instantiate()
-	add_child_autofree(menu)
-	return menu
-
-
-func _saved(changes: Callable) -> UserSettings:
-	var settings: UserSettings = UserSettings.new()
-	changes.call(settings)
-	settings.save_to(TEST_PATH)
-	return UserSettings.load_from(TEST_PATH)
-
-
-func test_nothing_saved_yet_gives_the_defaults() -> void:
+func test_nothing_saved_yet_means_full_volume() -> void:
 	# The first run. Not a failure, and not logged as one.
 	var fresh: UserSettings = UserSettings.load_from("user://no_such_file.cfg")
-	assert_eq(fresh.player_name, "")
-	assert_eq(fresh.years, 10)
-	assert_eq(fresh.starting_cash, 10000)
-	assert_true(fresh.loans_enabled)
-	assert_false(fresh.invite_only)
+	assert_eq(fresh.volume_percent, 100)
 
 
-func test_a_name_comes_back() -> void:
-	var back: UserSettings = _saved(
-		func(s: UserSettings) -> void: s.player_name = "Murph"
-	)
-	assert_eq(back.player_name, "Murph")
+func test_a_volume_survives_a_round_trip() -> void:
+	var settings: UserSettings = UserSettings.new()
+	settings.volume_percent = 40
+	settings.save_to(TEST_PATH)
+
+	assert_eq(UserSettings.load_from(TEST_PATH).volume_percent, 40)
 
 
-func test_every_create_game_field_comes_back() -> void:
-	var back: UserSettings = _saved(func(s: UserSettings) -> void:
-		s.player_name = "Murph"
-		s.game_name = "Friday night"
-		s.years = 25
-		s.starting_cash = 5000
-		s.loans_enabled = false
-		s.invite_only = true
-	)
-	assert_eq(back.player_name, "Murph")
-	assert_eq(back.game_name, "Friday night")
-	assert_eq(back.years, 25)
-	assert_eq(back.starting_cash, 5000)
-	assert_false(back.loans_enabled)
-	assert_true(back.invite_only)
+func test_silence_is_remembered_as_silence() -> void:
+	# Zero is the value a default-shaped store gets wrong: read back as the
+	# default 100, so muting never sticks.
+	var settings: UserSettings = UserSettings.new()
+	settings.volume_percent = 0
+	settings.save_to(TEST_PATH)
+
+	assert_eq(UserSettings.load_from(TEST_PATH).volume_percent, 0)
 
 
-func test_switching_a_flag_off_is_remembered_as_off() -> void:
-	# The failure mode a default-shaped store has: `false` read back as the
-	# default `true`, so unticking never sticks.
-	var back: UserSettings = _saved(
-		func(s: UserSettings) -> void: s.loans_enabled = false
-	)
-	assert_false(back.loans_enabled)
+func test_a_nonsense_volume_is_clamped_rather_than_obeyed() -> void:
+	# A hand-edited file should not be able to make the game deafening.
+	var file: ConfigFile = ConfigFile.new()
+	file.set_value(UserSettings.SECTION_AUDIO, "volume_percent", 9000)
+	file.save(TEST_PATH)
+
+	assert_eq(UserSettings.load_from(TEST_PATH).volume_percent, 100)
 
 
 func test_a_corrupt_file_reads_as_a_first_run() -> void:
@@ -85,60 +57,44 @@ func test_a_corrupt_file_reads_as_a_first_run() -> void:
 	file.store_string("this is not a config file {{{")
 	file.close()
 
-	var back: UserSettings = UserSettings.load_from(TEST_PATH)
-	assert_eq(back.years, 10, "defaults, not a crash")
+	assert_eq(
+		UserSettings.load_from(TEST_PATH).volume_percent, 100, "defaults, not a crash"
+	)
 
 
 func test_saving_twice_replaces_rather_than_accumulates() -> void:
 	var first: UserSettings = UserSettings.new()
-	first.player_name = "First"
+	first.volume_percent = 10
 	first.save_to(TEST_PATH)
 
 	var second: UserSettings = UserSettings.new()
-	second.player_name = "Second"
+	second.volume_percent = 90
 	second.save_to(TEST_PATH)
 
-	assert_eq(UserSettings.load_from(TEST_PATH).player_name, "Second")
+	assert_eq(UserSettings.load_from(TEST_PATH).volume_percent, 90)
 
 
-# ------------------------------------------------------------- the menu's end
+## The title screen does not read or write this file, and should not start.
+##
+## Match settings are chosen fresh each time from documented defaults. A
+## remembered year limit would mean the controls stopped showing what the
+## game's defaults actually are, with nothing on screen to say so — which is
+## why the seed was excluded even when the rest were being kept, and then why
+## the rest went too.
+func test_the_title_screen_remembers_nothing() -> void:
+	var menu: MainMenu = preload(
+		"res://src/ui/screens/main_menu/main_menu.tscn"
+	).instantiate()
+	add_child_autofree(menu)
 
-func test_the_menu_fills_itself_in_from_what_was_saved() -> void:
-	var remembered: UserSettings = UserSettings.new()
-	remembered.player_name = "Murph"
-	remembered.years = 25
-	remembered.loans_enabled = false
-	remembered.save_to(TEST_PATH)
-
-	var menu: MainMenu = _menu()
-	menu.recall_settings(TEST_PATH)
-
-	assert_eq((menu.get_node("%NameField") as LineEdit).text, "Murph")
-	assert_eq(menu.chosen_settings().max_years, 25)
-	assert_false(menu.chosen_settings().loans_enabled)
-
-
-func test_the_seed_is_never_remembered() -> void:
-	# A remembered seed would make every match identical, and a player would
-	# have no reason to suspect why. It is the one field left out on purpose.
-	var menu: MainMenu = _menu()
-	menu.recall_settings(TEST_PATH)
+	(menu.get_node("%YearsSpin") as SpinBox).value = 33
 	(menu.get_node("%SeedField") as LineEdit).text = "4242"
 	(menu.get_node("%SinglePlayerButton") as Button).pressed.emit()
 
-	var next_time: MainMenu = _menu()
-	next_time.recall_settings(TEST_PATH)
+	var next_time: MainMenu = preload(
+		"res://src/ui/screens/main_menu/main_menu.tscn"
+	).instantiate()
+	add_child_autofree(next_time)
+
+	assert_eq(next_time.chosen_settings().max_years, 10, "the documented default")
 	assert_eq((next_time.get_node("%SeedField") as LineEdit).text, "")
-	assert_eq(next_time.chosen_settings().rng_seed, 0)
-
-
-func test_a_menu_that_was_never_told_where_to_save_saves_nothing() -> void:
-	# What keeps every other menu test deterministic: pressing buttons in a
-	# test must not write the developer's real settings file.
-	var menu: MainMenu = _menu()
-	(menu.get_node("%YearsSpin") as SpinBox).value = 33
-	(menu.get_node("%SinglePlayerButton") as Button).pressed.emit()
-
-	var elsewhere: MainMenu = _menu()
-	elsewhere.recall_settings(TEST_PATH)
-	assert_eq(elsewhere.chosen_settings().max_years, 10, "defaults, not 33")

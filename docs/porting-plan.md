@@ -510,7 +510,15 @@ GDExtension**, not the module build and not Foundation for Steamworks — see
 
 ## Phase 7 — Polish
 
-- **Sound — blocked on an asset decision, not on code.** The original's seven
+- ~~Sound: bull, bear, bankruptcy, yeehaw~~ — **done 2026-11-15** (D72).
+  The original's seven effects are in `assets/audio/`, copied on the owner's
+  instruction after the licensing question was put to them. A mood plays two
+  clips layered and a bankruptcy plays glass and a scream once per year, both
+  as the original did. **Still open from this item:** a volume control on
+  screen. The volume exists, persists and applies at startup, but nothing lets
+  a player change it, because there is no settings screen and the owner has
+  not asked for one.
+- ~~Blocked on an asset decision~~ — resolved. The original's seven
   effects live in its `Assets/SFX/` (`bull1`, `bull2`, `bear1`, `bear2`,
   `glass-shattering`, `wilhelm-scream`, `yeehaw`). They have not been copied
   into this repository and should not be until the owner says so: this
@@ -522,10 +530,10 @@ GDExtension**, not the module build and not Foundation for Steamworks — see
   outstanding~~ — **done 2026-11-15**, brought forward after a second request
 - ~~Esc as a way out of a match~~ — **done 2026-11-15** (D64)
 - ~~Settings persistence and tidy quit handling~~ — **done 2026-11-15** (D71).
-  The Create Game fields and the player's name come back between runs, the
-  seed deliberately does not, and closing the window now shuts the Steam lobby
-  and the peer instead of vanishing. There is no pause menu and no settings
-  screen; D64 and D71 say why neither should exist yet
+  `user://settings.cfg` holds the effect volume, and closing the window now
+  shuts the Steam lobby and the peer instead of vanishing. Match settings are
+  deliberately **not** remembered — the first version did and it was removed
+  the same day; D71 says why. There is no pause menu and no settings screen
 - Error and edge-case presentation
 - Export presets and a Windows build, **excluding `steam_appid.txt`** — Valve's
   guidance is that it is a development-only file

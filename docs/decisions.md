@@ -906,34 +906,85 @@ the board.
 
 ---
 
-### D71 — The game remembers what you typed, and leaves cleanly when closed
+### D72 — Sound is an autoload, and plays what the original played
 **2026-11-15 · Accepted**
 
-`UserSettings` keeps the Create Game fields and the player's name in
-`user://settings.cfg`. `Main` asks the title screen to fill itself in from
-them, and the screen writes them back whenever a game is started or joined.
-Closing the window discards the session properly instead of vanishing.
+`AudioService`, registered as the `Audio` autoload, owns six players on an
+`SFX` bus and the effect volume. The board asks it for a mood when a year
+resolves, for breaking glass when anything goes under, and for a yeehaw when
+one is given.
+
+**An autoload, which this project is otherwise sparing with.** CLAUDE.md names
+audio as a service that earns one, and it does: sound is triggered from more
+than one screen and belongs to none of them. It stays thin — players, clips
+and a volume, no game rules.
+
+**Two details from the original that a reimplementation loses by default**,
+both read out of `GameplayManager.RpcPlayBearOrBullSounds`:
+
+- A mood plays **two clips at once**. `bull1` and `bull2` together, `bear1`
+  and `bear2` together. Layered, not alternated, and not one of them.
+- A bankruptcy plays breaking glass **and** a scream, together, and **once per
+  year** however many stalks went under. The original used a
+  `bankruptThisTurn` flag; here the year's result arrives once, so the guard
+  is structural rather than a variable.
+
+Nothing plays for a split, or for buying and selling. That is the original's
+choice and not an omission.
+
+**Six voices**, because a yeehaw can land in the same frame a year resolves:
+two mood clips, two bankruptcy clips and a yeehaw is five. Players are reused
+round-robin rather than searched for a free one, which with clips this short
+is both simpler and less likely to find none.
+
+**Zero means silence, not quiet.** Godot's bus volume is in decibels, so a
+naive percent-to-dB conversion leaves 0% faintly audible. It is special-cased
+to the bottom of the mixer.
+
+**The files are the original's, copied on the owner's instruction.** They were
+left out until asked for, because this repository is public and at least two
+of the seven are recognisable stock sounds of unknown licensing — the same
+reason `reference-images/` is gitignored. That is the owner's call to make and
+they made it.
+
+**Tested without listening.** A headless run uses a dummy audio driver, so
+"did it make a noise" is not a question a test can ask; which clip each player
+was handed is. That is where both inherited details live, and both are the
+kind a later change would quietly reduce to one clip. The board's end is
+tested separately, because a correct service nobody calls sounds exactly like
+no service at all — confirmed by removing the call and watching it fail.
+
+**What it rules out.** Positional audio, music, and per-sound volumes. There
+is one bus and one slider's worth of state, and Master is left free in case
+music ever arrives.
+
+---
+
+### D71 — Preferences are kept on disk, and the game leaves cleanly when closed
+**2026-11-15 · Accepted · amended the same day**
+
+`UserSettings` keeps preferences in `user://settings.cfg` — Godot's
+equivalent of Unity's PlayerPrefs, written as a named file rather than hidden
+in the registry. Closing the window discards the session properly instead of
+vanishing.
+
+**Amended within hours.** The first version also remembered the Create Game
+fields: years, starting cash, loans, invite-only and the game's name came back
+next session. The owner asked why, and there was no good answer — defaults
+plus editable controls already did the job, and a remembered year limit means
+the title screen stops *showing* the game's actual defaults, permanently, with
+nothing on screen to say so. That is the same objection that had already got
+the seed excluded, and I failed to apply it to the other five fields. Removed;
+`test_the_title_screen_remembers_nothing` keeps it out.
+
+What survives is the mechanism, which the phase genuinely needed: nothing in
+this game had ever been written to disk, so "mixer and volume settings" had
+nowhere to live. The volume is now the only thing in the file, and the bar for
+adding anything else is high.
 
 **The first piece of Phase 7, and a prerequisite for the rest of it.** The
 phase asks for "mixer and volume settings", and there was nowhere to keep a
 volume: nothing in this game had ever been written to disk.
-
-**The seed is deliberately not remembered.** Every other field comes back; a
-remembered seed would make every match identical and the player would have no
-way to guess why. It is the one case where carrying a value forward turns a
-convenience into a bug.
-
-**Recalling is `Main`'s call, not the screen's `_ready`.** A screen that read
-the file the moment it existed would make every test of the menu depend on
-whatever the developer last typed — the default-value tests would pass or
-fail by accident. Until `recall_settings` is called the screen neither reads
-nor writes, which is what makes it safe to put one in a test. Confirmed by
-running the whole suite against a deliberately populated settings file and
-watching all 537 still pass.
-
-**And it is called after the swap**, not before, because the controls are
-`@onready` and do not exist until the screen is in the tree. That is the
-ordering the lobby already documents, and it bit this change too.
 
 **Closing the window does not ask.** Clicking the X is not a keystroke
 somebody hits by accident, and a confirmation in front of a window that is

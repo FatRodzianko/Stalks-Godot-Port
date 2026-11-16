@@ -724,6 +724,9 @@ func _on_yeehaw_requested(player_id: StringName) -> void:
 
 
 func _on_yeehaw_given(giver_id: StringName, receiver_id: StringName) -> void:
+	# Everybody hears it, not just the two involved. That is the point of it.
+	Audio.play_yeehaw()
+
 	var giver: PlayerState = _session.state().player_by_id(giver_id)
 	var receiver: PlayerState = _session.state().player_by_id(receiver_id)
 	if giver == null or receiver == null:
@@ -755,6 +758,13 @@ func _on_player_changed(player_id: StringName) -> void:
 
 
 func _on_year_resolved(result: YearResult) -> void:
+	# The year's mood, and breaking glass if anything went under. Both come
+	# straight from the original; see src/audio/ for what it plays and why a
+	# bankruptcy sounds once a year rather than once a stalk.
+	Audio.play_mood(result.mood)
+	if not result.bankrupt_ids().is_empty():
+		Audio.play_bankruptcy()
+
 	_clear_error()
 	_show_event(result)
 	_info_label.text = _summarise(result)
