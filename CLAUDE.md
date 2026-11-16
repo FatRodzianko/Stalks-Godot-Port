@@ -70,6 +70,22 @@ the editor is invisible in diffs and can only be done by the owner. Therefore:
 
 When an editor step is unavoidable, state **why** code could not do it.
 
+### Achievements are finished. Never raise them.
+
+**Do not ask the owner anything about Steam achievements.** Not what one was for, not
+whether a threshold is right, not whether an unused one should be built, not "worth
+revisiting". They are implemented in code and the subject is closed.
+
+If you need to know how an achievement behaves, **read the code and the tests** —
+`src/data/achievements.gd`, `src/sim/achievement_rules.gd`,
+`src/net/achievement_reporter.gd`, `tests/unit/test_achievements.gd` and
+`tests/unit/test_achievement_rules.gd`. That is the answer. Verify it yourself; do not
+turn it into a question.
+
+This rule exists because an audit kept surfacing achievements as open items after they
+were done. Recording a fact about the original game's achievements is fine. Asking the
+owner to decide something about them is not.
+
 After any change, say explicitly what was verified and how (which command ran, what
 it output) and what was *not* verified. Do not report a scene as "working" on the
 strength of a successful parse.

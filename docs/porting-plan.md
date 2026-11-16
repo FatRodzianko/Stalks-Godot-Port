@@ -3,6 +3,13 @@
 Phased schedule for the port. Rules are in `game-rules.md`; structure is in
 `architecture.md`.
 
+**Scope comes from the original game, not from `game-rules.md`.** That document
+specifies the economy exhaustively and says almost nothing about menus, settings, the
+lobby browser or the pause menu — all of which are functionality a player notices.
+`original-game-audit.md` inventories the whole of the shipped game and marks each
+piece ported, changed or missing; its **§17 gap list** is the outstanding parity work
+and is summarised below under *Parity gaps*.
+
 **Ordering principle:** the economy is built and fully tested *before* any UI exists,
 and networking comes *before* Steam. This is deliberate. The game is fundamentally a
 random number generator with a scoreboard, so if the numbers are wrong nothing else
@@ -354,7 +361,8 @@ button asks or gives, a pending request is synced match state, and the asker
 cannot answer themselves. The confirmation before ending a year with a loan
 payment due — outstanding since Phase 4 — is also in (D53).
 
-**Still open in Phase 5:** the yeehaw *sound*.
+**Still open in Phase 5:** nothing. The yeehaw *sound* was the last item and
+arrived with the rest of the audio on 2026-11-15 (D72).
 
 **Worth knowing: only one `Main` can hold a peer per process.** `Main` uses the
 tree's default `MultiplayerAPI`, as a shipped game should, and a tree has exactly
@@ -494,6 +502,11 @@ but would award it for real on the tester's account, so it is being left
 alone. Everything else in this phase is built and tested. Read Phase 6 as
 complete **pending an upload**, with those two as what the upload is for.
 
+The upload itself is now prepared rather than described: a `Windows Release`
+export preset, `tools/steam_upload.ps1`, and [publishing.md](publishing.md)
+with the partner-site steps. What remains is the owner's — a depot id, an SDK
+download, and a Steam login.
+
 🖱️ Owner needed for: Steamworks SDK download from the partner site, app ID decision,
 and testing with a second Steam account.
 
@@ -532,13 +545,53 @@ GDExtension**, not the module build and not Foundation for Steamworks — see
 - ~~Export presets and a Windows build, excluding `steam_appid.txt`~~ —
   **done**. `export_presets.cfg` has excluded it since the preset was written
   (Valve's guidance is that it is a development-only file) and builds have
-  been produced from it all through Phases 6 and 7. See exporting.md
+  been produced from it all through Phases 6 and 7. A second preset,
+  **Windows Release**, was added on 2026-11-16 (D75): no debug symbols, no
+  test suite, its own output folder. See exporting.md and publishing.md
 - ~~Year history retained and inspectable~~ — **done 2026-11-15** (D73).
   The result screen has a **YEAR BY YEAR** tab beside the final standings: one
   row per year with its mood, what you were worth at the end of it, and what
   the market did. Nothing new crosses the wire — every machine already kept
   the history. Not available *during* a match; that is a layout question and
   the board is full
+
+---
+
+## Parity gaps — unscheduled
+
+Phases 0–7 delivered the whole economy and a playable game over Steam, but an audit
+of the original on 2026-11-16 found functionality the port does not have. These are
+**port work, not new features**: the original did each of them.
+
+Full detail, with suggested scope for each, is in
+[original-game-audit.md §17](original-game-audit.md). Not repeated here, so there is
+one list rather than two that can disagree. In rough order of how much a player would
+miss it:
+
+| # | Gap | Decision |
+|---|---|---|
+| 1 | No in-game pause menu — the original's Escape menu held Resume, Settings, Quit Game and Exit to Desktop. `ui-reference.md` listed this as Phase 7 work and Phase 7 closed without it | Port it — no choice to make |
+| 2 | No quit button anywhere; closing the window is the only way out | Port it — no choice to make |
+| 3 | No fullscreen toggle, and no resolution dropdown | Decided 2026-11-16: build the dropdown, populated from the system. Revises D40; see audit §17.3 |
+| 4 | The host cannot choose a player limit; every lobby is created with ten slots | Decided 2026-11-16: restore the 1–10 field |
+| 5 | The lobby browser omits the year limit and whether loans are on, both of which the original published for exactly that purpose | Decided 2026-11-16: publish years, loans **and** starting cash |
+| 6 | No search box in the lobby browser | Port it — no choice to make |
+| 7 | No Steam avatars on lobby rows | Port it — no choice to make |
+| 8 | No supporter DLC thank-you message (*"Thanks for Supporting the Devs!"*) | Decided 2026-11-16: check Steam DLC ownership, show the message |
+| 9 | The final board cannot be inspected after the result screen appears | Decided 2026-11-16: add a view-board button |
+| 10 | **The window is resizable and nobody chose that.** The original explicitly disabled resizing; `window/size/resizable` is unset, so Godot's default applies | Decided 2026-11-16: fix the window. Driven by a reported bug — see audit §17.10 |
+
+**Every gap on this list is to be ported.** "Port it — no choice to make" means the
+original had the thing, the port does not, and restoring it needs no decision from
+anybody: build it as the original had it. It does **not** mean the item was dropped.
+The rest were decided on 2026-11-16; those decisions are in
+[original-game-audit.md §20](original-game-audit.md) and in each gap's own entry under
+§17. Gaps 3 and 10 together revise **D40**, which chose integer scaling without
+settling either the resolution list or the window policy.
+
+Every decision recorded in the audit still needs a `decisions.md` entry when its work
+is scheduled. The audit is where the answer was captured, not where it belongs
+permanently.
 
 ---
 

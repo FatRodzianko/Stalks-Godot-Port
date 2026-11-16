@@ -906,6 +906,48 @@ the board.
 
 ---
 
+### D75 — A separate release preset, and an upload script that does not upload
+**2026-11-16 · Accepted**
+
+**A second export preset, `Windows Release`.** The everyday build and the build
+a player installs are not the same artifact and should not overwrite each
+other in the same folder. The release preset writes to `..\stalks-release\`
+and excludes `tests/`, `addons/gut/` and `.gutconfig.json`.
+
+Measured, not assumed: the debug pack holds 556 resource paths, 248 of them
+GUT and 56 of them tests. The release pack holds 209 and none — 4.1 MB
+against 5.7 MB. Shipping a test framework to players is not a crime, but it is
+a third of the pack and it tells anybody who opens it where the seams are.
+
+**`tools/steam_upload.ps1` writes SteamPipe's two build scripts and stops.**
+It does not upload. Uploading needs a Steam password and a two-factor code
+that only the owner can type, and a failed upload is far easier to read when
+the command that caused it is on screen. `-Run` is there for when that stops
+being interesting.
+
+**The build scripts are generated, not committed.** They carry a depot id read
+off the partner site and an absolute path to one machine's build folder.
+Neither belongs in a repository that is meant to make sense on a fresh clone.
+
+**Three refusals, because each one is a mistake that is silent otherwise:**
+
+- a content folder without an `.exe` and a `.pck` uploads happily and breaks
+  on install
+- `steam_appid.txt` in the build folder ships a development-only file, against
+  Valve's own guidance; the preset excludes it, this catches a hand-copied one
+- `-Branch default` publishes to everybody who already owns the published
+  game. It needs `-AllowDefaultBranch` as well, so it cannot be a typo
+
+**The depot id is not guessed.** It is conventionally the App ID plus one, and
+that convention is not a guarantee. `publishing.md` says where to read it.
+
+**What it rules out.** An upload from CI, or from here. Publishing the port
+over the published Unity build is a decision about a store page, existing
+owners and their achievements — not a build step, and nothing in this
+repository should be able to do it by accident.
+
+---
+
 ### D74 — Settings is a third tab, and failures say what went wrong
 **2026-11-15 · Accepted**
 
@@ -2026,3 +2068,258 @@ a countdown, not an override.
 **Still named, not counted.** The status line says "Waiting on Ann and Bob"
 rather than "2 of 4 ready", because the host is deciding whether to wait for a
 particular person.
+
+---
+
+### D76 — Pixel-perfect rendering is a hard requirement
+**2026-11-16 · Accepted**
+
+**The game's art and UI must be pixel-perfect.** This is a requirement of the
+product, stated by the owner, not a consequence of any other choice. It outranks
+filling the screen, matching a monitor's native resolution, and convenience.
+
+It had never been written down. Before this entry the phrase appeared nowhere in
+`docs/`; D40 chose a reference resolution and integer scaling, and
+`ui-reference.md` noted as an aside that "the art is never resampled" — a
+description of what D40 happened to produce, not a constraint anybody had to
+respect. An audit on 2026-11-16 found the gap.
+
+**What it forbids.**
+
+- Any rendering path that resamples the game image unevenly — a nearest-neighbour
+  upscale at a non-integer factor, where one source pixel becomes two columns and
+  the next becomes three.
+- Fonts with antialiasing, hinting or subpixel positioning on; texture filtering
+  other than nearest. These are already set correctly in `project.godot` and must
+  stay that way.
+
+**Struck on 2026-11-16: this entry also forbade `stretch/mode = canvas_items`,
+and that was wrong.** The reasoning given was that it draws each element at the
+window's true resolution rather than upscaling a 640×360 image. That is true,
+and it is the thing that *delivers* this requirement rather than breaking it —
+there is no resampling step to come out uneven. See D83.
+
+**The constraint, restated correctly.** What cannot be made even at a fractional
+multiple is an **upscale of the game image**: at 2.5×, one source pixel has to
+cover two output pixels and then three, and no engine escapes that. That is a
+reason not to upscale the image, not a reason to shorten the resolution list.
+Drawing at native resolution has no such limit and works at any multiple, whole
+or not. **Shortening the resolution list is not an acceptable answer to this**
+— that was proposed during the audit and rejected by the owner.
+
+**What it rules out.** Treating "looks fine" as sufficient. If a change makes the
+game image non-uniform at any offered resolution, the change is wrong.
+
+---
+
+### D77 — A resolution dropdown, populated from the system
+**2026-11-16 · Accepted · supersedes part of D40**
+
+The settings screen offers a resolution dropdown listing **the resolutions the
+system supports**, as the original did. Restores audit §17.3.
+
+**Why, when the window was resizable.** The original had this and the port
+dropped it. "Resize the window instead" was the port's implicit answer, and D78
+removes that answer entirely, so the dropdown is now the only way a player
+chooses a size.
+
+**What the dropdown actually sets: the window's size.** Decided 2026-11-16. The
+game never changes the monitor's video mode — the window is fixed (D78) and
+fullscreen is borderless at the desktop mode — so the list is of window sizes
+that fit the current monitor, read from
+`DisplayServer.screen_get_usable_rect()`.
+
+**No GDExtension.** An earlier version of this entry called the real mode list a
+blocker: Godot's `DisplayServer` genuinely cannot enumerate display modes (no
+equivalent of Unity's `Screen.resolutions`), so reading them would mean
+`EnumDisplaySettings` through a native extension on Windows and a platform
+equivalent elsewhere. That cost buys nothing here, because only exclusive
+fullscreen needs a mode list and this game does not use it. Owner's decision,
+2026-11-16.
+
+**Which stretch mode ships** is settled by D83: `canvas_items` with
+`aspect = keep`. Every offered size draws at native resolution, so no size on
+the list has to be dropped for scaling reasons.
+
+**What it rules out.** Hardcoding a list of resolutions. Shortening the list to
+those that happen to scale exactly. A native extension for display enumeration.
+
+---
+
+### D78 — The window is fixed, not resizable
+**2026-11-16 · Accepted · supersedes part of D40**
+
+`window/size/resizable = false`, as the original had it
+(`resizableWindow: 0` in its Unity player settings).
+
+**This was never previously decided.** The port's window resized because `true`
+is Godot's default and nothing set it. An earlier version of `ui-reference.md`
+listed resizability under "where the port deliberately differs", which was wrong:
+no decision existed.
+
+**The reason is a reported bug, not a preference.** Dragging a window by its
+title bar in Windows means passing close to the resize handle. Catch it, shrink
+the window one pixel below a whole multiple of 640×360, and integer scaling has
+no choice but to drop a whole step — ×3 becomes ×2 — so the game abruptly renders
+at two thirds the size inside a large border. A one-pixel slip produces a
+drastic, visible jump. The owner hit this in play.
+
+That interaction is inherent to integer-scaling a resizable window: there is no
+setting that makes the step smaller, because the steps *are* whole numbers.
+Removing the drag removes the trigger, which is why this is the fix and not a
+workaround.
+
+**What it rules out.** Relying on window resizing as the way a player picks a
+size — hence D77. Fullscreen is unaffected: a fixed window can still go
+fullscreen, since `resizable` only governs dragging the frame.
+
+---
+
+### D79 — The host sets the player limit
+**2026-11-16 · Accepted**
+
+The Create Game screen carries a **1–10 player limit**, applied as the Steam
+lobby's member limit, as the original did. Restores audit §17.4.
+
+The port created every lobby with ten slots, so a host who wanted a three-player
+game could not stop a fourth joining. `GameSettings.player_count` already exists
+and is hardcoded to 1 at both call sites.
+
+**What it rules out.** A fixed ten-slot lobby, and deciding the cap anywhere but
+the host's own screen.
+
+---
+
+### D80 — The lobby browser row shows years, loans and starting cash
+**2026-11-16 · Accepted**
+
+A row in the online games browser shows the game's name, players, **year limit,
+whether loans are enabled, and starting cash**. Restores audit §17.5 and goes one
+field further than the original.
+
+The original published years and loans as Steam lobby metadata for exactly this
+purpose, and the port publishes neither. Starting cash the original never
+published at all, so a joiner could not tell a 10,000 game from a 150 one until
+they were already in the lobby. All three change how a game plays, so all three
+are visible before committing.
+
+**What it rules out.** Choosing a game on its name and player count alone.
+
+---
+
+### D81 — The result screen can stand aside to show the final board
+**2026-11-16 · Accepted**
+
+The result screen gains a control that hides it to reveal the finished board —
+prices, holdings and rankings as they ended — and a way back. Restores audit
+§17.9.
+
+The original did this with an X on the winner panel and a second Quit button
+underneath. The port replaced the panel with a dedicated screen carrying final
+standings and a year-by-year history, which is more information but not the board
+itself. The history does not substitute for it.
+
+**What it rules out.** Treating the history view as a complete replacement for
+inspecting the final state.
+
+---
+
+### D82 — The supporter message is gated on Steam DLC ownership
+**2026-11-16 · Accepted**
+
+The title screen shows **"Thanks for Supporting the Devs!"** when the player owns
+the supporter DLC. Restores audit §17.8 and §3.7.
+
+The original checked for a file named `support-dlc.txt` sitting next to the
+executable. That was a stand-in; ownership is the real test, and GodotSteam
+exposes it directly as `Steam.isDlcInstalled(dlc_app_id)`. The DLC's own App ID
+is read off the Steam partner backend, the same place the achievement names came
+from.
+
+**What it rules out.** The file check, and any mechanism a player can satisfy by
+creating a file.
+
+---
+
+### D83 — Render at native resolution, in a fixed window
+**2026-11-16 · Accepted · supersedes the scaling half of D40 and D77**
+
+**D76 stands. Pixel-perfect rendering is still a hard requirement**, and this
+entry does not relax it. An earlier version of D83 claimed to supersede D76 on
+the grounds that the game would never have pixel art; that claim was wrong and
+was removed on 2026-11-16 at the owner's instruction. Nothing below depends on
+it.
+
+Display settings are now:
+
+```
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+window/size/resizable=false
+```
+
+`scale_mode` is gone; it only applies to `viewport` stretching.
+
+**Why `canvas_items`.** It lays the UI out in 640×360 coordinates but renders
+every glyph and panel at the window's **real** resolution. Text is therefore
+sharp at 1080p, 1440p, 4K and everything between, instead of being a 640×360
+image enlarged.
+
+This is how pixel-perfect survives an uneven multiple. The uneven-multiple
+problem belongs to *upscaling an image* — at 2.5×, one source pixel has to
+cover two output pixels and then three. Nothing is upscaled here: every glyph
+and every panel edge is drawn straight onto real screen pixels at whatever size
+the window implies, so there is no resampling to be uneven. D76's claim that
+`canvas_items` is forbidden for this project was written about the image path
+and does not apply to drawing at native resolution.
+
+**Why `aspect = keep`.** The owner's requirement: *the same information on every
+resolution.* `keep` preserves the 640×360 coordinate space and fills any aspect
+mismatch with bars, so a 16:10 Steam Deck and a 16:9 monitor show identical
+content. `expand` would grow the coordinate space and reveal extra rows on taller
+or wider displays, which is explicitly unwanted. Bars are acceptable; varying
+content is not.
+
+**Why `resizable = false`.** See D78. It also stops mattering less: without
+integer scaling there is no scale-step jump, but a fixed window remains what the
+original had and what the owner wants.
+
+**Supersedes the scaling half of D40.** D40's reference resolution of 640×360,
+its character grid and Terminus remain in force — they are what make the layout
+tractable, and that reasoning is untouched. What is superseded is
+`stretch/mode = viewport` and `scale_mode = integer`.
+
+**Ultrawide needs no special handling.** `keep` pillarboxes it by the same rule
+as everything else. Nothing to test, which is what the owner asked for.
+
+**Font settings are unchanged and stay that way.** `project.godot` sets font
+antialiasing, hinting and subpixel positioning off, and 2D pixel snapping on.
+D76 requires all four. Drawing at native resolution does not change that: a
+glyph rasterised with antialiasing off is still a glyph made of whole pixels,
+which is the point.
+
+**What it rules out.** Upscaling the game image by any factor, integer or not.
+The old argument about integer multipliers and black-bar arithmetic is gone
+because nothing is scaled, not because the requirement behind it went away.
+
+---
+
+### D84 — A fullscreen toggle, borderless, with bars where the monitor is not 16:9
+**2026-11-16 · Accepted**
+
+The settings screen gets a fullscreen toggle, as the original had (audit §17.3).
+It uses Godot's **borderless** fullscreen at the desktop resolution, never
+exclusive fullscreen.
+
+**Why borderless.** Exclusive fullscreen is the only mode that would need the
+monitor's list of video modes, which Godot cannot supply without a native
+extension (D77). Borderless needs none of that: it takes the desktop resolution
+as it finds it, alt-tabs cleanly, and is what a UI-only game wants.
+
+**Bars, not more content.** `aspect = keep` (D83) holds the 640×360 coordinate
+space, so a 16:10 laptop or an ultrawide gets letterbox or pillarbox rather than
+extra rows. That is the owner's standing requirement — the same information on
+every display — and fullscreen is not an exception to it.
+
+**What it rules out.** Exclusive fullscreen. Any fullscreen path that changes
+how much of the game is visible.

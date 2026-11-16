@@ -87,15 +87,22 @@ The window has three parts:
 If the left list is empty, the right side is blank and the bottom buttons are
 greyed out. Nothing is broken; there is just no recipe yet.
 
-### 2.2 The preset this project uses
+### 2.2 The presets this project uses
 
-One, called **Windows Desktop**. The settings that were deliberately chosen,
-rather than left at their defaults:
+Two: **Windows Desktop** for everyday builds and **Windows Release** for a
+build that goes to players. They are identical except for the output folder.
+
+**Neither is in the repository.** `export_presets.cfg` is gitignored, because
+it can carry absolute paths and signing details. A fresh clone has no presets
+and must recreate them — 2.3 and 2.6 below say how.
+
+The Windows Desktop settings that were deliberately chosen, rather than left
+at their defaults:
 
 | Setting | Value | Why |
 |---|---|---|
 | **Export Path** | `../stalks-build/StalksStalksStalks.exe` | Where the build is written. Relative, and starting `../` means *the folder next to the project*, so builds never land inside the repository where they could be committed by accident. |
-| **Resources → Filters to exclude** | `tools/*, steam_appid.txt` | Leaves the developer tools and the Steam App ID file out of the finished build. Valve's guidance is that the App ID file should not ship. |
+| **Resources → Filters to exclude** | `tools/*, tests/*, addons/gut/*, .gutconfig.json, steam_appid.txt` | Leaves the developer tools, the test suite and the Steam App ID file out of the finished build. Valve's guidance is that the App ID file should not ship. |
 | **Binary Format → Architecture** | `x86_64` | Ordinary 64-bit Windows. |
 | **Debug → Export Console Wrapper** | on | Produces a second small `.console.exe` that prints output to a terminal. Useful when something goes wrong on another machine. |
 
@@ -142,6 +149,23 @@ libraries per platform in `addons/godotsteam/godotsteam.gdextension`, and the
 exporter copies the right ones next to the finished executable — including
 `steam_api64.dll`.
 
+### 2.6 The release preset, from nothing
+
+Copied from the everyday one rather than built from scratch. In the Export
+dialog:
+
+1. Select the existing **Windows Desktop** preset.
+2. Click the **copy** icon above the list (next to the dustbin).
+3. Rename the copy to **Windows Release** — the name field is at the top
+   right, and `tools/steam_upload.ps1` and publishing.md both expect that
+   exact name.
+4. Set its **Export Path** to `../stalks-release/StalksStalksStalks.exe`.
+5. Leave the exclude filters as they are; they already cover tests and GUT.
+
+Export it with `--export-release` rather than `--export-debug`. See
+[publishing.md](publishing.md).
+
+---
 
 ## 3. Every time: export
 
@@ -260,3 +284,21 @@ If the two machines cannot see each other, it is almost always one of:
   whether to allow it. If that prompt was dismissed, the rule is a "no". Check
   under Windows Defender Firewall → Allow an app.
 - **Different ports.** Both ends default to 42420, but the field is editable.
+
+---
+
+## 7. Release builds, and Steam
+
+Everything above describes the **Windows Desktop** preset, which is the
+everyday debug build: it carries debug symbols and is what the two-machine
+tests use.
+
+There is a second preset, **Windows Release**, for a build that goes to
+players. It differs in three ways:
+
+- exported with `--export-release`, so no debug symbols
+- writes to `..\stalks-release\` instead of `..\stalks-build\`
+- leaves out `tests/`, `addons/gut/` and `.gutconfig.json`, which the debug
+  build carries and which are about a third of the pack
+
+Uploading that to Steam is [publishing.md](publishing.md).

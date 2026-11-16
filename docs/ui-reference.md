@@ -170,12 +170,21 @@ Neither exists in the port yet beyond a basic result screen. The esc menu is Pha
 
 ---
 
-## Where the port deliberately differs
+## Where the port differs
 
-Three places, all small, where current practice beats matching the original:
+Three places. **Two were chosen; the first was not** — it is here because this is
+where a reader looks for it, not because anybody decided it.
 
-1. **Resizable.** The original was built against a fixed resolution. The port lays
-   everything out with containers so a resized window still works.
+1. **Resizable — but by accident, not by choice.** The original explicitly disabled
+   window resizing (`resizableWindow: 0`). The port's window resizes because `true` is
+   Godot's default for `window/size/resizable` and nothing ever set it; there is no
+   decision behind it and `project.godot` does not mention it. An earlier version of
+   this list presented it as a deliberate improvement, which was wrong. The layout
+   *does* survive resizing, because it is built from containers on a character grid —
+   but that is a property of the layout, not evidence that anybody chose the policy.
+   **Decided 2026-11-16: fix the window, as the original had it**, with a resolution
+   dropdown instead. Not yet implemented — see original-game-audit.md §17.3 and §17.10
+   for the decision and the reasoning.
 2. **Rejections are visible.** The original showed
    *"You do not have enough cash for this purchase."* in the bottom bar but also let
    a purchase fail silently in some paths. The port disables the control as you type
