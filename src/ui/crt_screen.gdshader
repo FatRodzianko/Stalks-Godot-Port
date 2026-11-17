@@ -60,7 +60,11 @@ uniform float vignette_width : hint_range(0.0, 60.0) = 9.0;
 group_uniforms;
 
 group_uniforms colour_bleed;
-uniform float bleed_amount : hint_range(0.0, 1.0) = 0.55;
+// Lowered from 0.55 on 2026-11-17. The bleed is the single largest readable
+// cost of the effect: measured, it was five of the twelve percentage points of
+// horizontal stroke definition the effect was taking away, and this game's
+// text has strokes one and two pixels wide. See decisions.md D94.
+uniform float bleed_amount : hint_range(0.0, 1.0) = 0.30;
 // Exponential falloff in game pixels. The trail runs right, so the taps read
 // left.
 uniform float bleed_falloff : hint_range(0.25, 6.0) = 1.1;
@@ -86,7 +90,10 @@ group_uniforms scanlines;
 // At three rows per line the samples land on a sixth, a half and five sixths,
 // which are not equal, and the comb appears. 120 lines over 360 rows is that.
 uniform float scanline_count = 120.0;
-uniform float scanline_strength : hint_range(0.0, 1.0) = 0.30;
+// Lowered from 0.30 on 2026-11-17 along with the bleed. The comb costs nothing
+// horizontally but cuts across glyphs, and at three rows per line a letter
+// eight rows tall takes three of them.
+uniform float scanline_strength : hint_range(0.0, 1.0) = 0.22;
 uniform float line_noise : hint_range(0.0, 1.0) = 0.12;
 uniform float line_noise_speed : hint_range(0.0, 4.0) = 1.0;
 group_uniforms;

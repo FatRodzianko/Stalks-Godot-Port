@@ -2849,7 +2849,104 @@ to carry it. And a full-screen overlay that takes mouse input: the glass is
 `MOUSE_FILTER_IGNORE` and a test holds it there, because a rect in front of
 the whole game that swallows clicks would swallow the one that turns it off.
 
+**Softened on 2026-11-17, after the effect was played with.** Reported as
+"a little harder to read, which is expected to a certain extent", with a
+question about whether a brightness control would help. It would not, and
+measuring said why.
+
+The effect was not darkening anything: **99.4%** of the picture's light
+survived it, and 100.2% in the middle half where the vignette has no say.
+Block contrast was at 97.7%. Both of the obvious measurements said nothing was
+wrong. What had fallen was **horizontal stroke definition - 87.9%** - measured
+as the mean absolute difference between neighbouring pixels, which is almost
+the definition of a stroke one pixel wide. This game's text has strokes one and
+two pixels wide, so that is the number readability lives on.
+
+Knocking out one component at a time, against the same effect-off render:
+
+| Variant | Detail across | Detail down |
+|---|---|---|
+| As built | 87.9% | 128.8% |
+| No glow | 87.2% | 128.2% |
+| **No bleed** | **92.9%** | 129.4% |
+| No scanlines | 87.9% | 94.6% |
+
+So of the twelve points lost, five were the colour bleed and the rest was the
+warp's own resampling, which cannot be given back without giving up the warp.
+The glow costs nothing horizontally. The scanlines cost nothing horizontally
+either, but add 29% more vertical edge energy, which is the comb cutting across
+letters eight rows tall.
+
+`bleed_amount` went 0.55 to 0.30 and `scanline_strength` 0.30 to 0.22. Measured
+after: detail across **90.0%**, detail down **118.0%**, block contrast 99.0%,
+brightness unchanged. It still reads as a CRT.
+
+**A brightness control was considered and not built.** It works mechanically -
+it is a multiply, and a game being nothing but UI does not change that - but
+brightness was never what was lost, so it would raise the text and the
+background together and wash the picture out while leaving legibility exactly
+where it was. A "CRT strength" slider scaling the three knobs together is the
+control to add if taste still varies; a slider whose job is to undo an untuned
+default is the wrong shape.
+
 **How to look at it.** `tools/crt_shot.gd` renders the title screen with the
 effect on and writes a PNG; the command is in the file. No test can judge the
 picture, and a shader that will not compile passes every test in this
-repository, so this is how it is checked.
+repository, so this is how it is checked. `tools/crt_compare.gd` is the
+other half: it differences two renders and prints the figures above. See
+testing.md for what each one answers.
+
+### D95 - Personal notes live in an uncommitted file beside CLAUDE.md
+
+**Decision.** `CLAUDE.md` is committed and holds conventions of the codebase.
+A `CLAUDE.local.md` sits beside it, is loaded with it, and is in `.gitignore`.
+Anything about one machine or one person goes in the local file: where Godot is
+installed, where the original Unity project sits, and working preferences that
+would read as strange to a stranger who had just cloned the repository.
+
+**Why.** This repository is meant to be published, and `CLAUDE.md` had grown
+three kinds of content that do not belong in a public file: absolute paths
+containing a Windows username, a statement of one person's experience level,
+and instructions about how to talk to that person. None of it is a rule about
+the code, and all of it would be noise - or worse, confusing - to anyone else
+reading the repository.
+
+**Why not simply delete it.** Those instructions are load-bearing. They were
+each written after something went wrong, and the reasoning behind them is the
+part that stops it going wrong again. Moving them keeps them working while
+taking them out of the public file.
+
+**Why not put all of `CLAUDE.md` in `.gitignore` instead.** That was considered
+and rejected. `CLAUDE.md` carries the static typing rule, the naming
+conventions, the rule that the simulation must not depend on the scene tree,
+the money-is-always-an-int rule and the documentation gate. Removing it from
+the repository would take all of that out of a public clone, which is directly
+against the documentation bar this project holds itself to - a successor with
+no access to anyone who worked on this has to be able to continue. It would
+also stop the file being versioned and reviewable in a diff, which is how the
+rest of this project's rules are kept honest.
+
+**Why not a separate style guide document either.** The same content in two
+places drifts, and D60 is this project's own record of exactly that happening.
+`CLAUDE.md` is the file an assistant loads every session, so it is where the
+conventions have to live to be followed; a `docs/code-style.md` restating them
+would be a second copy with nothing checking the two agree.
+
+**The test of which file something belongs in**, written into `CLAUDE.md`
+itself: would the rule read as strange to a stranger who had just cloned the
+repository? If so it is personal. If not it is a convention and it is public,
+even when it came from one person's preference originally.
+
+**One thing deliberately stayed public in depersonalised form.** "Write for a
+reader with little or no Godot experience" is a real documentation standard
+here - it is why `docs/godot-editor-guide.md` exists and why editor steps are
+numbered click by click. The standard is public; who it was written for is not.
+
+**What it rules out.** Personal notes in `CLAUDE.md`. Absolute paths in any
+committed file except `docs/development.md`, which is the one place the project
+has always allowed them and labels them as one machine's layout. And a second
+copy of the conventions anywhere.
+
+**Still exposed, and a separate decision if it ever matters:** the machine
+paths in `docs/development.md`, which are there on purpose, and the author's
+name and email in the commit history.

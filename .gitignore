@@ -6,6 +6,19 @@
 # Legacy Godot 3 import folder, here only as a safety net.
 .import/
 
+# ---- Local instructions ----
+# CLAUDE.md is committed and holds the conventions of this codebase. Beside it,
+# CLAUDE.local.md holds the things that are about one machine or one person
+# rather than about the project: where Godot is installed on this computer,
+# where the original Unity project sits, and working preferences that would
+# read as strange to a stranger who had just cloned the repository.
+#
+# Both files are loaded together by an assistant working on the project, so the
+# split costs nothing and keeps the public half about the code. If something in
+# the local file turns out to be a rule about the codebase, move it to
+# CLAUDE.md rather than leaving it here where nobody else can see it.
+CLAUDE.local.md
+
 # Export configuration can contain local paths and signing credentials.
 export.cfg
 export_presets.cfg

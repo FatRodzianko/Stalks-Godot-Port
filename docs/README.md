@@ -61,6 +61,12 @@ coding standards and conventions. It is addressed to an AI assistant, but the
 standards in it apply to anyone working on this project, so read it as a style guide
 regardless of whether you use AI.
 
+It may refer to a `CLAUDE.local.md` beside it. That file is **not committed** and you
+are not missing anything by not having it: it holds one machine's paths and one
+person's working preferences, never a rule about the code. Anything that turns out to
+be a rule about the code belongs in `CLAUDE.md` where everyone can see it. See
+decisions.md D95.
+
 ---
 
 ## How this documentation is maintained

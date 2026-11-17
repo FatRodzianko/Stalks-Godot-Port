@@ -325,9 +325,35 @@ had an invisible scanline pattern — 180 lines over 360 rows samples every row
 at the same phase of the sine, so the comb cancels exactly (decisions.md D94).
 On a dark screen that is indistinguishable from "a subtle effect" by eye. It
 was caught by rendering the same screen with the effect on and off and
-differencing the two images: identical, row for row. A throwaway script that
-loads both PNGs with `Image.load_from_file` and prints the mean difference
-answers in one run what staring at a screenshot cannot.
+differencing the two images: identical, row for row.
+
+`tools/crt_compare.gd` is that comparison, kept:
+
+```
+<godot> --headless --script res://tools/crt_compare.gd -- <on.png> <off.png> [<zoom dir>]
+```
+
+Set `EFFECT_ON` in `tools/crt_shot.gd` to render each side. What it prints and
+what each figure is for:
+
+| Figure | Answers |
+|---|---|
+| mean difference, pixels changed | is the effect doing anything at all |
+| mean brightness, and the middle half alone | is it darkening the picture — the middle excludes the vignette |
+| **detail across** | stroke definition, which is what text legibility is |
+| detail down | how hard the scanline comb is cutting across glyphs |
+| peak stroke, local contrast | what a bright block keeps |
+
+**"Detail across" is the one that matters for readability**, and it is the one
+the obvious measurements miss. When the effect was reported as hard to read,
+brightness measured at 99.4% and block contrast at 97.7% — both effectively
+untouched — while horizontal detail was at 87.9%. Mean absolute difference
+between neighbouring pixels is almost the definition of a one-pixel stroke, so
+a horizontal smear shows up there and nowhere else. Knocking out one component
+at a time said the colour bleed was five of the twelve points.
+
+A third argument writes a nearest-neighbour zoom of both, because a three-pixel
+scanline period cannot be seen in a screenshot viewed at anything but 1:1.
 
 ### What the suite deliberately will not test
 

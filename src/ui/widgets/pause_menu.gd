@@ -8,10 +8,10 @@ extends Control
 ## this is for is the three things a player mid-match otherwise cannot do:
 ## change a setting, leave to the title screen, and close the game.
 ##
-## It used to say so on screen, in a line of my own writing. Removed on
-## 2026-11-16: the game's voice is the owner's, and a panel headed PAUSED that
-## pauses nothing is a quirk of this game that a player works out in one
-## match. See the note on flavour text in CLAUDE.md.
+## It used to say so on screen, in a written-for-the-purpose line. Removed on
+## 2026-11-16: the game's voice belongs to its author and is not something to
+## improvise around, and a panel headed PAUSED that pauses nothing is a quirk
+## a player works out in one match anyway.
 ##
 ## **Why it has to exist at all.** In fullscreen there is no window to close.
 ## Without this, and without the title screen's quit button, the only way out

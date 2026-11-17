@@ -4,14 +4,24 @@ A 2D, UI-only multiplayer stock-trading game. Players buy and sell "stalks" whos
 prices move each in-game year via bull/bear modifiers and random special events.
 Highest net worth after the final year wins. 1–10 players over Steam.
 
-This is a **port**, not a translation. The original Unity project lives at
-`C:\Users\murph\Desktop\Unity-gamedev-stuff\StalksStalksStalks` and is **read-only
-reference for game rules and feel only**. Its code structure is explicitly not a
-model to follow — it has 900-line god objects and heavy coupling. Reimplement
-behaviour, not architecture.
+This is a **port**, not a translation. The original Unity project is **read-only
+reference for game rules and feel only**, it is not part of this repository, and a
+successor will not have a copy of it. Its code structure is explicitly not a model
+to follow — it has 900-line god objects and heavy coupling. Reimplement behaviour,
+not architecture.
+
+Everything taken from the original is written down here instead: the rules in
+`docs/game-rules.md`, the feature-by-feature comparison in
+`docs/original-game-audit.md`. Keep it that way, so this repository stands alone.
 
 The authoritative rules reference is `docs/game-rules.md` (create and keep current
 as rules are confirmed).
+
+**This file holds conventions of the codebase.** Anything about one machine or one
+person — where Godot is installed, how somebody prefers to be talked to — belongs
+in `CLAUDE.local.md`, which sits beside this file, is loaded with it, and is
+deliberately not committed. If a rule written here would read as strange to a
+stranger who had just cloned the repository, it is in the wrong file.
 
 ---
 
@@ -20,19 +30,20 @@ as rules are confirmed).
 Godot **4.7.2 stable** (`4.7.2.stable.official.ed1daf0bf`). Pin this exact version;
 do not assume a newer or older minor release behaves the same.
 
-`godot` is **not on PATH**. The engine lives in an extracted folder next to this
-project. The paths below are **this machine's setup** — for a fresh clone on another
-computer, see `docs/development.md`:
+`godot` is **not on PATH** and this project does not assume where it is. Godot ships
+as a plain extracted folder, so the executable lives wherever the person working on
+the project put it. `docs/development.md` is how a fresh clone finds or installs the
+right version; where it is on one particular machine belongs in `CLAUDE.local.md`.
 
-- GUI editor:
-  `C:\Users\murph\Desktop\dev-projects\Godot_v4.7.2-stable_win64\Godot_v4.7.2-stable_win64.exe`
-- CLI / headless (use this one — it prints to stdout):
-  `C:\Users\murph\Desktop\dev-projects\Godot_v4.7.2-stable_win64\Godot_v4.7.2-stable_win64_console.exe`
+Two executables matter on Windows and the difference is easy to miss: the plain
+`.exe` opens the editor and writes nothing to the terminal, while the one whose name
+ends `_console.exe` prints to stdout. **Every command below means the console one** —
+without it a headless run appears to do nothing at all.
 
 Project root is this directory (`project.godot` sits next to this file), so the git
 repo root and the Godot project root are the same path.
 
-Common commands, run from the project root with the console exe as `<godot>`:
+Common commands, run from the project root with the console executable as `<godot>`:
 
 | Purpose | Command |
 |---|---|
@@ -50,61 +61,27 @@ Prefer `--headless` for anything that does not need a window. Re-run
 
 ## Working Agreement (read this first)
 
-The project owner is **new to Godot**. Instructions that require clicking in the
-editor must be written as explicit, numbered, click-by-click steps naming the exact
-panel, menu, and button — never "just add a MultiplayerSpawner" or "set it up in the
-Inspector".
+**Write for a reader with little or no Godot experience.** Instructions that require
+clicking in the editor must be explicit, numbered, click-by-click steps naming the
+exact panel, menu, and button — never "just add a MultiplayerSpawner" or "set it up
+in the Inspector". `docs/godot-editor-guide.md` exists for the same reason, and the
+documentation bar further down this file says the same thing about `docs/`.
 
 **Prefer code and text files over editor actions.** Godot's project files are plain
 text, so anything expressed as a script or a hand-written `.tscn`/`.tres` is
-something Claude can author, diff, and verify directly. Anything done by clicking in
-the editor is invisible in diffs and can only be done by the owner. Therefore:
+something an assistant can author, diff, and verify directly. Anything done by
+clicking in the editor is invisible in diffs and can only be done by a person at the
+keyboard. Therefore:
 
 - Build scenes as text (`.tscn`) where the node tree is simple and regular.
 - Connect signals **in code** (`emitter.signal_name.connect(_on_thing_happened)`),
   not via the editor's Node → Signals panel, so connections show up in diffs.
 - Configure autoloads, input maps, and display settings by editing `project.godot`
-  directly, then tell the owner to reopen the project.
+  directly, then say that the project needs reopening for them to take effect.
 - Reserve editor hand-holding for genuinely visual work: theme authoring, fiddly
   container layout, and importing art/audio.
 
 When an editor step is unavoidable, state **why** code could not do it.
-
-### Do not write flavour text
-
-**Taglines, slogans, jokes and any line whose job is tone are the owner's to
-write, not yours.** Text that *explains* something is fine and expected — a
-placeholder, an error message, a note saying what a setting does. Text that
-exists to have a voice is not.
-
-Two were invented and both were cut on 2026-11-16: a title-screen tagline
-("Buy low. Sell high...") and a line on the pause menu. The owner's verdict on
-the first was "It is very bad."
-
-The game already has a voice and it is in the original: *Can I Get a Yeehaw?*,
-*You're terrible at picking stalks!*, a $69,420 ceiling. Anything written to
-fill a gap reads as generic beside that. Take the words from the original
-(`docs/original-game-audit.md` quotes many of them verbatim) or ask. **An
-empty label is better than an invented one.**
-
-This cannot be machine-checked the way the readability rules are — no test can
-tell tone from explanation — so it lives here and depends on being read.
-
-### Achievements are finished. Never raise them.
-
-**Do not ask the owner anything about Steam achievements.** Not what one was for, not
-whether a threshold is right, not whether an unused one should be built, not "worth
-revisiting". They are implemented in code and the subject is closed.
-
-If you need to know how an achievement behaves, **read the code and the tests** —
-`src/data/achievements.gd`, `src/sim/achievement_rules.gd`,
-`src/net/achievement_reporter.gd`, `tests/unit/test_achievements.gd` and
-`tests/unit/test_achievement_rules.gd`. That is the answer. Verify it yourself; do not
-turn it into a question.
-
-This rule exists because an audit kept surfacing achievements as open items after they
-were done. Recording a fact about the original game's achievements is fine. Asking the
-owner to decide something about them is not.
 
 After any change, say explicitly what was verified and how (which command ran, what
 it output) and what was *not* verified. Do not report a scene as "working" on the

@@ -79,8 +79,10 @@ Original
 Unity src: C:\Users\murph\Desktop\Unity-gamedev-stuff\StalksStalksStalks  (not in git)
 ```
 
-`CLAUDE.md` names the first two concretely because an automated assistant needs a
-literal path. Every other document uses `<godot>`.
+An automated assistant needs a literal path rather than a placeholder, so one is
+kept in `CLAUDE.local.md` — a file beside `CLAUDE.md` that is loaded with it and is
+deliberately not committed, because it is about one machine rather than about the
+project. Every document, `CLAUDE.md` included, uses `<godot>`.
 
 ---
 
@@ -173,6 +175,7 @@ tests/
 project.godot    Engine configuration. Edited directly; see decisions.md D19.
 .gutconfig.json  Test runner configuration.
 CLAUDE.md        Coding standards. Addressed to an AI, but applies to everyone.
+CLAUDE.local.md  Not committed. One machine's paths and personal preferences.
 ```
 
 The single most important structural rule: **`src/sim` never depends on anything above

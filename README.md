@@ -101,7 +101,8 @@ has to be testable without a window, a scene, or a network peer. See
 
 Coding standards are in [CLAUDE.md](CLAUDE.md). It is addressed to an AI assistant,
 but the standards apply to anyone working on this project — read it as the style
-guide.
+guide. It mentions a `CLAUDE.local.md`; that one is not committed and holds only one
+machine's paths and one person's preferences, never a rule about the code.
 
 Three that catch people out:
 
