@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Stalks Stalks Stalks"
 config/description="A multiplayer stock-trading game. Buy and sell stalks, survive the market, finish the final year with the highest net worth."
-run/main_scene="res://src/ui/screens/main/main.tscn"
+run/main_scene="res://src/ui/stage.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 
@@ -35,12 +35,9 @@ gdscript/warnings/return_value_discarded=1
 
 [display]
 
-window/size/viewport_width=640
-window/size/viewport_height=360
+window/size/viewport_width=1280
+window/size/viewport_height=720
 window/size/resizable=false
-window/size/window_width_override=1280
-window/size/window_height_override=720
-window/stretch/mode="viewport"
 
 [editor_plugins]
 

@@ -4,23 +4,17 @@ extends GutTest
 ## **What a test can and cannot reach here.** How it looks is not checkable:
 ## the suite runs headless, nothing is rendered, and the shader is never even
 ## compiled. Judging the picture is a manual step and is written up as one in
-## docs/manual-testing.md.
+## docs/manual-testing.md; `tools/crt_shot.gd` and `tools/crt_compare.gd` are
+## how it is measured.
 ##
-## What these cover is everything around the shader, which is where the faults
-## that would matter live. Two in particular:
-##
-##   * **A full-screen rectangle in front of the whole game must not take a
-##     click.** Get that wrong and every press in the game is swallowed,
-##     including the one that would turn the effect off again. There is no way
-##     out of that except a hand-edited settings file.
-##   * **A screen change must not switch it off.** The development overlay is
-##     deliberately hidden away from the title screen by `Main._swap`, and this
-##     sits on a layer beside it; the obvious mistake is to treat the two the
-##     same.
+## What these cover is everything around the shader. The effect is a material
+## on the control that shows the game (decisions.md D96), so the question is
+## whether that material goes on and comes off at the right times — and above
+## all whether a screen change switches it off, which is the mistake the
+## development overlay's deliberate hiding invites.
 
 
-const OverlayScene: PackedScene = preload("res://src/ui/widgets/crt_overlay.tscn")
-const MainScene: PackedScene = preload("res://src/ui/screens/main/main.tscn")
+const StageScene: PackedScene = preload("res://src/ui/stage.tscn")
 const PanelScene: PackedScene = preload("res://src/ui/widgets/settings_panel.tscn")
 
 ## What was in the real settings file before a test that has to write to it.
@@ -37,7 +31,7 @@ var _saved: UserSettings
 ## invisible until it bites: if the effect is already on, the settings panel
 ## opens with its box already ticked, and
 ## `test_the_settings_tick_box_turns_it_on_and_remembers` then ticks a ticked
-## box - which changes nothing, emits no signal, and fails an assertion that
+## box — which changes nothing, emits no signal, and fails an assertion that
 ## has nothing wrong with it. It passed for a day and failed the moment a
 ## developer tool left the effect switched on.
 func before_each() -> void:
@@ -52,32 +46,92 @@ func after_each() -> void:
 	_saved.save_to()
 
 
-func _overlay() -> CrtOverlay:
-	var overlay: CrtOverlay = OverlayScene.instantiate()
+func _overlay_on(target: CanvasItem) -> CrtOverlay:
+	var overlay: CrtOverlay = CrtOverlay.new()
+	overlay.target = target
 	add_child_autofree(overlay)
 	return overlay
 
 
-func _glass(overlay: CrtOverlay) -> ColorRect:
-	return overlay.get_node("Glass") as ColorRect
+func _something_to_draw_on() -> ColorRect:
+	var rect: ColorRect = ColorRect.new()
+	add_child_autofree(rect)
+	return rect
+
+
+func _stage() -> Stage:
+	var stage: Stage = StageScene.instantiate()
+	add_child_autofree(stage)
+	return stage
 
 
 func test_an_overlay_starts_switched_off() -> void:
-	assert_false(_overlay().is_enabled())
+	assert_false(_overlay_on(_something_to_draw_on()).is_enabled())
 
 
-func test_it_can_be_switched_on_and_off() -> void:
-	var overlay: CrtOverlay = _overlay()
+func test_switching_it_on_puts_the_shader_on_its_target() -> void:
+	var rect: ColorRect = _something_to_draw_on()
+	var overlay: CrtOverlay = _overlay_on(rect)
 
 	overlay.enable(true)
-	assert_true(overlay.is_enabled())
 
+	assert_true(overlay.is_enabled())
+	assert_eq(rect.material, CrtOverlay.MATERIAL, "the effect is the material")
+
+
+func test_switching_it_off_takes_the_shader_away_again() -> void:
+	# Not merely hidden. A material left on would keep costing a full-screen
+	# pass every frame for a player who turned the effect off.
+	var rect: ColorRect = _something_to_draw_on()
+	var overlay: CrtOverlay = _overlay_on(rect)
+
+	overlay.enable(true)
 	overlay.enable(false)
-	assert_false(overlay.is_enabled())
+
+	assert_null(rect.material)
+
+
+## The fault this catches is invisible and shipped twice.
+##
+## A `CanvasItem`'s `texture_filter` overrides the `filter_linear` hint on the
+## shader's own sampler. Left on nearest, the shader samples nearest whatever
+## it asks for, and its edge reconstruction — which works by nudging where it
+## reads from — does nothing at all. The picture still looks like a reasonable
+## pixel-art upscale, just with a stair-step in every line the tube bends, so
+## nothing announces that half the shader is inert.
+func test_the_effect_switches_the_target_to_linear_sampling() -> void:
+	var rect: ColorRect = _something_to_draw_on()
+	var overlay: CrtOverlay = _overlay_on(rect)
+
+	overlay.enable(true)
+
+	assert_eq(rect.texture_filter, CanvasItem.TEXTURE_FILTER_LINEAR)
+
+
+func test_turning_it_off_puts_nearest_sampling_back() -> void:
+	# With no effect the target draws the picture itself at a whole multiple,
+	# where there is nothing to interpolate and linear would only soften it.
+	var rect: ColorRect = _something_to_draw_on()
+	var overlay: CrtOverlay = _overlay_on(rect)
+
+	overlay.enable(true)
+	overlay.enable(false)
+
+	assert_eq(rect.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST)
+
+
+func test_an_overlay_with_nothing_to_draw_on_is_harmless() -> void:
+	var overlay: CrtOverlay = CrtOverlay.new()
+	add_child_autofree(overlay)
+
+	overlay.enable(true)
+
+	assert_true(overlay.is_enabled(), "it still remembers what was asked for")
 
 
 func test_the_group_reaches_it_without_knowing_where_it_is() -> void:
-	var overlay: CrtOverlay = _overlay()
+	var rect: ColorRect = _something_to_draw_on()
+	var overlay: CrtOverlay = _overlay_on(rect)
 
 	CrtOverlay.apply(get_tree(), true)
 	assert_true(overlay.is_enabled(), "switched on through the group")
@@ -93,45 +147,15 @@ func test_applying_with_no_overlay_in_the_tree_is_harmless() -> void:
 	pass_test("nothing to switch, and nothing broke")
 
 
-## The fault that would make the game unplayable.
-func test_the_glass_never_takes_a_click() -> void:
-	var glass: ColorRect = _glass(_overlay())
-
-	assert_eq(glass.mouse_filter, Control.MOUSE_FILTER_IGNORE)
-
-
-func test_the_glass_covers_the_whole_screen() -> void:
-	# Anything less and the effect would stop partway across the picture.
-	var glass: ColorRect = _glass(_overlay())
-
-	assert_eq(glass.anchor_right, 1.0)
-	assert_eq(glass.anchor_bottom, 1.0)
-
-
-func test_the_glass_carries_the_shader() -> void:
-	var glass: ColorRect = _glass(_overlay())
-	var material: ShaderMaterial = glass.material as ShaderMaterial
-
-	assert_not_null(material, "a shader material")
-	assert_not_null(material.shader, "with a shader in it")
-
-
-## Above the game, below the development overlay.
-##
-## Debugging text read through a barrel warp and a scanline comb is worse
-## debugging text, and the overlay is not part of what a player sees anyway.
-func test_it_draws_over_the_game_but_under_the_development_overlay() -> void:
-	var overlay: CrtOverlay = _overlay()
-
-	assert_gt(overlay.layer, 0, "over everything the game draws")
-	assert_lt(overlay.layer, Main.DEV_OVERLAY_LAYER, "under the dev overlay")
-
-
 func test_the_game_builds_one() -> void:
-	var main: Main = MainScene.instantiate()
-	add_child_autofree(main)
+	assert_not_null(_stage().crt_overlay())
 
-	assert_not_null(main.crt_overlay())
+
+func test_it_hangs_from_the_control_that_shows_the_picture() -> void:
+	# Not from a rectangle in front of the game, which is what it used to be.
+	var stage: Stage = _stage()
+
+	assert_eq(stage.crt_overlay().target, stage.screen_control())
 
 
 func test_the_game_switches_it_to_whatever_was_saved() -> void:
@@ -139,10 +163,7 @@ func test_the_game_switches_it_to_whatever_was_saved() -> void:
 	asked_for.crt_effect = true
 	asked_for.save_to()
 
-	var main: Main = MainScene.instantiate()
-	add_child_autofree(main)
-
-	assert_true(main.crt_overlay().is_enabled())
+	assert_true(_stage().crt_overlay().is_enabled())
 
 
 func test_a_screen_change_does_not_switch_it_off() -> void:
@@ -150,15 +171,15 @@ func test_a_screen_change_does_not_switch_it_off() -> void:
 	asked_for.crt_effect = true
 	asked_for.save_to()
 
-	var main: Main = MainScene.instantiate()
-	add_child_autofree(main)
-	main.show_menu()
+	var stage: Stage = _stage()
+	stage.game().show_menu()
 
-	assert_true(main.crt_overlay().is_enabled(), "still on after a swap")
+	assert_true(stage.crt_overlay().is_enabled(), "still on after a swap")
 
 
 func test_the_settings_tick_box_turns_it_on_and_remembers() -> void:
-	var overlay: CrtOverlay = _overlay()
+	var rect: ColorRect = _something_to_draw_on()
+	var overlay: CrtOverlay = _overlay_on(rect)
 	var panel: SettingsPanel = PanelScene.instantiate()
 	add_child_autofree(panel)
 
@@ -170,8 +191,8 @@ func test_the_settings_tick_box_turns_it_on_and_remembers() -> void:
 
 
 func test_the_settings_tick_box_turns_it_off_again() -> void:
-	var overlay: CrtOverlay = _overlay()
-	overlay.enable(true)
+	var rect: ColorRect = _something_to_draw_on()
+	var overlay: CrtOverlay = _overlay_on(rect)
 	var panel: SettingsPanel = PanelScene.instantiate()
 	add_child_autofree(panel)
 

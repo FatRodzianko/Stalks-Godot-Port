@@ -3,16 +3,16 @@ extends Control
 ##
 ## Run with Godot's Movie Maker; see tools/loan_shot.gd for the command.
 
-const MainScene: PackedScene = preload("res://src/ui/screens/main/main.tscn")
+const StageScene: PackedScene = preload("res://src/ui/stage.tscn")
 
-var _main: Main
+var _stage: Stage
 var _frames: int = 0
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	_main = MainScene.instantiate()
-	add_child(_main)
+	_stage = StageScene.instantiate()
+	add_child(_stage)
 
 
 func _process(_delta: float) -> void:
@@ -24,7 +24,7 @@ func _process(_delta: float) -> void:
 	# up by now, the cast below quietly returned null, and this tool rendered
 	# the wrong tab without saying so. Asking for the menu outright is what
 	# stops the next thing added in front of it breaking this again.
-	_main.show_menu()
-	var menu: MainMenu = _main.current_screen() as MainMenu
+	_stage.game().show_menu()
+	var menu: MainMenu = _stage.game().current_screen() as MainMenu
 	if menu != null:
 		menu.show_mode(MainMenu.Mode.SETTINGS)

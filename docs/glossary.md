@@ -289,6 +289,21 @@ below everything else according to its `layer` number. It is not a `Control`, so
 container lays it out. Used here for the two overlays that must float over whatever
 screen is showing: the CRT effect and the development panel.
 
+**`SubViewport`** — a viewport inside the scene tree rather than the window. The
+whole game is drawn into one, 640x360, so the finished picture is an ordinary
+texture that an effect can read. See decisions.md D96.
+
+**`SubViewportContainer`** — the control that shows a `SubViewport`. It does the
+enlarging, and it transforms mouse coordinates into the viewport so nothing in
+the game has to.
+
+**Integer scaling** — enlarging the picture by a whole number only. At 2x every
+source pixel is a 2x2 square; at 2.5x some would be three screen pixels wide and
+some two, which makes a letter's strokes uneven.
+
+**Letterboxing** — the black bars left when the picture cannot fill the window.
+Here they appear whenever the window is not a whole multiple of 640x360.
+
 ## CRT terms
 
 The optional CRT effect (decisions.md D94) borrows the vocabulary of the

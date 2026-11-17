@@ -3041,3 +3041,183 @@ copy of the conventions anywhere.
 **Still exposed, and a separate decision if it ever matters:** the machine
 paths in `docs/development.md`, which are there on purpose, and the author's
 name and email in the commit history.
+
+### D96 - The game is drawn into a SubViewport and enlarged by a whole number
+
+**Decision.** Godot's own stretch setting is switched off. The game renders
+into a `SubViewport` of exactly 640x360, and `Stage` - the new root scene -
+shows that picture through a `SubViewportContainer` enlarged by **the largest
+whole number that fits the window**, centred, with black around whatever is
+left. `Main` and every screen under it are unchanged and know nothing about any
+of it.
+
+**Why.** Two problems with one cause.
+
+The first was reported from play: under the CRT effect, some rows of text were
+noticeably blurrier than the rows right next to them. D94a has the measurement
+- the barrel warp is the whole of it, the scanlines contribute nothing, and a
+row displaced by half a pixel is blended with its neighbour. At 640x360 a
+stroke is one pixel wide, so a half-pixel error halves it.
+
+The second is older. D85 recorded that the resolution dropdown did nothing,
+because `content_scale_size` and `content_scale_factor` cancelled out exactly.
+Both faults come from the same place: **a stretch happens after everything is
+drawn, where nothing can reach it.** Put the picture in a viewport and it is an
+ordinary texture, which an effect can read.
+
+**What it fixed, measured.** Stroke definition across the playing screen, the
+effect on against the effect off:
+
+| | Detail across |
+|---|---|
+| Before, shader at 640x360 | 90.0% |
+| **After, shader at the monitor's resolution** | **102.1%** |
+
+Over a hundred per cent because the effect's own glow adds edge energy. The
+point is that the warp no longer costs any: the fault is gone, not reduced.
+
+**Enlarged by a whole number, which is the real cost.** Enlarging 640x360 by
+2.5 makes some source pixels three screen pixels wide and others two, so a
+letter's strokes come out uneven. Whole multiples keep every source pixel the
+same square, and `SubViewportContainer.stretch_shrink` is a whole number
+anyway. It is the **width** that decides: 1280, 1920, 2560 and 3840 take no
+side bars at any height, so every 16:10 and 3:2 device, Steam Deck included,
+gets bars above and below only. Odd widths - 1366, 1440, 1600, 1680 - get a
+border all round.
+
+**So the resolution ladder was trimmed.** 960x540 and 1600x900 were the only
+two rungs that are not whole multiples of 640x360; a window at either would
+have shown a smaller picture with a wasted border. Dropped on the owner's
+instruction, and `test_every_rung_of_the_ladder_is_a_whole_multiple` now stops
+another one being added.
+
+**Input needed nothing**, which is the opposite of what was feared.
+`SubViewportContainer` transforms mouse coordinates into its viewport itself -
+measured in `tools/subviewport_spike.gd` - and the game has no code anywhere
+that reads the pointer directly. **Popups needed one property**:
+`gui_embed_subwindows` on the `SubViewport`, without which the resolution
+dropdown is drawn in the window around the picture rather than in it
+(`tools/popup_spike.gd`). Both are asserted in `test_stage.gd`, because a
+silent change to either would be found by a player rather than by a test.
+
+**No screen, widget, theme or layout file changed.** Not one, and neither did
+the simulation. This is where Godot and the Unity notes that prompted the
+worry diverge: that project needed a sweep over twenty-seven canvases because
+its UI is bound to a camera, while a Godot `Control` neither knows nor cares
+which viewport draws it.
+
+**Four things broke on the way, and each is worth knowing.**
+
+1. **The splash screen stopped being skippable by mouse.** Its nodes took mouse
+   input, so a click was swallowed by the interface and never reached
+   `_unhandled_input`. Every node in that scene is `MOUSE_FILTER_IGNORE` now,
+   which is correct regardless - a logo is not a control.
+2. **A new test resized the root viewport and did not put it back**, which
+   broke the next test that pushed input. `Stage.fit_to` takes the window size
+   as an argument so the layout can be tested without touching anything
+   shared.
+3. **The shader could not take the picture as a function argument.** Godot's
+   built-ins exist only inside `fragment()` and `vertex()`, and handing
+   `TEXTURE` to a function of your own makes the compiler complain on every
+   compile. The picture is a plain `uniform sampler2D` that `CrtOverlay` sets.
+4. **The CRT effect stopped being a node in front of the game** and became the
+   material on the control that draws it. Reading the *screen* would have
+   framed the window rather than the picture, so on a letterboxed monitor the
+   tube's edge would have been out in the black.
+
+**Three ways to sample a warped pixel-art picture, and the third is the one.**
+This shipped each of the first two and each was reported from play, which is
+worth recording because the choice looks like a detail and is not:
+
+| Sampling | What it does |
+|---|---|
+| Plain linear | Every sample blends with its neighbours by whatever fraction the warp lands on, so rows of text get different amounts of blur. The original fault. |
+| Nearest | Whole source pixels, so no blur at all - and a stair-step in every straight line, because a row jumps a whole pixel at once. Reported the day it shipped. |
+| **Sharpened** | A source pixel is flat across its whole area, and the interpolation is squeezed into a band at its edge. Flat inside, so no blur; a ramp at the boundary, so no step. |
+
+How wide that band is matters and is a uniform, `edge_softness`, in screen
+pixels. At 0 it is nearest and every bent line stair-steps. At 1 the step's
+corner is softened but the step is still a whole source pixel tall and still
+reads as one - which is what shipped first, and was reported as still stepped.
+At the enlargement factor and above it is plain bilinear and the text goes soft
+in patches again. **2 is the default**: the step is spread over most of its own
+height and stops reading as a step, while the inside of each source pixel stays
+flat.
+
+The third is a handful of lines (`sharpened` in `crt_screen.gdshader`): measure
+how far the sample is from the nearest **seam between** two source pixels,
+divide by how many source pixels a screen pixel covers - `fwidth` of the warped
+coordinate, so it follows the curve - and clamp to half a pixel.
+
+**Two engine traps sat underneath all of this, and both made the filter inert
+while leaving a plausible picture on screen.** They are the reason this took
+three attempts rather than one.
+
+1. **`fwidth` returns zero under the Compatibility renderer.** The filter needs
+   to know how many source pixels one screen pixel covers, and a screen-space
+   derivative is the obvious way to ask. Getting zero collapses the ramp to
+   nothing, so the shader samples each source pixel's exact centre - plain
+   nearest-neighbour, steps and all - while appearing to do something clever.
+   The enlargement is handed in from `Stage` instead, which it already knows.
+2. **A `CanvasItem`'s `texture_filter` overrides the `filter_linear` hint on a
+   shader's own sampler.** With the container left on nearest, the shader
+   samples nearest whatever it declares, and a filter that works by nudging
+   *where* it reads from can have no effect at all. `CrtOverlay` now switches
+   the target to linear with the effect and back to nearest without it.
+
+**Neither announced itself.** Both produce a crisp, reasonable-looking picture
+that merely has a stair-step in every bent line, and the measurement being used
+at the time - how much edge energy survives - reads that as a *good* result.
+What caught them was rendering the same screen at two settings of the softness
+control and differencing the images: 147 pixels out of 921,600, all of it
+scanline noise. A control that does nothing is the cheapest possible test that
+a shader is actually running, and it should have been the first thing checked.
+
+**The seam is the whole trick, and the first version anchored on the pixel's
+centre instead.** One term, and it inverts the filter: it then ramps across the
+middle of every source pixel and snaps at the edges, so nothing is ever flat.
+The result looks precisely like pixel art scaled by a fraction - letters with
+strokes of different weights, pixels of different apparent sizes - and that is
+how it was reported. `floor(x + 0.5)` is the seam; `floor(x) + 0.5` is the
+centre. Anyone changing this should render a screen of text and look at it
+before believing the arithmetic. It degrades gracefully: enlarged many times the
+ramp is a sliver and the picture is crisp, and as the enlargement approaches 1
+it widens into ordinary bilinear rather than into aliasing.
+
+**The Unity original does not need this**, and the reason is worth knowing
+before anyone copies it back. There, each camera renders into a *window-sized*
+texture, so by the time its shader warps anything the picture has already been
+enlarged. Half a pixel of warp is half a *monitor* pixel. Here the shader reads
+the 640x360 picture directly, so half a pixel of warp is half a *source* pixel
+- large enough to see whichever way it is resolved. Sampling it this way is
+what buys back what the two-texture arrangement gives Unity for free, without a
+second viewport.
+
+**Nearest is still right with the effect off.** The container draws the picture
+at a whole multiple with `TEXTURE_FILTER_NEAREST`, where there is nothing to
+interpolate. The reconstruction above lives in the shader and applies only when
+the picture is being bent.
+
+**The settings panel parents its confirmation to the viewport, not the
+window.** Those were the same thing before. Now the window is the monitor and
+the viewport is the picture, and a prompt parented to the window would be laid
+out at 2560x1440 with text a few pixels tall.
+
+**The development overlay is now inside the picture.** It used to sit above the
+effect on its own layer; it is inside the `SubViewport` with everything else,
+so with the effect on it is warped and scanlined like the rest. It is a
+debug-only tool in a debug-only build and this was not worth a second viewport.
+
+**What has NOT changed, and is worth saying plainly:** the resolution setting
+still does nothing in fullscreen, because the monitor's size is the window.
+D85's greying-out of the control stays. The honest position is that a
+pixel-art game drawn at 640x360 has one picture size, and the only question
+was ever how many times it is enlarged.
+
+**What it rules out.** Godot's `stretch` settings, and any `content_scale_*`
+call - a second resize on top of `Stage`'s would fight it, which is exactly
+what D85 was. Filling a window fractionally: that needs a plain `TextureRect`
+instead of a `SubViewportContainer`, and with it a hand-written coordinate
+transform for every pointer position, which is the one thing this design gets
+for free. And resolution rungs that are not whole multiples of 640x360.
+

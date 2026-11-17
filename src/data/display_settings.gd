@@ -33,11 +33,17 @@ const BASE: Vector2i = Vector2i(640, 360)
 ## These are exact 16:9 — width divided by 16 equals height divided by 9 for
 ## all of them, so none is the 854x480 approximation that usually shows up in
 ## resolution lists. A monitor only sees the ones that fit on it.
+##
+## **Every rung is a whole multiple of `BASE`**, and that is now a rule rather
+## than a coincidence. The game draws itself at 640x360 and is shown at the
+## largest whole multiple that fits (decisions.md D96), so a window of 960x540
+## would display a 640x360 picture with a quarter of the window left black.
+## 960x540 and 1600x900 were on this ladder until 2026-11-17 and were dropped
+## for exactly that reason: 1.5x and 2.5x are the two sizes the new display
+## path cannot fill.
 const LADDER: Array[Vector2i] = [
 	Vector2i(640, 360),
-	Vector2i(960, 540),
 	Vector2i(1280, 720),
-	Vector2i(1600, 900),
 	Vector2i(1920, 1080),
 	Vector2i(2560, 1440),
 	Vector2i(3840, 2160),
@@ -95,13 +101,27 @@ static func resolve(requested: Vector2i, screen: Vector2i) -> Vector2i:
 	return nearest_supported(requested, screen)
 
 
-## How much bigger the chosen image is than the 640x360 grid.
+## How many times the 640x360 picture can be enlarged and still fit in a
+## window of `window` pixels, as a whole number.
 ##
-## The renderer needs this to know that a cell drawn 1 unit wide in the layout
-## occupies this many pixels in the image. At 1280x720 it is 2.0, at 1920x1080
-## it is 3.0, and at 960x540 it is 1.5.
-static func scale_for(resolution: Vector2i) -> float:
-	return float(resolution.x) / float(BASE.x)
+## **Whole numbers only, and that is the point.** Enlarging a 640x360 picture
+## by 2.5 means some source pixels become three screen pixels wide and some
+## become two, so a letter's strokes come out uneven and the pattern crawls as
+## anything moves. At a whole multiple every source pixel is the same size
+## square. See decisions.md D96.
+##
+## Never less than one, so a window smaller than the picture still shows
+## something rather than nothing.
+static func integer_scale_for(window: Vector2i) -> int:
+	if window.x <= 0 or window.y <= 0:
+		return 1
+	return maxi(1, mini(window.x / BASE.x, window.y / BASE.y))
+
+
+## The size the picture is actually drawn at inside a window of `window`
+## pixels. Whatever is left over is black bars.
+static func image_size_for(window: Vector2i) -> Vector2i:
+	return BASE * integer_scale_for(window)
 
 
 ## `"1920 x 1080"`, for the dropdown.

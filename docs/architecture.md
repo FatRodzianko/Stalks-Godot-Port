@@ -561,45 +561,98 @@ each other, for the same reason the economy is kept out of the scene tree.
   resizing the runner.
 
 `Main` applies the stored settings before the first screen is shown; the title
-screen's Settings tab changes them. What the three steps from layout grid to
-screen pixels actually are is in decisions.md D85.
+screen's Settings tab changes them.
 
-### The CRT effect is a layer over the game, not a stage in a pipeline
+**What the resolution setting actually does is pick the size of the window.**
+The game is always drawn at 640x360 and `Stage` enlarges it by a whole number,
+so every rung of the ladder fills its window exactly. In fullscreen the
+monitor's own size is the window, so the setting does nothing there and the
+panel greys it out rather than letting a player change a number and watch
+nothing happen. See decisions.md D96, and D85 for the arrangement it replaced.
 
-The optional CRT look (decisions.md D94) is deliberately the smallest thing
-that could work: one `CanvasLayer` holding one `ColorRect` that fills the
-screen and carries `src/ui/crt_screen.gdshader`. The shader reads whatever has
-already been drawn underneath it and replaces it with a warped, scanlined,
-bleeding version of the same picture.
+### The game is drawn into a viewport, and the window shows that picture
+
+`Stage` (`src/ui/stage.gd`) is the root scene and the only thing that knows how
+big the monitor is. It holds a `SubViewport` of exactly 640x360 with `Main`
+inside it, and shows that picture through a `SubViewportContainer` enlarged by
+the largest whole number that fits the window, centred, with black around the
+rest.
+
+```
+Stage                        the window
+ ├─ Bars                     black, behind everything
+ ├─ Screen                   SubViewportContainer, enlarges by a whole number
+ │   └─ GameViewport         SubViewport, always 640x360
+ │       └─ Main             the screen host, and every screen under it
+ └─ CrtOverlay               hangs the effect's material on Screen
+```
+
+**Nothing below `Stage` knows it exists.** `Main` and every screen lay
+themselves out on the 640x360 grid exactly as they always did; being in a
+viewport rather than in the window is invisible to them. That is why this
+change touched no screen, no widget, no theme and no layout file.
+
+Three properties carry the whole design, and each is asserted in
+`test_stage.gd` because getting one wrong is invisible until a player finds it:
+
+- **`stretch` on the container.** It is what makes the container do the
+  enlargement, and it is also what makes Godot transform mouse coordinates into
+  the viewport for us. Without it the game would need its own pointer maths.
+- **`gui_embed_subwindows` on the viewport.** Dropdowns and tooltips are
+  `Window`s, not `Control`s. Without this they are drawn in the window around
+  the picture instead of in it.
+- **Nearest filtering on the container.** The game is pixel art and the
+  enlargement is a whole number, so there is nothing to interpolate. That is
+  the path with the CRT effect **off**; with it on, the shader does its own
+  sampling, because a bent picture does need interpolating and neither nearest
+  nor plain linear is right for it. See decisions.md D96.
+
+**Godot's own `stretch` settings are off**, and must stay off. A stretch
+happens after everything is drawn, where nothing can reach it — which is both
+why the CRT effect could not run at the monitor's resolution and why the
+resolution setting did nothing for weeks. See decisions.md D96, and D85 for
+the fault that preceded it.
+
+**The cost is black bars on windows that are not a whole multiple of 640x360.**
+It is the width that decides, so 1280, 1920, 2560 and 3840 are all exact; a
+1366-wide laptop gets a border. The resolution ladder was trimmed to match.
+
+### The CRT effect is a material on that picture, not a layer over the game
+
+The optional CRT look (decisions.md D94) is a `ShaderMaterial` on `Screen`, the
+control that draws the game's picture. `CrtOverlay` is a bare `Node` whose only
+job is to put that material on and take it off.
 
 Nothing else in the game knows it exists. No screen, no widget and no
-simulation code mentions it; `Main` builds it at startup and switches it to
+simulation code mentions it; `Stage` builds it at startup and switches it to
 whatever was saved.
 
-Three things about where it sits:
-
-- **It is a `CanvasLayer` because `Main` is a `MarginContainer`.** A container
-  lays out its `Control` children, so an ordinary child would be stretched and
-  reshuffled by whatever screen was swapped in. A `CanvasLayer` is not a
-  `Control`, so no container touches it, and its `layer` number decides what it
-  covers regardless of child order. The development overlay is the same
-  arrangement for the same reason.
-- **Its layer is between the game and the development overlay.** Everything the
-  game draws is layer 0 — screens, the pause menu, the confirmation panels
-  parented to the window — so one layer above that covers all of it. The
-  development overlay stays above at 128, because debugging text behind a
-  barrel warp is worse debugging text.
+- **It covers the picture, not the window.** That is the whole reason it is a
+  material rather than a rectangle in front of everything. It used to read the
+  screen, which was the same thing while the game filled the window — once the
+  picture could be letterboxed, the tube's edge and its vignette would have
+  been out in the black bars.
+- **A material cannot swallow a click.** The previous version was a full-screen
+  rectangle that had to be told not to take mouse input, and getting that wrong
+  eats every press in the game including the one that turns the effect off.
 - **The settings panel reaches it through a group, not a signal chain.** The
   panel appears in two places and is several nodes deep in both; bubbling a
-  signal to `Main` from each would mean two new signals and two new handlers in
-  scenes with no other reason to know. Volume goes to the `Audio` autoload and
-  resolution goes to `DisplayMode`; `CrtOverlay.apply(tree, on)` is the same
-  idea, reached by group so nothing has to know where in the tree it was put.
+  signal to the root from each would mean two new signals and two new handlers
+  in scenes with no other reason to know. Volume goes to the `Audio` autoload
+  and resolution goes to `DisplayMode`; `CrtOverlay.apply(tree, on)` is the
+  same idea, reached by group so nothing has to know where in the tree it was
+  put.
 
-**The limit this design accepts** is that the shader runs at 640x360, because
-that is what the root viewport is. That rules out a phosphor mask, which only
-means anything at monitor-pixel density. D94 says what getting one would cost
-and why it is the same piece of work as the unfinished part of D85.
+**The shader runs at the monitor's resolution**, because that is what the
+control it sits on is drawn at, while the picture it reads stays 640x360. Every
+distance in it is therefore expressed in *source* pixels and stepped in
+`TEXTURE_PIXEL_SIZE`, so the effect is the same size on a 720p window and a 4K
+one with nothing to rescale.
+
+**The development overlay is inside the picture**, not above the effect. With
+the effect on it is warped and scanlined like everything else. It is a
+debug-only panel in a debug-only build and a second viewport to keep it crisp
+was not worth it.
 
 ### A Godot gotcha worth knowing
 

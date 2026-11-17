@@ -355,6 +355,32 @@ at a time said the colour bleed was five of the twelve points.
 A third argument writes a nearest-neighbour zoom of both, because a three-pixel
 scanline period cannot be seen in a screenshot viewed at anything but 1:1.
 
+### The display path is tested as arithmetic and as wiring
+
+`test_stage.gd` covers how the picture is sized and placed: that the game is
+always drawn at 640x360, that the enlargement is a whole number, that every
+rung of the resolution ladder fills its window exactly, that a 16:10 window
+gets bars above and below only, and that a 1366x768 one is letterboxed all
+round. None of that needs a window, because `Stage.fit_to` takes the window
+size as an argument.
+
+**That argument exists because of a bug.** The first version of these tests
+resized the root viewport to pretend the window had changed, and did not put it
+back. The root viewport is shared with every other test in the suite, so the
+next test that pushed input at it failed — and the failure pointed at the
+splash screen, which had nothing to do with it. A test that mutates shared
+state and leaves it is worse than no test, because it breaks something else.
+
+The same file asserts three properties that carry the whole design:
+`stretch` on the container, `gui_embed_subwindows` on the viewport, and nearest
+filtering. Each was established by running Godot rather than by reading about
+it, and a silent change to any of them would be found by a player rather than
+by a test.
+
+**What none of it covers is whether a click lands where it looks like it
+should.** That is the one thing worth checking by hand after any change here,
+and it is step one of the display section in `manual-testing.md`.
+
 ### Questions about the engine get a spike, not an opinion
 
 Two tools in `tools/` exist only to answer a question about how Godot itself

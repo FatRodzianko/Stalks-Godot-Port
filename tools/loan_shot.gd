@@ -26,9 +26,9 @@ extends Control
 ## This is a developer tool, not part of the game: `tools/` is excluded from the
 ## export (see `export_presets.cfg`) so none of it ships.
 
-const MainScene: PackedScene = preload("res://src/ui/screens/main/main.tscn")
+const StageScene: PackedScene = preload("res://src/ui/stage.tscn")
 
-var _main: Main
+var _stage: Stage
 
 ## Movie Maker starts drawing immediately, so the board needs a frame or two to
 ## exist before anything can be pressed on it.
@@ -37,15 +37,15 @@ var _frames: int = 0
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	_main = MainScene.instantiate()
-	add_child(_main)
+	_stage = StageScene.instantiate()
+	add_child(_stage)
 
 	var settings: GameSettings = GameSettings.new()
 	settings.max_years = 10
 	settings.player_count = 1
 	settings.loans_enabled = true
 	settings.rng_seed = 555
-	_main.start_match(settings)
+	_stage.game().start_match(settings)
 
 
 func _process(_delta: float) -> void:
@@ -53,14 +53,14 @@ func _process(_delta: float) -> void:
 	if _frames != 3:
 		return
 
-	var screen: GameplayScreen = _main.current_screen()
+	var screen: GameplayScreen = _stage.game().current_screen()
 	var ready_button: Button = screen.get_node("%ReadyButton")
 
 	# Loans only become available from year 2.
 	for _step: int in 2:
 		ready_button.pressed.emit()
 
-	var session: LocalSession = _main.session()
+	var session: LocalSession = _stage.game().session()
 	session.request_loan(&"p0", LoanRules.max_loan_for(
 		session.state().player_by_id(&"p0")
 	))

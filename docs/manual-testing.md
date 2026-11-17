@@ -360,6 +360,15 @@ see decisions.md D93.
 20. Tick it, quit the game, and start it again.
 21. Check the game comes back with the effect already on.
 
+**Straight lines are the thing to watch.** A long horizontal line - the top of
+the stalk list, the border of the bottom panel - should stay a single
+unbroken line across the whole screen. If it breaks into little steps, the
+shader's sampling has gone back to nearest; if its text goes soft in patches
+instead, it has gone to plain linear. Both of those shipped once and both were
+reported from play. The logo on the splash screen is the other place to look,
+since it is the one large picture in the game rather than text: its left and
+right edges should be clean.
+
 **What to look at, not just click through:** the effect should be visible but
 should not make anything unreadable. If you cannot tell the difference between
 ticked and unticked at all, that is a fault and not subtlety — the first build
@@ -376,6 +385,46 @@ default in `src/ui/crt_screen.gdshader` — curvature, vignette width, bleed
 amount and falloff, scanline count and strength, noise, glow threshold and
 strength. The scene sets none of them, so that file is the only place the
 look is decided.
+
+### A8j. The window, the picture inside it, and where clicks land
+
+The game is drawn at 640x360 and enlarged by a whole number to fit the window
+(decisions.md D96). Nothing in the suite can check that clicks still land where
+they look like they do, so that is step one.
+
+1. Start the game.
+2. Click **SINGLE PLAYER**, then **JOIN GAME**, then **SETTINGS**.
+3. Check each tab responds to the click on the tab itself, not beside it.
+4. Open the resolution dropdown.
+5. Check the list appears directly under the dropdown, not somewhere else.
+6. Check the list is the same chunky size as the rest of the interface, not
+   small and sharp.
+7. Check the list contains no 960 x 540 and no 1600 x 900.
+8. Pick 1280 x 720.
+9. Check the game fills the window exactly, with no black border.
+10. Hover the mouse over a disabled button until its tooltip appears.
+11. Check the tooltip appears beside the button and matches the interface.
+12. Start a game and buy some shares.
+13. Check every button and text field responds where you click it.
+
+**What to look at, not just click through:** a click landing a few pixels from
+where you aimed is the failure this is for, and it shows up at the edges of the
+window before it shows up in the middle.
+
+### A8k. Black bars, and when they are expected
+
+1. Set the game to windowed at 1280 x 720 and check there are no bars.
+2. Set it to 1920 x 1080 if the monitor allows it and check the same.
+3. Switch to fullscreen.
+4. On a 1920x1080, 2560x1440 or 3840x2160 monitor, check there are no bars.
+5. On a 16:10 monitor (1920x1200, 2560x1600, or a Steam Deck at 1280x800),
+   check there are bars above and below and none at the sides.
+6. Check the picture is centred rather than pushed to one edge.
+7. Check the resolution dropdown is greyed out while fullscreen is ticked.
+
+**Expected, not a fault:** bars on all four sides on a monitor whose width is
+not 1280, 1920, 2560 or 3840 — a 1366x768 laptop shows a 1280x720 picture with
+a border. That is the price of every pixel being the same size square.
 
 ### A8f. The rebuilt title screen
 

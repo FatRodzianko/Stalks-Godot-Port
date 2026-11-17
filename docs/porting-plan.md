@@ -579,6 +579,20 @@ Kept here so the record of what exists stays in one place.
   dropdown doing nothing in fullscreen, and the final stretch filter being out
   of our hands. If either is ever picked up, they are one piece of work.
 
+- **The display path rebuilt** — **done 2026-11-17** (D96). The game is drawn
+  into a `SubViewport` at 640x360 and enlarged by a whole number to fit the
+  window. This is what let the CRT effect run at the monitor's resolution,
+  which was the fix for text that came out blurrier on some rows than others.
+  Godot's own stretch settings are off and must stay off.
+
+  Two rungs left the resolution list with it: 960x540 and 1600x900 are 1.5x
+  and 2.5x the picture, the only two the new path cannot fill.
+
+  **Still not done, and now unlikely to be:** the resolution setting does
+  nothing in fullscreen, because the monitor's size is the window. D85's half
+  of that is closed by D96 saying plainly that a 640x360 game has one picture
+  size.
+
 ---
 
 ## Parity gaps — unscheduled

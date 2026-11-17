@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/glacial_lake_studios.png" id="2_logo"]
 
 [node name="SplashScreen" type="Control"]
+mouse_filter = 2
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -13,6 +14,7 @@ grow_vertical = 2
 script = ExtResource("1_splash")
 
 [node name="Backdrop" type="ColorRect" parent="."]
+mouse_filter = 2
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -22,6 +24,7 @@ grow_vertical = 2
 color = Color(0, 0, 0, 1)
 
 [node name="Centre" type="CenterContainer" parent="."]
+mouse_filter = 2
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -30,6 +33,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="Logo" type="TextureRect" parent="Centre"]
+mouse_filter = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(512, 288)
 layout_mode = 2

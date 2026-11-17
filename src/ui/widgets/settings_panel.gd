@@ -12,10 +12,11 @@ extends VBoxContainer
 ## goes to a bus and resolution goes to a window; a host just puts this on
 ## screen.
 ##
-## **The revert prompt is added to the window, not to this panel.** It is a
+## **The revert prompt is added to the viewport, not to this panel.** It is a
 ## modal question about the whole screen, and a confirmation laid out inside a
 ## settings panel would be drawn at the size of the settings panel. See
-## `_ask_about_keeping`.
+## `_ask_about_keeping`, which also says why the viewport rather than the
+## window.
 
 
 const ConfirmPanelScene: PackedScene = preload("res://src/ui/widgets/confirm_panel.tscn")
@@ -195,7 +196,13 @@ func _ask_about_keeping() -> void:
 		_revert_prompt = ConfirmPanelScene.instantiate()
 		_revert_prompt.confirmed.connect(_on_display_kept)
 		_revert_prompt.cancelled.connect(_on_display_reverted)
-		get_window().add_child(_revert_prompt)
+		# The viewport, not the window. Those are the same thing when this panel
+		# is built on its own in a test, and different in the game: the game is
+		# drawn inside a `SubViewport` and the window around it is the monitor
+		# (decisions.md D96). Parenting to the window would lay this out at the
+		# monitor's size, so its text would come out a few pixels tall beside a
+		# picture drawn at 640x360.
+		get_viewport().add_child(_revert_prompt)
 	_revert_prompt.ask_with_countdown(
 		"Keep this display setting?",
 		"Keep it",

@@ -1,0 +1,20 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://qx1pwty3u08"]
+
+[ext_resource type="Shader" uid="uid://rusxgvuiyua8" path="res://src/ui/crt_screen.gdshader" id="1_shader"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/edge_softness = 2.0
+shader_parameter/enlargement = 1.0
+shader_parameter/curvature = 11.0
+shader_parameter/vignette_width = 9.0
+shader_parameter/bleed_amount = 0.3
+shader_parameter/bleed_falloff = 1.1
+shader_parameter/bleed_luma_keep = 0.65
+shader_parameter/scanline_count = 360.0
+shader_parameter/scanline_strength = 0.42000001995
+shader_parameter/line_noise = 0.26800001273
+shader_parameter/line_noise_speed = 1.0
+shader_parameter/glow_threshold = 0.6
+shader_parameter/glow_strength = 0.45
+shader_parameter/glow_radius = 1.5

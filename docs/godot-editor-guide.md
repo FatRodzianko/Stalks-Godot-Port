@@ -215,6 +215,76 @@ relevant section of `docs/game-rules.md`.
 
 ---
 
+## 5a. Tuning the CRT effect
+
+The effect's every knob is a `uniform` in `src/ui/crt_screen.gdshader`. The
+editor shows them as sliders, and there are two ways to reach them: live, while
+the game runs, which is how you decide what you want; and saved, which is how
+you keep it.
+
+### Live, while the game is running
+
+Changes here show up instantly and are **lost when you close the game**. That
+is the point — it is for finding the numbers, not for keeping them.
+
+1. Press **F5** to run the game.
+2. Go to **Settings** in the game and tick **CRT** if it is not already on.
+3. Leave the game running and switch back to the editor window.
+4. In the **Scene** dock (top left), click the **Remote** tab. It sits next to
+   **Local** and only appears while the game is running.
+5. You are now looking at the live scene tree. Click the triangle beside
+   **Stage** to open it.
+6. Click **Screen**.
+7. In the **Inspector** (right-hand side), find **Material** near the top and
+   click the arrow beside it to open it.
+8. Click **Shader Parameters** to open that section.
+9. You will see five groups: **Sampling**, **Tube Geometry**, **Colour Bleed**,
+   **Scanlines** and **Beam Glow**.
+10. Drag any slider and watch the running game change as you drag.
+11. Write down the numbers you settle on.
+
+If **Material** shows `<empty>`, the effect is switched off in the game — go
+back to Settings and tick the box.
+
+### Saving what you chose
+
+1. Stop the game.
+2. In the **FileSystem** dock (bottom left), open `src` ▸ `ui`.
+3. Double-click **crt_screen.tres**.
+4. The Inspector shows the same **Shader Parameters** groups.
+5. Type your numbers in.
+6. Press **Ctrl+S**.
+
+That writes one line per changed value into `crt_screen.tres`, so the change
+shows up in a diff. The numbers in the shader file stay as the fallback for
+anything you have not overridden.
+
+### What each knob does
+
+| Knob | Does |
+|---|---|
+| **Edge softness** | How much the curve's displacement is smoothed. 0 gives hard stair-steps in straight lines; at 3 or more the text goes soft. 2 is the default and the reasoning is in decisions.md D96 |
+| **Enlargement** | **Leave alone.** The game sets it from the window size and overwrites anything typed here |
+| **Barrel curvature** | A divisor, so *larger is flatter*. 0 switches the bend off entirely |
+| **Vignette width** | How far the darkening reaches in from the edges, in game pixels out of 640x360 |
+| **Bleed amount** | How far colour runs rightwards from a bright edge. The single biggest cost to how readable text is |
+| **Bleed falloff** | How far that run reaches, in game pixels |
+| **Bleed luma keep** | 1 lets only the colour run and keeps edges sharp; 0 lets brightness smear too |
+| **Scanline count** | Lines down the picture. 360 is one per row of the game's own image. Values above a third of the monitor's height are clamped |
+| **Scanline strength** | How dark the gaps between lines are |
+| **Line noise** / **speed** | How much the line brightness flickers, and how fast |
+| **Glow threshold** | How bright something must be before it glows at all |
+| **Glow strength** | How much it glows |
+| **Glow radius** | How far the glow spreads, in game pixels |
+
+**The effect reads as subtle because most of these are deliberately low.** The
+ones worth raising first are **Scanline strength**, **Glow strength** and
+**Bleed amount**, in that order. Raising **Bleed amount** is also the quickest
+way to make text harder to read, which is why it was lowered in the first place
+— see decisions.md D94.
+
+---
+
 ## 6. Things you do *not* need to do
 
 - **Don't create scenes or nodes by hand.** Scenes get written as text files where

@@ -18,6 +18,27 @@ func _splash() -> SplashScreen:
 	return splash
 
 
+## A click well outside anything, including the test runner's own panels.
+##
+## **The position matters and it is not about the splash.** A click goes
+## through the interface before it becomes unhandled input, and in the test
+## runner GUT's own panels sit in front of whatever a test builds — so a click
+## at the origin lands on GUT and the splash never hears it. In the game there
+## is nothing to land on: every node in the splash scene is
+## `MOUSE_FILTER_IGNORE`, so a click anywhere falls through to the handler.
+##
+## This test used the origin for weeks and passed by luck. It started failing
+## the moment the root viewport changed size, which is a fair warning about
+## tests that quietly depend on where somebody else's interface happens to be.
+func _click() -> InputEventMouseButton:
+	var click: InputEventMouseButton = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = Vector2(-4000, -4000)
+	click.global_position = click.position
+	return click
+
+
 func _press(key: Key) -> InputEventKey:
 	var event: InputEventKey = InputEventKey.new()
 	event.keycode = key
@@ -47,13 +68,21 @@ func test_it_is_only_ever_over_once() -> void:
 	assert_signal_emit_count(splash, "finished", 1)
 
 
+## Pushes an event the way a real one arrives.
+##
+## Mouse events have to be aimed somewhere no interface is, which `_click`
+## explains.
+func _skip_with(event: InputEvent) -> void:
+	get_tree().root.push_input(event)
+
+
 func test_a_keypress_gets_rid_of_it() -> void:
 	# A splash that cannot be skipped is a tax on everybody who launches the
 	# game more than once.
 	var splash: SplashScreen = _splash()
 	watch_signals(splash)
 
-	get_tree().root.push_input(_press(KEY_SPACE))
+	_skip_with(_press(KEY_SPACE))
 	await wait_process_frames(1)
 
 	assert_signal_emitted(splash, "finished")
@@ -64,10 +93,7 @@ func test_a_mouse_click_gets_rid_of_it_too() -> void:
 	var splash: SplashScreen = _splash()
 	watch_signals(splash)
 
-	var click: InputEventMouseButton = InputEventMouseButton.new()
-	click.button_index = MOUSE_BUTTON_LEFT
-	click.pressed = true
-	get_tree().root.push_input(click)
+	_skip_with(_click())
 	await wait_process_frames(1)
 
 	assert_signal_emitted(splash, "finished")
@@ -82,7 +108,7 @@ func test_letting_go_of_a_key_does_not_count() -> void:
 	var release: InputEventKey = InputEventKey.new()
 	release.keycode = KEY_SPACE
 	release.pressed = false
-	get_tree().root.push_input(release)
+	_skip_with(release)
 	await wait_process_frames(1)
 
 	assert_signal_not_emitted(splash, "finished")

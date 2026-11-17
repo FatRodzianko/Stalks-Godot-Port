@@ -80,16 +80,42 @@ func test_a_saved_size_that_is_not_on_the_ladder_is_replaced() -> void:
 	assert_eq(DisplaySettings.resolve(Vector2i(1366, 768), HD), HD)
 
 
-func test_the_scale_says_how_many_pixels_a_layout_unit_becomes() -> void:
-	assert_eq(DisplaySettings.scale_for(Vector2i(640, 360)), 1.0)
-	assert_eq(DisplaySettings.scale_for(Vector2i(1280, 720)), 2.0)
-	assert_eq(DisplaySettings.scale_for(Vector2i(1920, 1080)), 3.0)
+func test_the_scale_is_how_many_times_the_picture_is_enlarged() -> void:
+	# Whole numbers. The picture is 640x360 and is shown at a whole multiple of
+	# that, so nothing is ever resampled. See decisions.md D96.
+	assert_eq(DisplaySettings.integer_scale_for(Vector2i(640, 360)), 1)
+	assert_eq(DisplaySettings.integer_scale_for(Vector2i(1280, 720)), 2)
+	assert_eq(DisplaySettings.integer_scale_for(Vector2i(1920, 1080)), 3)
+	assert_eq(DisplaySettings.integer_scale_for(Vector2i(2560, 1440)), 4)
 
 
-func test_a_half_step_scale_is_not_rounded_away() -> void:
-	# 960x540 is 1.5x the grid. Rounding it to 1 or 2 would lay the interface
-	# out at the wrong size and clip the bottom row off.
-	assert_eq(DisplaySettings.scale_for(Vector2i(960, 540)), 1.5)
+func test_a_window_that_does_not_divide_evenly_is_rounded_down() -> void:
+	# 1366x768 is 2.13 times the picture. Enlarging by 2.13 would make some
+	# source pixels three screen pixels wide and others two; enlarging by 2
+	# leaves a border instead, which is the trade this design makes.
+	assert_eq(DisplaySettings.integer_scale_for(Vector2i(1366, 768)), 2)
+	assert_eq(DisplaySettings.image_size_for(Vector2i(1366, 768)), Vector2i(1280, 720))
+
+
+func test_the_shorter_side_decides() -> void:
+	# A very wide window still only fits what its height allows.
+	assert_eq(DisplaySettings.integer_scale_for(Vector2i(5120, 1440)), 4)
+
+
+func test_a_window_smaller_than_the_picture_still_gets_a_whole_one() -> void:
+	# Never zero, which would be a blank screen.
+	assert_eq(DisplaySettings.integer_scale_for(Vector2i(320, 180)), 1)
+	assert_eq(DisplaySettings.integer_scale_for(Vector2i.ZERO), 1)
+
+
+func test_every_rung_of_the_ladder_is_a_whole_multiple() -> void:
+	# The rule that got 960x540 and 1600x900 dropped. If a rung ever fails
+	# this, a player choosing it would get a window the game cannot fill.
+	for rung: Vector2i in DisplaySettings.LADDER:
+		assert_eq(
+			DisplaySettings.image_size_for(rung), rung,
+			"%s should be fillable exactly" % DisplaySettings.describe(rung)
+		)
 
 
 func test_a_resolution_reads_as_a_resolution() -> void:

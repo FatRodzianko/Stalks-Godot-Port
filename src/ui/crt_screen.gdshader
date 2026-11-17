@@ -5,23 +5,23 @@
 // The physics is the same and most of it transferred line for line. What
 // changed, and why, is written up in docs/decisions.md D94. The short version:
 //
-//   * **No phosphor mask.** The original anchors its R/G/B triad to output
-//     pixels, because a real mask sits on the glass and does not move with the
-//     picture. This game renders at 640x360 and Godot blits that to the window
-//     afterwards (project.godot: window/stretch/mode="viewport"), so FRAGCOORD
-//     here counts 640x360 pixels, not monitor pixels. A three-pixel triad would
-//     come out three *game* pixels wide and then be stretched two or four times
-//     larger - coloured stripes across the screen, not a mask. It is left out
-//     rather than left in badly.
+//   * **No phosphor mask, still.** The original anchors its R/G/B triad to
+//     output pixels, because a real mask sits on the glass and does not move
+//     with the picture. Until the display path was rebuilt that was impossible
+//     here - the whole shader ran at 640x360, so a three-pixel triad came out
+//     three *game* pixels wide. It is possible now (D96 put this shader at the
+//     monitor's resolution, so FRAGCOORD counts monitor pixels) and simply has
+//     not been built. Anyone adding one should read section 2 of the original
+//     Unity shader rather than invent it.
 //   * **No two-source composite and no Y flip.** The original takes the world
 //     and the UI as separate textures because that project renders its UI
 //     through a second camera, and it has to know which way up the blit handed
-//     them over. This game is one canvas; the screen texture arrives the right
-//     way up.
-//   * **The distances are in game pixels, not monitor pixels.** Every default
-//     below that the original expressed in output pixels is divided by roughly
-//     the window scale. Thirty output pixels of vignette at 1080p is about ten
-//     of these.
+//     them over. This game is one canvas; the picture arrives the right way up.
+//   * **The distances are in source pixels, out of 640x360.** Not monitor
+//     pixels, which is what the original used. Every step is a multiple of
+//     `TEXTURE_PIXEL_SIZE`, so a bleed of one is one pixel of the game's own
+//     image whatever the monitor is, and nothing needs rescaling when the
+//     window changes.
 //
 // **The gamma handling is kept exactly as it was.** Both projects render in a
 // gamma colour space, so the values arriving here are sRGB-encoded. The bleed
@@ -45,12 +45,78 @@ const float TAU_ = 6.28318530718;
 const int BLEED_TAPS = 4;
 const int GLOW_RING = 1;
 
-// The picture as drawn so far. Linear filtering, deliberately: the warp moves
-// pixels by fractions of a pixel and the whole job of this shader is to stop
-// the image looking like a grid. Nearest sampling here puts stair-steps along
-// the curve. Everything else in this game is sampled nearest (D76) and that is
-// still right - this is the one surface pretending to be glass.
-uniform sampler2D screen_tex : hint_screen_texture, repeat_disable, filter_linear;
+// **The picture is `TEXTURE`, not the screen.** This shader is the material on
+// the `SubViewportContainer` that shows the game, so the game's own 640x360
+// image arrives as the texture being drawn and `UV` runs across the picture
+// rather than across the window. Two things follow, and both are the reason
+// the display path was rebuilt (decisions.md D96):
+//
+//   * Everything below measured in pixels can be written in SOURCE pixels, by
+//     stepping in `TEXTURE_PIXEL_SIZE`, and stays the same size on every
+//     monitor without anybody converting anything.
+//   * The warp, the vignette and the corner blackout frame the PICTURE. When
+//     this read the whole screen they framed the window, so on a monitor with
+//     black bars the tube's edge was somewhere out in the bars.
+//
+// **The picture arrives as a uniform, set by `CrtOverlay`.** The obvious way
+// to write this is to read the built-in `TEXTURE`, since this material is on
+// the control that draws the game - but Godot's built-ins exist only inside
+// `fragment()` and `vertex()`, and handing `TEXTURE` to a function of your own
+// makes the shader compiler complain on every single compile. A plain uniform
+// sidesteps the whole question and says where the picture comes from.
+uniform sampler2D picture : repeat_disable, filter_linear;
+
+// **Sampled through `sharpened`, below, which is neither nearest nor plain
+// linear.** Both of those are wrong for a warped pixel-art picture and this
+// shader has now shipped each of them:
+//
+//   * Plain linear blends every sample with its neighbours by whatever the
+//     warp's fractional offset happens to be, so rows of text land on
+//     different amounts of blur and some come out visibly softer than others.
+//   * Nearest takes whole source pixels, which fixes that and introduces
+//     stair-steps along every straight line instead - reported from play, and
+//     the reason this third approach exists.
+//
+// `sharpened` keeps a source pixel flat across its whole area and puts the
+// interpolation only in the last screen pixel at its edge. Flat inside, so no
+// blur; one screen pixel of ramp at the boundary, so no step. D76 holds: this
+// is still square pixels, drawn with their edges antialiased because the tube
+// is bending them.
+
+group_uniforms sampling;
+// How many screen pixels the edge of a source pixel is smeared over when the
+// warp displaces it. **This is the dial between the two faults this shader has
+// had**, and neither end of it is good:
+//
+//   0  - nothing is smeared. Every source pixel is a hard square, and where
+//        the curve displaces a row by one pixel you get a visible stair-step
+//        in every straight line.
+//   1  - the step's corner is softened and the step is still a whole source
+//        pixel tall, so it still reads as a step. This was the first attempt.
+//   ~2 - the step is spread over most of its own height and stops reading as
+//        one, while the inside of each source pixel stays flat.
+//   at the enlargement factor and above (3 at 1080p, 4 at 1440p) it is plain
+//        bilinear: no steps at all, and text goes soft in patches, which is
+//        the fault that started all of this.
+uniform float edge_softness : hint_range(0.0, 4.0) = 2.0;
+
+// How many times the picture is enlarged to fill the window: 3 at 1080p, 4 at
+// 1440p. `Stage` sets it, through `CrtOverlay`, every time the window changes.
+//
+// **It is handed in rather than measured, because measuring it did not work.**
+// The obvious way is `fwidth` of the sampling coordinate, which is what a
+// screen-space derivative is for. Under the Compatibility renderer it comes
+// back as zero: the ramp below then collapses to nothing and the filter
+// silently degrades to nearest-neighbour, steps and all, with the softness
+// control doing nothing whatsoever. That went unnoticed through two rounds of
+// looking at it, because "crisp but stepped" is a plausible-looking picture.
+// Rendering the same screen at softness 0 and softness 3 and differencing them
+// is what caught it - 147 pixels out of 921,600, all of them scanline noise.
+//
+// **Nothing to adjust by hand.** The game overwrites it whenever the window
+// changes, so a value typed into the Inspector is replaced within a frame.
+uniform float enlargement : hint_range(1.0, 16.0) = 1.0;
+group_uniforms;
 
 group_uniforms tube_geometry;
 // A divisor, so larger is flatter. Zero switches the warp off.
@@ -75,24 +141,27 @@ uniform float bleed_luma_keep : hint_range(0.0, 1.0) = 0.65;
 group_uniforms;
 
 group_uniforms scanlines;
-// Source lines, out of 360 rows.
+// Lines down the picture. **360 is one line per row of the game's own image**,
+// which is what a tube showing a 360-line signal would draw, and it is only
+// reachable because the shader now runs at the monitor's resolution rather
+// than the game's.
 //
-// **Three rows per line is the finest that is visible at all, not two.** The
-// original clamps this to half the row count on the reasoning that a line
-// needs one dark row and one light row. That is right about the pixels and
-// wrong about where they are sampled: a fragment is shaded at the centre of
-// its row, so at exactly two rows per line the two samples land on phases
-// 0.25 and 0.75, and sin squared is the same at both. The pattern is there in
-// the maths and invisible on the screen - every row comes out at exactly the
-// mean. Measured, not guessed: at 180 the rendered picture was identical to
-// the one with the effect off, row for row.
+// **The clamp below is about where a fragment is sampled, not about pixels.**
+// A line needs more than two rows of output to exist: a fragment is shaded at
+// the centre of its row, so at exactly two rows per line the samples land on
+// phases 0.25 and 0.75 of the sine, sin squared is equal at both, and every
+// row comes out at precisely the mean. The pattern is there in the maths and
+// invisible on the screen. That is not a guess - the first build of this
+// effect asked for 180 lines over 360 rows and rendered a picture identical,
+// row for row, to the one with the effect switched off.
 //
-// At three rows per line the samples land on a sixth, a half and five sixths,
-// which are not equal, and the comb appears. 120 lines over 360 rows is that.
-uniform float scanline_count = 120.0;
-// Lowered from 0.30 on 2026-11-17 along with the bleed. The comb costs nothing
-// horizontally but cuts across glyphs, and at three rows per line a letter
-// eight rows tall takes three of them.
+// So a 1440-row monitor can carry all 360 of these, a 1080-row monitor can
+// carry all 360 exactly, and a 720-row one is clamped to 240. Below that the
+// comb coarsens rather than disappearing.
+uniform float scanline_count = 360.0;
+// Lowered from 0.30 on 2026-11-17 along with the bleed, then left alone when
+// the comb got finer: a line is now one source row rather than three, so it
+// cuts across a letter far less even at the same strength.
 uniform float scanline_strength : hint_range(0.0, 1.0) = 0.22;
 uniform float line_noise : hint_range(0.0, 1.0) = 0.12;
 uniform float line_noise_speed : hint_range(0.0, 4.0) = 1.0;
@@ -121,8 +190,37 @@ float luma(vec3 c) {
 }
 
 
-vec3 sample_linear(vec2 uv) {
-	return to_linear(texture(screen_tex, uv).rgb);
+// A sample that keeps source pixels square without stair-stepping them.
+//
+// `density` is how many source pixels one screen pixel covers. Inside a pixel the
+// result is that pixel's colour exactly; across its edge it ramps over about
+// one screen pixel. With `density` very small - a picture enlarged many times
+// - the ramp is a fraction of a source pixel and the picture is crisp; as the
+// enlargement shrinks towards 1 the ramp widens and the picture degrades into
+// ordinary bilinear rather than into aliasing.
+vec2 sharpened(vec2 uv, vec2 source_size, vec2 density) {
+	vec2 in_pixels = uv * source_size;
+
+	// **The seam, not the centre.** `floor(x + 0.5)` is the nearest boundary
+	// *between* two source pixels; `floor(x) + 0.5` would be the middle of one.
+	// Getting that wrong inverts the whole filter - it then ramps across the
+	// middle of every pixel and snaps at the edges, so nothing is ever flat and
+	// the picture looks like pixel art scaled by a fraction. That is exactly
+	// what it did when first written, and exactly what it was reported as.
+	vec2 seam = floor(in_pixels + 0.5);
+
+	// How far this sample is from that seam, measured in ramps, then clamped to
+	// half a source pixel. Within the ramp the result slides from one source
+	// pixel to the next; beyond it the clamp lands on a source pixel's own
+	// centre, where bilinear returns that pixel's colour exactly.
+	vec2 ramp = max(density * edge_softness, vec2(1e-5));
+	vec2 from_seam = clamp((in_pixels - seam) / ramp, vec2(-0.5), vec2(0.5));
+	return (seam + from_seam) / source_size;
+}
+
+
+vec3 sample_linear(vec2 uv, vec2 source_size, vec2 density) {
+	return to_linear(texture(picture, sharpened(uv, source_size, density)).rgb);
 }
 
 
@@ -148,8 +246,8 @@ vec2 barrel_warp(vec2 uv, float amount) {
 // A one-sided exponential kernel reading to the LEFT, so the smear trails
 // right, the way the beam travels. Normalised, so average brightness is
 // unchanged.
-vec3 horizontal_bleed(vec2 uv, float texel_x) {
-	vec3 centre = sample_linear(uv);
+vec3 horizontal_bleed(vec2 uv, float texel_x, vec2 source_size, vec2 density) {
+	vec3 centre = sample_linear(uv, source_size, density);
 	if (bleed_amount <= 0.0) {
 		return centre;
 	}
@@ -160,7 +258,9 @@ vec3 horizontal_bleed(vec2 uv, float texel_x) {
 
 	for (int i = 1; i <= BLEED_TAPS; i++) {
 		float w = exp(-float(i) / tau);
-		acc += sample_linear(uv - vec2(float(i) * texel_x, 0.0)) * w;
+		acc += sample_linear(
+			uv - vec2(float(i) * texel_x, 0.0), source_size, density
+		) * w;
 		weight_sum += w;
 	}
 
@@ -178,7 +278,7 @@ vec3 horizontal_bleed(vec2 uv, float texel_x) {
 // Bright areas only, so dark areas stay dark. This is the beam swelling as the
 // drive voltage rises, which is why it keys off a threshold instead of blurring
 // the whole picture.
-vec3 beam_glow(vec2 uv, vec2 texel) {
+vec3 beam_glow(vec2 uv, vec2 texel, vec2 source_size, vec2 density) {
 	if (glow_strength <= 0.0) {
 		return vec3(0.0);
 	}
@@ -190,7 +290,10 @@ vec3 beam_glow(vec2 uv, vec2 texel) {
 		for (int x = -GLOW_RING; x <= GLOW_RING; x++) {
 			vec2 offset = vec2(float(x), float(y)) * glow_radius * texel;
 			float w = exp(-float(x * x + y * y) * 0.5);
-			acc += max(sample_linear(uv + offset) - glow_threshold, 0.0) * w;
+			acc += max(
+				sample_linear(uv + offset, source_size, density) - glow_threshold,
+				0.0
+			) * w;
 			weight_sum += w;
 		}
 	}
@@ -219,10 +322,26 @@ float scanline_weight(float uv_y, float rows, float noise) {
 
 
 void fragment() {
-	vec2 size = 1.0 / SCREEN_PIXEL_SIZE;
-	vec2 texel = SCREEN_PIXEL_SIZE;
+	// One source pixel, in the picture's own coordinates. Every distance in
+	// this shader is a multiple of it, so the effect is the same size on a
+	// 720p window and a 4K one. Taken from the picture itself rather than from
+	// `TEXTURE_PIXEL_SIZE`, so nothing here depends on what the control this
+	// material sits on happens to be drawing.
+	vec2 source_size = vec2(textureSize(picture, 0));
+	vec2 texel = 1.0 / source_size;
 
-	vec2 uv = barrel_warp(SCREEN_UV, curvature);
+	// The rows the monitor actually has, which is the only thing the scanline
+	// clamp needs and the one place window pixels are still the right unit.
+	vec2 size = 1.0 / SCREEN_PIXEL_SIZE;
+
+	vec2 uv = barrel_warp(UV, curvature);
+
+	// How many source pixels one screen pixel covers. A whole-number
+	// enlargement makes this the same in both axes and the same everywhere,
+	// so the warp's own local stretching is ignored - it is a fraction of a
+	// per cent across the picture and not worth a derivative that does not
+	// work (see `enlargement`).
+	vec2 density = vec2(1.0 / max(enlargement, 1.0));
 
 	// The warp pushes the corners off the edge of the picture. Black those out
 	// rather than leaving it to whatever the sampler's clamping does, which
@@ -230,8 +349,8 @@ void fragment() {
 	vec2 inside = step(vec2(0.0), uv) * step(uv, vec2(1.0));
 	float on_tube = inside.x * inside.y;
 
-	vec3 col = horizontal_bleed(uv, texel.x);
-	col += beam_glow(uv, texel);
+	vec3 col = horizontal_bleed(uv, texel.x, source_size, density);
+	col += beam_glow(uv, texel, source_size, density);
 
 	// The same count the pattern uses, or the noise flickers across lines that
 	// are not there.

@@ -34,19 +34,27 @@ extends Control
 ## This is a developer tool, not part of the game: `tools/` is excluded from
 ## the export (see `export_presets.cfg`) so none of it ships.
 
-const MainScene: PackedScene = preload("res://src/ui/screens/main/main.tscn")
+const StageScene: PackedScene = preload("res://src/ui/stage.tscn")
 
 ## Whether to draw the effect. The point of the tool, but useful both ways.
 const EFFECT_ON: bool = true
 
-## Small enough not to take over the screen, large enough that the scanlines
-## and the warp are visible in the file.
-const WINDOW: Vector2i = Vector2i(1280, 720)
+## A window rather than the whole screen, and a size the picture fits exactly:
+## 1920x1080 is three times 640x360, so nothing is letterboxed and the shader
+## sees the same enlargement most players will.
+const WINDOW: Vector2i = Vector2i(1920, 1080)
 
 ## Whether to start a match rather than stay on the title screen.
 const SHOW_THE_BOARD: bool = false
 
-var _main: Main
+## Whether to get rid of the studio logo. Set false to photograph the logo
+## itself, which is the one place in the game with a large pixel-art image
+## rather than text, and so the one place a sampling fault shows up as a
+## jagged edge rather than as a soft letter. Give it thirty frames or so, or
+## the capture lands during the fade.
+const SKIP_THE_SPLASH: bool = true
+
+var _stage: Stage
 
 ## Movie Maker starts drawing immediately, so the screen needs a frame or two
 ## to exist before anything can be switched on.
@@ -57,15 +65,17 @@ var _frames: int = 0
 ## and this has one. Four and a half seconds of logo at ten frames a second is
 ## forty-five frames of the wrong picture.
 func _skip_the_splash() -> void:
-	var splash: SplashScreen = _main.current_screen() as SplashScreen
+	if not SKIP_THE_SPLASH:
+		return
+	var splash: SplashScreen = _stage.game().current_screen() as SplashScreen
 	if splash != null:
 		splash.skip()
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	_main = MainScene.instantiate()
-	add_child(_main)
+	_stage = StageScene.instantiate()
+	add_child(_stage)
 	# `Main._ready` has already applied the saved display settings by now, so
 	# this undoes that rather than pre-empting it.
 	DisplayMode.apply(get_window(), WINDOW, false)
@@ -78,7 +88,7 @@ func _process(_delta: float) -> void:
 	_skip_the_splash()
 	if SHOW_THE_BOARD:
 		_start_a_match()
-	_main.crt_overlay().enable(EFFECT_ON)
+	_stage.crt_overlay().enable(EFFECT_ON)
 
 
 ## A fixed seed, so the board says the same thing in both renders. Comparing
@@ -89,4 +99,4 @@ func _start_a_match() -> void:
 	settings.player_count = 1
 	settings.loans_enabled = true
 	settings.rng_seed = 555
-	_main.start_match(settings)
+	_stage.game().start_match(settings)

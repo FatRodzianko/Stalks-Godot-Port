@@ -13,22 +13,26 @@ extends RefCounted
 ## 1. The interface lays itself out on the 640x360 grid. That never changes,
 ##    whatever resolution is picked, so every player sees the same rows and
 ##    columns (docs/decisions.md D40).
-## 2. That layout is **drawn into an image of the chosen resolution**. At
-##    1920x1080 a letter is drawn with three times as many pixels as at
-##    640x360. This is `content_scale_size` with a matching
-##    `content_scale_factor`: the first sets how big the image is, the second
-##    keeps the layout at 640x360 units inside it.
-## 3. The image is **stretched to fill the window**, keeping its shape. A
-##    monitor that is not 16:9 gets black bars rather than a distorted
-##    picture. This is `CONTENT_SCALE_ASPECT_KEEP`.
+## 2. That layout is **drawn at 640x360**, always. The game is pixel art and
+##    this is the size of its pixels.
+## 3. `Stage` **enlarges that picture by a whole number** to fill as much of
+##    the window as it can, centres it, and leaves black around the rest.
 ##
-## Step 3 is a straight stretch of a finished image, so choosing a resolution
-## below the monitor's own costs sharpness, exactly as it does in any other
-## game. Choosing the monitor's own resolution — what a first run does — makes
-## step 3 a one-to-one copy, and nothing is resampled at all.
+## Nothing here does step 3, and nothing here resizes a viewport. Godot's own
+## stretch settings are switched off in `project.godot` for exactly that
+## reason — a stretch happens after everything is drawn, where neither the CRT
+## effect nor anything else can reach it. See decisions.md D96.
 ##
-## **Windowed mode makes the window the size of the image**, so step 3 is again
-## one-to-one and the picture is exact.
+## **So what does the resolution setting do?** It picks **the size of the
+## window**. Every rung of the ladder is a whole multiple of 640x360, so a
+## window at any of them is filled exactly, with no bars and nothing resampled.
+##
+## **In fullscreen it does nothing at all**, because the monitor's own size is
+## the window. The settings panel greys the control out there rather than
+## letting a player change a number and watch nothing happen. That is a true
+## statement about this design rather than a shortcoming of it: a pixel-art
+## game drawn at 640x360 has one honest picture size and the only question is
+## how many times it is enlarged.
 
 
 ## Applies `resolution` and `fullscreen` to `window`, and returns the
@@ -47,13 +51,11 @@ static func apply(window: Window, resolution: Vector2i, fullscreen: bool) -> Vec
 	if not has_a_real_window():
 		return chosen
 
-	# Set before the window mode changes, so there is never a frame rendered at
-	# the old size inside the new window.
-	window.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
-	window.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
-	window.content_scale_size = chosen
-	window.content_scale_factor = DisplaySettings.scale_for(chosen)
-
+	# No `content_scale_*` here any more. Setting a content scale would put a
+	# second resize between the game and the window, on top of the one `Stage`
+	# does, and the two fought: the old pairing of `content_scale_size` with a
+	# matching `content_scale_factor` cancelled out exactly, which is why the
+	# resolution setting did nothing for weeks (decisions.md D85, then D96).
 	if fullscreen:
 		window.mode = Window.MODE_FULLSCREEN
 		return chosen
