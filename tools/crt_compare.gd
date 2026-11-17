@@ -112,7 +112,63 @@ func _report(on: Image, off: Image) -> void:
 		100.0 * (middle_on / maxf(middle_off, 1e-6)),
 	])
 	_print_detail(on, off)
+	_print_rows_with_text(on, off)
 	_print_brightest_row(on, off)
+
+
+## How much stroke definition each row of text keeps, one row at a time.
+##
+## The whole-frame figure hides the fault this was written for: text that is
+## sharp on one row and soft on the row below it. Only rows that carry real
+## detail in the effect-off render are listed, which selects the rows with text
+## on them without having to be told where they are.
+func _print_rows_with_text(on: Image, off: Image) -> void:
+	var across_on: PackedFloat32Array = []
+	var across_off: PackedFloat32Array = []
+	var busiest: float = 0.0
+	for y: int in on.get_height():
+		var row_on: float = 0.0
+		var row_off: float = 0.0
+		for x: int in range(1, on.get_width()):
+			row_on += absf(
+				on.get_pixel(x, y).get_luminance()
+				- on.get_pixel(x - 1, y).get_luminance()
+			)
+			row_off += absf(
+				off.get_pixel(x, y).get_luminance()
+				- off.get_pixel(x - 1, y).get_luminance()
+			)
+		across_on.append(row_on)
+		across_off.append(row_off)
+		busiest = maxf(busiest, row_off)
+
+	print("")
+	print("per row, stroke definition kept (rows carrying text)")
+	var kept: Array[float] = []
+	for y: int in across_off.size():
+		if across_off[y] < busiest * 0.25:
+			continue
+		var ratio: float = 100.0 * across_on[y] / maxf(across_off[y], 1e-6)
+		kept.append(ratio)
+		print("  y=%3d  off %6.2f  on %6.2f  %5.1f%%   %s" % [
+			y, across_off[y], across_on[y], ratio, _bar(ratio)
+		])
+
+	if kept.is_empty():
+		return
+	var lowest: float = kept[0]
+	var highest: float = kept[0]
+	for ratio: float in kept:
+		lowest = minf(lowest, ratio)
+		highest = maxf(highest, ratio)
+	print("  spread %.1f%% to %.1f%% - %.1f points between the best and worst row" % [
+		lowest, highest, highest - lowest
+	])
+
+
+func _bar(percent: float) -> String:
+	var width: int = clampi(int((percent - 60.0) / 2.0), 0, 30)
+	return "#".repeat(width)
 
 
 ## How much fine detail survives, which is what text legibility actually is.

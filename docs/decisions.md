@@ -2896,6 +2896,97 @@ repository, so this is how it is checked. `tools/crt_compare.gd` is the
 other half: it differences two renders and prints the figures above. See
 testing.md for what each one answers.
 
+### D94a - What the SubViewport option was measured to cost
+
+An appendix to D94 rather than a decision: **nothing has been decided and
+nothing has been built.** This is what was measured on 2026-11-17 so that
+whoever picks it up does not have to find it again, and so that the reasons it
+looked expensive are not quoted back as fact when two of the three turned out
+to be wrong.
+
+**The fault that prompted it.** Reported from play: some rows of text in the
+stalk list are noticeably blurrier than the rows right next to them. Measured
+by rendering the board twice, effect on and off, and comparing stroke
+definition one row at a time:
+
+| Variant | Best-to-worst spread across text rows |
+|---|---|
+| As shipped | 41.6% to 100.3% - 58.7 points |
+| Scanlines off | 41.6% to 100.3% - 58.7 points, identical |
+| Warp off | 80.6% to 102.6% - 22.0 points |
+
+**The barrel warp is the whole of it and the scanlines contribute nothing.** A
+barrel bends each axis by the other axis's distance from the centre, so every
+row gets its own fractional shift. A row displaced by a whole pixel stays
+sharp; a row displaced by half a pixel is blended with its neighbour by the
+linear filter. Sharpness also peaks in the middle of the screen, where the
+displacement is zero.
+
+**This is the one thing the 640x360 shader genuinely cannot fix.** A stroke in
+this game is one pixel wide, so a half-pixel error halves it. Flattening the
+curve trades the two off smoothly and never removes the variation - at
+curvature 30, flat enough to barely read as a curve, the spread is still 34
+points. Snapping the sampled pixel to a whole pixel gives 96.6% definition but
+stair-steps, and at roughly 1.5 pixels of total displacement the curve nearly
+disappears anyway. **At this resolution you can have a visible curve or
+uniformly sharp text, not both.** Run the warp at monitor resolution and the
+same half-pixel error is half a *monitor* pixel - about an eighth of a game
+pixel, invisible.
+
+**Two of the three costs feared for the restructure are not real.** Both were
+checked by running them rather than by reasoning, and the tools are kept:
+
+- **Input routing is free.** `tools/subviewport_spike.gd`. A button inside a
+  `SubViewport` shown at twice its size reported a click at its own middle in
+  its own coordinates. Godot transforms through both spaces by itself. The
+  project also has **no** direct pointer reads anywhere in `src/`, so there is
+  nothing else to convert. The Unity notes that prompted this worry list nine
+  such reads, but that is a Unity-shaped problem: its UI is camera-coupled.
+- **Popups are one property.** `tools/popup_spike.gd`. With
+  `gui_embed_subwindows = true` on the `SubViewport`, the resolution dropdown
+  is at the same position and the same size as it is today, to the pixel.
+  Without it the popup lives in the root viewport at the container's scale -
+  which still lands beside its button, but is drawn outside the SubViewport, so
+  at window resolution and outside any effect.
+- **Tooltips are not established.** A synthetic hover produced none, so the
+  spike proves nothing either way about the nineteen of them. Check by hand.
+
+**No screen, widget, theme or layout file would change, and neither would the
+simulation.** This is where Godot and the Unity experience diverge: that
+project needed a sweep over twenty-seven canvases because its UI is bound to a
+camera, while a Godot `Control` neither knows nor cares which viewport draws
+it.
+
+**The real cost is integer scaling.** `SubViewportContainer.stretch_shrink` is
+a whole number, so only a window that is a whole multiple of 640x360 can
+produce a 640x360 viewport. Today the game fills any 16:9 window by scaling
+fractionally; that would become black bars on the sizes that do not divide.
+Against the game's own ladder in `DisplaySettings.LADDER`:
+
+| Resolution | Multiple | Result |
+|---|---|---|
+| 640x360 | 1x | exact |
+| **960x540** | **1.5x** | shows 640x360, bars 160 / 90 |
+| 1280x720 | 2x | exact |
+| **1600x900** | **2.5x** | shows 1280x720, bars 160 / 90 |
+| 1920x1080 | 3x | exact |
+| 2560x1440 | 4x | exact |
+| 3840x2160 | 6x | exact |
+
+Five of the seven lose nothing. The two that do are precisely the two that
+scale fractionally today, so what is lost in screen area is gained in square
+pixels - and the ladder is ours, so dropping those two rungs would retire the
+question. Outside the ladder, a 1366x768 laptop would show 1280x720.
+
+The alternative is a plain `TextureRect`, which fills fractionally but gives up
+the free input routing: then the coordinate transform really would have to be
+written and maintained. **Integer scaling is what buys the free input.**
+
+**What this appendix rules out:** repeating the claim that the restructure
+needs hand-written input maths, or that it would mean reworking the UI. It
+rules in one open question of taste - bars or fill - and one unchecked detail,
+the tooltips.
+
 ### D95 - Personal notes live in an uncommitted file beside CLAUDE.md
 
 **Decision.** `CLAUDE.md` is committed and holds conventions of the codebase.

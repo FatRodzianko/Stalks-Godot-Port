@@ -355,6 +355,30 @@ at a time said the colour bleed was five of the twelve points.
 A third argument writes a nearest-neighbour zoom of both, because a three-pixel
 scanline period cannot be seen in a screenshot viewed at anything but 1:1.
 
+### Questions about the engine get a spike, not an opinion
+
+Two tools in `tools/` exist only to answer a question about how Godot itself
+behaves, and are kept because the answers are worth more than the scripts:
+
+- `subviewport_spike.gd` — does Godot transform mouse input into a
+  `SubViewport` for us? (It does.)
+- `popup_spike.gd` — does a dropdown land correctly inside one? (With one
+  property set, yes.)
+
+Both are recorded in decisions.md D94a. Two things about the method are worth
+carrying to the next one of these:
+
+**Both needed a real window.** Headless does no mouse picking and shows no
+popups, so neither question can be answered by the test suite. Run them with
+`--path . --script res://tools/<name>.gd` and no `--headless`.
+
+**Write the control case first.** The first run of the input spike reported
+that Godot does *not* forward input — which was wrong, and would have been
+believed, because it confirmed what was expected. What caught it was a plain
+button in the ordinary viewport hearing nothing either: the harness was broken,
+not the engine. A spike with no control case can only tell you what you already
+thought.
+
 ### What the suite deliberately will not test
 
 Anything that talks to Steam. `test_steam_transport.gd` covers argument

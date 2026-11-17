@@ -26,6 +26,11 @@ extends Control
 ## Set `EFFECT_ON` to false to render the same screen without the effect, which
 ## is what the comparison is against.
 ##
+## Set `SHOW_THE_BOARD` to render the playing screen instead of the title
+## screen. The board is the better subject for anything about text: it is a
+## table of evenly spaced rows, so a fault that varies down the screen shows up
+## as some rows looking different from their neighbours.
+##
 ## This is a developer tool, not part of the game: `tools/` is excluded from
 ## the export (see `export_presets.cfg`) so none of it ships.
 
@@ -37,6 +42,9 @@ const EFFECT_ON: bool = true
 ## Small enough not to take over the screen, large enough that the scanlines
 ## and the warp are visible in the file.
 const WINDOW: Vector2i = Vector2i(1280, 720)
+
+## Whether to start a match rather than stay on the title screen.
+const SHOW_THE_BOARD: bool = false
 
 var _main: Main
 
@@ -68,4 +76,17 @@ func _process(_delta: float) -> void:
 	if _frames != 3:
 		return
 	_skip_the_splash()
+	if SHOW_THE_BOARD:
+		_start_a_match()
 	_main.crt_overlay().enable(EFFECT_ON)
+
+
+## A fixed seed, so the board says the same thing in both renders. Comparing
+## two pictures of different markets would measure the market.
+func _start_a_match() -> void:
+	var settings: GameSettings = GameSettings.new()
+	settings.max_years = 10
+	settings.player_count = 1
+	settings.loans_enabled = true
+	settings.rng_seed = 555
+	_main.start_match(settings)

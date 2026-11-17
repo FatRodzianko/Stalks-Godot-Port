@@ -29,8 +29,23 @@ const PanelScene: PackedScene = preload("res://src/ui/widgets/settings_panel.tsc
 var _saved: UserSettings
 
 
+## Keeps what was there, then puts the setting in a known state.
+##
+## **The known state is the point, and leaving it out was a real bug.** These
+## tests share one real settings file with the game, so without this they
+## inherit whatever the last run on this machine happened to leave. That is
+## invisible until it bites: if the effect is already on, the settings panel
+## opens with its box already ticked, and
+## `test_the_settings_tick_box_turns_it_on_and_remembers` then ticks a ticked
+## box - which changes nothing, emits no signal, and fails an assertion that
+## has nothing wrong with it. It passed for a day and failed the moment a
+## developer tool left the effect switched on.
 func before_each() -> void:
 	_saved = UserSettings.load_from()
+
+	var known: UserSettings = UserSettings.load_from()
+	known.crt_effect = false
+	known.save_to()
 
 
 func after_each() -> void:
