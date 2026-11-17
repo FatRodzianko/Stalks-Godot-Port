@@ -114,6 +114,13 @@ disabled. When all players press *Ready for New Year*, play advances to Year 1.
 During a normal year, players buy and sell freely, then ready up. When all players
 have readied, the end-of-year sequence runs.
 
+**Readying up closes your own trading** — a port rule, not the original's. The
+year ends the instant the last player readies, so a player who has already said
+they are done could otherwise be one stray click from selling everything a
+heartbeat before the prices move. Readying is a toggle, so the cost is one
+press: un-ready and the board is live again. Other players readying does not
+affect you. See decisions.md D97.
+
 ### 4.1 End-of-year sequence — the real order
 
 The write-up lists a different order from the code. This is what the code actually

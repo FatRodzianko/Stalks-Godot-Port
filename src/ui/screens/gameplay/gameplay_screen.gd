@@ -350,8 +350,17 @@ func _refresh_stats(player: PlayerState) -> void:
 	_loan_owed_label.text = Palette.format_money(owed)
 
 
+## True once this player has readied up and is only waiting for the others.
+##
+## Their own board goes read-only at that point: the rule is enforced in
+## `TradeRules`, and this is the half that greys the buttons so a player is not
+## invited to press something that will be refused. See decisions.md D97.
+func _is_waiting(player: PlayerState) -> bool:
+	return player != null and player.is_ready
+
+
 func _refresh_board(game: GameState, player: PlayerState) -> void:
-	var trading: bool = game.is_trading_open()
+	var trading: bool = game.is_trading_open() and not _is_waiting(player)
 	for stalk: StalkState in game.stalks:
 		var row: StalkRow = _stalk_rows.get(stalk.id)
 		if row == null:
@@ -366,7 +375,7 @@ func _refresh_board(game: GameState, player: PlayerState) -> void:
 func _refresh_holdings(game: GameState, player: PlayerState) -> void:
 	_clear_children(_holding_list)
 
-	var trading: bool = game.is_trading_open()
+	var trading: bool = game.is_trading_open() and not _is_waiting(player)
 	var held_any: bool = false
 	for stalk: StalkState in game.stalks:
 		var shares: int = player.shares_of(stalk.id)

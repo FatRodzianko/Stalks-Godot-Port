@@ -903,6 +903,7 @@ All are already built.
 | Steam as a hard requirement | The port must run without it |
 | The unreachable "haven't paid" confirmation | Built properly instead (§9.5) |
 | The six economy bugs in `game-rules.md` §14 | Each has a recorded decision |
+| Letting a readied player keep trading (§7 step 1) | One stray click could sell everything a heartbeat before the year turned. Readying now closes your own board until you un-ready (D97) |
 
 ---
 

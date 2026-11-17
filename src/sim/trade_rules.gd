@@ -44,6 +44,18 @@ static func validate_buy(
 ) -> String:
 	if not state.is_trading_open():
 		return "Trading is closed."
+	# **Readying up closes your own trading.** The year ends the moment the last
+	# player readies, and until then everybody else is still acting - so a
+	# player who has said "I am done" can still be one stray click away from
+	# selling everything a heartbeat before the prices move. Reported from play
+	# on 2026-11-17 after exactly that near miss.
+	#
+	# **This is a deliberate difference from the original**, which let a ready
+	# player keep trading (audit 7, step 1). It costs nothing, because readying
+	# is a toggle: press it again and the board is live. See decisions.md D97.
+	if player.is_ready:
+		return "You are ready for the new year. Press the ready button again to trade."
+
 	if player.is_bankrupt:
 		return "You are bankrupt."
 	if shares <= 0:
@@ -64,6 +76,11 @@ static func validate_sell(
 ) -> String:
 	if not state.is_trading_open():
 		return "Trading is closed."
+	# The same gate as `validate_buy`, and the one that prompted it: Sell All
+	# beside a list of holdings is the click this protects against. D97.
+	if player.is_ready:
+		return "You are ready for the new year. Press the ready button again to trade."
+
 	if shares <= 0:
 		return "Enter a number of shares to sell."
 	var held: int = player.shares_of(stalk.id)

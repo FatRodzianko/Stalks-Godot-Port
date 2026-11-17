@@ -506,6 +506,30 @@ a border. That is the price of every pixel being the same size square.
 13. Click **View board** and **BACK TO RESULTS** twice more.
 14. Check nothing breaks or goes blank.
 
+### A8l. Trading closes when you are ready
+
+Needs two players, so run it as part of Test B or with two windows on one
+machine (`--host` and `--join`).
+
+1. Start a two-player game and advance to year 1.
+2. As player one, buy some shares of anything.
+3. Press **Ready for New Year**.
+4. Check the button now reads **Waiting...**.
+5. Check every **BUY** button on the board is greyed out.
+6. Check every **SELL** and **SELL ALL** button under Your Stalks is greyed out.
+7. Press the button again to un-ready.
+8. Check the buy and sell buttons come back.
+9. Press ready again, then have player two stay unready for a moment.
+10. Check player one still cannot trade while waiting.
+11. Have player two ready up and check the year advances normally.
+
+**What this is for:** the year ends the moment the last player readies, so
+without this a player who has finished could sell everything by accident a
+heartbeat before the prices move. See decisions.md D97.
+
+**Also worth trying:** ready up, then un-ready, then trade, then ready again.
+The board should follow each press with no leftover greying.
+
 ### A9. Disconnection
 
 | Step | Expected |

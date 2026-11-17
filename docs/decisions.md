@@ -3223,3 +3223,47 @@ instead of a `SubViewportContainer`, and with it a hand-written coordinate
 transform for every pointer position, which is the one thing this design gets
 for free. And resolution rungs that are not whole multiples of 640x360.
 
+
+### D97 - Readying up closes your own trading
+
+**Decision.** Once a player presses Ready for New Year, their own buying and
+selling is refused until they un-ready. Other players readying has no effect on
+them.
+
+**Why.** The year ends the instant the *last* player readies, and everybody
+else is still trading until then. So a player who has already said they are
+done can be one stray click away from selling everything a heartbeat before the
+prices move - and Sell All sits directly beside the list of holdings. Reported
+from play on 2026-11-17 after exactly that near miss.
+
+**It costs the player nothing**, which is what makes it safe to do. Readying is
+a toggle and always has been: press it again and the board is live. The refusal
+says so rather than leaving somebody looking at a screen that has stopped
+responding, and `test_the_refusal_says_how_to_undo_it` is what keeps that true.
+
+**The original allowed it** (audit 7, step 1: "players buy and sell freely, in
+any order, at the same time"), so this is a deliberate divergence and is listed
+as one in audit 19. It is the kind of divergence this project accepts: the
+original's behaviour is not a rule anybody chose, it is what falls out of not
+having thought about the case.
+
+**Enforced in `TradeRules`, not in the screen.** The validators are the single
+implementation behind the host's enforcement and a client's instant pre-check,
+so one edit covers a client being refused, a host refusing a forged request,
+and an offline game. The screen greys the controls out as well, which is a
+courtesy rather than the rule - a player should not be invited to press
+something that will be refused.
+
+**Buying is closed too, not only selling.** The near miss was a sale, but a
+purchase made in the last moment of a year is just as much an accident and
+cheaper to leave out than to explain.
+
+**Loans were deliberately left alone.** Taking or paying a loan while ready is
+still allowed. It is not the reported fault, the buttons are not adjacent to
+anything dangerous, and game-rules.md §9.5 is explicit that the game must never
+withhold a player's choice about an unpaid loan. If that should change it is a
+separate decision.
+
+**What it rules out.** Enforcing this only in the UI, where a client could
+ignore it. And any future "ready" that is not a toggle - the rule is only
+reasonable because taking it back is one press.

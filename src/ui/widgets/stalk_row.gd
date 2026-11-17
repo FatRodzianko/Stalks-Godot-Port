@@ -134,6 +134,13 @@ func clear_amount() -> void:
 	_amount_field.theme_type_variation = &""
 
 
+## Whether this row's buy control is currently refusing presses, for whatever
+## reason: the stalk is bankrupt, trading is shut, or the player has readied up
+## and their board has gone read-only. For tests.
+func buy_is_blocked() -> bool:
+	return _buy_button.disabled
+
+
 func stalk_id() -> StringName:
 	return _stalk_id
 

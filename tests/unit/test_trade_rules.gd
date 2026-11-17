@@ -17,6 +17,64 @@ func before_each() -> void:
 	_stryker = _state.stalk_by_id(&"stryker")
 
 
+# ------------------------------------------------ trading while ready to advance
+
+## The near miss this rule exists for.
+##
+## The year ends the instant the last player readies, so somebody who has
+## already said "I am done" can be one stray click from selling everything a
+## heartbeat before the prices move. Reported from play on 2026-11-17. The
+## original allowed it (audit 7, step 1); this port does not. See D97.
+func test_a_ready_player_cannot_sell() -> void:
+	_player.add_shares(_stryker.id, 10)
+	_player.is_ready = true
+
+	assert_ne(TradeRules.validate_sell(_player, _stryker, 10, _state), "")
+
+
+func test_a_ready_player_cannot_buy_either() -> void:
+	# Both halves, because a buy made in the last moment of a year is just as
+	# much an accident as a sale, and cheaper to leave out than to explain.
+	_player.is_ready = true
+
+	assert_ne(TradeRules.validate_buy(_player, _stryker, 1, _state), "")
+
+
+func test_the_refusal_says_how_to_undo_it() -> void:
+	# A reason that does not say what to do about it leaves the player stuck
+	# looking at a board that has stopped responding.
+	_player.is_ready = true
+	var reason: String = TradeRules.validate_buy(_player, _stryker, 1, _state)
+
+	assert_true(reason.to_lower().contains("ready"), "says what state they are in")
+	assert_true(reason.to_lower().contains("again"), "and how to leave it")
+
+
+func test_un_readying_opens_the_board_again() -> void:
+	# The whole reason this costs the player nothing: readying is a toggle.
+	_player.add_shares(_stryker.id, 10)
+	_player.is_ready = true
+	_player.is_ready = false
+
+	assert_eq(TradeRules.validate_sell(_player, _stryker, 10, _state), "")
+	assert_eq(TradeRules.validate_buy(_player, _stryker, 1, _state), "")
+
+
+## Somebody else being ready is not your problem.
+func test_another_player_being_ready_does_not_stop_you() -> void:
+	# The shared fixture is a one-player game, so this one builds its own.
+	var two: GameState = StalksFixture.make_state(10, 2)
+	two.year = 1
+	two.players[1].is_ready = true
+
+	assert_eq(
+		TradeRules.validate_buy(
+			two.players[0], two.stalk_by_id(&"stryker"), 1, two
+		),
+		"",
+	)
+
+
 # ------------------------------------------------------------------------ buying
 
 func test_affordable_purchase_is_allowed() -> void:

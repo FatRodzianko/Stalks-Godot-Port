@@ -33,6 +33,36 @@ func before_each() -> void:
 	_session.set_ready(&"p0", true)
 
 
+## The board goes read-only once you have readied up.
+##
+## `TradeRules` is what actually refuses the trade; this is the other half,
+## which stops a player being invited to press something that will be refused.
+## A single-player game is the sharpest version of the test: readying ends the
+## year immediately, so the only way to observe the state is to look at the
+## controls on the way through. See decisions.md D97.
+func test_readying_up_greys_out_the_board() -> void:
+	# A fresh year, with the player not yet ready and a stalk worth buying.
+	var stalk: StalkState = _first_tradable_stalk()
+	assert_not_null(stalk, "the fixture should have something to trade")
+
+	var row: StalkRow = _stalk_row_for(stalk.id)
+	assert_not_null(row, "the board should have a row for it")
+	assert_false(row.buy_is_blocked(), "buying is open before readying")
+
+	_player().is_ready = true
+	_screen.refresh()
+
+	assert_true(row.buy_is_blocked(), "and closed once ready")
+
+
+func _stalk_row_for(stalk_id: StringName) -> StalkRow:
+	for node: Node in _screen.get_node("%StalkList").get_children():
+		var row: StalkRow = node as StalkRow
+		if row != null and row.stalk_id() == stalk_id:
+			return row
+	return null
+
+
 func _player() -> PlayerState:
 	return _session.state().player_by_id(&"p0")
 
