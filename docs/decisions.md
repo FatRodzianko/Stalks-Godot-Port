@@ -2715,8 +2715,13 @@ theirs, which is cheaper than tracking requests for a list of at most ten.
 **2026-11-16 - Accepted**
 
 The game opens on the Glacial Lake Studios logo: it fades in, holds, and fades
-out, about two and a half seconds end to end. **Nothing moves.** It sits at an
-exact **2x** - 512x288 of the 256x144 original - centred on a black screen.
+out, **four and a half seconds** end to end - 1.4 in, 2.0 held, 1.1 out.
+**Nothing moves.** It sits at an exact **2x** - 512x288 of the 256x144
+original - centred on a black screen.
+
+It ran for two and a half seconds at first, with a 0.7 fade in, which read as
+the logo being flashed at you rather than presented. The opening fade is now
+the slowest part of it, at the owner's asking.
 
 **The slow push towards the viewer was built first, and dropped after looking
 at it.** It is the shape an engine's own logo splash usually takes and it is

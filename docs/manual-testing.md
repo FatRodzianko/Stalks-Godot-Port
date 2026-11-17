@@ -321,7 +321,8 @@ See decisions.md D85.
 5. Check it sits in the middle with a black border all the way round.
 6. Check it fades out rather than cutting.
 7. Check the title screen follows it.
-8. Check the whole thing takes roughly two and a half seconds.
+8. Check the whole thing takes roughly four and a half seconds, with the
+   fade in the slowest part of it.
 9. Start the game again and press a key while the logo is showing.
 10. Check it disappears immediately and the title screen appears.
 11. Start the game again and click the mouse while the logo is showing.

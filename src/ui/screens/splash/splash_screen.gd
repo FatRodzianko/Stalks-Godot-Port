@@ -25,10 +25,15 @@ extends Control
 signal finished
 
 
-## How long the whole thing lasts if nobody interrupts it.
-const FADE_IN_SECONDS: float = 0.7
-const HOLD_SECONDS: float = 1.1
-const FADE_OUT_SECONDS: float = 0.7
+## How long the whole thing lasts if nobody interrupts it: four and a half
+## seconds, of which the opening fade is the slowest part.
+##
+## The first version ran for two and a half and faded in over 0.7, which read
+## as the logo being flashed at you rather than presented. Doubling the fade
+## in is what the owner asked for; the rest was stretched to match it.
+const FADE_IN_SECONDS: float = 1.4
+const HOLD_SECONDS: float = 2.0
+const FADE_OUT_SECONDS: float = 1.1
 
 
 ## Set once the splash has ended, so a late keypress cannot finish it twice.
