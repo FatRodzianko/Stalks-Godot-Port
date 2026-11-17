@@ -133,20 +133,23 @@ The consequence is that **the achievement ids are not ours to choose** (see 4).
 For local development before any build is uploaded, App ID **480** (Spacewar,
 Valve's public test app) works for lobbies and the overlay. Never ship with it.
 
-### You need a local `steam_appid.txt`
+### You do not need a `steam_appid.txt`
 
-Running the game outside the Steam client needs an App ID on disk. Create a file
-called **`steam_appid.txt`** in the project root containing exactly:
+**Corrected 2026-11-16.** This section used to say one was required to run the
+game outside the Steam client. It is not. `SteamService.start()` calls
+`Steam.steamInitEx(APP_ID, ...)` with the App ID as an argument and the plugin
+sets Steam's own environment variables from it, so the game identifies itself
+at startup however it was launched. A release build was run on a second machine
+with no such file present and joined a lobby normally.
 
-```
-1821800
-```
+The Unity original did need one, because Steamworks.NET's `SteamAPI_Init()`
+takes no App ID and has to find one on disk. That is where the belief came
+from.
 
-It is **gitignored on purpose**, so every checkout makes its own. An App ID is
-public, so this is not about secrecy — it is that Valve's own guidance is to
-keep this file out of a shipped build, and a file that is never committed
-cannot be shipped by accident. The export presets in Phase 7 should exclude it
-as well, belt and braces.
+A `steam_appid.txt` in the project root is still **harmless** and still
+**gitignored**, and the export presets still exclude it: Valve's guidance is
+that it should not ship, and a file that is never committed cannot be shipped
+by accident. It is simply not something anybody has to create.
 
 The Steamworks SDK beside it is a different matter: that one is genuinely not
 redistributable and must never be committed anywhere.

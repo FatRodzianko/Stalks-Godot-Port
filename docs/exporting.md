@@ -214,15 +214,20 @@ Copy the **whole output folder**, not just the `.exe`. Alongside it Godot puts:
 
 ### If you want Steam to work on that machine
 
-Add a **`steam_appid.txt`** next to the `.exe` containing exactly:
+Steam needs to be **running and signed in**, and that is all. Do not add a
+`steam_appid.txt` — the build does not need one.
 
-```
-1821800
-```
+**Corrected 2026-11-16**, after this document had said for weeks that a build
+launched outside the Steam client could not initialise without that file. It
+can. `SteamService.start()` calls `Steam.steamInitEx(APP_ID, ...)` with the
+App ID as an argument, and the plugin sets Steam's environment variables from
+it, so the game tells Steam which app it is at startup however it was
+launched. Verified by copying a release build to a second machine, running the
+`.exe` directly with no App ID file anywhere, and joining a lobby from the
+first — names and avatars and all.
 
-Without it, a build launched directly (rather than through Steam) cannot
-initialise the Steam API. It is not committed to the repository — see
-[steam-integration.md §3.1](steam-integration.md).
+This is where it differs from the Unity original, whose `SteamAPI_Init()` takes
+no App ID and therefore has to read one off disk.
 
 ⚠️ **The second Steam account must be able to run the app.** Steam refuses to
 initialise for an account that neither owns the game nor is listed as a

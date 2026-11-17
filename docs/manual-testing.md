@@ -452,8 +452,11 @@ proven in Test A and does not change with the transport.
 - The second account must **own the game or be in the app's developer group**
   in the Steamworks partner site. Steam refuses to initialise otherwise, and
   that is the likeliest first failure.
-- A `steam_appid.txt` containing `1821800` next to the `.exe` on both machines,
-  since the builds are being launched directly rather than through Steam.
+- **No `steam_appid.txt` is needed**, on either machine, whether the build is
+  launched through Steam or by double-clicking it. The game passes its App ID
+  to Steam itself. An earlier version of this list asked for one; that was
+  wrong and was corrected on 2026-11-16 after a release build was run on a
+  second machine without it.
 
 ### B1. Steam starts at all
 
