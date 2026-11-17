@@ -712,7 +712,8 @@ black bars where the monitor is not 16:9, and the window cannot be dragged to re
 
 - The list is exact 16:9 sizes capped at what the monitor can show, rather than the
   original's four hardcoded options. The original's 852×480 was an approximation of
-  16:9; the port offers 960×540 instead.
+  16:9 and the port offers none like it. Every rung is a whole multiple of 640×360,
+  which is why 960×540 and 1600×900 were dropped on 2026-11-17 (D96).
 - A change is applied and then confirmed, reverting after fifteen seconds if nobody
   answers. The original applied immediately with no way back if the result was
   unreadable.
@@ -720,16 +721,22 @@ black bars where the monitor is not 16:9, and the window cannot be dragged to re
 - A first run is the monitor's own largest 16:9 size, fullscreen. The original's
   fallback was 1920×1080 windowed.
 
-**Known broken, found in play on 2026-11-16 and deliberately left:**
+**Settled on 2026-11-17, not broken:**
 
-- **The resolution does nothing in fullscreen.** The game renders at 640×360 and
-  stretches to the screen whatever is selected. Decisions.md D85 explains why and
-  what fixing it would take. **The dropdown is greyed out in fullscreen** so that
-  it does not look broken while that is true.
-- **The list is capped on the taskbar-free area rather than the screen**, so a
-  2560×1440 monitor is not offered 2560×1440. One line in `DisplayMode.screen_size`.
+- **The resolution does nothing in fullscreen**, and will not. The monitor's own
+  size is the window there. D96 states the position plainly: a pixel-art game
+  drawn at 640×360 has one picture size, and the only question is how many times
+  it is enlarged. **The dropdown is greyed out in fullscreen**, which is now a
+  true statement about the design rather than a placeholder.
 
-The owner chose to take these on themselves rather than have them rebuilt here.
+**Still open:**
+
+- **The list is capped on the taskbar-free area rather than the whole screen**, so
+  a 2560×1440 monitor is not offered 2560×1440. One line in
+  `DisplayMode.screen_size`. It matters less than it reads: the cap only applies to
+  *windowed* sizes, where a window as tall as the screen would not fit anyway, and
+  fullscreen ignores the setting entirely. Left alone rather than fixed, because
+  changing it would start offering window sizes that do not fit.
 
 ### 17.4 The host cannot choose a player limit - **Ported 2026-11-16**
 

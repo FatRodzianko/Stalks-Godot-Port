@@ -26,8 +26,15 @@ const SECTION_AUDIO: String = "audio"
 
 const SECTION_DISPLAY: String = "display"
 
-## Full volume. A player who has never touched it hears the game as intended.
-const DEFAULT_VOLUME: int = 100
+## Half volume on a first run, at the owner's instruction on 2026-11-17.
+##
+## It was full until then. The game's loudest moments - a bankruptcy plays
+## breaking glass and a scream together - are startling at 100 on a machine
+## whose system volume is already up, and a player who has not met the game
+## yet has no reason to expect them. Starting halfway means the first thing
+## anybody does with the slider is turn it up, which is a better first move
+## than turning it down.
+const DEFAULT_VOLUME: int = 50
 
 ## What a first run looks like: fullscreen, at whatever the monitor's own
 ## largest 16:9 size is. Written as a zero rather than a number because the

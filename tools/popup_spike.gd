@@ -23,6 +23,10 @@ extends SceneTree
 ## outside any screen effect. A small sharp dropdown over a chunky pixel UI.
 ## One property fixes it.
 ##
+## **Tooltips: answered by hand on 2026-11-17** - the owner confirmed them
+## correct in a real session over Steam. This spike still could not show it,
+## for the reason below.
+##
 ## **Tooltips are not answered here.** A synthetic hover produced none within
 ## a second and a half, so this proves nothing either way about them. They
 ## ought to follow the dropdown, since a tooltip is made by whichever viewport

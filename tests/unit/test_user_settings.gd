@@ -19,10 +19,11 @@ func after_each() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 
 
-func test_nothing_saved_yet_means_full_volume() -> void:
-	# The first run. Not a failure, and not logged as one.
+func test_nothing_saved_yet_means_the_default_volume() -> void:
+	# The first run. Not a failure, and not logged as one. Asserted against
+	# the constant rather than a number, so changing the default is one edit.
 	var fresh: UserSettings = UserSettings.load_from("user://no_such_file.cfg")
-	assert_eq(fresh.volume_percent, 100)
+	assert_eq(fresh.volume_percent, UserSettings.DEFAULT_VOLUME)
 
 
 func test_a_volume_survives_a_round_trip() -> void:
@@ -35,7 +36,7 @@ func test_a_volume_survives_a_round_trip() -> void:
 
 func test_silence_is_remembered_as_silence() -> void:
 	# Zero is the value a default-shaped store gets wrong: read back as the
-	# default 100, so muting never sticks.
+	# default, so muting never sticks.
 	var settings: UserSettings = UserSettings.new()
 	settings.volume_percent = 0
 	settings.save_to(TEST_PATH)
@@ -44,7 +45,8 @@ func test_silence_is_remembered_as_silence() -> void:
 
 
 func test_a_nonsense_volume_is_clamped_rather_than_obeyed() -> void:
-	# A hand-edited file should not be able to make the game deafening.
+	# A hand-edited file should not be able to make the game deafening. 100
+	# here is the ceiling, not the default - those are different numbers now.
 	var file: ConfigFile = ConfigFile.new()
 	file.set_value(UserSettings.SECTION_AUDIO, "volume_percent", 9000)
 	file.save(TEST_PATH)
@@ -58,7 +60,9 @@ func test_a_corrupt_file_reads_as_a_first_run() -> void:
 	file.close()
 
 	assert_eq(
-		UserSettings.load_from(TEST_PATH).volume_percent, 100, "defaults, not a crash"
+		UserSettings.load_from(TEST_PATH).volume_percent,
+		UserSettings.DEFAULT_VOLUME,
+		"defaults, not a crash",
 	)
 
 
