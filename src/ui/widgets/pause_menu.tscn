@@ -57,13 +57,6 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_type_variation = &"TightVBox"
 
-[node name="Note" type="Label" parent="Centre/Card/Pad/Body/ButtonsPage"]
-layout_mode = 2
-theme_type_variation = &"Faint"
-text = "The year waits for everyone, not for this menu."
-autowrap_mode = 3
-horizontal_alignment = 1
-
 [node name="Filler" type="Control" parent="Centre/Card/Pad/Body/ButtonsPage"]
 layout_mode = 2
 size_flags_vertical = 3

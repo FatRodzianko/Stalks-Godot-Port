@@ -70,6 +70,26 @@ the editor is invisible in diffs and can only be done by the owner. Therefore:
 
 When an editor step is unavoidable, state **why** code could not do it.
 
+### Do not write flavour text
+
+**Taglines, slogans, jokes and any line whose job is tone are the owner's to
+write, not yours.** Text that *explains* something is fine and expected — a
+placeholder, an error message, a note saying what a setting does. Text that
+exists to have a voice is not.
+
+Two were invented and both were cut on 2026-11-16: a title-screen tagline
+("Buy low. Sell high...") and a line on the pause menu. The owner's verdict on
+the first was "It is very bad."
+
+The game already has a voice and it is in the original: *Can I Get a Yeehaw?*,
+*You're terrible at picking stalks!*, a $69,420 ceiling. Anything written to
+fill a gap reads as generic beside that. Take the words from the original
+(`docs/original-game-audit.md` quotes many of them verbatim) or ask. **An
+empty label is better than an invented one.**
+
+This cannot be machine-checked the way the readability rules are — no test can
+tell tone from explanation — so it lives here and depends on being read.
+
 ### Achievements are finished. Never raise them.
 
 **Do not ask the owner anything about Steam achievements.** Not what one was for, not
