@@ -121,3 +121,33 @@ func test_it_hands_over_to_the_menu() -> void:
 	(main.current_screen() as SplashScreen).skip()
 
 	assert_true(main.current_screen() is MainMenu)
+
+
+## Pins the fade to its stated length.
+##
+## Added after the timing was changed and the splash looked unchanged on the
+## next run: the constants are the only statement of how long it takes, and
+## nothing was checking that the tween actually used them.
+func test_the_fade_in_takes_the_time_it_says() -> void:
+	var splash: SplashScreen = _splash()
+	var logo: TextureRect = splash.get_node("%Logo")
+
+	await wait_seconds(SplashScreen.FADE_IN_SECONDS * 0.5)
+	var halfway: float = logo.modulate.a
+
+	assert_lt(halfway, 0.85, "still fading in at the halfway mark")
+	assert_gt(halfway, 0.15, "and not still at nothing")
+
+	await wait_seconds(SplashScreen.FADE_IN_SECONDS * 0.6)
+	assert_almost_eq(logo.modulate.a, 1.0, 0.05, "fully in once the fade is up")
+
+
+func test_it_is_still_on_screen_well_past_the_old_running_time() -> void:
+	# The whole splash used to be over in 2.5 seconds. If it ends at 2.5 now,
+	# the constants are not reaching the tween.
+	var splash: SplashScreen = _splash()
+	watch_signals(splash)
+
+	await wait_seconds(2.6)
+
+	assert_signal_not_emitted(splash, "finished")

@@ -108,7 +108,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-665 tests, 14,676 asserts, about 47 seconds.
+667 tests, 14,681 asserts, about 50 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -135,7 +135,7 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_lobby_row.gd` | What a browser row tells a joiner before they commit: the year limit, the starting cash and whether loans are on, each one omitted rather than guessed when the lobby did not publish it, and a full game offering no join button | 8 |
 | `test_final_board.gd` | Looking at the board after the match: the result screen offering it, the board rebuilt from the session the match actually ended in rather than a fresh one, the bottom bar becoming the way back, that same button still readying up during a real match, going back and forth repeatedly, and asking for a board when there is no match | 7 |
 | `test_steam_identity.gd` | Everything around the Steam calls without making any: a player's Steam id surviving the snapshot and deliberately not being redacted, a lobby row taking the portrait that is its own and refusing one that is not, a player with no account never showing a blank, the supporter thank-you appearing only when it is earned, and every Steam-shaped question answering no when Steam is absent | 12 |
-| `test_splash_screen.gd` | The studio logo: that it ends, that it ends only once however many times it is told to, that a key or a mouse click gets rid of it while a key release does not, that it times out on its own, that a headless run never shows one, and that it hands over to the menu | 8 |
+| `test_splash_screen.gd` | The studio logo: that it ends, that it ends only once however many times it is told to, that a key or a mouse click gets rid of it while a key release does not, that it times out on its own, that a headless run never shows one, that it hands over to the menu, and that the fade takes the time its constants say - added after a timing change appeared to do nothing | 10 |
 | `test_audio_service.gd` | Sound, checked without listening: a mood being **two** clips layered rather than one, a bankruptcy being glass **and** a scream, a yeehaw being one, six voices surviving a year and a yeehaw landing together, volume round-tripping with zero meaning silence rather than quiet, the volume preview having a voice of its own so a second one replaces the first instead of echoing over it, and the SFX bus existing at all — without which every volume assertion would agree with itself and mean nothing | 12 |
 | `test_user_settings.gd` | Preferences kept between runs: full volume on a first run, a volume round trip, silence staying silent, a hand-edited nonsense value clamped, a corrupt file reading as a first run rather than crashing, and the title screen remembering **nothing** — the guard on a convenience that was added and then removed the same day | 7 |
 | `test_achievement_rules.gd` | What a match earns, decided without Steam: the all-in and diversified thresholds and their near-misses, borrowing and settling, a split or bankruptcy judged from the holdings **before** the year (a bankrupt stalk's shares are zeroed, so the current state would never award it), winning and losing being exclusive, the net-worth targets including the starting-cash guard that stops one being bought, doubling and halving, long-match ids, the lifetime ladders awarding every rung reached, and that every id these rules can award is in the catalogue | 28 |

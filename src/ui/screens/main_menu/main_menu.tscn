@@ -29,7 +29,7 @@ horizontal_alignment = 1
 [node name="Tagline" type="Label" parent="Centre/Shell"]
 layout_mode = 2
 theme_type_variation = &"Faint"
-text = "Buy low. Sell high. Try not to go bankrupt."
+text = "Make money y'all..."
 horizontal_alignment = 1
 
 [node name="SupporterNote" type="Label" parent="Centre/Shell"]
