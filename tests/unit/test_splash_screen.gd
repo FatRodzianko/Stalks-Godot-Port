@@ -1,0 +1,123 @@
+extends GutTest
+## The studio logo shown as the game starts.
+##
+## Nothing here looks at it — Godot renders nothing headless. What these cover
+## is the part that can go wrong without being seen: that it ends, that it ends
+## only once, that anything a player presses gets rid of it, and above all that
+## it does not appear in front of somebody who launched the game into
+## something.
+
+
+const SplashScene: PackedScene = preload("res://src/ui/screens/splash/splash_screen.tscn")
+const MainScene: PackedScene = preload("res://src/ui/screens/main/main.tscn")
+
+
+func _splash() -> SplashScreen:
+	var splash: SplashScreen = SplashScene.instantiate()
+	add_child_autofree(splash)
+	return splash
+
+
+func _press(key: Key) -> InputEventKey:
+	var event: InputEventKey = InputEventKey.new()
+	event.keycode = key
+	event.pressed = true
+	return event
+
+
+func test_it_says_when_it_is_over() -> void:
+	var splash: SplashScreen = _splash()
+	watch_signals(splash)
+
+	splash.skip()
+
+	assert_signal_emitted(splash, "finished")
+
+
+## The fade ends by calling `skip`, and a key can land in the same frame. A
+## second `finished` would open the menu twice, over the top of itself.
+func test_it_is_only_ever_over_once() -> void:
+	var splash: SplashScreen = _splash()
+	watch_signals(splash)
+
+	splash.skip()
+	splash.skip()
+	splash.skip()
+
+	assert_signal_emit_count(splash, "finished", 1)
+
+
+func test_a_keypress_gets_rid_of_it() -> void:
+	# A splash that cannot be skipped is a tax on everybody who launches the
+	# game more than once.
+	var splash: SplashScreen = _splash()
+	watch_signals(splash)
+
+	get_tree().root.push_input(_press(KEY_SPACE))
+	await wait_process_frames(1)
+
+	assert_signal_emitted(splash, "finished")
+
+
+func test_a_mouse_click_gets_rid_of_it_too() -> void:
+	# Somebody who has just launched the game may have no hand on the keyboard.
+	var splash: SplashScreen = _splash()
+	watch_signals(splash)
+
+	var click: InputEventMouseButton = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	get_tree().root.push_input(click)
+	await wait_process_frames(1)
+
+	assert_signal_emitted(splash, "finished")
+
+
+func test_letting_go_of_a_key_does_not_count() -> void:
+	# Otherwise the release of whatever launched the game could skip it before
+	# a single frame of it had been seen.
+	var splash: SplashScreen = _splash()
+	watch_signals(splash)
+
+	var release: InputEventKey = InputEventKey.new()
+	release.keycode = KEY_SPACE
+	release.pressed = false
+	get_tree().root.push_input(release)
+	await wait_process_frames(1)
+
+	assert_signal_not_emitted(splash, "finished")
+
+
+func test_it_ends_on_its_own_if_nobody_touches_it() -> void:
+	var splash: SplashScreen = _splash()
+	watch_signals(splash)
+
+	await wait_seconds(
+		SplashScreen.FADE_IN_SECONDS
+		+ SplashScreen.HOLD_SECONDS
+		+ SplashScreen.FADE_OUT_SECONDS
+		+ 0.4
+	)
+
+	assert_signal_emitted(splash, "finished")
+
+
+## The whole suite runs headless, so this is also the assertion that no test
+## anywhere has to sit through a logo.
+func test_a_headless_run_never_shows_it() -> void:
+	var main: Main = MainScene.instantiate()
+	add_child_autofree(main)
+
+	assert_false(main.current_screen() is SplashScreen)
+
+
+func test_it_hands_over_to_the_menu() -> void:
+	var main: Main = MainScene.instantiate()
+	add_child_autofree(main)
+
+	main.show_splash()
+	assert_true(main.current_screen() is SplashScreen)
+
+	(main.current_screen() as SplashScreen).skip()
+
+	assert_true(main.current_screen() is MainMenu)

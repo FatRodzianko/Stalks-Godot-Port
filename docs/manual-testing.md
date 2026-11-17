@@ -312,6 +312,27 @@ See decisions.md D85.
 23. Begin another match, press **Escape**, and click **QUIT TO DESKTOP**.
 24. Check the game closes.
 
+### A8h. The studio splash
+
+1. Start the game.
+2. Check the Glacial Lake Studios logo appears before the title screen.
+3. Check it fades in rather than appearing at once.
+4. Check it grows slowly towards you for as long as it is on screen.
+5. Check it fades out rather than cutting.
+6. Check the title screen follows it.
+7. Check the whole thing takes roughly two and a half seconds.
+8. Start the game again and press a key while the logo is showing.
+9. Check it disappears immediately and the title screen appears.
+10. Start the game again and click the mouse while the logo is showing.
+11. Check that skips it too.
+12. Start the game with `--host` on the command line.
+13. Check there is no logo and it goes straight into hosting.
+
+**What to look at, not just click through:** the logo is being scaled by a
+fraction that changes every frame. It should look smooth. If its pixels crawl
+or shimmer as it grows, the linear filtering on it has been lost - see
+decisions.md D93.
+
 ### A8f. The rebuilt title screen
 
 1. Start the game.

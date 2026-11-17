@@ -17,6 +17,7 @@ const LobbyScene: PackedScene = preload("res://src/ui/screens/lobby/lobby_screen
 const ConfirmPanelScene: PackedScene = preload("res://src/ui/widgets/confirm_panel.tscn")
 const PauseMenuScene: PackedScene = preload("res://src/ui/widgets/pause_menu.tscn")
 const DevOverlayScene: PackedScene = preload("res://src/ui/widgets/dev_overlay.tscn")
+const SplashScene: PackedScene = preload("res://src/ui/screens/splash/splash_screen.tscn")
 
 ## Well above anything the game draws, so the development overlay is never
 ## underneath a screen. Godot sorts canvas layers by this number.
@@ -62,6 +63,11 @@ var _pause_menu: PauseMenu
 ## The direct-connection panel, in development builds only. Null otherwise.
 var _dev_overlay: DevOverlay
 
+## What this process was launched to do, held while the splash plays. Read
+## once, by `_open_first_screen`.
+var _pending_invite: int = 0
+var _pending_launch: LaunchArgs = LaunchArgs.new()
+
 ## The layer it sits on, so it can be hidden away from the title screen.
 var _dev_layer: CanvasLayer
 
@@ -79,11 +85,13 @@ func _ready() -> void:
 	# An invite accepted while the game was closed launches it with
 	# `+connect_lobby <id>`, and that has to work in a release build — which
 	# is why it is not a `LaunchArgs` flag. See docs/decisions.md D69.
-	var invited_lobby: int = SteamService.lobby_from_command_line(OS.get_cmdline_args())
-	if invited_lobby != 0:
-		join_online_game(invited_lobby)
+	_pending_invite = SteamService.lobby_from_command_line(OS.get_cmdline_args())
+	_pending_launch = LaunchArgs.from_command_line()
+
+	if _splash_is_wanted():
+		show_splash()
 		return
-	apply_launch_args(LaunchArgs.from_command_line())
+	_open_first_screen()
 
 
 ## Puts the saved resolution and fullscreen state onto the window.
@@ -96,6 +104,45 @@ func _ready() -> void:
 func apply_stored_display() -> void:
 	var stored: UserSettings = UserSettings.load_from()
 	DisplayMode.apply(get_window(), stored.resolution, stored.fullscreen)
+
+
+## Whether to show the studio logo before anything else.
+##
+## **Not in a test or a headless run**, which have no display to show it on.
+##
+## **Not when the game was launched into something.** An accepted invite is a
+## player asking for one particular lobby, and `--host` / `--join` are the
+## development flags used to put two windows up in a hurry — several times a
+## minute, on a bad afternoon. A logo in front of either is a toll.
+func _splash_is_wanted() -> bool:
+	if not DisplayMode.has_a_real_window():
+		return false
+	if _pending_invite != 0:
+		return false
+	return _pending_launch.mode == LaunchArgs.Mode.MENU
+
+
+## Shows the studio logo. Public so it can be looked at without restarting the
+## game.
+func show_splash() -> void:
+	var splash: SplashScreen = SplashScene.instantiate()
+	splash.finished.connect(_on_splash_finished)
+	_swap(splash)
+
+
+func _on_splash_finished() -> void:
+	_open_first_screen()
+
+
+## Whatever the game was launched to do: join an invited lobby, obey a
+## development flag, or show the menu.
+func _open_first_screen() -> void:
+	if _pending_invite != 0:
+		var lobby: int = _pending_invite
+		_pending_invite = 0
+		join_online_game(lobby)
+		return
+	apply_launch_args(_pending_launch)
 
 
 ## Starts Steam now rather than the first time somebody opens Join Game.

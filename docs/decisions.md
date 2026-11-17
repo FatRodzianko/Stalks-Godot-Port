@@ -2708,3 +2708,39 @@ theirs, which is cheaper than tracking requests for a list of at most ten.
 
 **What it rules out.** A rule that reads `steam_id`. A transport check inside
 `HostSession`. Matching players to accounts by name.
+
+---
+
+### D93 - A studio splash, skippable, and not pixel-perfect
+**2026-11-16 - Accepted**
+
+The game opens on the Glacial Lake Studios logo: a slow push towards the
+viewer, fading in and out, about two and a half seconds end to end. The shape
+every engine's own logo splash uses, and what the owner asked for.
+
+**Skippable by anything** - a key, a mouse button, a controller face button.
+A splash that cannot be skipped is a tax on everybody who launches the game
+more than once, and during development that is many times a day. A key
+*release* does not count, so letting go of whatever launched the game cannot
+skip it before a frame of it has been seen.
+
+**Not shown when the game was launched into something.** An accepted Steam
+invite is a player asking for one particular lobby, and `--host` / `--join` are
+the development flags that put two windows up in a hurry. Neither wants a logo
+in front of it. Nor does a headless run, which is the whole test suite.
+
+**Drawn with linear filtering, the only place in this project that happens.**
+The logo is pixel art and everything else here is sampled nearest, but this is
+being scaled by a fraction that changes every frame: nearest-neighbour would
+make its pixels crawl and shimmer as the number drifted between whole values.
+The owner said pixel-perfection was not needed for the splash and the movement
+mattered more. **This is not a precedent for anything else** - D76 still
+governs the game itself.
+
+**The source art is the 256x144 original**, not the 1792x1008 version of it,
+which is the same image at seven times the size. Scaling the small one up is
+what makes the movement smooth; scaling the big one down would throw away most
+of what was in it.
+
+**What it rules out.** An unskippable splash. Linear filtering anywhere else.
+Making a development launch wait for it.

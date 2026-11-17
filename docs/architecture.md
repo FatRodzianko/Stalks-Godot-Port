@@ -510,6 +510,19 @@ top and bottom of the window.
 - Currency and signed-change formatting live in `Palette.format_money()` and
   `format_change()`, so every figure on screen is written the same way.
 
+### The splash is a screen like any other
+
+`SplashScreen` is swapped in by `Main` exactly as the menu or the board is, and
+emits `finished` when it is over. It knows nothing about what comes next, so
+the question of whether the game was launched into a lobby, into a development
+flag or into the menu stays where it already lived - `Main._open_first_screen`
+answers it either immediately or when the logo is done.
+
+What it is launched to do is read once, in `_ready`, and held in
+`_pending_invite` and `_pending_launch` while the logo plays. Reading the
+command line again afterwards would work too, and would be a second place for
+the answer to come from.
+
 ### Widgets shared between screens
 
 Three things are shown in more than one place and are therefore widgets rather
