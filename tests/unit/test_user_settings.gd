@@ -103,6 +103,20 @@ func test_a_negative_size_in_a_hand_edited_file_reads_as_native() -> void:
 	assert_eq(UserSettings.load_from(TEST_PATH).resolution, UserSettings.USE_NATIVE)
 
 
+func test_the_crt_effect_is_off_until_somebody_asks_for_it() -> void:
+	# A player who has never heard of it sees the game as drawn. D94.
+	var fresh: UserSettings = UserSettings.load_from("user://no_such_file.cfg")
+	assert_false(fresh.crt_effect)
+
+
+func test_the_crt_effect_survives_a_round_trip() -> void:
+	var settings: UserSettings = UserSettings.new()
+	settings.crt_effect = true
+	settings.save_to(TEST_PATH)
+
+	assert_true(UserSettings.load_from(TEST_PATH).crt_effect)
+
+
 ## Changing the volume must not quietly reset the display.
 ##
 ## It did. `Audio.set_volume_percent` built a fresh `UserSettings`, set the
@@ -115,6 +129,7 @@ func test_saving_one_setting_leaves_the_others_alone() -> void:
 	settings.resolution = Vector2i(1280, 720)
 	settings.fullscreen = false
 	settings.volume_percent = 100
+	settings.crt_effect = true
 	settings.save_to(TEST_PATH)
 
 	var changing_volume: UserSettings = UserSettings.load_from(TEST_PATH)
@@ -125,6 +140,7 @@ func test_saving_one_setting_leaves_the_others_alone() -> void:
 	assert_eq(read_back.volume_percent, 25, "the thing that changed")
 	assert_eq(read_back.resolution, Vector2i(1280, 720), "and nothing else")
 	assert_false(read_back.fullscreen)
+	assert_true(read_back.crt_effect)
 
 
 ## The title screen does not read or write this file, and should not start.

@@ -4,7 +4,8 @@ extends RefCounted
 ## PlayerPrefs, written as a named file rather than hidden in the registry.
 ##
 ## **Only things a player sets once and expects to stay set.** Right now that
-## is the effect volume, and the bar for adding anything else is high.
+## is the effect volume, the display size and mode, and whether the CRT effect
+## is on. The bar for adding anything else is high.
 ##
 ## **Match settings are not kept here, on purpose.** An earlier version
 ## remembered the Create Game fields — years, starting cash, loans, the game's
@@ -37,6 +38,12 @@ const USE_NATIVE: Vector2i = Vector2i.ZERO
 
 const DEFAULT_FULLSCREEN: bool = true
 
+## **Off until it is asked for.** The CRT effect is a taste, not an
+## improvement: it warps the picture, softens the text and costs a little
+## every frame. A player who has never heard of it should see the game the way
+## it was drawn. See docs/decisions.md D94.
+const DEFAULT_CRT_EFFECT: bool = false
+
 
 var volume_percent: int = DEFAULT_VOLUME
 
@@ -45,6 +52,9 @@ var volume_percent: int = DEFAULT_VOLUME
 var resolution: Vector2i = USE_NATIVE
 
 var fullscreen: bool = DEFAULT_FULLSCREEN
+
+## Whether to draw the game through the CRT shader.
+var crt_effect: bool = DEFAULT_CRT_EFFECT
 
 
 ## Reads the file, or returns the defaults above if there is not one.
@@ -64,6 +74,9 @@ static func load_from(path: String = PATH) -> UserSettings:
 	settings.fullscreen = bool(
 		file.get_value(SECTION_DISPLAY, "fullscreen", DEFAULT_FULLSCREEN)
 	)
+	settings.crt_effect = bool(
+		file.get_value(SECTION_DISPLAY, "crt_effect", DEFAULT_CRT_EFFECT)
+	)
 	# Stored as two integers rather than a Vector2i so the file stays something
 	# a person can read and correct by hand after a bad resolution has locked
 	# them out of the settings screen.
@@ -80,6 +93,7 @@ func save_to(path: String = PATH) -> void:
 	var file: ConfigFile = ConfigFile.new()
 	file.set_value(SECTION_AUDIO, "volume_percent", volume_percent)
 	file.set_value(SECTION_DISPLAY, "fullscreen", fullscreen)
+	file.set_value(SECTION_DISPLAY, "crt_effect", crt_effect)
 	file.set_value(SECTION_DISPLAY, "resolution_width", resolution.x)
 	file.set_value(SECTION_DISPLAY, "resolution_height", resolution.y)
 	file.save(path)

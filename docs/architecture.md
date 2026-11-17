@@ -564,6 +564,43 @@ each other, for the same reason the economy is kept out of the scene tree.
 screen's Settings tab changes them. What the three steps from layout grid to
 screen pixels actually are is in decisions.md D85.
 
+### The CRT effect is a layer over the game, not a stage in a pipeline
+
+The optional CRT look (decisions.md D94) is deliberately the smallest thing
+that could work: one `CanvasLayer` holding one `ColorRect` that fills the
+screen and carries `src/ui/crt_screen.gdshader`. The shader reads whatever has
+already been drawn underneath it and replaces it with a warped, scanlined,
+bleeding version of the same picture.
+
+Nothing else in the game knows it exists. No screen, no widget and no
+simulation code mentions it; `Main` builds it at startup and switches it to
+whatever was saved.
+
+Three things about where it sits:
+
+- **It is a `CanvasLayer` because `Main` is a `MarginContainer`.** A container
+  lays out its `Control` children, so an ordinary child would be stretched and
+  reshuffled by whatever screen was swapped in. A `CanvasLayer` is not a
+  `Control`, so no container touches it, and its `layer` number decides what it
+  covers regardless of child order. The development overlay is the same
+  arrangement for the same reason.
+- **Its layer is between the game and the development overlay.** Everything the
+  game draws is layer 0 — screens, the pause menu, the confirmation panels
+  parented to the window — so one layer above that covers all of it. The
+  development overlay stays above at 128, because debugging text behind a
+  barrel warp is worse debugging text.
+- **The settings panel reaches it through a group, not a signal chain.** The
+  panel appears in two places and is several nodes deep in both; bubbling a
+  signal to `Main` from each would mean two new signals and two new handlers in
+  scenes with no other reason to know. Volume goes to the `Audio` autoload and
+  resolution goes to `DisplayMode`; `CrtOverlay.apply(tree, on)` is the same
+  idea, reached by group so nothing has to know where in the tree it was put.
+
+**The limit this design accepts** is that the shader runs at 640x360, because
+that is what the root viewport is. That rules out a phosphor mask, which only
+means anything at monitor-pixel density. D94 says what getting one would cost
+and why it is the same piece of work as the unfinished part of D85.
+
 ### A Godot gotcha worth knowing
 
 `queue_free()` is **deferred to the end of the frame**. Emptying a container with it

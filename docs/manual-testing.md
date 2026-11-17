@@ -335,6 +335,48 @@ its own size, so its pixels should be clean squares with no soft edges and no
 uneven rows. It moved in the first version and that is why it does not now -
 see decisions.md D93.
 
+### A8i. The CRT effect
+
+1. Start the game.
+2. Click SETTINGS.
+3. Check there is a row labelled CRT with an unticked box beside it.
+4. Tick the box.
+5. Check the picture changes the moment you tick it, with no confirmation
+   prompt and no countdown.
+6. Check the corners of the screen are darker than the middle.
+7. Check straight edges near the edges of the screen bow outwards slightly.
+8. Check there is faint horizontal banding across the dark background.
+9. Check the text is still readable.
+10. Click SINGLE PLAYER and start a game.
+11. Check the effect is still on during the match.
+12. Press Escape.
+13. Check the pause menu is drawn through the effect like everything else.
+14. Click SETTINGS on the pause menu.
+15. Check the CRT box is ticked there too.
+16. Untick it.
+17. Check the picture goes back to normal at once.
+18. Quit the game and start it again.
+19. Open SETTINGS and check the box is still unticked.
+20. Tick it, quit the game, and start it again.
+21. Check the game comes back with the effect already on.
+
+**What to look at, not just click through:** the effect should be visible but
+should not make anything unreadable. If you cannot tell the difference between
+ticked and unticked at all, that is a fault and not subtlety — the first build
+had a scanline pattern that cancelled itself out exactly, and it looked like a
+tasteful effect rather than like nothing. Tick and untick it twice while
+watching one line of text.
+
+**Known, and not a fault:** the development overlay in the top-left corner is
+*not* drawn through the effect. It is above it on purpose. A release build has
+no overlay at all.
+
+**If you want to change how strong it is**, every knob is a `uniform` with its
+default in `src/ui/crt_screen.gdshader` — curvature, vignette width, bleed
+amount and falloff, scanline count and strength, noise, glow threshold and
+strength. The scene sets none of them, so that file is the only place the
+look is decided.
+
 ### A8f. The rebuilt title screen
 
 1. Start the game.

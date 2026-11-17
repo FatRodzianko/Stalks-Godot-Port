@@ -2753,3 +2753,103 @@ of what was in it.
 **What it rules out.** An unskippable splash. Making a development launch wait
 for it. Animating pixel art by a fraction - which is what this entry exists to
 record, because it was tried here and looked wrong.
+
+### D94 - A CRT effect, optional and off by default, drawn over the whole game
+
+**Decision.** The game can be drawn through a CRT shader: barrel-warped,
+scanlined, with colour bleeding rightwards and bright areas glowing. It is a
+tick box in Settings, it is off until a player turns it on, and it is kept
+between sessions like the volume and the resolution.
+
+It is one `CanvasLayer` (`src/ui/widgets/crt_overlay.tscn`) holding one
+`ColorRect` that fills the screen and carries `src/ui/crt_screen.gdshader`.
+The shader reads the picture already drawn underneath it through
+`hint_screen_texture` and replaces it. Nothing else in the game knows it
+exists.
+
+**It is ported from a Unity URP shader** used on another of the owner's
+projects (`RetroCRT/CRT Screen`). The physics transferred almost line for
+line - the gamma handling, the one-sided exponential bleed kernel, the
+bright-pass glow, the normalised sin-squared scanline weight, the barrel warp
+where each axis is bent by the other's distance from the centre. What follows
+is only what had to change.
+
+**No phosphor mask, and this is the one real loss.** The original anchors its
+R/G/B triad to output pixels, deliberately, because a real shadow mask sits on
+the glass and does not move with the picture. This game renders at 640x360 and
+Godot stretches that to the window afterwards (`window/stretch/mode="viewport"`
+in `project.godot`), so a fragment shader here is shaded in 640x360 space and
+`FRAGCOORD` counts game pixels, not monitor pixels. A three-pixel triad would
+come out three *game* pixels wide and then be stretched two or four times
+larger: coloured stripes across the picture, not a mask. Left out rather than
+left in badly.
+
+Getting it would mean rendering the game into a `SubViewport` and displaying
+that through a `TextureRect` at window size, with the project's stretch mode
+off - which moves fixed-size-and-letterbox out of Godot's own stretch system
+and into this project's code, taking input routing, mouse coordinates,
+`DisplayMode` and every scene test with it. That is a bigger change than the
+effect is worth on its own. It is worth knowing that the same restructure is
+what D85's unfinished business needs: it would put the final blit filter under
+our control and make the resolution dropdown mean something in fullscreen.
+If those are ever done, they should be done together.
+
+**Three rows per scanline, not two, and this was measured.** The original
+clamps the line count to half the rows, reasoning that a line needs one dark
+row and one light row. That is right about the pixels and wrong about where
+they are sampled. A fragment is shaded at the centre of its row, so at exactly
+two rows per line the samples land on phases 0.25 and 0.75 of the sine, and
+sin squared is equal at both - every row comes out at exactly the mean and the
+pattern is invisible. The first build had 180 lines over 360 rows and rendered
+a picture identical, row for row, to the one with the effect switched off. At
+three rows per line the phases are a sixth, a half and five sixths, which are
+not equal, and the comb appears. 120 lines over 360 rows.
+
+This was found by rendering the title screen twice, with the effect on and
+off, and comparing the two images pixel by pixel - not by looking, because at
+that strength the difference between "working" and "doing nothing at all" is
+not something an eye can be sure about on a dark screen.
+
+**The distances are in game pixels.** Every default the original expressed in
+output pixels - vignette width, bleed falloff, glow radius - is divided by
+roughly the window scale, because this shader's pixels are the game's, not the
+monitor's.
+
+**It sits above the game and below the development overlay.** Everything the
+game draws is on layer 0, including the pause menu and the confirmation panels
+parented to the window, so one layer above that covers all of it. The
+development overlay stays above at 128 on purpose: debugging text read through
+a barrel warp and a scanline comb is worse debugging text, and it is not part
+of what a player sees.
+
+**Off by default.** It is a taste, not an improvement. It warps the picture,
+softens the text and costs a little every frame, and a player who has never
+heard of it should see the game as it was drawn.
+
+**No revert countdown, unlike the resolution.** The countdown exists because a
+resolution a monitor cannot show leaves a player looking at nothing with no
+way back. This cannot do that: the picture is still there underneath, the tick
+box is still on screen and readable through the effect, and turning it off is
+the same click again.
+
+**The one surface in the game sampled linearly.** The warp moves pixels by
+fractions of a pixel and the whole job of the shader is to stop the picture
+looking like a grid; nearest sampling puts stair-steps along the curve. D76
+still governs everything else, and when the effect is off nothing samples
+anything.
+
+**Tuning lives in the shader file.** The scene sets no shader parameters at
+all, so the `uniform` defaults are the only statement of how the effect looks
+and a change to it shows up in a diff.
+
+**What it rules out.** A phosphor mask, until the `SubViewport` restructure
+happens. Any other code knowing about the effect - it is reached through a
+group, not a signal chain, so neither the title screen nor the pause menu has
+to carry it. And a full-screen overlay that takes mouse input: the glass is
+`MOUSE_FILTER_IGNORE` and a test holds it there, because a rect in front of
+the whole game that swallows clicks would swallow the one that turns it off.
+
+**How to look at it.** `tools/crt_shot.gd` renders the title screen with the
+effect on and writes a PNG; the command is in the file. No test can judge the
+picture, and a shader that will not compile passes every test in this
+repository, so this is how it is checked.

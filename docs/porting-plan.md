@@ -557,6 +557,30 @@ GDExtension**, not the module build and not Foundation for Steamworks — see
 
 ---
 
+## Asked for after Phase 7, and built
+
+Not port work — the original did none of it — and not big enough to be a phase.
+Kept here so the record of what exists stays in one place.
+
+- **A studio splash** — **done 2026-11-16** (D93). The Glacial Lake Studios
+  logo fades in, holds and fades out before the title screen, skippable by any
+  key or click, and skipped entirely when the game was launched into a lobby or
+  by a development flag.
+- **An optional CRT effect** — **done 2026-11-17** (D94). A tick box in
+  Settings draws the whole game through a shader ported from a Unity one the
+  owner wrote for another project: barrel warp, scanlines, colour bleed, beam
+  glow, vignette. Off by default, remembered between sessions, and reaching
+  nothing else in the game — one `CanvasLayer` over the top.
+
+  **It has no phosphor mask**, which the Unity original does have. That needs
+  monitor-pixel density and this game renders at 640x360. Getting one means
+  rendering into a `SubViewport` and displaying that at window size, which is
+  the same restructure the unfinished half of **D85** needs — the resolution
+  dropdown doing nothing in fullscreen, and the final stretch filter being out
+  of our hands. If either is ever picked up, they are one piece of work.
+
+---
+
 ## Parity gaps — unscheduled
 
 Phases 0–7 delivered the whole economy and a playable game over Steam, but an audit

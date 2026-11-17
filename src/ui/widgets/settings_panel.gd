@@ -1,6 +1,7 @@
 class_name SettingsPanel
 extends VBoxContainer
-## Sound, resolution and fullscreen, in one widget used in two places.
+## Sound, resolution, fullscreen and the CRT effect, in one widget used in two
+## places.
 ##
 ## The title screen's Settings tab and the in-match pause menu show the same
 ## controls, exactly as the original did — its pause menu reused the title
@@ -45,6 +46,7 @@ var _revert_prompt: ConfirmPanel
 @onready var _volume_value: Label = %VolumeValue
 @onready var _resolution_option: OptionButton = %ResolutionOption
 @onready var _fullscreen_check: CheckBox = %FullscreenCheck
+@onready var _crt_check: CheckBox = %CrtCheck
 
 
 func _ready() -> void:
@@ -53,6 +55,7 @@ func _ready() -> void:
 	_volume_slider.drag_ended.connect(_on_volume_drag_ended)
 	_resolution_option.item_selected.connect(_on_resolution_selected)
 	_fullscreen_check.toggled.connect(_on_fullscreen_toggled)
+	_crt_check.toggled.connect(_on_crt_toggled)
 	refresh()
 
 
@@ -64,6 +67,7 @@ func _ready() -> void:
 func refresh() -> void:
 	_show_current_volume()
 	_show_current_display()
+	_show_current_crt()
 
 
 ## The revert overlay, or null if no display setting has been touched. For
@@ -213,6 +217,29 @@ func _on_display_kept() -> void:
 func _on_display_reverted() -> void:
 	DisplayMode.apply(get_window(), _previous_resolution, _previous_fullscreen)
 	_show_current_display()
+
+
+# ----------------------------------------------------------------- crt effect
+
+func _show_current_crt() -> void:
+	var stored: UserSettings = UserSettings.load_from()
+	_crt_check.set_pressed_no_signal(stored.crt_effect)
+
+
+## Applied and saved at once, like the volume and unlike the resolution.
+##
+## **No revert countdown, on purpose.** The countdown exists because a
+## resolution a monitor cannot show leaves a player looking at a black screen
+## with no way back. This cannot do that: the effect is drawn over a picture
+## that is still there underneath, the tick box is still on screen and still
+## readable through it, and turning it off is the same click again. A
+## confirmation here would be a question about something the player can
+## already see the answer to.
+func _on_crt_toggled(on: bool) -> void:
+	CrtOverlay.apply(get_tree(), on)
+	var stored: UserSettings = UserSettings.load_from()
+	stored.crt_effect = on
+	stored.save_to()
 
 
 ## The prompt is parented to the window, so it does not go away with this

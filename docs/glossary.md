@@ -281,6 +281,43 @@ Python-like syntax, optional static typing (mandatory here).
 **`--headless`** — a command-line flag that runs Godot with no window. How the tests
 run, and how a build server would run them.
 
+**Shader** (`.gdshader`) — a small program the graphics card runs once for every
+pixel it draws. This project has exactly one, the optional CRT effect.
+
+**`CanvasLayer`** — a node that draws its children on a separate plane, above or
+below everything else according to its `layer` number. It is not a `Control`, so no
+container lays it out. Used here for the two overlays that must float over whatever
+screen is showing: the CRT effect and the development panel.
+
+## CRT terms
+
+The optional CRT effect (decisions.md D94) borrows the vocabulary of the
+cathode-ray tube televisions it imitates. None of these are Godot terms.
+
+**CRT effect** — the whole thing: the tick box in Settings that draws the game as
+though it were on an old television. Off unless a player asks for it.
+
+**Scanline** — one horizontal sweep of the electron beam. On a real tube the lines
+have gaps between them, which is the faint horizontal banding the effect draws.
+
+**Barrel warp** — the gentle outward bulge of a tube's glass, which makes straight
+lines near the edges bow. Here it is a distortion applied to where each pixel is
+read from.
+
+**Vignette** — the darkening towards the corners, where the frame shades the glass.
+
+**Colour bleed** — colour running horizontally away from a bright edge, because the
+beam cannot change intensity instantly. It trails to the right, the direction the
+beam travels.
+
+**Beam glow** — bright areas spreading into their surroundings, because the beam
+grows wider as its drive voltage rises. Keyed off a brightness threshold, so dark
+areas stay dark.
+
+**Phosphor mask** — the grid of red, green and blue phosphor dots on the glass
+itself. **This game does not draw one**; it needs monitor-pixel density and the game
+renders at 640x360. D94 explains what it would cost.
+
 ## Screen
 
 This project's word for a top-level scene that fills the window and is swapped

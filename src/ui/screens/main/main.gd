@@ -17,6 +17,7 @@ const LobbyScene: PackedScene = preload("res://src/ui/screens/lobby/lobby_screen
 const ConfirmPanelScene: PackedScene = preload("res://src/ui/widgets/confirm_panel.tscn")
 const PauseMenuScene: PackedScene = preload("res://src/ui/widgets/pause_menu.tscn")
 const DevOverlayScene: PackedScene = preload("res://src/ui/widgets/dev_overlay.tscn")
+const CrtOverlayScene: PackedScene = preload("res://src/ui/widgets/crt_overlay.tscn")
 const SplashScene: PackedScene = preload("res://src/ui/screens/splash/splash_screen.tscn")
 
 ## Well above anything the game draws, so the development overlay is never
@@ -71,6 +72,10 @@ var _pending_launch: LaunchArgs = LaunchArgs.new()
 ## The layer it sits on, so it can be hidden away from the title screen.
 var _dev_layer: CanvasLayer
 
+## The optional CRT effect, laid over every screen. Always built; visible only
+## if the player has asked for it.
+var _crt_overlay: CrtOverlay
+
 
 func _ready() -> void:
 	# Godot closes the window the moment it is asked unless told otherwise.
@@ -79,6 +84,7 @@ func _ready() -> void:
 	get_tree().auto_accept_quit = false
 
 	apply_stored_display()
+	add_crt_overlay()
 	add_dev_overlay_if_wanted()
 	warm_up_steam()
 
@@ -170,6 +176,29 @@ func warm_up_steam() -> void:
 	if not DisplayMode.has_a_real_window():
 		return
 	steam_service().start()
+
+
+## Lays the CRT effect over everything, switched to whatever was saved.
+##
+## **Built even when the effect is off**, because the settings panel toggles it
+## live and needs something already there to toggle. A hidden `CanvasLayer`
+## draws nothing and costs nothing.
+##
+## **Built even headless**, where it also costs nothing: the shader is never
+## compiled because there is no renderer, and a test that instantiates `Main`
+## gets the same tree a player would so it can assert about this.
+##
+## It is deliberately not touched by `_swap`, unlike the development overlay.
+## The effect belongs to the whole game, not to one screen.
+func add_crt_overlay() -> void:
+	_crt_overlay = CrtOverlayScene.instantiate()
+	add_child(_crt_overlay)
+	_crt_overlay.enable(UserSettings.load_from().crt_effect)
+
+
+## The CRT layer. For tests.
+func crt_overlay() -> CrtOverlay:
+	return _crt_overlay
 
 
 ## Pins the direct-connection panel to the corner, in development builds only.

@@ -60,6 +60,20 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Fill the screen"
 
+[node name="CrtRow" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="CrtLabel" type="Label" parent="CrtRow"]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+text = "CRT"
+
+[node name="CrtCheck" type="CheckBox" parent="CrtRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Scanlines and curved glass"
+
 [node name="SettingsNote" type="Label" parent="."]
 layout_mode = 2
 theme_type_variation = &"Faint"

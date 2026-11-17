@@ -297,6 +297,38 @@ right at a given resolution. Godot renders nothing headless, so sharpness,
 black-bar placement and whether text is legible at 640×360 are all answered by
 looking at it. See `manual-testing.md`.
 
+### The CRT effect is tested around the shader, never through it
+
+`test_crt_overlay.gd` covers everything except the picture: that the overlay is
+built, that it starts in whatever state was saved, that the tick box in
+Settings switches it at once and writes the choice down, that a screen change
+does not switch it off, and that the full-screen rectangle in front of the game
+is `MOUSE_FILTER_IGNORE`. That last one is the fault worth having a test for —
+a rect over the whole game that takes clicks would swallow the click that turns
+the effect off, and the only way out would be a hand-edited settings file.
+
+**What no test here can reach:** the shader. The suite runs headless, nothing
+is rendered, and the shader is never compiled, so **a shader that will not
+compile at all passes every test in this repository.** That is the gap, and it
+is why there is a tool:
+
+```
+<godot> --path . res://tools/crt_shot.tscn --write-movie "$env:TEMP\crt\c.png" --quit-after 10 --fixed-fps 10
+```
+
+It runs the real game with a real window, switches the effect on, and writes
+the frames as PNGs. Compile errors appear in the console output and nowhere
+else.
+
+**Judge it by comparing two renders, not by looking at one.** The first build
+had an invisible scanline pattern — 180 lines over 360 rows samples every row
+at the same phase of the sine, so the comb cancels exactly (decisions.md D94).
+On a dark screen that is indistinguishable from "a subtle effect" by eye. It
+was caught by rendering the same screen with the effect on and off and
+differencing the two images: identical, row for row. A throwaway script that
+loads both PNGs with `Image.load_from_file` and prints the mean difference
+answers in one run what staring at a screenshot cannot.
+
 ### What the suite deliberately will not test
 
 Anything that talks to Steam. `test_steam_transport.gd` covers argument
