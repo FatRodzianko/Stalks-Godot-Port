@@ -2948,8 +2948,10 @@ checked by running them rather than by reasoning, and the tools are kept:
   Without it the popup lives in the root viewport at the container's scale -
   which still lands beside its button, but is drawn outside the SubViewport, so
   at window resolution and outside any effect.
-- **Tooltips are not established.** A synthetic hover produced none, so the
-  spike proves nothing either way about the nineteen of them. Check by hand.
+- **Tooltips: checked by hand and correct.** Confirmed by the owner in a real
+  session over Steam on 2026-11-17, along with the dropdown and the finished
+  board. The spike could not establish them - a synthetic hover produced none -
+  so this one was always going to need eyes.
 
 **No screen, widget, theme or layout file would change, and neither would the
 simulation.** This is where Godot and the Unity experience diverge: that
@@ -2984,8 +2986,8 @@ written and maintained. **Integer scaling is what buys the free input.**
 
 **What this appendix rules out:** repeating the claim that the restructure
 needs hand-written input maths, or that it would mean reworking the UI. It
-rules in one open question of taste - bars or fill - and one unchecked detail,
-the tooltips.
+rules in one open question of taste - bars or fill. The one unchecked detail it
+left, the tooltips, was confirmed correct by hand on 2026-11-17.
 
 ### D95 - Personal notes live in an uncommitted file beside CLAUDE.md
 
