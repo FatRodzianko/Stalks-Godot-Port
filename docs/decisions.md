@@ -2714,9 +2714,20 @@ theirs, which is cheaper than tracking requests for a list of at most ten.
 ### D93 - A studio splash, skippable, and not pixel-perfect
 **2026-11-16 - Accepted**
 
-The game opens on the Glacial Lake Studios logo: a slow push towards the
-viewer, fading in and out, about two and a half seconds end to end. The shape
-every engine's own logo splash uses, and what the owner asked for.
+The game opens on the Glacial Lake Studios logo: it fades in, holds, and fades
+out, about two and a half seconds end to end. **Nothing moves.** It sits at an
+exact **2x** - 512x288 of the 256x144 original - centred on a black screen.
+
+**The slow push towards the viewer was built first, and dropped after looking
+at it.** It is the shape an engine's own logo splash usually takes and it is
+what the owner asked for, but scaling pixel art by a fraction that changes
+every frame makes its pixels crawl, and at this size the crawling was the only
+thing you could see. Reported from play the same day it was built.
+
+**Standing still buys back pixel-perfection.** A fixed logo can sit at a whole
+multiple, so every source pixel is a clean square of four and nothing is
+resampled at all. The linear-filtering exception the moving version needed is
+gone with it, and D76 governs the splash like everything else.
 
 **Skippable by anything** - a key, a mouse button, a controller face button.
 A splash that cannot be skipped is a tax on everybody who launches the game
@@ -2729,18 +2740,11 @@ invite is a player asking for one particular lobby, and `--host` / `--join` are
 the development flags that put two windows up in a hurry. Neither wants a logo
 in front of it. Nor does a headless run, which is the whole test suite.
 
-**Drawn with linear filtering, the only place in this project that happens.**
-The logo is pixel art and everything else here is sampled nearest, but this is
-being scaled by a fraction that changes every frame: nearest-neighbour would
-make its pixels crawl and shimmer as the number drifted between whole values.
-The owner said pixel-perfection was not needed for the splash and the movement
-mattered more. **This is not a precedent for anything else** - D76 still
-governs the game itself.
-
 **The source art is the 256x144 original**, not the 1792x1008 version of it,
 which is the same image at seven times the size. Scaling the small one up is
 what makes the movement smooth; scaling the big one down would throw away most
 of what was in it.
 
-**What it rules out.** An unskippable splash. Linear filtering anywhere else.
-Making a development launch wait for it.
+**What it rules out.** An unskippable splash. Making a development launch wait
+for it. Animating pixel art by a fraction - which is what this entry exists to
+record, because it was tried here and looked wrong.

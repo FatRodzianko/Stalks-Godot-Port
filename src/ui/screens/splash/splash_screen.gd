@@ -2,21 +2,22 @@ class_name SplashScreen
 extends Control
 ## The studio logo, shown once as the game starts.
 ##
-## A slow push towards the viewer with a fade in and out, the shape every
-## engine's own logo splash uses. Nothing here is interactive except getting
-## rid of it.
+## Fades in, holds, fades out. Nothing moves.
+##
+## **There was a slow push towards the viewer**, the shape an engine's own logo
+## splash usually takes. It was built, looked at, and dropped: scaling pixel
+## art by a fraction that changes every frame makes its pixels crawl, and at
+## this size the crawling was all you could see.
+##
+## With nothing moving, the logo can sit at an exact **2x** — 512x288 of the
+## 256x144 original — centred on black, so every source pixel is a clean
+## square of four and nothing is resampled at all. Standing still is what buys
+## that back. See decisions.md D93.
 ##
 ## **Skippable by anything.** A key, a mouse button, a controller face button —
 ## all of them end it immediately. A splash that cannot be skipped is a tax on
 ## everybody who launches the game more than once, and during development that
 ## is many times a day.
-##
-## **Not pixel-perfect, on purpose.** The logo is pixel art, but it is being
-## scaled by a fraction that changes every frame, so nearest-neighbour sampling
-## would make its pixels crawl and shimmer as the number drifted. It is drawn
-## with linear filtering instead, which is the one place in this project that
-## happens. The owner asked for the movement and said pixel-perfection here was
-## not needed; see decisions.md D93.
 
 
 ## The splash is over, by time or by a keypress. The screen host decides what
@@ -29,11 +30,6 @@ const FADE_IN_SECONDS: float = 0.7
 const HOLD_SECONDS: float = 1.1
 const FADE_OUT_SECONDS: float = 0.7
 
-## The logo grows by this much across the whole splash. Small on purpose: the
-## effect wanted is "slowly moving toward you", not a zoom.
-const START_SCALE: float = 0.88
-const END_SCALE: float = 1.06
-
 
 ## Set once the splash has ended, so a late keypress cannot finish it twice.
 var _done: bool = false
@@ -43,26 +39,10 @@ var _done: bool = false
 
 func _ready() -> void:
 	_logo.modulate.a = 0.0
-	# A Control scales about its pivot, which starts at its top-left corner.
-	# Without this the logo would grow away towards the bottom right instead of
-	# towards the viewer.
-	_logo.pivot_offset = _logo.size / 2.0
-	_logo.scale = Vector2.ONE * START_SCALE
 	_play()
 
 
-## Runs the whole sequence as one tween: the movement is continuous from first
-## frame to last, while the fade happens at each end of it.
-##
-## Two tweens rather than one because they run over different spans — the
-## growth never pauses, and the fade does.
 func _play() -> void:
-	var total: float = FADE_IN_SECONDS + HOLD_SECONDS + FADE_OUT_SECONDS
-
-	var movement: Tween = create_tween()
-	movement.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
-	movement.tween_property(_logo, "scale", Vector2.ONE * END_SCALE, total)
-
 	var fade: Tween = create_tween()
 	fade.tween_property(_logo, "modulate:a", 1.0, FADE_IN_SECONDS)
 	fade.tween_interval(HOLD_SECONDS)
