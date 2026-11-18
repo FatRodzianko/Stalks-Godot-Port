@@ -63,6 +63,12 @@ static func encode_state(state: GameState, for_player_id: StringName) -> Diction
 
 ## The private half of a player's state is included only when `is_own` is true.
 ## Everything else gets the public fields and nothing more.
+##
+## **Who is in a stalk is public; how much they hold is not.** As of
+## 2026-11-17 every player is told which companies the others have bought into,
+## so the board can list a stalk's investors, and nothing about the size of
+## those positions. Cash and the loan schedule stay private as before. See
+## decisions.md D103.
 static func encode_player(player: PlayerState, is_own: bool) -> Dictionary:
 	var data: Dictionary = {
 		"id": String(player.id),
@@ -75,6 +81,8 @@ static func encode_player(player: PlayerState, is_own: bool) -> Dictionary:
 		# its effect, and the original's rankings row showed a loan marker. The
 		# balance and payment schedule are not.
 		"has_loan": player.loan != null,
+		# Names only. The amounts are below, and only for their owner.
+		"invested_in": _stalks_held(player),
 	}
 	if not is_own:
 		return data
@@ -87,6 +95,15 @@ static func encode_player(player: PlayerState, is_own: bool) -> Dictionary:
 	data["holdings"] = holdings
 	data["loan"] = encode_loan(player.loan)
 	return data
+
+
+## The stalks a player is in, as plain strings, in no particular order.
+static func _stalks_held(player: PlayerState) -> Array:
+	var held: Array = []
+	for stalk_id: StringName in player.holdings:
+		if player.holdings[stalk_id] > 0:
+			held.append(String(stalk_id))
+	return held
 
 
 static func encode_loan(loan: LoanState) -> Variant:
@@ -210,6 +227,12 @@ static func apply_player(player: PlayerState, data: Dictionary) -> void:
 	player.net_worth = int(data.get("net_worth", 0))
 	player.is_bankrupt = bool(data.get("is_bankrupt", false))
 	player.is_ready = bool(data.get("is_ready", false))
+
+	# Public, so it is read before the private half is given up on below. Every
+	# player gets this; only its owner gets the amounts behind it.
+	player.invested_in.clear()
+	for held: Variant in data.get("invested_in", []):
+		player.invested_in.append(StringName(held))
 
 	if not data.has("cash"):
 		return

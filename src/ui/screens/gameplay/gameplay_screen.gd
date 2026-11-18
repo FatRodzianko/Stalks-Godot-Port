@@ -21,6 +21,7 @@ const RankingRowScene: PackedScene = preload("res://src/ui/widgets/ranking_row.t
 const LoanPanelScene: PackedScene = preload("res://src/ui/widgets/loan_panel.tscn")
 const ConfirmPanelScene: PackedScene = preload("res://src/ui/widgets/confirm_panel.tscn")
 const NewsPanelScene: PackedScene = preload("res://src/ui/widgets/news_panel.tscn")
+const StalkPanelScene: PackedScene = preload("res://src/ui/widgets/stalk_panel.tscn")
 
 const MESSAGE_SECONDS: float = 5.0
 
@@ -38,6 +39,7 @@ signal connection_ended(reason: String)
 @onready var _mood_label: Label = %MoodLabel
 @onready var _event_flavour: ScrollingLabel = %EventFlavour
 @onready var _event_effect: Label = %EventEffect
+@onready var _more_button: Button = %MoreButton
 @onready var _yeehaw_button: Button = %YeehawButton
 @onready var _yeehaw_note: Label = %YeehawNote
 @onready var _cash_label: Label = %CashLabel
@@ -81,6 +83,9 @@ var _confirm_panel: ConfirmPanel
 
 ## The year's news, put in front of the player when the year turns.
 var _news_panel: NewsPanel
+
+## A company's details, opened by clicking its row.
+var _stalk_panel: StalkPanel
 
 ## Whether the transient message line is currently showing a refusal rather than
 ## a piece of news. Only a refusal is cleared by a state change.
@@ -181,6 +186,8 @@ func _attach(session: GameSession) -> void:
 	_build_loan_panel()
 	_build_confirm_panel()
 	_build_news_panel()
+	_build_stalk_panel()
+	_more_button.pressed.connect(_on_more_pressed)
 	_reset_event_panel()
 	refresh()
 
@@ -335,6 +342,7 @@ func _build_stalk_rows() -> void:
 		row.display(stalk)
 		row.buy_requested.connect(_on_buy_requested)
 		row.amount_changed.connect(_on_buy_amount_changed)
+		row.info_requested.connect(show_stalk_details)
 		_stalk_rows[stalk.id] = row
 
 
@@ -352,6 +360,42 @@ func _build_news_panel() -> void:
 ## The year's news. For tests.
 func news_panel() -> NewsPanel:
 	return _news_panel
+
+
+func _build_stalk_panel() -> void:
+	if _stalk_panel != null:
+		return
+	_stalk_panel = StalkPanelScene.instantiate()
+	add_child(_stalk_panel)
+
+
+## A company's details. For tests.
+func stalk_panel() -> StalkPanel:
+	return _stalk_panel
+
+
+## Opens a company's details, with the players currently holding it.
+##
+## **Names only.** A client is told which stalks a rival is in and not how much
+## they hold, so this asks `invests_in` rather than reading amounts - which
+## also means it gives the same answer offline and over the wire. See
+## decisions.md D103.
+func show_stalk_details(stalk_id: StringName) -> void:
+	if _stalk_panel == null or _session == null:
+		return
+	var game: GameState = _session.state()
+	var stalk: StalkState = game.stalk_by_id(stalk_id)
+	if stalk == null:
+		return
+
+	var investors: PackedStringArray = []
+	for player: PlayerState in game.players:
+		if player.invests_in(stalk_id):
+			investors.append(player.display_name)
+
+	_stalk_panel.show_stalk(
+		stalk.definition.display_name, stalk.definition.description, investors
+	)
 
 
 func _build_confirm_panel() -> void:
@@ -964,7 +1008,29 @@ func _on_game_over(winners: Array[StringName]) -> void:
 
 func _reset_event_panel() -> void:
 	_event_flavour.set_full_text("")
+	_more_button.visible = false
 	_event_effect.text = ""
+
+
+## Shows "... MORE" when the strip has had to cut the description short.
+##
+## **Twenty of the ninety descriptions do not fit the two lines the strip
+## reserves** (D101), and until this there was nothing on screen saying there
+## was more to read - the text simply stopped. Hovering has scrolled it since
+## D100, but a thing you have to hover to discover is not discoverable.
+##
+## The button reopens the panel the description already appeared in when the
+## year turned, rather than being a second way of presenting the same words.
+func _offer_the_rest_of_it() -> void:
+	_more_button.visible = _event_flavour.overflows()
+
+
+## Puts the year's news back up, for a player who closed it and then wanted it
+## again - or who has the panel switched off entirely and reads the strip.
+func _on_more_pressed() -> void:
+	if _news_panel == null:
+		return
+	_news_panel.show_news(_event_flavour.text, _event_effect.text)
 
 
 ## Puts the year's event in front of the player.
@@ -973,6 +1039,8 @@ func _reset_event_panel() -> void:
 ## result again, so the panel and the strip can never say different things.
 func _announce_the_news(result: YearResult) -> void:
 	if _news_panel == null:
+		return
+	if not NewsPanel.is_wanted():
 		return
 	var description: String = ""
 	if result.event != null:
@@ -984,6 +1052,7 @@ func _announce_the_news(result: YearResult) -> void:
 func _show_event(result: YearResult) -> void:
 	if result.event == null:
 		_event_flavour.set_full_text("")
+		_more_button.visible = false
 		_event_effect.text = "No special event this year."
 		_event_effect.remove_theme_color_override("font_color")
 		return
@@ -997,6 +1066,7 @@ func _show_event(result: YearResult) -> void:
 	# returns to its first line instead of opening wherever the last one had
 	# been scrolled to. See decisions.md D100.
 	_event_flavour.set_full_text(result.event.flavour_text)
+	_offer_the_rest_of_it()
 	_event_effect.text = "%s %s by %d" % [
 		target_name,
 		"rose" if result.event.price_change > 0 else "fell",

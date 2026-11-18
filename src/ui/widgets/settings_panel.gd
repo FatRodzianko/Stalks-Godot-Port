@@ -1,7 +1,7 @@
 class_name SettingsPanel
 extends VBoxContainer
-## Sound, resolution, fullscreen and the CRT effect, in one widget used in two
-## places.
+## Sound, resolution, fullscreen, the CRT effect and whether the year's news
+## panel appears, in one widget used in two places.
 ##
 ## The title screen's Settings tab and the in-match pause menu show the same
 ## controls, exactly as the original did — its pause menu reused the title
@@ -48,6 +48,7 @@ var _revert_prompt: ConfirmPanel
 @onready var _resolution_option: OptionButton = %ResolutionOption
 @onready var _fullscreen_check: CheckBox = %FullscreenCheck
 @onready var _crt_check: CheckBox = %CrtCheck
+@onready var _news_check: CheckBox = %NewsCheck
 
 
 func _ready() -> void:
@@ -57,6 +58,7 @@ func _ready() -> void:
 	_resolution_option.item_selected.connect(_on_resolution_selected)
 	_fullscreen_check.toggled.connect(_on_fullscreen_toggled)
 	_crt_check.toggled.connect(_on_crt_toggled)
+	_news_check.toggled.connect(_on_news_toggled)
 	refresh()
 
 
@@ -69,6 +71,7 @@ func refresh() -> void:
 	_show_current_volume()
 	_show_current_display()
 	_show_current_crt()
+	_show_current_news()
 
 
 ## The revert overlay, or null if no display setting has been touched. For
@@ -246,6 +249,22 @@ func _on_crt_toggled(on: bool) -> void:
 	CrtOverlay.apply(get_tree(), on)
 	var stored: UserSettings = UserSettings.load_from()
 	stored.crt_effect = on
+	stored.save_to()
+
+
+# ---------------------------------------------------------------- the news
+
+func _show_current_news() -> void:
+	_news_check.set_pressed_no_signal(UserSettings.load_from().show_news)
+
+
+## **The only way back.** The panel itself offers "Don't show again", and
+## without this that would be a one-way door: a player who ticked it by
+## accident could never see the year's news again without hand-editing
+## `user://settings.cfg`. See decisions.md D102.
+func _on_news_toggled(on: bool) -> void:
+	var stored: UserSettings = UserSettings.load_from()
+	stored.show_news = on
 	stored.save_to()
 
 

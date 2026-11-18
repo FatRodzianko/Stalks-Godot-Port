@@ -11,6 +11,9 @@ extends PanelContainer
 
 
 signal buy_requested(stalk_id: StringName, shares: int)
+
+## Somebody wants to know about this company. Carries the id, not the row.
+signal info_requested(stalk_id: StringName)
 signal amount_changed(stalk_id: StringName, shares: int)
 
 
@@ -124,6 +127,21 @@ func _show_as_bankrupt(dead: bool) -> void:
 	else:
 		_price_label.size_flags_horizontal = 0
 		_price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+
+
+## Clicking the row asks for the company's details.
+##
+## The buy controls sit on top and take their own clicks, so this only fires
+## for a press on the row itself - the name, the numbers, the space between
+## them. The name label keeps its own click, which pins its scrolling.
+func _gui_input(event: InputEvent) -> void:
+	if _is_header:
+		return
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
+		return
+	accept_event()
+	info_requested.emit(_stalk_id)
 
 
 ## Trading is closed in year 0 and once the game is over. The original simply did

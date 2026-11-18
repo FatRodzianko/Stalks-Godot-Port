@@ -66,6 +66,13 @@ text = ""
 horizontal_alignment = 1
 autowrap_mode = 3
 
+[node name="DontShowAgain" type="CheckBox" parent="Centre/Dialog/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"Faint"
+text = "Don't show again"
+
 [node name="CloseButton" type="Button" parent="Centre/Dialog/Body"]
 unique_name_in_owner = true
 layout_mode = 2

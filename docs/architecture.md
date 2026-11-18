@@ -373,6 +373,11 @@ Three things make it work, and all three are easy to get wrong:
 
 ### 5.3 What a client is allowed to know
 
+**Revised 2026-11-17 (D103): which companies a player is in is public now.**
+The host sends every client the list of stalks each player holds, without the
+amounts. What follows describes the line as it stands - cash, the loan
+schedule and the size of any position are still redacted per recipient.
+
 A client holds a **partial replica**, not a copy. `StateSync` encodes the match
 once per recipient and redacts as it goes:
 

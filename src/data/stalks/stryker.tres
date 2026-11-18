@@ -82,6 +82,7 @@ price_change = 20
 script = ExtResource("2_1wrqu")
 id = &"stryker"
 display_name = "strYker!!!"
+description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
 ticker = &"STRYK"
 bear_change = Vector2i(15, 50)
 bull_change = Vector2i(13, 42)

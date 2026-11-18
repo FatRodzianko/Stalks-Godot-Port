@@ -15,6 +15,16 @@ extends Resource
 
 @export var display_name: String = ""
 
+## A paragraph about the company, shown when a player opens its row on the
+## board.
+##
+## **Every one of these is placeholder text right now.** They are lorem ipsum
+## so the panel has something to lay out and so the field is there to be filled
+## in; writing the real ones is the owner's, like every other line of the
+## game's voice. An empty description is better than an invented one - the
+## panel simply shows nothing.
+@export_multiline var description: String = ""
+
 ## Short board symbol, the way a terminal lists an instrument.
 ##
 ## Nothing displays this yet: the board shows the full `display_name` and scrolls

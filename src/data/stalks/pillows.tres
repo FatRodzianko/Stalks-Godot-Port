@@ -82,6 +82,7 @@ price_change = 5
 script = ExtResource("2_y54ms")
 id = &"pillows"
 display_name = "My Pillow, Your Pillow, We're All Pillows!"
+description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
 ticker = &"PLLW"
 bear_change = Vector2i(5, 25)
 bull_change = Vector2i(0, 15)

@@ -1,0 +1,82 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/widgets/stalk_panel.gd" id="1_stalk"]
+[ext_resource type="Theme" path="res://assets/themes/stalks_theme.tres" id="2_theme"]
+
+[node name="StalkPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme = ExtResource("2_theme")
+script = ExtResource("1_stalk")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="Centre" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Dialog" type="PanelContainer" parent="Centre"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Body" type="VBoxContainer" parent="Centre/Dialog"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="StalkName" type="Label" parent="Centre/Dialog/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"SubHeading"
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Description" type="Label" parent="Centre/Dialog/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"Faint"
+text = ""
+autowrap_mode = 3
+
+[node name="InvestorsHeading" type="Label" parent="Centre/Dialog/Body"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"SubHeading"
+text = "Investors"
+horizontal_alignment = 1
+
+[node name="Investors" type="Label" parent="Centre/Dialog/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="CloseButton" type="Button" parent="Centre/Dialog/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"PrimaryButton"
+text = "Close"

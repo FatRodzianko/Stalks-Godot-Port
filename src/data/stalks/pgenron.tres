@@ -82,6 +82,7 @@ price_change = 5
 script = ExtResource("2_x1m6p")
 id = &"pgenron"
 display_name = "PG&Enron"
+description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
 ticker = &"PGEN"
 bear_change = Vector2i(10, 35)
 bull_change = Vector2i(5, 15)

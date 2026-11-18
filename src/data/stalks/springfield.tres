@@ -82,6 +82,7 @@ price_change = 10
 script = ExtResource("2_01rrq")
 id = &"springfield"
 display_name = "Springfield Nuclear Power"
+description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
 ticker = &"SPNG"
 bear_change = Vector2i(10, 20)
 bull_change = Vector2i(0, 15)

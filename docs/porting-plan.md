@@ -649,7 +649,16 @@ Three things the owner has asked for that are **not** port work: the original di
 none of them. Recorded here with enough reasoning to act on, and deliberately not
 started, so the port ships first.
 
-### Public holdings — seeing who owns what
+### Public holdings — seeing who owns what — **partly done 2026-11-17**
+
+**The membership half is built** (D103): a stalk's row opens a panel listing
+the players holding it, and the host puts that membership on the wire. What is
+below was written before that and described sending the amounts as well, which
+the owner decided against. The `GameSettings` toggle it recommends is settled
+rather than outstanding - there is no toggle, and holdings-membership is always
+public.
+
+### The original note, kept for its reasoning
 
 Players should be able to see which stalks other players hold, and how much. The
 owner's suggested shapes, any of which would do:

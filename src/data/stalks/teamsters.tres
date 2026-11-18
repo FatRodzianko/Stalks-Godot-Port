@@ -82,6 +82,7 @@ price_change = 15
 script = ExtResource("2_pqjo0")
 id = &"teamsters"
 display_name = "Teamsters Pension Fund"
+description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
 ticker = &"TEAM"
 bear_change = Vector2i(15, 40)
 bull_change = Vector2i(0, 15)

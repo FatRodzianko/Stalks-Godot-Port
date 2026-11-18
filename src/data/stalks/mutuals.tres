@@ -82,6 +82,7 @@ price_change = 5
 script = ExtResource("2_qd61r")
 id = &"mutuals"
 display_name = "My Mutuals and Me Inc."
+description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
 ticker = &"MUTL"
 bear_change = Vector2i(0, 10)
 bull_change = Vector2i(0, 5)

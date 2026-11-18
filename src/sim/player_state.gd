@@ -27,6 +27,15 @@ var cash: int = 0
 ## is held in zero quantity; nothing distinguishes "zero" from "never owned".
 var holdings: Dictionary[StringName, int] = {}
 
+## Which stalks this player holds, without saying how many.
+##
+## **The public half of `holdings`.** A client is told *that* a rival has
+## bought into a company so the board can list its investors, and not how much
+## they hold (decisions.md D103). For the local player, and in an offline game,
+## `holdings` has the real numbers and this is filled from them; ask
+## `invests_in` rather than reading either directly.
+var invested_in: Array[StringName] = []
+
 ## This player's loan, or null if they have never taken one.
 ##
 ## Note that a non-null loan does NOT mean money is currently owed — it may be
@@ -66,6 +75,18 @@ func has_outstanding_loan() -> bool:
 
 func shares_of(stalk_id: StringName) -> int:
 	return holdings.get(stalk_id, 0)
+
+
+## Whether this player is in a stalk at all.
+##
+## The one question the board's Investors list asks, and the only one a client
+## can answer about somebody else. Falls back to the amounts when it has them -
+## your own player, and every player in an offline game - so a caller never has
+## to know which side of the wire it is on.
+func invests_in(stalk_id: StringName) -> bool:
+	if holdings.has(stalk_id):
+		return holdings[stalk_id] > 0
+	return invested_in.has(stalk_id)
 
 
 ## Sets an absolute share count, removing the entry entirely at zero so holdings

@@ -46,6 +46,53 @@ func test_another_players_cash_is_never_sent() -> void:
 	assert_false(theirs.has("loan"), "a rival's loan schedule must not cross the wire")
 
 
+## Who is in a stalk is public. How much they hold is not.
+##
+## The board lists a stalk's investors by name, which needs the membership and
+## nothing else. Sending the amounts as well would be a different game - see
+## decisions.md D103, and the test above, which is the half that must not
+## change.
+func test_which_stalks_a_rival_is_in_does_cross_the_wire() -> void:
+	var state: GameState = _state_with_two_players()
+	state.players[1].set_shares(&"stryker", 40)
+	state.players[1].set_shares(&"monorail", 5)
+
+	var data: Dictionary = StateSync.encode_state(state, &"p0")
+	var theirs: Dictionary = data["players"][1]
+	var invested: Array = theirs["invested_in"]
+
+	assert_eq(invested.size(), 2, "both companies they are in")
+	assert_true(invested.has("stryker"))
+	assert_true(invested.has("monorail"))
+	assert_false(theirs.has("holdings"), "and no amounts alongside them")
+
+
+func test_a_rival_sold_out_of_a_stalk_stops_being_an_investor() -> void:
+	var state: GameState = _state_with_two_players()
+	state.players[1].set_shares(&"stryker", 40)
+	state.players[1].set_shares(&"stryker", 0)
+
+	var data: Dictionary = StateSync.encode_state(state, &"p0")
+
+	assert_eq((data["players"][1]["invested_in"] as Array).size(), 0)
+
+
+## The question the board actually asks, answered the same way on both sides of
+## the wire.
+func test_a_player_knows_which_stalks_anybody_is_in() -> void:
+	var state: GameState = _state_with_two_players()
+	state.players[0].set_shares(&"stryker", 10)
+	state.players[1].set_shares(&"monorail", 3)
+
+	var library: ContentLibrary = ContentLibrary.load_from()
+	var seen: GameState = _state_with_two_players()
+	StateSync.apply_state(seen, StateSync.encode_state(state, &"p0"), library)
+
+	assert_true(seen.players[0].invests_in(&"stryker"), "your own, from amounts")
+	assert_true(seen.players[1].invests_in(&"monorail"), "theirs, from the list")
+	assert_false(seen.players[1].invests_in(&"stryker"))
+
+
 func test_another_players_net_worth_is_sent() -> void:
 	# Public on purpose: the rankings board exists to show it.
 	var state: GameState = _state_with_two_players()

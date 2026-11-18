@@ -12,10 +12,11 @@ extends Control
 ## only ever appeared in its top strip. Recorded in original-game-audit.md §18
 ## with the rest of the things this port added.
 ##
-## **It appears every year, including the quiet ones**, so the rhythm is the
-## same every time: the year turns, the news comes up, you close it and trade.
-## A year with no event says so rather than being silently skipped, which would
-## make a quiet year feel like a bug.
+## **It appears every year**, which in practice means every year: there is one
+## event a year and the pool refills, so a year with none needs all nine
+## targetable stalks bankrupt at once. That case still gets a panel saying so,
+## rather than being silently skipped - in the one game where everything has
+## already gone wrong, a missing panel would read as a second thing broken.
 ##
 ## Built as a widget rather than Godot's `AcceptDialog` for the same reason
 ## `ConfirmPanel` is: that opens a real operating-system window, which escapes
@@ -34,11 +35,31 @@ const NOTHING_HAPPENED: String = "No special event this year."
 @onready var _description: Label = %Description
 @onready var _effect: Label = %Effect
 @onready var _close_button: Button = %CloseButton
+@onready var _dont_show_again: CheckBox = %DontShowAgain
 
 
 func _ready() -> void:
 	_close_button.pressed.connect(close)
+	_dont_show_again.toggled.connect(_on_dont_show_again_toggled)
 	hide()
+
+
+## Whether a player has asked not to see this again.
+##
+## Read from the settings file rather than remembered in the panel, because the
+## answer outlives the match: "the rest of the game, and future games".
+static func is_wanted() -> bool:
+	return UserSettings.load_from().show_news
+
+
+## Saves the choice the moment it is made, not on closing.
+##
+## A player who ticks the box and then shuts the game down another way - Alt+F4
+## on a fullscreen window, say - still gets what they asked for next time.
+func _on_dont_show_again_toggled(dont: bool) -> void:
+	var stored: UserSettings = UserSettings.load_from()
+	stored.show_news = not dont
+	stored.save_to()
 
 
 ## Puts the year's news up.
@@ -51,9 +72,15 @@ func show_news(description: String, effect: String) -> void:
 	_effect.text = effect
 	_effect.visible = not effect.strip_edges().is_empty()
 
+	# Always unticked when it opens. The box is a statement about the future,
+	# not a thing that stays pressed - and seeing it already ticked on a panel
+	# that is nevertheless showing would read as broken.
+	_dont_show_again.set_pressed_no_signal(false)
+
 	show()
 	# The close button takes focus, so Enter or Space gets rid of it without
-	# the player having to find the mouse.
+	# the player having to find the mouse. Not the tick box, which Space would
+	# then toggle by accident.
 	_close_button.grab_focus()
 
 
@@ -85,6 +112,11 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	accept_event()
 	close()
+
+
+## The tick box. For tests.
+func dont_show_again_box() -> CheckBox:
+	return _dont_show_again
 
 
 ## Escape closes it too, matching every other panel in the game.

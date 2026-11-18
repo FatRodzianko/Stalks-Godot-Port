@@ -102,32 +102,30 @@ func test_changing_the_name_resets_any_scroll() -> void:
 
 	_label.set_full_text(SHORT)
 	assert_eq(_label.text, SHORT)
-	assert_false(_label.is_pinned())
+	assert_false(_label.is_scrolling(), "and the short one has nothing to scroll")
 
 
-func test_clicking_pins_the_scroll_and_clicking_again_releases_it() -> void:
+## A click on the name is not the name's business.
+##
+## It used to pin the scroll, which swallowed the click that now opens the
+## company's details - the name being the most obvious part of a row to click.
+## `MOUSE_FILTER_PASS` is what lets the row underneath hear it while this still
+## gets the hover. See decisions.md D103.
+func test_a_click_carries_on_to_whatever_is_underneath() -> void:
 	_label.set_full_text(LONG)
 
-	_label._on_gui_input(_click())
-	assert_true(_label.is_pinned(), "a click should pin it so the mouse can move away")
+	assert_eq(_label.mouse_filter, Control.MOUSE_FILTER_PASS)
+
+
+func test_a_name_stops_scrolling_the_moment_the_mouse_leaves() -> void:
+	# Nothing keeps it going any more, because nothing can pin it.
+	_label.set_full_text(LONG)
+	_label.start_scrolling()
 	assert_true(_label.is_scrolling())
 
-	_label._on_gui_input(_click())
-	assert_false(_label.is_pinned())
+	_label.stop_scrolling()
+
 	assert_false(_label.is_scrolling())
-
-
-func test_clicking_a_name_that_fits_does_nothing() -> void:
-	_label.set_full_text(SHORT)
-	_label._on_gui_input(_click())
-	assert_false(_label.is_pinned())
-
-
-func test_a_pinned_name_keeps_scrolling_when_the_mouse_leaves() -> void:
-	_label.set_full_text(LONG)
-	_label._on_gui_input(_click())
-	_label._on_mouse_exited()
-	assert_true(_label.is_scrolling(), "pinning is what lets you read it hands-free")
 
 
 func test_hovering_scrolls_and_leaving_stops() -> void:

@@ -4,8 +4,15 @@ extends Label
 ##
 ## The stalk names are the funniest thing in the game — "My Pillow, Your Pillow,
 ## We're All Pillows!" — so the board shows them in full rather than abbreviating
-## them. They do not fit a twelve-character column, so hovering a name scrolls it
-## and clicking pins the scroll until clicked again.
+## them. They do not fit a twelve-character column, so hovering a name scrolls
+## it.
+##
+## **Hovering only. Clicks pass straight through**, because on the board a
+## click on a row opens that company's details (decisions.md D103) and the name
+## is the most obvious part of the row to click. Clicking used to pin the
+## scroll so a long name could be read without holding the mouse still; the
+## details panel shows the whole name anyway, so pinning was solving a problem
+## that no longer exists and was swallowing the click that solves it better.
 ##
 ## Scrolling is by whole characters, which is both authentic to a ticker display
 ## and exact on a monospace grid: there is no sub-pixel movement to blur.
@@ -24,12 +31,13 @@ const HOLD_STEPS: int = 5
 var _full_text: String = ""
 var _offset: int = 0
 var _hold: int = 0
-var _pinned: bool = false
 var _timer: Timer
 
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	# PASS, not STOP: this still wants `mouse_entered` and `mouse_exited` for
+	# the hover, but a click must carry on to the row underneath.
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	clip_text = true
 
 	_timer = Timer.new()
@@ -39,7 +47,6 @@ func _ready() -> void:
 
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
-	gui_input.connect(_on_gui_input)
 
 
 ## Sets the text this label represents. Always store the whole string here, not
@@ -50,6 +57,11 @@ func set_full_text(value: String) -> void:
 	_full_text = value
 	tooltip_text = value
 	_reset()
+	# A name that fits has nothing to scroll, so the timer stops rather than
+	# running until its next tick notices. Matters when a row is reused for a
+	# different stalk while the mouse is still over it.
+	if not overflows():
+		stop_scrolling()
 
 
 func full_text() -> String:
@@ -63,10 +75,6 @@ func overflows() -> bool:
 
 func is_scrolling() -> bool:
 	return _timer != null and not _timer.is_stopped()
-
-
-func is_pinned() -> bool:
-	return _pinned
 
 
 ## Starts scrolling if there is anything hidden. Public so a test, or a future
@@ -124,27 +132,8 @@ func _step() -> void:
 
 
 func _on_mouse_entered() -> void:
-	if not _pinned:
-		start_scrolling()
+	start_scrolling()
 
 
 func _on_mouse_exited() -> void:
-	if not _pinned:
-		stop_scrolling()
-
-
-## Clicking pins the scroll so a long name can be read without holding the mouse
-## still, and clicking again releases it.
-func _on_gui_input(event: InputEvent) -> void:
-	var click: InputEventMouseButton = event as InputEventMouseButton
-	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
-		return
-	if not overflows():
-		return
-
-	_pinned = not _pinned
-	if _pinned:
-		start_scrolling()
-	else:
-		stop_scrolling()
-	accept_event()
+	stop_scrolling()

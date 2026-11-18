@@ -570,12 +570,51 @@ had scrolled to.
 12. Close it by clicking anywhere on the dimmed area rather than the button.
 13. Check that closes it too.
 14. Ready up again and close the next one by pressing Escape.
-15. Play on until a year with no special event.
-16. Check the panel still appears and says there was none.
+
+**The no-event case is not reachable by playing normally.** There is an event
+every year unless all nine targetable stalks are bankrupt at once, which is a
+wipeout rather than a lull. It is covered by
+`test_a_quiet_year_still_gets_a_panel_and_says_so` instead; do not go hunting
+for it by hand.
+
+17. Tick **Don't show again** and close the panel.
+18. Ready up for the next year and check no panel appears.
+19. Open **Settings** and check **Show the year's news** is unticked.
+20. Tick it, leave Settings, and ready up again.
+21. Check the panel is back.
+22. Play until a year whose description is cut short in the top strip.
+23. Check **... MORE** appears at the end of the strip.
+24. Press it and check the panel comes back with the whole description.
+25. Close the panel, then hover the strip instead.
+26. Check it scrolls in place without reopening anything.
 
 **What this is for:** the event is the one thing each year that moves the
 market under you, and in the top strip alone it was easy to miss entirely. See
-decisions.md D101.
+decisions.md D101, and D102 for the tick box and MORE.
+
+### A8o. A company's details, and who is in it
+
+Needs two players for the Investors list to be worth looking at.
+
+1. Start a two-player game and reach year 1.
+2. Click a stalk's row, on the name or the empty space - not the BUY button.
+3. Check a panel opens with the company's name at the top.
+4. Check there is a paragraph under it. It is placeholder text for now.
+5. Check there is an **Investors** heading.
+6. Check it says nobody owns any yet.
+7. Close the panel and buy some shares of that company.
+8. Open it again and check your own name is listed.
+9. Have the other player buy some of the same company.
+10. Open it again and check both names are listed.
+11. Check neither name has a number beside it.
+12. Sell your whole position and open it again.
+13. Check your name has gone from the list.
+14. Click the BUY button on a row rather than the row itself.
+15. Check that buys shares and does **not** open the panel.
+
+**What this is for:** seeing who is in what makes the board a place where
+players watch each other. How much they hold is deliberately not shown - see
+decisions.md D103.
 
 ### A9. Disconnection
 

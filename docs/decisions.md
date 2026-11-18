@@ -3439,12 +3439,18 @@ player once a year makes it news rather than furniture.
 ever appeared in its top strip. Recorded in original-game-audit.md section 18
 with the rest of what this port added.
 
-**Every year, including the quiet ones**, which the owner chose over showing it
-only when something happened. The rhythm is then the same every time: the year
-turns, the news comes up, you close it, you trade. A quiet year says "No
-special event this year." - the same sentence the strip uses, so the two can
-never disagree - rather than being silently skipped, which would read as the
-panel being broken.
+**Every year, which the owner chose over showing it only when something
+happened.** In practice that is every year full stop: there is one event a
+year, drawn from 45 per mood, and the bag refills when it empties. A year with
+no event needs **every one of the nine targetable stalks to be bankrupt at
+once** - `EventPool.draw` returns null only when no candidate has a living
+target - so it is a wipeout, not a lull. BERRY BONDS is static and is never
+targeted.
+
+That case still gets a panel, saying "No special event this year." - the same
+sentence the strip uses, so the two can never disagree - rather than being
+silently skipped, which would read as the panel being broken in the one game
+where everything has already gone wrong.
 
 **It blocks on purpose.** A panel the board can be used around is a panel that
 gets ignored, which is the fault this exists to fix. The cost is honest: in a
@@ -3471,3 +3477,86 @@ were trying to make the strip carry the whole description on its own:
 **What it rules out.** Making the panel optional or skippable-by-default - the
 point is that it is in the way. And ever making the top strip the only place
 the description appears again.
+
+### D102 - The news panel can be switched off, and a clipped description offers the rest
+
+**Decision.** The news panel carries a **Don't show again** tick box. Ticking
+it is saved immediately and lasts beyond the match and beyond the session. The
+Settings panel carries the same setting the other way up, as **Show the year's
+news**, which is how it is turned back on.
+
+**And the top strip now says when it has cut something short.** Twenty of the
+ninety descriptions do not fit its two lines, and until now the text simply
+stopped - nothing said there was more. A **... MORE** button appears at the end
+of the strip when the description overflows, and pressing it brings the panel
+back. Hovering still scrolls the strip in place (D100); the button is the
+discoverable version of the same thing.
+
+**Saved on the tick, not on the close.** A player who ticks the box and then
+quits another way - Alt+F4 on a fullscreen window - still gets what they asked
+for next time.
+
+**The box is clear every time the panel opens.** It is a statement about the
+future rather than a control that stays pressed, and a ticked box on a panel
+that is nevertheless showing would read as broken.
+
+**Settings is the way back, and it is not optional.** Without it the tick box
+is a one-way door: a player who ticked it by accident could never see the
+year's news again without hand-editing `user://settings.cfg`. That is the kind
+of trap that is obvious once somebody falls into it and invisible before.
+
+**The setting lives in a new `[game]` section** of the settings file rather than
+`[display]`, because it is about how the game is played rather than how it
+looks. The first thing in there.
+
+**What it rules out.** A dismissal that only lasts the session - the ask was
+explicitly for the rest of the game and future games. And making the panel the
+only place a long description can be read: the strip scrolls, the tooltip
+carries the whole thing, and MORE reopens the panel, so switching the panel off
+costs nothing.
+
+### D103 - Who is in a stalk is public; how much they hold is not
+
+**Decision.** Clicking a row on the board opens a panel with the company's
+name, a paragraph about it, and **Investors** - the players holding it, by
+name. The host sends every player the list of companies each other player is
+in, and keeps the sizes of those positions back. Cash and the loan schedule
+stay private as they were.
+
+**This moves the line drawn in architecture.md section 5.3**, which had
+holdings entirely redacted. The first ask was for amounts as well; the owner
+narrowed it within the hour to membership only, which is a better line than
+either end. Knowing somebody is in a company is enough to make the board a
+place where players watch each other. Knowing *how much* would let you work out
+their cash and their next move from the rankings.
+
+**`PlayerState.invests_in` is the only question anything asks**, and it answers
+from the amounts when it has them - your own player, and every player in an
+offline game - and from the public list otherwise. So nothing in the UI has to
+know which side of the wire it is on, and an offline game shows the same panel
+as a networked one without a second code path.
+
+**The membership is decoded before the private half is given up on.** The
+player decoder returns early for anybody who is not you, and the first version
+put the new field after that line, so rivals arrived with an empty list and the
+Investors panel was silently always empty in multiplayer. Caught by a test that
+applies an encoded state and asks about the other player.
+
+**Descriptions are placeholder text.** Every stalk resource now has a
+`description`, and all ten are lorem ipsum. The field exists so the panel has
+something to lay out and so there is somewhere for the real ones to go; writing
+them is the owner's, like every other line of the game's voice. A stalk with no
+description shows "No description." rather than an invented one.
+
+**Clicking the name opens the panel, and that cost the name's old trick.**
+Reported from play straight after this shipped: the name is the most obvious
+part of a row to click and it did nothing, because `MarqueeLabel` consumed the
+click to pin its scrolling. Pinning is gone - the name scrolls on hover only -
+and the label passes clicks through to the row. Pinning existed so a long name
+could be read without holding the mouse still, which is exactly what this panel
+does better.
+
+**What it rules out.** Showing position sizes anywhere, to anyone but their
+owner. And a per-match toggle for this: the owner chose it plainly over the
+"open book versus hidden holdings" option the porting plan had recommended, so
+that recommendation is settled rather than outstanding.

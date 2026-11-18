@@ -5,7 +5,8 @@ extends RefCounted
 ##
 ## **Only things a player sets once and expects to stay set.** Right now that
 ## is the effect volume, the display size and mode, and whether the CRT effect
-## is on. The bar for adding anything else is high.
+## is on, and whether the year's news panel appears. The bar for adding
+## anything else is high.
 ##
 ## **Match settings are not kept here, on purpose.** An earlier version
 ## remembered the Create Game fields — years, starting cash, loans, the game's
@@ -51,6 +52,15 @@ const DEFAULT_FULLSCREEN: bool = true
 ## it was drawn. See docs/decisions.md D94.
 const DEFAULT_CRT_EFFECT: bool = false
 
+## Section for things about how the game is played rather than how it looks.
+const SECTION_GAME: String = "game"
+
+## **On until a player turns it off.** The year's news panel is the point of
+## having one - a player who has never seen it should see it. Anyone who tires
+## of it can tick "Don't show again" on the panel itself, and turn it back on
+## from Settings. See docs/decisions.md D102.
+const DEFAULT_SHOW_NEWS: bool = true
+
 
 var volume_percent: int = DEFAULT_VOLUME
 
@@ -62,6 +72,9 @@ var fullscreen: bool = DEFAULT_FULLSCREEN
 
 ## Whether to draw the game through the CRT shader.
 var crt_effect: bool = DEFAULT_CRT_EFFECT
+
+## Whether the year's news comes up in a panel when the year turns.
+var show_news: bool = DEFAULT_SHOW_NEWS
 
 
 ## Reads the file, or returns the defaults above if there is not one.
@@ -84,6 +97,9 @@ static func load_from(path: String = PATH) -> UserSettings:
 	settings.crt_effect = bool(
 		file.get_value(SECTION_DISPLAY, "crt_effect", DEFAULT_CRT_EFFECT)
 	)
+	settings.show_news = bool(
+		file.get_value(SECTION_GAME, "show_news", DEFAULT_SHOW_NEWS)
+	)
 	# Stored as two integers rather than a Vector2i so the file stays something
 	# a person can read and correct by hand after a bad resolution has locked
 	# them out of the settings screen.
@@ -101,6 +117,7 @@ func save_to(path: String = PATH) -> void:
 	file.set_value(SECTION_AUDIO, "volume_percent", volume_percent)
 	file.set_value(SECTION_DISPLAY, "fullscreen", fullscreen)
 	file.set_value(SECTION_DISPLAY, "crt_effect", crt_effect)
+	file.set_value(SECTION_GAME, "show_news", show_news)
 	file.set_value(SECTION_DISPLAY, "resolution_width", resolution.x)
 	file.set_value(SECTION_DISPLAY, "resolution_height", resolution.y)
 	file.save(path)

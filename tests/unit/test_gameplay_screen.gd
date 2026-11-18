@@ -14,7 +14,21 @@ var _screen: Control
 var _session: LocalSession
 
 
+## What was in the real settings file before these tests ran.
+##
+## Several of them write to it, and it is shared with the game. The third time
+## this guard has been needed in this suite, after `test_crt_overlay.gd` and
+## `test_stage.gd`: without it a test inherits however the machine was last
+## played and passes or fails on that.
+var _saved_user: UserSettings
+
+
 func before_each() -> void:
+	_saved_user = UserSettings.load_from()
+	var known: UserSettings = UserSettings.load_from()
+	known.show_news = true
+	known.save_to()
+
 	var library: ContentLibrary = ContentLibrary.load_from()
 
 	var settings: GameSettings = GameSettings.new()
@@ -31,6 +45,10 @@ func before_each() -> void:
 	# A match opens at Year 0 with trading closed. Ready up once so these tests
 	# start where a player actually trades.
 	_session.set_ready(&"p0", true)
+
+
+func after_each() -> void:
+	_saved_user.save_to()
 
 
 ## The board goes read-only once you have readied up.
@@ -245,6 +263,200 @@ func test_it_blocks_the_board_behind_it() -> void:
 	assert_eq(
 		screen.news_panel().mouse_filter, Control.MOUSE_FILTER_STOP,
 		"it takes the clicks rather than letting them through"
+	)
+
+
+# ------------------------------------------ not showing the news again
+
+func test_ticking_dont_show_again_is_remembered() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+	var panel: NewsPanel = screen.news_panel()
+	panel.show_news("Monorail train cars installed with no brakes.", "")
+
+	panel.dont_show_again_box().button_pressed = true
+
+	assert_false(UserSettings.load_from().show_news, "written down at once")
+	assert_false(NewsPanel.is_wanted())
+
+
+## Saved on the tick, not on the close.
+##
+## A player who ticks the box and then quits another way - Alt+F4 on a
+## fullscreen window - still gets what they asked for next time.
+func test_it_is_saved_without_waiting_for_the_panel_to_close() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+	var panel: NewsPanel = screen.news_panel()
+	panel.show_news("Monorail train cars installed with no brakes.", "")
+
+	panel.dont_show_again_box().button_pressed = true
+
+	assert_true(panel.is_open(), "still open")
+	assert_false(UserSettings.load_from().show_news, "and already saved")
+
+
+## The box is a statement about the future, not a thing that stays pressed.
+func test_the_box_is_clear_every_time_the_panel_opens() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+	var panel: NewsPanel = screen.news_panel()
+
+	panel.show_news("Monorail train cars installed with no brakes.", "")
+	panel.dont_show_again_box().button_pressed = true
+	panel.close()
+
+	var stored: UserSettings = UserSettings.load_from()
+	stored.show_news = true
+	stored.save_to()
+	panel.show_news("Monorail train cars installed with no brakes.", "")
+
+	assert_false(panel.dont_show_again_box().button_pressed)
+
+
+## Settings is the way back. Without it the tick box is a one-way door.
+func test_settings_can_turn_the_news_back_on() -> void:
+	var stored: UserSettings = UserSettings.load_from()
+	stored.show_news = false
+	stored.save_to()
+
+	var panel: SettingsPanel = preload(
+		"res://src/ui/widgets/settings_panel.tscn"
+	).instantiate()
+	add_child_autofree(panel)
+	await wait_process_frames(1)
+
+	var box: CheckBox = panel.get_node("%NewsCheck")
+	assert_false(box.button_pressed, "it shows the setting as it stands")
+
+	box.button_pressed = true
+
+	assert_true(UserSettings.load_from().show_news)
+
+
+# ------------------------------------------------ more of a clipped description
+
+func test_a_short_description_offers_nothing_more() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var flavour: ScrollingLabel = screen.get_node("%EventFlavour")
+	flavour.set_full_text("Monorail train cars installed with no brakes.")
+	await wait_process_frames(1)
+
+	assert_false(flavour.overflows(), "it all fits")
+
+
+func test_a_clipped_description_offers_more_and_reopens_the_panel() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var long: String = (
+		"After a hard day's night working (drinking and playing cards in the "
+		+ "back of a strip club), your tummy grumbles and you need to poo. "
+		+ "It's the first poo in a week, and you've been eating nothing but "
+		+ "cured meats during that time."
+	)
+	var flavour: ScrollingLabel = screen.get_node("%EventFlavour")
+	flavour.set_full_text(long)
+	await wait_process_frames(1)
+	assert_true(flavour.overflows(), "the strip cannot hold it")
+
+	var panel: NewsPanel = screen.news_panel()
+	panel.close()
+	(screen.get_node("%MoreButton") as Button).pressed.emit()
+
+	assert_true(panel.is_open(), "pressing it brings the panel back")
+	assert_eq(panel.description_text(), long, "with the whole description")
+
+
+# ------------------------------------------------------- a company's details
+
+func test_opening_a_stalk_shows_its_name_and_description() -> void:
+	var stalk: StalkState = _first_tradable_stalk()
+	_screen.show_stalk_details(stalk.id)
+
+	var panel: StalkPanel = _screen.stalk_panel()
+	assert_true(panel.is_open())
+	assert_eq(
+		(panel.get_node("%StalkName") as Label).text,
+		stalk.definition.display_name
+	)
+	assert_eq(panel.description_text(), stalk.definition.description)
+
+
+func test_a_stalk_nobody_holds_says_so() -> void:
+	var stalk: StalkState = _first_tradable_stalk()
+	_screen.show_stalk_details(stalk.id)
+
+	assert_eq(_screen.stalk_panel().investors_text(), StalkPanel.NOBODY)
+
+
+func test_a_holder_is_listed_as_an_investor() -> void:
+	var stalk: StalkState = _first_tradable_stalk()
+	_player().set_shares(stalk.id, 3)
+
+	_screen.show_stalk_details(stalk.id)
+
+	assert_eq(
+		_screen.stalk_panel().investors_text(), _player().display_name
+	)
+
+
+## Names only, which is the whole rule. A client is told who is in a company
+## and not how deep. See decisions.md D103.
+func test_the_investor_list_never_says_how_much() -> void:
+	var stalk: StalkState = _first_tradable_stalk()
+	_player().set_shares(stalk.id, 4242)
+
+	_screen.show_stalk_details(stalk.id)
+
+	assert_false(
+		_screen.stalk_panel().investors_text().contains("4242"),
+		"the size of a position is nobody else's business"
+	)
+
+
+func test_selling_out_takes_you_off_the_investor_list() -> void:
+	var stalk: StalkState = _first_tradable_stalk()
+	_player().set_shares(stalk.id, 3)
+	_player().set_shares(stalk.id, 0)
+
+	_screen.show_stalk_details(stalk.id)
+
+	assert_eq(_screen.stalk_panel().investors_text(), StalkPanel.NOBODY)
+
+
+## Clicking the row is how it opens, and the row carries the id rather than
+## itself so the screen never has to reach back into a widget.
+func test_clicking_a_row_asks_for_its_details() -> void:
+	var stalk: StalkState = _first_tradable_stalk()
+	var row: StalkRow = _stalk_row_for(stalk.id)
+	assert_not_null(row)
+	watch_signals(row)
+
+	row.info_requested.emit(stalk.id)
+
+	assert_signal_emitted_with_parameters(row, "info_requested", [stalk.id])
+
+
+## Clicking the name opens the company, rather than being eaten by the name.
+##
+## Reported from play: the name is the most obvious part of a row to click and
+## it did nothing, because the label consumed the click to pin its own
+## scrolling. The row takes clicks and the name passes them through; those two
+## filters are the whole mechanism, so they are what this asserts. See
+## decisions.md D103.
+func test_the_name_lets_a_click_reach_the_row() -> void:
+	var stalk: StalkState = _first_tradable_stalk()
+	var row: StalkRow = _stalk_row_for(stalk.id)
+	assert_not_null(row)
+
+	assert_eq(row.mouse_filter, Control.MOUSE_FILTER_STOP, "the row hears clicks")
+	assert_eq(
+		(row.get_node("%Name") as Control).mouse_filter,
+		Control.MOUSE_FILTER_PASS,
+		"and the name does not swallow them"
 	)
 
 
