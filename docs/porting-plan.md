@@ -593,6 +593,16 @@ Kept here so the record of what exists stays in one place.
   of that is closed by D96 saying plainly that a 640x360 game has one picture
   size.
 
+- **A panel for the year's news** — **done 2026-11-17** (D101). The special
+  event was only ever shown in the strip along the top of the board, where it
+  was easy to miss. It now also comes up in the middle of the screen when the
+  year turns, dimming the board until it is closed. Every year, including the
+  ones with no event.
+
+  The strip went back to two lines with it, and the yeehaw corner back to a
+  name rather than a sentence: both had been widened or heightened earlier the
+  same day trying to make the strip carry the whole description on its own.
+
 ---
 
 ## Parity gaps — unscheduled

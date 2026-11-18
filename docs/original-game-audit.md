@@ -892,6 +892,14 @@ All are already built.
 
 ---
 
+**A panel for the year's news.** The original showed each year's special event
+only in the strip along the top of the board. The port adds a **Breaking Market
+News!** panel in the middle of the screen when the year turns, carrying the
+description and the effect, dimming the board until it is closed. Added
+2026-11-17 because the strip was easy to miss; see decisions.md D101.
+
+---
+
 ## 19. Original behaviour deliberately not reproduced
 
 | Behaviour | Why not |

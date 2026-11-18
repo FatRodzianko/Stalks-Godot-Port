@@ -20,6 +20,7 @@ const HoldingRowScene: PackedScene = preload("res://src/ui/widgets/holding_row.t
 const RankingRowScene: PackedScene = preload("res://src/ui/widgets/ranking_row.tscn")
 const LoanPanelScene: PackedScene = preload("res://src/ui/widgets/loan_panel.tscn")
 const ConfirmPanelScene: PackedScene = preload("res://src/ui/widgets/confirm_panel.tscn")
+const NewsPanelScene: PackedScene = preload("res://src/ui/widgets/news_panel.tscn")
 
 const MESSAGE_SECONDS: float = 5.0
 
@@ -77,6 +78,9 @@ var _client: ClientSession
 var _stalk_rows: Dictionary[StringName, StalkRow] = {}
 var _loan_panel: LoanPanel
 var _confirm_panel: ConfirmPanel
+
+## The year's news, put in front of the player when the year turns.
+var _news_panel: NewsPanel
 
 ## Whether the transient message line is currently showing a refusal rather than
 ## a piece of news. Only a refusal is cleared by a state change.
@@ -176,6 +180,7 @@ func _attach(session: GameSession) -> void:
 	_build_stalk_rows()
 	_build_loan_panel()
 	_build_confirm_panel()
+	_build_news_panel()
 	_reset_event_panel()
 	refresh()
 
@@ -250,13 +255,14 @@ func _build_headers() -> void:
 ##
 ## The number comes from the theme rather than being written down as a pixel
 ## count, so changing the font cannot quietly break this again.
-## Holds two lines under the yeehaw button whether or not both are in use.
+## Holds the note's line under the yeehaw button whether or not it says
+## anything.
 ##
-## The note says "needs other players" on one line normally and "<name> wants a
-## yeehaw!" wrapped over two when somebody asks. Without this the top bar grew
-## by two pixels at that moment - which is the same fault as the corner getting
-## wider, just in the other axis, and the whole point of the fixed width was to
-## stop the top bar moving while you read it.
+## The note is blank in a one-player game, says "needs other players" when
+## there are not enough, and carries the asker's name when somebody wants one.
+## Without a reserved line the top bar changes height as those come and go,
+## which is the same fault as the corner changing width - just in the other
+## axis.
 ##
 ## Computed from the theme rather than written down, like
 ## `_reserve_bottom_bar_height` above it, so changing the font does not quietly
@@ -334,6 +340,20 @@ func _build_stalk_rows() -> void:
 
 ## The confirmation overlay, used for ending a year with a loan payment due.
 ## Built once and reused; it holds no state of its own between questions.
+## The news panel is built once and reused, and added last so it sits in front
+## of the board and the loan panel alike.
+func _build_news_panel() -> void:
+	if _news_panel != null:
+		return
+	_news_panel = NewsPanelScene.instantiate()
+	add_child(_news_panel)
+
+
+## The year's news. For tests.
+func news_panel() -> NewsPanel:
+	return _news_panel
+
+
 func _build_confirm_panel() -> void:
 	if _confirm_panel != null:
 		return
@@ -545,10 +565,12 @@ func _refresh_yeehaw(game: GameState) -> void:
 		var no_give: String = _session.why_not_give_yeehaw(me)
 		_yeehaw_button.disabled = not no_give.is_empty()
 		_yeehaw_button.tooltip_text = no_give
-		_yeehaw_note.text = (
-			"You asked for one." if asker_id == me
-			else "%s wants a yeehaw!" % asker_name
-		)
+		# Just the name. The sentence version used to live here and made this
+		# corner wide enough to shove the event strip along; the bottom bar
+		# already announces who asked, and this is the part that has to persist
+		# after that message fades. "you" rather than your own name, because
+		# under a Give Yeehaw you cannot press it reads as the reason.
+		_yeehaw_note.text = "you" if asker_id == me else asker_name
 		_yeehaw_note.visible = true
 		return
 
@@ -883,6 +905,11 @@ func _on_year_resolved(result: YearResult) -> void:
 	_info_label.text = _summarise(result)
 	refresh()
 
+	# In front of the player rather than only along the top, because the strip
+	# is easy to miss and this is the one thing each year that moves the market
+	# under them. Every year, including the quiet ones. See decisions.md D101.
+	_announce_the_news(result)
+
 
 ## A refusal goes wherever the player is looking. With the loan panel open that
 ## is the panel, not the message line it covers.
@@ -938,6 +965,19 @@ func _on_game_over(winners: Array[StringName]) -> void:
 func _reset_event_panel() -> void:
 	_event_flavour.set_full_text("")
 	_event_effect.text = ""
+
+
+## Puts the year's event in front of the player.
+##
+## Takes the two lines the top strip is already showing rather than reading the
+## result again, so the panel and the strip can never say different things.
+func _announce_the_news(result: YearResult) -> void:
+	if _news_panel == null:
+		return
+	var description: String = ""
+	if result.event != null:
+		description = result.event.flavour_text
+	_news_panel.show_news(description, _event_effect.text)
 
 
 ## Two labels, matching the original: the flavour text, then what it did.

@@ -3286,15 +3286,18 @@ bar is a row - so the corner expanded and the event text beside it re-flowed
 mid-sentence. Measured at 128px becoming 150px, with the event panel dropping
 from 372 to 350.
 
-It is pinned at **128**, its narrower state, and the note **wraps to a second
-line** rather than making the panel wider. The button above it gives up the
-height, because it is the one set to expand.
+It is pinned at **128**, its narrower state. **Revised 2026-11-17, the same
+day:** the note first wrapped to a second line to fit the sentence, and then
+stopped carrying the sentence at all. It shows only the asker's name now - or
+"you" when it is you - because the bottom bar already announces "<name> wants a
+yeehaw!" and the corner only has to be the part that persists after that
+message fades. One short line, one reserved line, no wrapping.
 
 **The first attempt pinned it at 150 instead** - the wider state - and clipped
 the note. That removed the jump but cost the event text 22 pixels permanently,
-and the owner reported the next day that event descriptions were being cut off
-because of it. Wrapping the note is strictly better: the event area keeps its
-full 372 and nothing moves.
+and the owner reported within the hour that event descriptions were being cut
+off because of it. 128 with a shorter note is strictly better: the event area
+keeps its full 372 and nothing moves.
 
 **Two lines are reserved under the button whether or not both are used**
 (`_reserve_yeehaw_note_height`), or the top bar grows by two pixels the moment
@@ -3311,7 +3314,12 @@ from the two reserved lines of the info label in the message column, which is
 taller than the loan box either way. The docstring there now says so, because
 the rule as written would otherwise forbid this.
 
-**The event description now gets three lines, not two.** Raising the yeehaw
+**Superseded on 2026-11-17 by D101, which put the description in a panel of
+its own.** The strip went back to two lines once it stopped being the only
+place the news appeared. The counting below is kept because it is what proved
+two lines was never enough *on its own*, which is the finding D101 acts on.
+
+**The event description got three lines, not two.** Raising the yeehaw
 fix was not enough on its own: counted across all ninety events in the content,
 twenty-one need one line, forty-nine need two, **seventeen need three, two need
 four and one needs five**. At a two-line reserve the longest fifth of the
@@ -3319,8 +3327,9 @@ game's writing was cut off mid-sentence. Three lines covers eighty-seven of the
 ninety; the last three are 170 characters and up, which is a content question
 rather than a layout one.
 
-**The top bar is permanently taller for it** - 49 pixels to 62 - and holds that
-height whether the year's event is one line or three. That is D63's rule for
+**The top bar was permanently taller for it** - 49 pixels to 62 - and held that
+height whether the year's event was one line or three. It is back to two lines
+and its original height under D101. That is D63's rule for
 the bottom bar applied to the top one, and D63 also says what to do when a
 message genuinely needs another line: raise the reserve, do not make it
 conditional. This is that.
@@ -3412,3 +3421,53 @@ at once than wait for it.
 **What it rules out.** Font sizes below 12 anywhere in this interface, for
 anything. And rewriting the three long descriptions to fit, which was the other
 way out and is the author's call rather than a layout fix.
+
+### D101 - The year's news is a panel, not a strip along the top
+
+**Decision.** When a year turns, a panel comes up in the middle of the screen
+headed **Breaking Market News!** carrying the event's description and what it
+did to which stalk. It dims the board and blocks it until the player closes it,
+by the Close button, a click anywhere, or Escape. It appears **every** year,
+including the ones with no event, where it says so.
+
+**Why.** The event is the one thing each year that moves the market under you,
+and it was living in a strip along the top of the board where it is easy to
+miss entirely. Reported from play on 2026-11-17. Putting it in front of the
+player once a year makes it news rather than furniture.
+
+**This is new, not a port.** The original had nothing like it - the event only
+ever appeared in its top strip. Recorded in original-game-audit.md section 18
+with the rest of what this port added.
+
+**Every year, including the quiet ones**, which the owner chose over showing it
+only when something happened. The rhythm is then the same every time: the year
+turns, the news comes up, you close it, you trade. A quiet year says "No
+special event this year." - the same sentence the strip uses, so the two can
+never disagree - rather than being silently skipped, which would read as the
+panel being broken.
+
+**It blocks on purpose.** A panel the board can be used around is a panel that
+gets ignored, which is the fault this exists to fix. The cost is honest: in a
+multiplayer game the others are still trading while you read, so reading
+carefully is a small disadvantage. That is the same trade every player makes
+and nobody is forced to read slowly.
+
+**Closed three ways.** The button is there to be obvious the first time; a
+click anywhere is for the ninth year of the fourth game, when hunting a small
+target every year would be a toll; Escape because every other panel in the game
+takes it.
+
+**What it lets go of.** Two things built earlier the same day, both of which
+were trying to make the strip carry the whole description on its own:
+
+- The strip is back to **two lines** and its original height (D98, D100). It is
+  a reminder of news already delivered now, so clipping there is correct -
+  twenty of the ninety descriptions do - and the scrolling from D100 stays as
+  the way to read a clipped one in place.
+- The yeehaw corner keeps its narrow width and shows only the **asker's name**
+  under the button rather than a sentence. The bottom bar already announces who
+  asked; the corner is the part that has to persist after that message fades.
+
+**What it rules out.** Making the panel optional or skippable-by-default - the
+point is that it is in the way. And ever making the top strip the only place
+the description appears again.

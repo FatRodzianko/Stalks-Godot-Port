@@ -61,7 +61,7 @@ theme_type_variation = &"EventFlavour"
 text = ""
 autowrap_mode = 3
 text_overrun_behavior = 3
-max_lines_visible = 3
+max_lines_visible = 2
 
 [node name="EventEffect" type="Label" parent="Root/TopBar/EventPanel/EventBox"]
 unique_name_in_owner = true
@@ -89,9 +89,9 @@ layout_mode = 2
 theme_type_variation = &"Faint"
 text = "needs other players"
 horizontal_alignment = 1
-autowrap_mode = 3
+clip_text = true
 text_overrun_behavior = 3
-max_lines_visible = 2
+max_lines_visible = 1
 
 [node name="Boards" type="HBoxContainer" parent="Root"]
 layout_mode = 2

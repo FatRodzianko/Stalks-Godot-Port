@@ -554,6 +554,29 @@ bar reserves. They scroll rather than being cut off. See decisions.md D100.
 description should start at its first line rather than wherever the last one
 had scrolled to.
 
+### A8n. The year's news panel
+
+1. Start a game and ready up to reach year 1.
+2. Check a panel appears in the middle headed **Breaking Market News!**
+3. Check it shows the event's description in full, not cut off.
+4. Check it names the stalk and what happened to it underneath.
+5. Check the board behind it is dimmed.
+6. Try to click a BUY button behind the panel.
+7. Check nothing happens — the panel is in the way on purpose.
+8. Click **Close**.
+9. Check the panel goes and the board is live again.
+10. Ready up for the next year.
+11. Check the panel comes back for the new year.
+12. Close it by clicking anywhere on the dimmed area rather than the button.
+13. Check that closes it too.
+14. Ready up again and close the next one by pressing Escape.
+15. Play on until a year with no special event.
+16. Check the panel still appears and says there was none.
+
+**What this is for:** the event is the one thing each year that moves the
+market under you, and in the top strip alone it was easy to miss entirely. See
+decisions.md D101.
+
 ### A9. Disconnection
 
 | Step | Expected |

@@ -167,172 +167,85 @@ func test_the_top_bar_holds_one_height_for_every_event() -> void:
 		)
 
 
-## How much of the game's writing actually fits.
+## Every description reaches the player in full, whatever its length.
 ##
-## Counted rather than assumed: at two lines, twenty of the ninety events were
-## cut off mid-sentence, which is what was reported from play. Three lines
-## covers eighty-seven. This pins that, so adding an event far longer than the
-## rest fails here rather than being discovered in a game.
-func test_almost_every_event_fits_the_space_reserved_for_it() -> void:
+## **The strip along the top no longer has to hold it.** Since the news panel
+## was added (decisions.md D101) the strip is a reminder of news already
+## delivered, so it clips at two lines and scrolls on hover. Twenty of the
+## ninety clip there, by design. What must never be cut is the panel, and this
+## is what says so.
+func test_every_description_reaches_the_player_whole() -> void:
 	var screen: Control = _two_player_screen()
 	await wait_process_frames(2)
 
-	var flavour: Label = screen.get_node("%EventFlavour")
-	var too_long: Array[StringName] = []
+	var panel: NewsPanel = screen.news_panel()
+	assert_not_null(panel, "the screen builds one")
+
 	for event: SpecialEventDefinition in ContentLibrary.load_from().all_events():
-		flavour.text = event.flavour_text
+		panel.show_news(event.flavour_text, "Something fell by 10")
 		await wait_process_frames(1)
-		if flavour.get_line_count() > flavour.max_lines_visible:
-			too_long.append(event.id)
-
-	assert_lte(
-		too_long.size(), 3,
-		"clipped events: %s" % String(", ").join(too_long)
-	)
+		assert_eq(
+			panel.description_text(), event.flavour_text,
+			"%s was altered on the way to the panel" % event.id
+		)
 
 
-## A dead stalk keeps its name and nothing else.
-##
-## The original replaced the whole detail area of the row with BANKRUPT!!! and
-## left only the name. The port had been abbreviating that into the price
-## column and leaving the dividends and the buy controls in place - including,
-## because it lived in the placeholder rather than the text, an offer to sell
-## you five thousand shares of a company that no longer exists. Reported from
-## play on 2026-11-17. See audit section 3.1 and decisions.md D99.
-func test_a_bankrupt_row_shows_nothing_but_its_name() -> void:
-	var stalk: StalkState = _first_tradable_stalk()
-	var row: StalkRow = _stalk_row_for(stalk.id)
-	assert_not_null(row, "the board should have a row for it")
+# ----------------------------------------------------- the year's news panel
 
-	# The number that was left behind: set while the stalk was still alive.
-	row.set_affordable_hint(5000)
-	var amount: LineEdit = row.get_node("%Amount")
-	assert_eq(amount.placeholder_text, "5000", "the hint is there to begin with")
-
-	stalk.is_bankrupt = true
-	row.display(stalk)
-
-	assert_eq(row.get_node("%Price").text, "BANKRUPT!!!", "the original's word")
-	assert_false(amount.visible, "no box to type shares into")
-	assert_eq(amount.placeholder_text, "", "and no leftover number in it")
-	assert_false(row.get_node("%BuyButton").visible, "nothing to buy")
-	assert_false(row.get_node("%BullDividend").visible, "no dividends to pay")
-	assert_false(row.get_node("%BearDividend").visible)
-	assert_false(row.get_node("%Change").visible, "and nothing left to change")
-	assert_true(row.get_node("%Name").visible, "but the name stays")
-
-
-# ------------------------------------------- long event descriptions scroll
-
-## Three of the ninety descriptions do not fit the three lines reserved for
-## them. They scroll, because shrinking the font does not work - Terminus has
-## no designed shape below size 12 and comes out mangled. See decisions.md
-## D100.
-func _description() -> ScrollingLabel:
-	return _two_player_screen().get_node("%EventFlavour")
-
-
-func test_an_ordinary_description_does_not_scroll() -> void:
-	# Eighty-seven of the ninety. A label that fits never starts its timer, so
-	# the panel is still for almost every year of almost every game.
-	var label: ScrollingLabel = _description()
+func test_a_quiet_year_still_gets_a_panel_and_says_so() -> void:
+	# Every year, so the rhythm never changes. A year with nothing in it says
+	# nothing happened rather than being silently skipped, which would read as
+	# the panel being broken.
+	var screen: Control = _two_player_screen()
 	await wait_process_frames(2)
 
-	label.set_full_text("Monorail train cars installed with no brakes.")
-	await wait_process_frames(1)
+	var panel: NewsPanel = screen.news_panel()
+	panel.show_news("", "")
 
-	assert_false(label.overflows(), "it fits")
-	label.start_scrolling()
-	assert_false(label.is_scrolling(), "so there is nothing to scroll")
+	assert_true(panel.is_open())
+	assert_eq(panel.description_text(), NewsPanel.NOTHING_HAPPENED)
 
 
-func test_a_long_description_scrolls_through_its_lines() -> void:
-	var label: ScrollingLabel = _description()
+func test_the_close_button_gets_rid_of_it() -> void:
+	var screen: Control = _two_player_screen()
 	await wait_process_frames(2)
 
-	label.set_full_text(
-		"After a hard day's night working (drinking and playing cards in the "
-		+ "back of a strip club), your tummy grumbles and you need to poo. "
-		+ "It's the first poo in a week, and you've been eating nothing but "
-		+ "cured meats during that time."
-	)
+	var panel: NewsPanel = screen.news_panel()
+	panel.show_news("Monorail train cars installed with no brakes.", "")
 	await wait_process_frames(1)
+	watch_signals(panel)
 
-	assert_true(label.overflows(), "this one does not fit")
-	assert_eq(label.lines_skipped, 0, "and starts at the top")
+	(panel.get_node("%CloseButton") as Button).pressed.emit()
 
-	label.start_scrolling()
-	for _hold: int in ScrollingLabel.HOLD_STEPS:
-		label.step()
-	assert_eq(label.lines_skipped, 0, "holding on the first line to be read")
-
-	label.step()
-	assert_eq(label.lines_skipped, 1, "then moving on a line")
+	assert_false(panel.is_open())
+	assert_signal_emitted(panel, "dismissed")
 
 
-func test_it_returns_to_the_top_rather_than_running_off_the_end() -> void:
-	var label: ScrollingLabel = _description()
+func test_closing_it_twice_only_counts_once() -> void:
+	# A click and the button can land in the same frame.
+	var screen: Control = _two_player_screen()
 	await wait_process_frames(2)
-	label.set_full_text(
-		"After a hard day's night working (drinking and playing cards in the "
-		+ "back of a strip club), your tummy grumbles and you need to poo. "
-		+ "It's the first poo in a week, and you've been eating nothing but "
-		+ "cured meats during that time."
-	)
-	await wait_process_frames(1)
 
-	label.start_scrolling()
-	for _hold: int in ScrollingLabel.HOLD_STEPS:
-		label.step()
-	for _step: int in label.furthest_line() + 1:
-		label.step()
+	var panel: NewsPanel = screen.news_panel()
+	panel.show_news("Monorail train cars installed with no brakes.", "")
+	watch_signals(panel)
 
-	assert_eq(label.lines_skipped, 0, "back to the beginning")
+	panel.close()
+	panel.close()
+
+	assert_signal_emit_count(panel, "dismissed", 1)
 
 
-## A new year's description must not open halfway down the last one.
-func test_a_new_description_starts_at_its_first_line() -> void:
-	var label: ScrollingLabel = _description()
+## It is meant to be in the way. A panel the board can be used around is one
+## that gets ignored, which is the fault it exists to fix.
+func test_it_blocks_the_board_behind_it() -> void:
+	var screen: Control = _two_player_screen()
 	await wait_process_frames(2)
-	label.set_full_text(
-		"After a hard day's night working (drinking and playing cards in the "
-		+ "back of a strip club), your tummy grumbles and you need to poo. "
-		+ "It's the first poo in a week, and you've been eating nothing but "
-		+ "cured meats during that time."
+
+	assert_eq(
+		screen.news_panel().mouse_filter, Control.MOUSE_FILTER_STOP,
+		"it takes the clicks rather than letting them through"
 	)
-	await wait_process_frames(1)
-	# Exactly one step past the hold. Two would reach the end of a four-line
-	# description and wrap back to the top, which looks like not having moved.
-	label.start_scrolling()
-	for _step: int in ScrollingLabel.HOLD_STEPS + 1:
-		label.step()
-	assert_eq(label.lines_skipped, 1, "scrolled one line down")
-
-	label.set_full_text("Monorail train cars installed with no brakes.")
-	await wait_process_frames(1)
-
-	assert_eq(label.lines_skipped, 0)
-
-
-## The whole text is in the tooltip too, for a player who would rather read it
-## at once than wait for it.
-func test_a_long_description_is_also_in_the_tooltip() -> void:
-	var label: ScrollingLabel = _description()
-	await wait_process_frames(2)
-	var long: String = (
-		"After a hard day's night working (drinking and playing cards in the "
-		+ "back of a strip club), your tummy grumbles and you need to poo. "
-		+ "It's the first poo in a week, and you've been eating nothing but "
-		+ "cured meats during that time."
-	)
-
-	label.set_full_text(long)
-	await wait_process_frames(1)
-	assert_eq(label.tooltip_text, long)
-
-	label.set_full_text("Monorail train cars installed with no brakes.")
-	await wait_process_frames(1)
-	assert_eq(label.tooltip_text, "", "and not on one that fits")
 
 
 func _player() -> PlayerState:
