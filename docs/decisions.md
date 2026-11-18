@@ -3247,6 +3247,11 @@ as one in audit 19. It is the kind of divergence this project accepts: the
 original's behaviour is not a rule anybody chose, it is what falls out of not
 having thought about the case.
 
+**Confirmed in a two-player game on 2026-11-17**, by the owner, the day it was
+built. Worth recording because the rule only works if un-readying really does
+open the board again, and nothing in the suite can play two peers against each
+other through the real screen.
+
 **Enforced in `TradeRules`, not in the screen.** The validators are the single
 implementation behind the host's enforcement and a client's instant pre-check,
 so one edit covers a client being refused, a host refusing a forged request,
@@ -3267,3 +3272,104 @@ separate decision.
 **What it rules out.** Enforcing this only in the UI, where a client could
 ignore it. And any future "ready" that is not a toggle - the rule is only
 reasonable because taking it back is one press.
+
+### D98 - Two corners of the playing screen keep their size
+
+**Decision.** The yeehaw panel has a fixed width, and the LOANS button is
+centred in the bottom bar when nothing is under it. Both were reported from
+play on 2026-11-17 as looking wrong, and both were measured before and after
+rather than eyeballed.
+
+**The yeehaw corner used to grow when somebody asked.** Its note changes from
+"needs other players" to "<name> wants a yeehaw!", which is wider, and the top
+bar is a row - so the corner expanded and the event text beside it re-flowed
+mid-sentence. Measured at 128px becoming 150px, with the event panel dropping
+from 372 to 350.
+
+It is pinned at **128**, its narrower state, and the note **wraps to a second
+line** rather than making the panel wider. The button above it gives up the
+height, because it is the one set to expand.
+
+**The first attempt pinned it at 150 instead** - the wider state - and clipped
+the note. That removed the jump but cost the event text 22 pixels permanently,
+and the owner reported the next day that event descriptions were being cut off
+because of it. Wrapping the note is strictly better: the event area keeps its
+full 372 and nothing moves.
+
+**Two lines are reserved under the button whether or not both are used**
+(`_reserve_yeehaw_note_height`), or the top bar grows by two pixels the moment
+somebody asks - the same fault in the other axis.
+
+**The LOANS button rode half a line high.** Its box is centred in the bar, but
+the blank minimum-payment label underneath still took a line, so the button sat
+seven pixels above the middle. The label is now hidden rather than blank when
+nothing is owed.
+
+**That does not change the bar's height**, which is what the blank-rather-than-
+hidden rule in `_refresh_loan_controls` exists to protect. The height comes
+from the two reserved lines of the info label in the message column, which is
+taller than the loan box either way. The docstring there now says so, because
+the rule as written would otherwise forbid this.
+
+**The event description now gets three lines, not two.** Raising the yeehaw
+fix was not enough on its own: counted across all ninety events in the content,
+twenty-one need one line, forty-nine need two, **seventeen need three, two need
+four and one needs five**. At a two-line reserve the longest fifth of the
+game's writing was cut off mid-sentence. Three lines covers eighty-seven of the
+ninety; the last three are 170 characters and up, which is a content question
+rather than a layout one.
+
+**The top bar is permanently taller for it** - 49 pixels to 62 - and holds that
+height whether the year's event is one line or three. That is D63's rule for
+the bottom bar applied to the top one, and D63 also says what to do when a
+message genuinely needs another line: raise the reserve, do not make it
+conditional. This is that.
+
+**Both corners are pinned by tests that measure**, not by looking:
+`test_asking_for_a_yeehaw_does_not_move_the_event_text` and
+`test_the_loans_button_is_centred_when_it_stands_alone`. Both were written
+first, failed with the numbers above, and only then passed - which is the only
+way to know a layout test is testing anything. The top bar has two more:
+`test_the_top_bar_holds_one_height_for_every_event` walks all ninety, and
+`test_almost_every_event_fits_the_space_reserved_for_it` fails if somebody adds
+writing far longer than the rest.
+
+**What it rules out.** Letting any of the three size itself from its contents.
+And reclaiming the empty space under a short event description - that space is
+the reserve, and the years with a long one are what it is for.
+
+### D99 - A bankrupt stalk keeps its name and loses the rest of its row
+
+**Decision.** When a stalk goes bankrupt its row shows the name and
+`BANKRUPT!!!` across the space the detail used to occupy. The dividends, the
+yearly change, the amount box and the buy button are hidden rather than
+disabled.
+
+**This is the original's shape**, and the audit had already described it -
+"the whole detail area is replaced by a BANKRUPT!!! overlay" (section 3.1) -
+and then marked it **Ported** when it was not. The port abbreviated it to
+`BNKRT` in the price column and left everything else sitting there as though
+it still meant something.
+
+**The fault that prompted it.** Reported from play on 2026-11-17: a dead stalk
+was still showing how many shares you could afford. The amount box had been
+given the affordable maximum as its *placeholder* while the stalk was alive,
+and going bankrupt cleared the box's `text` but not its `placeholder_text` - so
+the row went on offering five thousand shares of a company that no longer
+existed. `set_affordable_hint` already declined to run on a bankrupt row, which
+is why it looked right in code and wrong on screen.
+
+**Hidden, not disabled.** A greyed-out buy button still says there is something
+here to buy. The original made the row inert and unmistakable, which is the
+better answer for a thing that will sit on the board for the rest of the match.
+
+**The row keeps its height**, so the board does not shift when a stalk dies
+mid-match. The price label expands to take the freed space rather than anything
+changing size.
+
+**Checked by `test_a_bankrupt_row_shows_nothing_but_its_name`**, which sets the
+affordable hint first and then kills the stalk - because the stale placeholder,
+not the live one, was the actual bug.
+
+**What it rules out.** Abbreviating the word to fit a column. Leaving any part
+of the buy controls visible on a dead stalk.

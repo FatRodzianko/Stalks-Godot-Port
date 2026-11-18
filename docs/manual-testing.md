@@ -506,10 +506,11 @@ a border. That is the price of every pixel being the same size square.
 13. Click **View board** and **BACK TO RESULTS** twice more.
 14. Check nothing breaks or goes blank.
 
-### A8l. Trading closes when you are ready
+### A8l. Trading closes when you are ready — ✅ passed 2026-11-17
 
 Needs two players, so run it as part of Test B or with two windows on one
-machine (`--host` and `--join`).
+machine (`--host` and `--join`). Run and passed on the day the rule was built;
+re-run it if anything touches readiness or the board's controls.
 
 1. Start a two-player game and advance to year 1.
 2. As player one, buy some shares of anything.

@@ -348,7 +348,7 @@ how much (`<stalk> changed <n>`). Both are blank in a year with no event.
 | Normal | Name, price, bull dividend, bear dividend, yearly change | **Ported** |
 | Yearly change | A signed number **and an arrow sprite** — up, down, or flat | **Ported** |
 | Split this year | The price is prefixed `SPLIT!!!` on its own line | **Ported** |
-| Bankrupt | The whole detail area is replaced by a **`BANKRUPT!!!`** overlay. The row stays on the board for the rest of the match | **Ported** |
+| Bankrupt | The whole detail area is replaced by a **`BANKRUPT!!!`** overlay. The row stays on the board for the rest of the match | **Ported 2026-11-17.** Recorded as ported before it was: the port abbreviated it to `BNKRT` in the price column and left the dividends, the change and the buy controls in place. See D99 |
 | Buy control | An amount box whose **placeholder is the largest number you can currently afford**, recomputed whenever your cash or that price changes | **Ported** |
 
 That affordable-maximum placeholder is the original's *only* guidance on

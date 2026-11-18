@@ -59,7 +59,7 @@ theme_type_variation = &"EventFlavour"
 text = ""
 autowrap_mode = 3
 text_overrun_behavior = 3
-max_lines_visible = 2
+max_lines_visible = 3
 
 [node name="EventEffect" type="Label" parent="Root/TopBar/EventPanel/EventBox"]
 unique_name_in_owner = true
@@ -68,6 +68,7 @@ text = ""
 text_overrun_behavior = 3
 
 [node name="YeehawPanel" type="PanelContainer" parent="Root/TopBar"]
+custom_minimum_size = Vector2(128, 0)
 layout_mode = 2
 
 [node name="YeehawBox" type="VBoxContainer" parent="Root/TopBar/YeehawPanel"]
@@ -86,6 +87,9 @@ layout_mode = 2
 theme_type_variation = &"Faint"
 text = "needs other players"
 horizontal_alignment = 1
+autowrap_mode = 3
+text_overrun_behavior = 3
+max_lines_visible = 2
 
 [node name="Boards" type="HBoxContainer" parent="Root"]
 layout_mode = 2

@@ -98,6 +98,8 @@ func _ready() -> void:
 
 	_build_headers()
 	_reserve_bottom_bar_height()
+	_reserve_yeehaw_note_height()
+	_reserve_event_flavour_height()
 
 	if _session == null:
 		_session = _build_default_session()
@@ -248,6 +250,57 @@ func _build_headers() -> void:
 ##
 ## The number comes from the theme rather than being written down as a pixel
 ## count, so changing the font cannot quietly break this again.
+## Holds two lines under the yeehaw button whether or not both are in use.
+##
+## The note says "needs other players" on one line normally and "<name> wants a
+## yeehaw!" wrapped over two when somebody asks. Without this the top bar grew
+## by two pixels at that moment - which is the same fault as the corner getting
+## wider, just in the other axis, and the whole point of the fixed width was to
+## stop the top bar moving while you read it.
+##
+## Computed from the theme rather than written down, like
+## `_reserve_bottom_bar_height` above it, so changing the font does not quietly
+## reintroduce the jump.
+## Holds three lines for the special event's description, always.
+##
+## **Three, not two, and the number came from counting.** Measured across all
+## ninety events in the content: twenty-one need one line, forty-nine need two,
+## seventeen need three, two need four and one needs five. At two the longest
+## fifth of the game's writing was being cut off mid-sentence, which is what
+## was reported from play on 2026-11-17.
+##
+## Three covers eighty-seven of the ninety. The remaining three are still
+## clipped, which is a content question rather than a layout one - the texts
+## are 170 characters and up.
+##
+## **Reserved rather than allowed to grow**, for the reason D63 gives about the
+## bottom bar: a panel that is tall only when it has a lot to say shoves
+## everything below it up and down as the years pass. D63 also says what to do
+## instead, and this is it - raise the reserve, do not make it conditional.
+func _reserve_event_flavour_height() -> void:
+	var line_height: int = _event_flavour.get_theme_font("font").get_height(
+		_event_flavour.get_theme_font_size("font_size")
+	)
+	var spacing: int = 0
+	if _event_flavour.has_theme_constant("line_spacing"):
+		spacing = _event_flavour.get_theme_constant("line_spacing")
+	_event_flavour.custom_minimum_size.y = (
+		(line_height + spacing) * _event_flavour.max_lines_visible
+	)
+
+
+func _reserve_yeehaw_note_height() -> void:
+	var line_height: int = _yeehaw_note.get_theme_font("font").get_height(
+		_yeehaw_note.get_theme_font_size("font_size")
+	)
+	var spacing: int = 0
+	if _yeehaw_note.has_theme_constant("line_spacing"):
+		spacing = _yeehaw_note.get_theme_constant("line_spacing")
+	_yeehaw_note.custom_minimum_size.y = (
+		(line_height + spacing) * _yeehaw_note.max_lines_visible
+	)
+
+
 func _reserve_bottom_bar_height() -> void:
 	var line_height: int = _info_label.get_theme_font("font").get_height(
 		_info_label.get_theme_font_size("font_size")
@@ -515,9 +568,12 @@ func _refresh_yeehaw(game: GameState) -> void:
 ## whether to borrow more, and the figure was previously buried inside the loan
 ## panel - you had to open it to find out.
 ##
-## Nothing here is ever hidden in a way that changes the bar's height: the
-## minimum label and the reminder keep their lines and go blank instead. See
-## `_reserve_bottom_bar_height`.
+## Nothing here is ever hidden in a way that changes the bar's height. The
+## reminder keeps its line and goes blank; the minimum label *is* hidden when
+## there is nothing owed, which is safe because the bar's height comes from the
+## message column rather than from this box. See `_reserve_bottom_bar_height`,
+## and `test_the_loans_button_is_centred_when_it_stands_alone` for the measure
+## that keeps it honest.
 func _refresh_loan_controls(game: GameState, player: PlayerState) -> void:
 	var loans_on: bool = game.settings != null and game.settings.loans_enabled
 	_loan_box.visible = loans_on and not game.is_over
@@ -542,6 +598,15 @@ func _refresh_loan_controls(game: GameState, player: PlayerState) -> void:
 		_loan_min_label.text = "Min %s" % Palette.format_money(player.loan.min_payment)
 	else:
 		_loan_min_label.text = ""
+	# Hidden, not merely blank. A blank label still takes a line, and the box
+	# around it is centred in the bar - so with nothing owed the LOANS button
+	# rode half a line high, which is what "slightly off" looks like. Reported
+	# from play on 2026-11-17 and measured at seven pixels.
+	#
+	# This does not change the bar's height. That is held by `_info_label`'s
+	# reserved two lines in the message column (see `_reserve_bottom_bar_height`),
+	# which is taller than this box either way.
+	_loan_min_label.visible = not _loan_min_label.text.is_empty()
 
 	# Short captions: the button is a few cells wide at this resolution.
 	#

@@ -69,11 +69,11 @@ func display(stalk: StalkState) -> void:
 	_bull_label.text = str(stalk.definition.bull_dividend)
 	_bear_label.text = str(stalk.definition.bear_dividend)
 
+	_show_as_bankrupt(stalk.is_bankrupt)
+
 	if stalk.is_bankrupt:
-		_price_label.text = "BNKRT"
+		_price_label.text = "BANKRUPT!!!"
 		_price_label.theme_type_variation = &"Danger"
-		_change_label.text = "—"
-		_change_label.remove_theme_color_override("font_color")
 	else:
 		_price_label.text = str(stalk.price)
 		_price_label.theme_type_variation = &"Numeric"
@@ -85,10 +85,45 @@ func display(stalk: StalkState) -> void:
 	_amount_field.editable = not stalk.is_bankrupt
 	_buy_button.disabled = stalk.is_bankrupt
 	if stalk.is_bankrupt:
-		_amount_field.text = ""
 		_buy_button.tooltip_text = "%s is bankrupt." % stalk.definition.display_name
 
 	theme_type_variation = &"BankruptCard" if stalk.is_bankrupt else &"Card"
+
+
+## A dead stalk keeps its name and loses everything else.
+##
+## **This is the original's shape, restored.** It replaced the whole detail
+## area of the row with `BANKRUPT!!!` and kept only the name; the port had been
+## abbreviating it to `BNKRT` in the price column and leaving the dividends,
+## the change and the buy controls sitting there as though they still meant
+## something. The audit recorded this as ported when it was not (section 3.1).
+##
+## **The fault that prompted it:** the amount field kept the affordable-maximum
+## placeholder it was given before the stalk died - a row offering to sell you
+## five thousand shares of a company that no longer exists. Clearing the text
+## was not enough, because the number lived in the placeholder.
+##
+## The columns are hidden rather than blanked, and the price label expands to
+## take the space. The row's own height does not change, so the board does not
+## shift when a stalk dies mid-match.
+func _show_as_bankrupt(dead: bool) -> void:
+	_bull_label.visible = not dead
+	_bear_label.visible = not dead
+	_change_label.visible = not dead
+	_amount_field.visible = not dead
+	_buy_button.visible = not dead
+
+	if dead:
+		_amount_field.text = ""
+		_amount_field.placeholder_text = ""
+		_amount_field.tooltip_text = ""
+
+	if dead:
+		_price_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	else:
+		_price_label.size_flags_horizontal = 0
+		_price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 
 ## Trading is closed in year 0 and once the game is over. The original simply did

@@ -63,6 +63,165 @@ func _stalk_row_for(stalk_id: StringName) -> StalkRow:
 	return null
 
 
+# ------------------------------------------------------- the bar does not move
+
+## Two players, so a yeehaw can be asked for. The shared fixture is a solo game.
+func _two_player_screen() -> Control:
+	var library: ContentLibrary = ContentLibrary.load_from()
+	var settings: GameSettings = GameSettings.new()
+	settings.max_years = 10
+	settings.player_count = 2
+	settings.loans_enabled = true
+	settings.rng_seed = 555
+
+	var session: LocalSession = LocalSession.create(settings, library)
+	var screen: Control = ScreenScene.instantiate()
+	screen.setup(session)
+	add_child_autofree(session)
+	add_child_autofree(screen)
+	screen.size = Vector2(640, 360)
+
+	for player: PlayerState in session.state().players:
+		session.set_ready(player.id, true)
+	return screen
+
+
+## Asking for a yeehaw must not resize the panel it lives in.
+##
+## The button's caption changes and a note appears beside it, and the top bar is
+## a row — so without a floor on the width, the yeehaw corner grows and shoves
+## the event text along with it. Reported from play on 2026-11-17: the event
+## text visibly re-flows the moment somebody asks.
+func test_asking_for_a_yeehaw_does_not_move_the_event_text() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var bar: Control = screen.get_node("Root/TopBar")
+	var yeehaw: Control = screen.get_node("Root/TopBar/YeehawPanel")
+	var event: Control = screen.get_node("Root/TopBar/EventPanel")
+	var yeehaw_before: float = yeehaw.size.x
+	var event_before: float = event.size.x
+	var bar_height_before: float = bar.size.y
+
+	# Asked for by somebody who is not in this game, because a `LocalSession`
+	# only ever has the one player - the count on the settings is the lobby's
+	# limit, not a roster. The screen then writes "Somebody wants a yeehaw!",
+	# which is the shape of the note that does the damage: in a real game it
+	# carries a player's name and gets longer still.
+	(screen.session() as LocalSession).state().yeehaw_requested_by = &"someone"
+	screen.refresh()
+	await wait_process_frames(2)
+
+	assert_eq(yeehaw.size.x, yeehaw_before, "the yeehaw corner keeps its width")
+	assert_eq(event.size.x, event_before, "so the event text does not re-flow")
+	# The other axis, which is where the first fix for this pushed the problem.
+	# The note wraps to a second line inside the narrow panel rather than making
+	# the panel wider, so the button above it must give up the height instead of
+	# the bar growing.
+	assert_eq(bar.size.y, bar_height_before, "and the top bar keeps its height")
+
+
+## The LOANS button sits in the middle of the bar when nothing is under it.
+##
+## Its box is centred, but a blank minimum-payment label underneath still took
+## a line, so the button rode half a line high. Reported from play as looking
+## "slightly off", which is exactly what half a line of text looks like.
+func test_the_loans_button_is_centred_when_it_stands_alone() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var bar: Control = screen.get_node("Root/BottomBar/Bar")
+	var button: Control = screen.get_node("%LoanButton")
+	var minimum: Label = screen.get_node("%LoanMinLabel")
+
+	assert_eq(minimum.text, "", "no loan, so nothing under the button")
+	assert_false(minimum.visible, "and it takes no room either")
+
+	var button_middle: float = button.global_position.y + button.size.y * 0.5
+	var bar_middle: float = bar.global_position.y + bar.size.y * 0.5
+	assert_almost_eq(button_middle, bar_middle, 1.0, "centred in the bar")
+
+
+## The top bar is the same height whatever the year's event says.
+##
+## The same rule D63 set for the bottom bar, applied to the top one: a panel
+## that is tall only when it has a lot to say shoves everything below it up and
+## down as the years pass. The reserve is three lines of description plus the
+## effect line, held whether or not they are used.
+func test_the_top_bar_holds_one_height_for_every_event() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var bar: Control = screen.get_node("Root/TopBar")
+	var flavour: Label = screen.get_node("%EventFlavour")
+	flavour.text = ""
+	await wait_process_frames(1)
+	var empty_height: float = bar.size.y
+
+	for event: SpecialEventDefinition in ContentLibrary.load_from().all_events():
+		flavour.text = event.flavour_text
+		await wait_process_frames(1)
+		assert_eq(
+			bar.size.y, empty_height,
+			"the bar moved for %s" % event.id
+		)
+
+
+## How much of the game's writing actually fits.
+##
+## Counted rather than assumed: at two lines, twenty of the ninety events were
+## cut off mid-sentence, which is what was reported from play. Three lines
+## covers eighty-seven. This pins that, so adding an event far longer than the
+## rest fails here rather than being discovered in a game.
+func test_almost_every_event_fits_the_space_reserved_for_it() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var flavour: Label = screen.get_node("%EventFlavour")
+	var too_long: Array[StringName] = []
+	for event: SpecialEventDefinition in ContentLibrary.load_from().all_events():
+		flavour.text = event.flavour_text
+		await wait_process_frames(1)
+		if flavour.get_line_count() > flavour.max_lines_visible:
+			too_long.append(event.id)
+
+	assert_lte(
+		too_long.size(), 3,
+		"clipped events: %s" % String(", ").join(too_long)
+	)
+
+
+## A dead stalk keeps its name and nothing else.
+##
+## The original replaced the whole detail area of the row with BANKRUPT!!! and
+## left only the name. The port had been abbreviating that into the price
+## column and leaving the dividends and the buy controls in place - including,
+## because it lived in the placeholder rather than the text, an offer to sell
+## you five thousand shares of a company that no longer exists. Reported from
+## play on 2026-11-17. See audit section 3.1 and decisions.md D99.
+func test_a_bankrupt_row_shows_nothing_but_its_name() -> void:
+	var stalk: StalkState = _first_tradable_stalk()
+	var row: StalkRow = _stalk_row_for(stalk.id)
+	assert_not_null(row, "the board should have a row for it")
+
+	# The number that was left behind: set while the stalk was still alive.
+	row.set_affordable_hint(5000)
+	var amount: LineEdit = row.get_node("%Amount")
+	assert_eq(amount.placeholder_text, "5000", "the hint is there to begin with")
+
+	stalk.is_bankrupt = true
+	row.display(stalk)
+
+	assert_eq(row.get_node("%Price").text, "BANKRUPT!!!", "the original's word")
+	assert_false(amount.visible, "no box to type shares into")
+	assert_eq(amount.placeholder_text, "", "and no leftover number in it")
+	assert_false(row.get_node("%BuyButton").visible, "nothing to buy")
+	assert_false(row.get_node("%BullDividend").visible, "no dividends to pay")
+	assert_false(row.get_node("%BearDividend").visible)
+	assert_false(row.get_node("%Change").visible, "and nothing left to change")
+	assert_true(row.get_node("%Name").visible, "but the name stays")
+
+
 func _player() -> PlayerState:
 	return _session.state().player_by_id(&"p0")
 
@@ -305,7 +464,7 @@ func test_prices_on_the_board_track_the_simulation_after_a_year() -> void:
 		var row: StalkRow = _screen.stalk_row_for(stalk.id)
 		var shown: String = (row.get_node("%Price") as Label).text
 		var expected: String = (
-			"BNKRT" if stalk.is_bankrupt else str(stalk.price)
+			"BANKRUPT!!!" if stalk.is_bankrupt else str(stalk.price)
 		)
 		assert_eq(shown, expected, "%s price on screen" % stalk.id)
 
@@ -361,7 +520,7 @@ func test_a_bankrupt_stalk_is_marked_and_cannot_be_bought() -> void:
 		var row: StalkRow = _screen.stalk_row_for(stalk.id)
 		# The controls stay in the tree so the columns keep their width, but the
 		# price reads BANKRUPT and buying is refused.
-		assert_eq((row.get_node("%Price") as Label).text, "BNKRT",
+		assert_eq((row.get_node("%Price") as Label).text, "BANKRUPT!!!",
 			"%s should be marked bankrupt" % stalk.id)
 		assert_true((row.get_node("%BuyButton") as Button).disabled,
 			"a bankrupt stalk must not be buyable")
