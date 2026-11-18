@@ -222,6 +222,119 @@ func test_a_bankrupt_row_shows_nothing_but_its_name() -> void:
 	assert_true(row.get_node("%Name").visible, "but the name stays")
 
 
+# ------------------------------------------- long event descriptions scroll
+
+## Three of the ninety descriptions do not fit the three lines reserved for
+## them. They scroll, because shrinking the font does not work - Terminus has
+## no designed shape below size 12 and comes out mangled. See decisions.md
+## D100.
+func _description() -> ScrollingLabel:
+	return _two_player_screen().get_node("%EventFlavour")
+
+
+func test_an_ordinary_description_does_not_scroll() -> void:
+	# Eighty-seven of the ninety. A label that fits never starts its timer, so
+	# the panel is still for almost every year of almost every game.
+	var label: ScrollingLabel = _description()
+	await wait_process_frames(2)
+
+	label.set_full_text("Monorail train cars installed with no brakes.")
+	await wait_process_frames(1)
+
+	assert_false(label.overflows(), "it fits")
+	label.start_scrolling()
+	assert_false(label.is_scrolling(), "so there is nothing to scroll")
+
+
+func test_a_long_description_scrolls_through_its_lines() -> void:
+	var label: ScrollingLabel = _description()
+	await wait_process_frames(2)
+
+	label.set_full_text(
+		"After a hard day's night working (drinking and playing cards in the "
+		+ "back of a strip club), your tummy grumbles and you need to poo. "
+		+ "It's the first poo in a week, and you've been eating nothing but "
+		+ "cured meats during that time."
+	)
+	await wait_process_frames(1)
+
+	assert_true(label.overflows(), "this one does not fit")
+	assert_eq(label.lines_skipped, 0, "and starts at the top")
+
+	label.start_scrolling()
+	for _hold: int in ScrollingLabel.HOLD_STEPS:
+		label.step()
+	assert_eq(label.lines_skipped, 0, "holding on the first line to be read")
+
+	label.step()
+	assert_eq(label.lines_skipped, 1, "then moving on a line")
+
+
+func test_it_returns_to_the_top_rather_than_running_off_the_end() -> void:
+	var label: ScrollingLabel = _description()
+	await wait_process_frames(2)
+	label.set_full_text(
+		"After a hard day's night working (drinking and playing cards in the "
+		+ "back of a strip club), your tummy grumbles and you need to poo. "
+		+ "It's the first poo in a week, and you've been eating nothing but "
+		+ "cured meats during that time."
+	)
+	await wait_process_frames(1)
+
+	label.start_scrolling()
+	for _hold: int in ScrollingLabel.HOLD_STEPS:
+		label.step()
+	for _step: int in label.furthest_line() + 1:
+		label.step()
+
+	assert_eq(label.lines_skipped, 0, "back to the beginning")
+
+
+## A new year's description must not open halfway down the last one.
+func test_a_new_description_starts_at_its_first_line() -> void:
+	var label: ScrollingLabel = _description()
+	await wait_process_frames(2)
+	label.set_full_text(
+		"After a hard day's night working (drinking and playing cards in the "
+		+ "back of a strip club), your tummy grumbles and you need to poo. "
+		+ "It's the first poo in a week, and you've been eating nothing but "
+		+ "cured meats during that time."
+	)
+	await wait_process_frames(1)
+	# Exactly one step past the hold. Two would reach the end of a four-line
+	# description and wrap back to the top, which looks like not having moved.
+	label.start_scrolling()
+	for _step: int in ScrollingLabel.HOLD_STEPS + 1:
+		label.step()
+	assert_eq(label.lines_skipped, 1, "scrolled one line down")
+
+	label.set_full_text("Monorail train cars installed with no brakes.")
+	await wait_process_frames(1)
+
+	assert_eq(label.lines_skipped, 0)
+
+
+## The whole text is in the tooltip too, for a player who would rather read it
+## at once than wait for it.
+func test_a_long_description_is_also_in_the_tooltip() -> void:
+	var label: ScrollingLabel = _description()
+	await wait_process_frames(2)
+	var long: String = (
+		"After a hard day's night working (drinking and playing cards in the "
+		+ "back of a strip club), your tummy grumbles and you need to poo. "
+		+ "It's the first poo in a week, and you've been eating nothing but "
+		+ "cured meats during that time."
+	)
+
+	label.set_full_text(long)
+	await wait_process_frames(1)
+	assert_eq(label.tooltip_text, long)
+
+	label.set_full_text("Monorail train cars installed with no brakes.")
+	await wait_process_frames(1)
+	assert_eq(label.tooltip_text, "", "and not on one that fits")
+
+
 func _player() -> PlayerState:
 	return _session.state().player_by_id(&"p0")
 

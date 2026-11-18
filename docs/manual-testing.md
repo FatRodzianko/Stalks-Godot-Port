@@ -531,6 +531,29 @@ heartbeat before the prices move. See decisions.md D97.
 **Also worth trying:** ready up, then un-ready, then trade, then ready again.
 The board should follow each press with no leftover greying.
 
+### A8m. A long special event reads in full
+
+Three of the ninety event descriptions are longer than the three lines the top
+bar reserves. They scroll rather than being cut off. See decisions.md D100.
+
+1. Play years until an event description fills all three lines.
+2. Check the text is not cut off mid-sentence with nothing to be done about it.
+3. Move the mouse over the description and leave it there.
+4. Check it pauses, then creeps down a line at a time.
+5. Check it reaches the last line, pauses, and returns to the top.
+6. Move the mouse away.
+7. Check it goes back to the first line and stops.
+8. Move the mouse over it and click once.
+9. Check it keeps scrolling with the mouse moved away.
+10. Click it again.
+11. Check it stops and returns to the first line.
+12. Hover a short description that fits in one or two lines.
+13. Check it does not move at all.
+
+**Also worth trying:** hover a long one, then end the year. The new year's
+description should start at its first line rather than wherever the last one
+had scrolled to.
+
 ### A9. Disconnection
 
 | Step | Expected |

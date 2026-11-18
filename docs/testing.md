@@ -381,6 +381,18 @@ by a test.
 should.** That is the one thing worth checking by hand after any change here,
 and it is step one of the display section in `manual-testing.md`.
 
+### Content is tested against the layout that has to hold it
+
+`test_every_event_description_fits_after_shrinking` was replaced by scroll
+tests when shrinking turned out not to work (D100), but the idea behind it
+stayed: the suite walks all ninety special event descriptions through the real
+label at the real width rather than checking the three known-long ones. A new
+event written longer than anything in the game today fails there, in a test,
+rather than being discovered mid-match by a player.
+
+The same shape covers the top bar: `test_the_top_bar_holds_one_height_for_every_event`
+puts every description into the panel in turn and checks the bar never moves.
+
 ### Questions about the engine get a spike, not an opinion
 
 Two tools in `tools/` exist only to answer a question about how Godot itself

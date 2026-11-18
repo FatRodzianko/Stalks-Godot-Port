@@ -3373,3 +3373,42 @@ not the live one, was the actual bug.
 
 **What it rules out.** Abbreviating the word to fit a column. Leaving any part
 of the buy controls visible on a dead stalk.
+
+### D100 - A description too long for its panel scrolls, because shrinking it does not work
+
+**Decision.** A special event description that needs more than the three lines
+reserved for it scrolls a line at a time on hover, and pins on click - the same
+gesture a stalk's name already uses. `ScrollingLabel` is the vertical cousin of
+`MarqueeLabel`.
+
+**Three of the ninety need it.** Measured with the real label at the real
+width: twenty-one descriptions fit one line, forty-nine fit two, seventeen fit
+three, two need four and one needs five. Eighty-seven never move.
+
+**Shrinking the font was tried first and was the owner's preference.** It does
+not work, and the reason is worth keeping because the arithmetic says it should.
+
+Terminus advances by whole pixels at every *even* size - 8 gives a 4x9 cell, 10
+a 5x11, 12 a 6x12 - so by the character-grid rule in D40 those look like legal
+sizes. They are not. The font has no designed shape below 12, so a smaller size
+is rasterised from outlines with hinting off and comes out mangled: at 10 the
+letter `m` collapses into a solid block and `i` loses its dot into the stem; at
+8 apostrophes disappear entirely, turning "day's" into "day s". Rendered and
+looked at, not inferred - a whole-number *advance* is not the same thing as a
+whole-number *glyph*, and that is the trap.
+
+**Size 10 would not have been enough anyway.** It fixes one of the three. Only
+size 8 fits all ninety, and 8 is the unreadable one. So the font route could
+not solve the problem even if the quality were acceptable.
+
+**Why not simply reserve more lines.** Four lines still leaves one clipped and
+five would take the top bar to about a quarter of a 360-pixel screen. The three
+outliers are 170 characters and more where the rest are far shorter; sizing the
+whole interface around them is the wrong trade.
+
+**The whole text is in the tooltip too**, for a player who would rather read it
+at once than wait for it.
+
+**What it rules out.** Font sizes below 12 anywhere in this interface, for
+anything. And rewriting the three long descriptions to fit, which was the other
+way out and is the author's call rather than a layout fix.

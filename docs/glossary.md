@@ -304,6 +304,15 @@ some two, which makes a letter's strokes uneven.
 **Letterboxing** — the black bars left when the picture cannot fill the window.
 Here they appear whenever the window is not a whole multiple of 640x360.
 
+**Marquee** — a label that scrolls its text sideways, by whole characters, when
+it is too long for its column. Hover to start it, click to pin it. Stalk names
+use it (`MarqueeLabel`).
+
+**Scrolling label** — the same idea down the page instead of across: a block of
+wrapped text that creeps a line at a time when there is more of it than the
+panel reserves. The three longest special event descriptions use it
+(`ScrollingLabel`, decisions.md D100).
+
 ## CRT terms
 
 The optional CRT effect (decisions.md D94) borrows the vocabulary of the

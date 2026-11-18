@@ -35,7 +35,7 @@ signal connection_ended(reason: String)
 
 @onready var _year_label: Label = %YearLabel
 @onready var _mood_label: Label = %MoodLabel
-@onready var _event_flavour: Label = %EventFlavour
+@onready var _event_flavour: ScrollingLabel = %EventFlavour
 @onready var _event_effect: Label = %EventEffect
 @onready var _yeehaw_button: Button = %YeehawButton
 @onready var _yeehaw_note: Label = %YeehawNote
@@ -936,14 +936,14 @@ func _on_game_over(winners: Array[StringName]) -> void:
 # ------------------------------------------------------------------ presentation
 
 func _reset_event_panel() -> void:
-	_event_flavour.text = ""
+	_event_flavour.set_full_text("")
 	_event_effect.text = ""
 
 
 ## Two labels, matching the original: the flavour text, then what it did.
 func _show_event(result: YearResult) -> void:
 	if result.event == null:
-		_event_flavour.text = ""
+		_event_flavour.set_full_text("")
 		_event_effect.text = "No special event this year."
 		_event_effect.remove_theme_color_override("font_color")
 		return
@@ -953,7 +953,10 @@ func _show_event(result: YearResult) -> void:
 		target.definition.display_name if target != null
 		else String(result.event.target_stalk_id)
 	)
-	_event_flavour.text = result.event.flavour_text
+	# Through the label rather than straight onto `text`, so a long description
+	# returns to its first line instead of opening wherever the last one had
+	# been scrolled to. See decisions.md D100.
+	_event_flavour.set_full_text(result.event.flavour_text)
 	_event_effect.text = "%s %s by %d" % [
 		target_name,
 		"rose" if result.event.price_change > 0 else "fell",
