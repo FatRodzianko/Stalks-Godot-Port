@@ -153,10 +153,20 @@ func test_no_source_file_has_a_leftover_placeholder() -> void:
 func test_no_source_file_has_a_debugging_trace_left_in() -> void:
 	# `print()` in shipped code is either a leftover trace or output that
 	# belongs on screen. Tools and tests print freely; `src/` should not.
+	#
+	# **One exemption, kept deliberately narrow.** Host migration happens on
+	# another machine in the seconds after a host walks out, and every way it
+	# fails looks like something else failing - a board that stops updating, a
+	# player who cannot connect, a game that carries on single-handed. Three
+	# faults were diagnosed by guesswork before it had a log. Those lines are
+	# tagged `MIGRATION_LOG` and go to the log file (development.md S10);
+	# nothing else may take this exit. See decisions.md D108a.
 	var offenders: PackedStringArray = _offenders(
 		func(line: String) -> bool:
 			var trimmed: String = line.strip_edges()
 			if trimmed.begins_with("#"):
+				return false
+			if trimmed.begins_with("print(MIGRATION_LOG,"):
 				return false
 			return trimmed.begins_with("print(") or trimmed.contains("[TRACE]")
 	)

@@ -1280,7 +1280,14 @@ players" rather than a bare code.
 ---
 
 ### D68 — A Steam lobby cannot be destroyed, so the host shuts it instead
-**2026-11-15 · Accepted · extends D67**
+**2026-11-15 · Accepted · extends D67 · amended by D104, D105 and D106**
+
+**Amended 2026-11-18.** The fact below is unchanged and is the foundation of
+host migration: a Steam lobby outlives its owner, and Steam promotes another
+member by itself. What changed is the conclusion drawn from it. The sentence
+below saying this game has no host migration and is not getting any was
+reversed by the owner on 2026-11-18 - see D104 - and shutting the lobby down on
+the way out now happens only when the host is the last member in it (D106).
 
 When the host leaves, they call `setLobbyJoinable(false)` and set the lobby's
 `state` to `playing` **before** calling `leaveLobby`. Members are told the host
@@ -3385,6 +3392,16 @@ of the buy controls visible on a dead stalk.
 
 ### D100 - A description too long for its panel scrolls, because shrinking it does not work
 
+**Amended 2026-11-18.** Two parts of this were reported as not working and are
+gone. The **tooltip** repeated the whole description on one unwrapped line, so
+it was redundant for anything short enough to fit and cut off for anything long
+enough to want - "redundant and incomplete", which is exactly right. And the
+**pause before the first step** was two idle ticks, nearly five seconds, which
+is indistinguishable from hovering doing nothing; it is kept for the
+wrap-around and dropped on the way in. The scrolling itself stands, and is now
+tested by stepping it rather than by waiting on a timer.
+
+
 **Decision.** A special event description that needs more than the three lines
 reserved for it scrolls a line at a time on hover, and pins on click - the same
 gesture a stalk's name already uses. `ScrollingLabel` is the vertical cousin of
@@ -3517,6 +3534,12 @@ costs nothing.
 
 ### D103 - Who is in a stalk is public; how much they hold is not
 
+**Superseded in part by D105, 2026-11-18.** The investor list below stands, and
+so does BERRY BONDS keeping its investors to itself. What no longer holds is
+the redaction it was carved out of: position sizes, cash and the loan schedule
+all travel now, because host migration needs every client to hold a whole
+match. Read this for the Investors panel and D105 for what the wire carries.
+
 **Decision.** Clicking a row on the board opens a panel with the company's
 name, a paragraph about it, and **Investors** - the players holding it, by
 name. The host sends every player the list of companies each other player is
@@ -3548,6 +3571,22 @@ something to lay out and so there is somewhere for the real ones to go; writing
 them is the owner's, like every other line of the game's voice. A stalk with no
 description shows "No description." rather than an invented one.
 
+**BERRY BONDS never names its investors.** Added 2026-11-18 on the owner's
+instruction: it is the risk-free instrument everybody parks money in, and who
+is sitting in the safe haven is nobody's business - that is what a safe haven
+is. Who has bet on a *company* is exactly what the rest of the board is for.
+
+**Driven by a flag on the resource, not a check against the id in code.** The
+original matched stalks by comparing display strings and needed a hardcoded
+BERRY BONDS case for it, which is the mistake this port avoids everywhere
+else. `investors_are_anonymous` sits beside the dividends, so a future
+instrument that wants the same treatment sets it and needs no code change.
+
+**It says the same whether or not anybody holds it.** "Nobody owns any yet"
+where the truth is "we are not telling you" would be a lie, and a player could
+read the difference between the two messages to work out the very thing being
+withheld.
+
 **Clicking the name opens the panel, and that cost the name's old trick.**
 Reported from play straight after this shipped: the name is the most obvious
 part of a row to click and it did nothing, because `MarqueeLabel` consumed the
@@ -3560,3 +3599,403 @@ does better.
 owner. And a per-match toggle for this: the owner chose it plainly over the
 "open book versus hidden holdings" option the porting plan had recommended, so
 that recommendation is settled rather than outstanding.
+
+
+### D104 - Steam picks the new host; every client only asks who it is
+
+When the host left a Steam game, everybody else was sent back to the title
+screen. That is the behaviour `_on_steam_lobby_member_left` was written for and
+its own comment admitted it: "this game has no host migration, so their
+departure ends the match for everybody."
+
+**Steam already solves the hard half.** A Steam lobby outlives its owner -
+there is no way to destroy one, as D68 records - and when the owner leaves,
+Steam hands ownership to another member by itself. So there is no election to
+run and nothing for the remaining players to agree on. Each one asks Steam the
+same question, gets the same answer, and acts on it: *am I the owner now?*
+
+The owner's Unity game does exactly this (`LobbyHostMigration.SteamMoveRoutine`
+polls once a second for up to twenty seconds, then either starts hosting or
+connects to whoever Steam named), and it is the right shape for the reason
+above rather than because it was there first.
+
+**The decision is a class with no Steam in it.** `LobbyMigration` is told who
+this player is, who left, and who Steam currently says owns the lobby; it
+answers `WAITING`, `BECOME_HOST`, `JOIN_NEW_HOST` or `GAVE_UP`. That split
+exists because **none of the plumbing can be tested here** - it needs two Steam
+accounts on two machines - so everything that can be got wrong without a second
+machine is put where a test can reach it. `test_lobby_migration.gd` covers it.
+
+Two details that are easy to get wrong and are therefore tested:
+
+- **The departed host counts as "not decided yet".** Steam goes on reporting
+  the leaver as the owner for a moment after they have gone, and taking that at
+  face value means trying to reconnect to the player who just left.
+- **An answer after the deadline is still an answer.** The twenty seconds are
+  for a lobby that never replies, not a slow one.
+
+`Main` polls every half second rather than every frame, and ignores the
+session's own `connection_ended` while a migration is running - the same
+departure arrives twice, once from Steam and once from the dying connection,
+and acting on the second would drop the player onto the title screen while a
+new host was being found for them.
+
+**What it rules out.** Electing a host among the peers, and any notion of a
+dedicated server. Also direct (non-Steam) play: ENet has no lobby to hand on,
+so a direct match still ends when its host leaves, and says so.
+
+
+### D105 - Every client holds the whole match, so any of them can host it
+
+Reverses the redaction half of D103. Decided 2026-11-18, by the owner, in these
+terms: this is "a very simple and casual game that is just betting on a random
+number generator", so secrecy is not important - but "a player shouldn't be able
+to change data for another player", so **integrity is**.
+
+Those two sentences settle the design, because the two things had been
+conflated. The host sends every client a complete snapshot now: everybody's
+cash, share counts and loan schedule, not only their own.
+
+**Why it had to change for migration.** A new host carries the match on from a
+copy it already holds. A redacted copy is not a match - it is missing every
+other player's position - so a client promoted to host would have had to ask
+the remaining players what they owned.
+
+That was buildable and was half-built before being thrown away. Net worth is
+public and exactly derivable from cash, prices, shares and debt, all integers,
+so a new host could have checked each claim against the figure already on the
+board and caught a liar. It was dropped because:
+
+- **The departed host's own half is unrecoverable** however clever the checking
+  is. Nobody was ever told it. So that player's position had to be frozen or
+  written off regardless, which is a rule invented to serve a mechanism.
+- **It is a protocol, a round of waiting, and a failure mode** for every
+  player, every migration, to reconstruct something that could simply have
+  been sent in the first place.
+- Keeping cash secret was buying nothing anybody wanted. The game's own board
+  publishes net worth, which is the number players actually watch.
+
+**What integrity means here, and what it does not.** The host still owns every
+rule. A client sends requests - "buy 5 of X" - and the host validates them
+against its own state; nothing a client says about a position is believed, its
+own included. Seeing a number and being able to change it are different powers
+and only the first was given away. `test_networked_session.gd` asserts both
+halves: a client ends up holding a rival's real cash, and cannot spend it.
+
+**What changed in the code.** `StateSync.encode_state` no longer takes a
+recipient and the host builds one snapshot for everybody instead of one each.
+`PlayerState.invested_in` and the wire's `has_loan` are gone - both were the
+public shadow of a field that now travels in full - and `invests_in` is simply
+"do they hold any". `apply_player` overwrites rather than tiptoeing round
+absent keys.
+
+**The random stream's position travels too.** A match is reproducible from its
+seed *plus the number of draws taken off it*. Seeded afresh from `rng_seed`, a
+new host would deal year one's rolls out again in year six. So `rng_state`
+rides in every snapshot and `MatchAuthority.adopt_rng_state` picks the stream
+up where the departed host left it. Zero is not a reserved value - a freshly
+seeded generator sits somewhere arbitrary - so a new host adopts whatever it is
+given rather than testing for "unset".
+
+**A lobby is re-hosted; a match is taken over.** Nobody in a lobby has a
+position yet, so there is nothing to preserve and the simplest correct thing is
+a fresh lobby with the same settings, which the others rejoin as they would any
+new game. A match in progress goes through `HostSession.take_over`, which wraps
+the client's own `GameState` in a `MatchAuthority` and closes the lobby.
+
+**Returning players are recognised by Steam, not by what they say.** This is
+the rejoin D47 deferred, and it was deferred for exactly the reason it is now
+possible: handing a slot back hands over its cash, holdings and loan, so "is
+this the same person" must be answered by something the arriving client does
+not get to choose. A Steam ID comes with the connection; a display name is
+typed in by whoever is connecting. A connection with no Steam reclaims nothing,
+because matching 0 against 0 would let any arrival walk into the richest vacant
+slot. This also fixes an ordinary mid-match dropout, which previously could not
+come back at all.
+
+Everybody except the new host starts vacated and reclaims their slot as they
+arrive. That is not tidiness: the year gate counts every active player, so
+leaving them in would hang the match on people who have not yet had a chance to
+reconnect - the deadlock D47 is about.
+
+**Two things this does not do, stated rather than implied.**
+
+- **Whoever Steam promotes is trusted.** They could have tampered with their
+  own copy before promoting it. Steam chooses who that is, not this game. There
+  is a cheap check available and not built: every client now holds an identical
+  snapshot, so each could compare the new host's first one against what it
+  already had and object. It is not built because a false positive would
+  disconnect an honest player, and nothing has been seen to justify it yet.
+- **A migrating player sees a frozen screen for up to twenty seconds** with
+  nothing on it saying why. Telling them needs a new piece of UI and its words
+  are the owner's to write, so an empty wait was chosen over an invented
+  message.
+
+**What it rules out.** Per-recipient redaction, and the `GameSettings`
+open-book toggle Phase 8 recommended - there is no toggle, and the book is
+open.
+
+
+### D106 - A lobby that is changing hands must not be shut down on the way out
+
+The first fault reported from playing D104/D105 over two accounts: the lobby
+migrated correctly and the new host could start the match, but **the migrated
+lobby was not listed in the browser and nobody could join it.**
+
+**The departing host had killed it on the way out.** D68 established that Steam
+offers no way to destroy a lobby - one exists until its last member leaves -
+so a host leaving shut theirs down as far as Steam allows, by both available
+means: the `state` key the browser's filter reads, and `setLobbyJoinable`.
+That was right when a host leaving ended the game. It is sabotage when the
+lobby is about to change hands.
+
+So `leave_lobby_as_host` now asks how many members are left. One (just the
+host) is a lobby dying, and is shut down as before. More than one is a lobby
+changing hands, and is left exactly as it is for them to migrate into.
+
+**And the new host advertises it again anyway.** Belt and braces, because the
+departing player may have shut it down before this fix, or crashed, or raced
+the member count. A new host taking over a *lobby* rewrites `game`, `state` and
+the settings and sets it joinable; that is `reopen_lobby_to_the_browser`.
+Rewriting all of it rather than only the one key that was wrong is deliberate -
+the lobby is being advertised from scratch, and a key the previous owner
+cleared would otherwise leave a row the browser filters out or cannot label.
+
+**The second finding, which the report did not name but follows from it.**
+Closing a lobby by *both* means also blocks a returning player, because
+`setLobbyJoinable(false)` stops anybody getting in at all - invite or stale
+lobby id included. The mid-match reclaim D105 built was therefore unreachable:
+a dropped player comes back through the same lobby, and Steam's door was
+bolted. The two mechanisms are now used separately:
+
+| | Listed in the browser | Joinable |
+|---|---|---|
+| Lobby, waiting to start | yes | yes |
+| Match under way | no | **yes** |
+| Host left, nobody else there | no | no |
+
+A match under way staying joinable is the point: **the host is the gatekeeper,
+not Steam.** An arrival is matched against the roster by Steam ID and either
+reclaims their seat or is turned away with a reason (`_slot_to_reclaim`), which
+is a better answer than a silent Steam-level refusal and is the only way back
+in for somebody whose connection dropped.
+
+**What it rules out.** Treating "the host left" as one event. It is two, and
+which one it is depends on whether anybody else is still in the lobby.
+
+**Not covered by the suite.** All three calls are Steam calls, and the suite
+must not reach for Steam (testing.md). Only the guards in front of them are
+tested - that a local game or a client with no lobby calls them harmlessly.
+The behaviour is manual-testing.md A9.
+
+
+### D107 - Migration needs two waits, and the Unity game already knew both
+
+The second fault from playing D104: after the lobby migrated, **the new host
+could not be connected to.** It hosted without error and played perfectly well
+by itself, and every attempt to join it sat on "connecting" until it gave up.
+
+Two causes, and the owner's Unity game carries a named constant for each. That
+implementation was read for its *decision* logic when D104 was written - who
+takes over, and the twenty-second deadline - and these two numbers were not
+carried across with it. They should have been: a constant with a name like
+`NewHostStartDelaySeconds` is somebody recording a fault.
+
+**1. A listen socket opened in the same frame as the old peer closed comes up
+dead.** The new host tore its client connection down and called
+`host_with_lobby` immediately afterwards. Steam had not finished letting go of
+the virtual port, and what came back was a peer that reported no error, served
+its own process correctly, and accepted nobody. `NEW_HOST_START_SECONDS` is
+half a second between the two, matching `NewHostStartDelaySeconds`.
+
+That symptom is worth remembering because it is so misleading: **the new host
+sees a working game.** Nothing on that machine is wrong. The fault is only
+visible from another one.
+
+**2. One attempt to reach the new host is not enough.** Steam needs a moment to
+route to a host that has only just started listening, so an attempt that lands
+too early fails for good - the client waits out its own join timeout and gives
+up. The port made exactly one attempt and then stopped. It now makes another
+on every poll, once a second until one connects or the twenty seconds run out,
+which is what `SteamMoveRoutine` does by calling `JoinSteamHost` on every turn
+of its loop.
+
+Making this work needed two smaller corrections. An attempt during a migration
+**keeps the Steam lobby** rather than leaving it, because the lobby is where
+the new host is rather than something being left behind; it used to leave,
+which is nonsense on an attempt that is about to be retried. And it **swaps no
+screen**, because a half-built session would otherwise put an empty lobby or an
+empty market up once per attempt. `Main` watches for the welcome instead and
+shows the right screen when one actually arrives.
+
+**What it rules out.** Treating a transport as available the instant it reports
+no error. Both of these are the same lesson: over Steam, "no error" and "ready"
+are different things, and only time tells them apart.
+
+**Still not covered by the suite**, for the usual reason - it is all Steam. The
+decision core and the takeover are unit-tested; the waiting is not.
+
+
+### D107a - "... MORE" sits in a box of its own, which is a fallback, not the ask
+
+**What was asked for: a button that reads as part of the description**, at the
+very end of it, the way "...more" ends a truncated paragraph on a web page.
+The owner's words: it "should be a part of the special event text at the very
+end, not its own separate section blocking all text from its large block."
+What is built is not that. It is what the owner specified *after* two failed
+attempts, prefaced with "since you cannot do this". Recording that honestly
+matters, because a successor reading only the result would think the result
+was the requirement.
+
+**Attempt one: a column in the row.** The button was a second child of an
+`HBoxContainer` beside the description. An HBoxContainer gives a sibling its
+width for the full height of the row, so a button one line tall took a column
+out of *every* line: the first line ended in mid-air with an empty block
+beside it. Moving it between rows changed which text it spoiled rather than
+stopping it.
+
+**Attempt two: an overlay inside the label.** Anchored to the label's bottom
+right corner it took no width, but it sat on top of the text - a few pixels
+low, covering the end of the second line. Snapping its left edge to the
+character grid stopped it bisecting a letter; it did not stop it covering
+them.
+
+**What is built now**, to the owner's drawing: the button keeps a box of its
+own in the row and sits at the *foot* of that box, so it lines up with the
+second line of the description rather than the first. Nothing is covered and
+the description is one column narrower than it would be with no button.
+
+**Why the real thing was not built, for whoever picks this up.** A `Label`
+cannot do it. The button has to occupy space on the *last visible line only*,
+and a Label offers no way to say that - it wraps all lines to one width. The
+tool that can is `RichTextLabel`, where the button becomes an inline
+`[url=more]` at the end of the text and `meta_clicked` replaces `pressed`.
+
+The catch, and the reason it was dodged twice: **the inline marker has to go
+at the end of the *visible* text, not the end of the description**, so the
+text must be truncated by hand. That means laying it out, asking
+`get_line_range(1)` where the second line ends, cutting there and appending
+the marker - a two-pass measure-then-set, redone on every resize. And it
+fights the hover-scrolling from D100, which needs the whole description in the
+label: scrolling and truncation cannot both be true at once, so hovering would
+have to restore the full text and leaving would have to re-truncate it.
+
+That is a real piece of work rather than an impossibility, and the fallback
+above is what is in the game until somebody does it.
+
+Two tests in `test_gameplay_screen.gd` pin the fallback: the button having a
+box of its own beside the description, and its bottom lining up with the
+description's. `tools/more_shot.gd` renders the strip with a description too
+long for it - this was a fault nobody could see in a passing test and anybody
+could see in a picture, which is the whole argument for that tool existing.
+
+
+### D108 - The orchestration is where the faults were, so that is what is tested now
+
+Three host-migration faults were reported from play in a row - D106, D107, and
+the one below - and **the suite caught none of them.** It had 759 tests at the
+time, including fifteen on migration. Worth writing down properly, because the
+lesson is not "write more tests".
+
+**Every one of the three was in `Main`.** Not in `LobbyMigration`, which
+decides who takes over and is tested thoroughly, and not in
+`HostSession.take_over`, which continues a match and is tested thoroughly.
+They were in the orchestration between those two: noticing the host had left,
+waiting the right amount, tearing down in the right order, retrying, and
+choosing what to tell Steam about the lobby. That code does not call the Steam
+API. **It only acts on answers that come from it** - who owns the lobby, which
+member left - and that is precisely why it was testable all along and was not
+being tested.
+
+The third fault is the clearest example. The reconnect check asked "is the
+client connected?", and the session still mounted when the host leaves is a
+client that has joined - it joined the host who just left. So the migration
+declared success on its first poll, before attempting anything, and stopped.
+In play that looked like no migration at all: the lobby kept showing the
+departed player as host, anybody trying to rejoin sat on "connecting" because
+nobody had taken over, and eventually the dead connection timed out. One
+boolean - "has *this migration* tried yet" - is the whole fix.
+
+**What changed, beyond the fix.** Two seams, both of which exist only so the
+orchestration can be driven without Steam:
+
+- `StubSteamService` answers `is_running`, `current_lobby`, `lobby_owner` and
+  the rest, and *records* the lobby-visibility calls rather than making them.
+  What `Main` chose is the testable part; what Steam would do with it is not.
+- `SteamTransportSource` is where `Main` gets a `SteamTransport` from. It
+  exists because calling the real Steam API uninitialised does not return an
+  error - **it takes the process down with a signal 11**, which is what
+  happened the first time a test reached that line. The stub hands back an
+  ordinary engine peer, so everything above the transport runs for real.
+
+`test_main_migration.gd` then drives the whole sequence: the host leaving,
+Steam not having decided, Steam still naming the leaver, being made the owner,
+standing down and hosting a turn later, following somebody else and retrying,
+giving up after twenty seconds, and the dying connection not cancelling any of
+it. **It was checked by reinstating the fault**: six of its thirteen tests
+failed, including the one named for it. A test that has never failed is not
+evidence (testing.md says this already).
+
+It also covers D106 and D107 in passing - that a migrated lobby is advertised
+again, that a match taken over is hidden instead, and that standing down and
+hosting happen a turn apart rather than together.
+
+**What it rules out.** "It needs Steam, so it cannot be tested." That was true
+of about four lines and was being used to excuse several hundred. What still
+genuinely cannot be tested is what Steam does with a lobby and whether a peer
+is reachable; that remains manual-testing.md A9.
+
+
+### D108a - Migration gets a log, and the no-print rule gets one exemption
+
+**Host migration is the one thing in this game that cannot be watched.** It
+happens on somebody else's machine, in the seconds after a host walks out, and
+every way it fails looks like something else failing: a board that stops
+updating, a player stuck on "connecting", a game that carries on single-handed.
+Three faults (D106, D107, D108) were diagnosed by reasoning from symptoms,
+twice wrongly, because nothing recorded what the code actually did.
+
+So the migration path now prints what it is doing - the host leaving, who Steam
+named, standing down, hosting, reconnecting, giving up - and those lines land in
+the log file (development.md S10), which is the only account anybody has of a
+handover that has already happened.
+
+**This breaks a rule that is checked, so the check was amended rather than
+dodged.** `test_conventions.gd` forbids `print()` in `src/`, on the grounds
+that it is either a leftover trace or output that belongs on screen. This is
+neither. The exemption is keyed to the `MIGRATION_LOG` constant, so it covers
+these lines and cannot be widened by accident - any other `print` still fails
+the suite.
+
+**What it rules out.** Diagnosing a migration from what the player saw. The
+question "did it migrate, or did it quietly become a single-player game?" is
+answerable from the log and was not answerable from the screen.
+
+
+### D109 - The host marker follows the host, instead of meaning "first in the list"
+
+Found while answering a question about what the board shows after a host
+leaves, and worth recording because it was wrong for a reason that only
+migration could expose.
+
+`GameState.host_player_id()` returned `players[0].id`. That was correct for as
+long as the host never changed: the host made the match, so they were slot
+zero, so first-in-the-list was the host.
+
+Migration breaks both halves of that. The new host can be any slot, and the
+player who left is taken out of `players` entirely (D47) - so the first player
+still in the match is just whoever is left, and the board hangs "(Host)" on
+them.
+
+**It is invisible with two players**, which is how it survived: when one of two
+leaves, the survivor is both the new host and the only entry, so the label is
+right by accident. From three players up it names a bystander.
+
+So `GameState.hosted_by` is set by whoever is actually hosting - in
+`HostSession.host` and again in `take_over` - and travels in the snapshot, with
+the old first-player rule kept as the fallback for a local game, where it is
+right by definition.
+
+**What it rules out.** Deriving anything about *roles* from the order of
+`players`. That list is the active roster and migration makes it change shape;
+it answers "who is playing", not "whose machine this is".

@@ -371,47 +371,86 @@ Three things make it work, and all three are easy to get wrong:
    is one API and Godot polls it; a test harness holding two must call `poll()` on
    each itself.
 
-### 5.3 What a client is allowed to know
+### 5.3 What a client is told
 
-**Revised 2026-11-17 (D103): which companies a player is in is public now.**
-The host sends every client the list of stalks each player holds, without the
-amounts. What follows describes the line as it stands - cash, the loan
-schedule and the size of any position are still redacted per recipient.
+**Revised 2026-11-18 (D105): everything.** The host sends every client a
+complete snapshot of the match - every player's cash, share counts and loan
+schedule, not only their own. This section described a partial replica until
+that date; the history is in D103 and D105.
 
-A client holds a **partial replica**, not a copy. `StateSync` encodes the match
-once per recipient and redacts as it goes:
+A client therefore holds a **full replica**. `StateSync.encode_state` takes no
+recipient, and the host builds one snapshot and sends the same one to everybody.
 
-| | Sent to its owner | Sent to everybody else |
+| | Sent |
+|---|---|
+| Cash | yes |
+| Holdings, with amounts | yes |
+| Loan balance, schedule, missed payments | yes |
+| Net worth | yes |
+| Display name, ready flag, bankruptcy, Steam ID | yes |
+| How far the match's random stream has run | yes |
+
+**Two reasons, and the second is the one that decided it.** There was never
+much worth protecting - the board already publishes net worth, which is the
+figure players watch, and nobody plays a game of bets on a random number
+generator differently for knowing a rival's cash. And **host migration needs
+it**: when the host leaves, one of the remaining players continues the match
+from the copy they already hold (§5.5), and a redacted copy is not a match.
+
+**This is about visibility, not authority.** The host owns every rule. A client
+sends requests - "buy 5 of X" - and the host validates them against its own
+state and applies them; no client writes anybody's position, its own included.
+That line did not move, and it is the one the owner cared about: secrecy is not
+important in this game, integrity is.
+
+Consequences worth knowing:
+
+- `apply_player` **overwrites** the recipient's values. A snapshot is complete,
+  so there is no "was this field withheld" case to reason about, and the
+  tiptoeing the old partial entries required is gone.
+- A client can answer any question about any player locally, which is what the
+  Investors panel reads (`PlayerState.invests_in`).
+- The rules are asserted in `tests/unit/test_state_sync.gd` and, end to end
+  over a real connection, in `tests/unit/test_networked_session.gd`.
+
+### 5.5 When the host leaves
+
+A Steam lobby outlives its owner, and Steam hands ownership to another member
+by itself (D68, D104). So migration is not an election: every client asks Steam
+who owns the lobby now and acts on the answer.
+
+- `LobbyMigration` (src/net/lobby_migration.gd) is that decision with no Steam
+  in it - `WAITING`, `BECOME_HOST`, `JOIN_NEW_HOST`, `GAVE_UP` - and is the
+  part that can be tested without two Steam accounts.
+- `Main` polls Steam every half second, holds on to the match while it waits,
+  and ignores the dying session's own `connection_ended` meanwhile.
+- The new owner calls `HostSession.take_over`, which wraps its own `GameState`
+  in a `MatchAuthority`, adopts the random stream's position and closes the
+  lobby. In a lobby that had not started, it re-hosts instead: there is no
+  position to preserve.
+- Everybody else reconnects and **reclaims their own slot**, matched by Steam
+  ID. Their `PlayerState` was never destroyed, only set aside (D47).
+
+**The lobby itself has to be told what it now is** (D106). Steam offers two
+separate switches and this game uses them separately: the `state` key decides
+whether the browser *lists* a lobby, and `setLobbyJoinable` decides whether
+anybody can get in at all.
+
+| | Listed | Joinable |
 |---|---|---|
-| Cash | yes | **no** |
-| Holdings | yes | **no** |
-| Loan balance, schedule, missed payments | yes | **no** |
-| *That* they have a loan | yes | yes |
-| Net worth | yes | yes |
-| Display name, ready flag, bankruptcy | yes | yes |
+| Lobby, waiting to start | yes | yes |
+| Match under way | no | yes |
+| Host left, nobody else there | no | no |
 
-Net worth is public because the rankings board exists to show it. Cash and
-holdings are not, because knowing exactly what a rival holds would change how the
-game is played.
+A match under way stays joinable because the host is the gatekeeper, not Steam:
+an arrival is matched against the roster by Steam ID and either reclaims a seat
+or is turned away with a reason. That is also the only way back for a player
+whose connection dropped. And a host leaving is two different events - the last
+player out is a lobby dying, and is shut down; a host leaving others behind is a
+lobby changing hands, and is left alone.
 
-**This is expected to change.** The owner wants players to be able to see who owns
-what, in some form — a panel, a hover on the rankings, or a tooltip on a stalk row.
-That makes `holdings` public and is a deletion from `StateSync.encode_player`
-rather than a redesign, ideally behind a `GameSettings` toggle since open-book and
-hidden-holdings are different games. Cash and the loan schedule are a separate
-question. See porting-plan Phase 8 — and note that the tests in
-`test_state_sync.gd` encode today's rule, so they are the thing to update first.
-
-Two consequences worth knowing:
-
-- Applying a redacted entry **leaves the recipient's local values alone** rather
-  than zeroing them. A client holds no real figure for a rival's cash, and zeroing
-  would make every rival look broke.
-- Because the redaction happens at encode time, per recipient, a client cannot be
-  sent data it should not have even by a host bug in the broadcast loop — there is
-  nothing private in the payload to leak. The rules are asserted in
-  `tests/unit/test_state_sync.gd`, where a leak is visible; in play it would not
-  be.
+What cannot be verified here: all of the Steam plumbing. See
+docs/manual-testing.md.
 
 ### 5.4 Transport is a choice, not a migration
 

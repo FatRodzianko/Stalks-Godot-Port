@@ -54,7 +54,7 @@ func test_a_steam_account_survives_the_snapshot() -> void:
 	var state: GameState = _two_players()
 	state.players[1].steam_id = 76561197960287930
 
-	var encoded: Dictionary = StateSync.encode_state(state, &"p0")
+	var encoded: Dictionary = StateSync.encode_state(state)
 	var received: GameState = StalksFixture.make_state(10, 2)
 	StateSync.apply_state(received, encoded, ContentLibrary.load_from())
 
@@ -67,7 +67,7 @@ func test_a_steam_account_is_not_redacted_from_rivals() -> void:
 	var state: GameState = _two_players()
 	state.players[1].steam_id = 7656119796028793
 
-	var seen_by_murph: Dictionary = StateSync.encode_state(state, &"p0")
+	var seen_by_murph: Dictionary = StateSync.encode_state(state)
 	var rival: Dictionary = seen_by_murph["players"][1]
 
 	assert_eq(int(rival.get("steam_id", 0)), 7656119796028793)

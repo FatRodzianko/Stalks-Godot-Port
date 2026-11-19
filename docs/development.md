@@ -8,6 +8,7 @@ described, that is a bug in this document worth fixing.
 
 ---
 
+
 ## 1. What you need
 
 | Requirement | Version | Notes |
@@ -473,3 +474,27 @@ the alias in §2.
 **A test passes locally but behaves oddly in the editor**
 The editor's GUT panel and the CLI use the same runner, but the editor keeps scripts
 loaded between runs. Restart the editor if results look stale.
+
+---
+
+## 10. Where the game writes its log
+
+Godot writes a log file for an exported build, which is the quickest way to see
+what a player's copy actually did. On Windows:
+
+```
+%APPDATA%\Godot\app_userdata\Stalks Stalks Stalks\logs\
+```
+
+`godot.log` is the current run. Older runs sit beside it with the date and time
+in the name, five of them before the oldest is dropped. The folder is the
+project's `user://` directory, so it is also where the settings file lives.
+
+This is on by default for PC exports and nothing in `project.godot` changes it.
+Editor and `--headless` runs write there too, which means **a test run will
+push a real session's log out of the window** - copy a log worth keeping before
+running the suite.
+
+A build also prints to a terminal if it is started as
+`StalksStalksStalks.console.exe` rather than the plain `.exe`, which is the
+same distinction as the two Godot executables described above.

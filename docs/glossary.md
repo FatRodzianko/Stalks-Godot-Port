@@ -114,6 +114,30 @@ are written this way so they can be tested headlessly.
 in `YearResolver.advance_year()`. The order matters; see
 [architecture.md §3](architecture.md) and [game-rules.md §4.1](game-rules.md).
 
+**Host migration** — carrying a match or lobby on when the host leaves, instead of
+sending everybody back to the title screen. Steam hands lobby ownership to another
+member by itself, so the game only has to ask Steam who the owner is now and act on
+it. See [decisions.md D104](decisions.md).
+
+**Taking over** — what the player Steam promotes does: `HostSession.take_over` wraps
+that player's own copy of the match in a `MatchAuthority` and starts hosting it. The
+copy is already complete, so nothing is asked of anybody.
+
+**Reclaiming a seat** — a returning player being put back into the slot they were
+playing, with the cash, holdings and loan they left. Matched by Steam ID, because a
+display name is typed in by whoever is connecting. See
+[decisions.md D105](decisions.md).
+
+**Vacated** — a player whose connection has gone. They are out of `state.players`,
+and so out of the economy, the standings and the ready gate, but their `PlayerState`
+is set aside rather than destroyed, which is what makes reclaiming possible. See
+[decisions.md D47](decisions.md).
+
+**The stream position** — how far a match's random number generator has run, as
+distinct from its seed. A match is reproducible from the seed *plus* the number of
+draws taken off it, so a new host adopts the position rather than reseeding, or it
+would deal the match's own past out a second time.
+
 **Price model** — a swappable strategy for how a price moves. The current one
 (`RandomRangePriceModel`) is the faithful port; the interface exists so an
 earnings-driven model can replace it later without touching the pipeline.

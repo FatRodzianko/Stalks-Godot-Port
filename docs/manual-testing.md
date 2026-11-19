@@ -612,6 +612,11 @@ Needs two players for the Investors list to be worth looking at.
 14. Click the BUY button on a row rather than the row itself.
 15. Check that buys shares and does **not** open the panel.
 
+16. Open **BERRY BONDS FROM DIE HARD**, whether or not anybody holds it.
+17. Check its Investors section says **Anonymous.** and names nobody.
+18. Buy some BERRY BONDS and open it again.
+19. Check it still says **Anonymous.** and does not name you either.
+
 **What this is for:** seeing who is in what makes the board a place where
 players watch each other. How much they hold is deliberately not shown - see
 decisions.md D103.
@@ -800,6 +805,77 @@ On the title screen:
 14. Close Steam entirely and start the game.
 15. Check the message is absent rather than shown by default.
 
+### A9 - The host leaves and somebody else takes over
+
+**Needs two Steam accounts on two machines.** None of this is covered by the
+suite: the decision about who takes over is tested (`test_lobby_migration.gd`)
+and so is continuing a match from a client's copy
+(`test_host_migration.gd`), but nothing that talks to Steam is. See
+decisions.md D104 and D105.
+
+Expect each handover to take a few seconds, and up to twenty before it gives
+up. A frozen screen during the wait is expected - there is deliberately no
+message on it yet.
+
+In a lobby, before the match has started:
+
+1. Host a Steam game on machine A.
+2. Join it from machine B.
+3. Quit the game entirely on machine A.
+4. Check machine B ends up in a lobby rather than on the title screen.
+5. Check machine B is now the host - it has the Start button.
+6. Check the lobby still shows the same game name.
+7. Start the game on machine A and open Join Game.
+8. Check the migrated lobby is listed. **This is the step that failed first
+   time** - the leaving host used to shut the lobby down on its way out
+   (D106).
+9. Check the listed row shows the right name, year limit and starting cash.
+10. Join it from machine A.
+11. Check A appears in B's lobby as a new player.
+12. Press Start on B.
+13. Check both machines reach the playing screen.
+
+In a match already under way:
+
+14. Host a Steam game on machine A, join from B, and start the match.
+15. On each machine, buy a different stalk, so each player has a position.
+16. Note B's cash, B's holdings, the year, and two or three prices.
+17. Quit the game entirely on machine A.
+18. Check machine B stays on the playing screen.
+19. Check the year is unchanged.
+20. Check the prices are unchanged.
+21. Check B's own cash and holdings are unchanged.
+22. Check A still appears on the board, with the net worth they had.
+23. Check B can buy and sell.
+24. Ready up on B and check the year advances with only B playing.
+25. On machine A, open Join Game.
+26. Check the match is **not** listed - a game under way is unlisted on
+    purpose, and is reached by invite instead (D106).
+
+Coming back after the handover:
+
+27. With B hosting the match from step 17, invite A from B, or use the same
+    lobby A was in.
+28. Check A lands on the playing screen rather than in a lobby.
+29. Check A's cash is the figure it had before A quit.
+30. Check A's holdings are the ones A had before quitting.
+31. Check A is not already readied for the year.
+32. Check the board on B shows A back in the standings.
+33. Check the rankings order has A and B in their original places.
+
+Somebody else arriving mid-match, who was never in it:
+
+34. From a third account not in the match, try to join that lobby.
+35. Check they are turned away with a reason rather than seated.
+36. Check the match on A and B is undisturbed.
+
+With three machines, if available:
+
+37. Host on A, join from B and C, start the match.
+38. Quit on A.
+39. Check B and C both end up in the same match, with one of them hosting.
+40. Check the one that did not become host can still buy and sell.
+
 ### Known gaps, so they are not surprises
 
 - **Achievements are not being tested, on purpose.** They are implemented and
@@ -807,6 +883,20 @@ On the title screen:
   game's, so unlocking one here awards it for real on the tester's Steam
   account. `resetAllStats(true)` is the only undo and it wipes everything.
   See decisions.md D70.
+- **Host migration works, confirmed in play on 2026-11-18** with two accounts
+  on two machines, after failing three times (D106, D107, D108). The logs are
+  the evidence, and they are the reason to keep logging it (D108a): three
+  handovers, in both directions, one of a lobby and two of a match in
+  progress. Each surviving player took over and carried on - "now hosting the
+  moved match as p1" - which is what distinguishes a migration from a game
+  quietly continuing single-handed, and is not distinguishable on screen.
+- **One path has still never run: reconnecting to somebody else.** With two
+  accounts the survivor is always the one Steam promotes, so every real
+  handover so far has taken the BECOME_HOST branch. The JOIN_NEW_HOST branch -
+  Steam names a third player and this one reconnects to them - exists only in
+  `test_main_migration.gd`. Steps 37-40 need the third machine.
+- **Reclaiming a seat has never run either**, for the same reason: nobody has
+  had to come back to a match that carried on without them.
 - **A kick takes a few seconds to land over Steam**, where it is immediate over
   a direct connection. Steam's lobby callbacks are not instant and the game
   waits for them rather than guessing; it is slow, not broken. Observed in the

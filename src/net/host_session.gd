@@ -5,7 +5,7 @@ extends NetworkedSession
 ## Owns the same MatchAuthority that offline play uses, so hosted and single-player
 ## games resolve identically. On top of that it does exactly three things: map
 ## peers to players, run each request through the authority, and push the result
-## out as a redacted per-player snapshot.
+## out as a snapshot of the whole match.
 ##
 ## The host is also a player. Its own requests take the identical path as a
 ## client's — `request_buy` here calls the authority directly rather than going
@@ -61,6 +61,10 @@ var _vacated_player_ids: Array[StringName] = []
 ## slot; once closed, the roster is fixed and a late joiner is turned away.
 var _lobby_is_open: bool = true
 
+## Which roster slot this host plays. Slot zero in a match this host started,
+## and whichever slot they already held in one they took over (`take_over`).
+var _host_player_id: StringName = &""
+
 
 ## Starts listening on `port` with the host as the only player, and the lobby
 ## open.
@@ -98,6 +102,74 @@ static func host(
 	# else's. 0 for a direct connection, which has no Steam at all.
 	if not session._roster.is_empty():
 		session._roster[0].steam_id = steam_id
+		session._host_player_id = session._roster[0].id
+		# So every board knows who is hosting rather than guessing from the
+		# order of the list. See GameState.hosted_by.
+		session._authority.state.hosted_by = session._host_player_id
+
+	var opened: Dictionary = transport.open_server(MAX_CLIENTS)
+	if not String(opened["error"]).is_empty():
+		return {"session": null, "error": String(opened["error"])}
+
+	return {"session": session, "error": "", "peer": opened["peer"]}
+
+
+## Picks a match in progress up on a new host, after the old one walked out.
+##
+## **The state is this client's own copy, not anybody's word for it.** Every
+## client holds a complete snapshot of the match (see the note at the top of
+## `state_sync.gd`), so the player Steam hands the lobby to promotes what it
+## already had and asks nobody for anything. That is what keeps the handover
+## honest: no player can put a figure into this match that the departed host
+## did not put there. Collecting positions from the remaining players instead
+## would have meant believing them, and avoiding that is why the snapshot
+## stopped being redacted. See docs/decisions.md D105.
+##
+## `state` is that copy, `rng_state` is how far its random stream had run, and
+## `host_player_id` is which roster slot the new host plays.
+##
+## **The lobby is closed and everybody else starts vacated.** The match is
+## already under way, so the roster is the one it was played with, and nobody
+## is connected to the new host yet. Each player reclaims their own slot as
+## they arrive (`_slot_to_reclaim`); starting them vacated is also what stops
+## the year gate waiting on players who have not reconnected.
+##
+## Returns `{session, peer, error}`; check `error` first.
+static func take_over(
+	transport: Transport,
+	state: GameState,
+	library: ContentLibrary,
+	host_player_id: StringName,
+	rng_state: int,
+) -> Dictionary:
+	var session: HostSession = HostSession.new()
+	session.name = NODE_NAME
+	session._library = library
+	session._transport = transport
+	session._lobby_is_open = false
+	session._host_player_id = host_player_id
+
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = state.settings.rng_seed
+	var resolver: YearResolver = YearResolver.new(
+		RandomRangePriceModel.new(), library.build_event_pool()
+	)
+	session._authority = MatchAuthority.new(state, resolver, rng)
+	# The match changed hands, so the board's host marker has to move with it.
+	state.hosted_by = host_player_id
+	# Where the departed host had got to, so the match does not deal its own
+	# past out a second time.
+	session._authority.adopt_rng_state(rng_state)
+
+	session._roster = state.players.duplicate()
+	for player: PlayerState in session._roster:
+		if player.id == host_player_id:
+			continue
+		session._vacated_player_ids.append(player.id)
+		# Cleared because a reconnecting player has not readied for anything
+		# yet on this host.
+		player.is_ready = false
+	session._rebuild_active_players()
 
 	var opened: Dictionary = transport.open_server(MAX_CLIENTS)
 	if not String(opened["error"]).is_empty():
@@ -115,7 +187,7 @@ func attach_peer(peer: MultiplayerPeer) -> void:
 	if not multiplayer.peer_connected.is_connected(_on_peer_connected):
 		multiplayer.peer_connected.connect(_on_peer_connected)
 		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
-	_seat(HOST_PEER_ID, _roster[0].id)
+	_seat(HOST_PEER_ID, _host_player_id)
 
 
 ## Ten players maximum, host included. See docs/game-rules.md §2.
@@ -233,6 +305,13 @@ func local_player_id() -> StringName:
 
 func seed_value() -> int:
 	return _authority.seed_value() if _authority != null else 0
+
+
+## How far this match's random stream has run. Travels in every snapshot so
+## that whoever takes the match over next continues it rather than re-rolling
+## its past. See docs/decisions.md D105.
+func rng_state() -> int:
+	return _authority.rng_state() if _authority != null else 0
 
 
 ## Which player a peer controls, or an empty id. Exposed for the lobby and for
@@ -411,15 +490,13 @@ func _advance() -> void:
 	var result: YearResult = _authority.advance_year()
 	var result_data: Dictionary = StateSync.encode_year_result(result)
 
-	# Each peer gets the year's events, which are public, plus a snapshot built
-	# for them alone. The snapshot goes in the same packet so a client can never
-	# render a result against a stale market.
+	# The year's events plus a snapshot, in the same packet, so a client can
+	# never render a result against a stale market.
+	var snapshot: Dictionary = _snapshot()
 	for peer: int in _player_by_peer:
 		if peer == HOST_PEER_ID:
 			continue
-		_rpc_year.rpc_id(
-			peer, result_data, StateSync.encode_state(_authority.state, _player_by_peer[peer])
-		)
+		_rpc_year.rpc_id(peer, result_data, snapshot)
 
 	year_resolved.emit(result)
 	if result.is_final_year:
@@ -448,18 +525,26 @@ func _reject(player_id: StringName, reason: String) -> void:
 		_rpc_rejected.rpc_id(peer, reason)
 
 
-## One snapshot per peer, each redacted for its own recipient. Ten players is at
-## most nine small packets, which is nothing for a game that changes state when
-## somebody clicks a button. See docs/decisions.md D42.
+## The same snapshot to everybody. Ten players is at most nine small packets,
+## which is nothing for a game that changes state when somebody clicks a
+## button. See docs/decisions.md D42.
+##
+## **One snapshot, not one per recipient.** Nothing is redacted any more, so
+## there is nothing to vary between peers - and every client holding the same
+## complete copy is what makes any of them able to take over as host
+## (decisions.md D105).
 func _broadcast_state(changed_player_id: StringName) -> void:
+	var snapshot: Dictionary = _snapshot()
 	for peer: int in _player_by_peer:
 		if peer == HOST_PEER_ID:
 			continue
-		_rpc_state.rpc_id(
-			peer,
-			StateSync.encode_state(_authority.state, _player_by_peer[peer]),
-			String(changed_player_id),
-		)
+		_rpc_state.rpc_id(peer, snapshot, String(changed_player_id))
+
+
+## The match as it stands, including how far its random stream has run, so a
+## client that has to take over as host can carry on rather than restart it.
+func _snapshot() -> Dictionary:
+	return StateSync.encode_state(_authority.state, _authority.rng_state())
 
 
 # ------------------------------------------------------------------- connections
@@ -484,7 +569,16 @@ func _on_introduced(peer_id: int, player_name: String, steam_id: int = 0) -> voi
 		return
 
 	if not _lobby_is_open:
-		_turn_away(peer_id, "That game has already started.")
+		var returning: StringName = _slot_to_reclaim(steam_id)
+		if returning.is_empty():
+			_turn_away(peer_id, "That game has already started.")
+			return
+		_reclaim_slot(peer_id, returning)
+		_rpc_welcome.rpc_id(peer_id, String(returning), _snapshot())
+		player_joined.emit(returning)
+		_broadcast_state(returning)
+		# Their return may be the last thing the year was waiting on.
+		_advance_if_everybody_is_ready()
 		return
 
 	var player_id: StringName = _seat_new_player(peer_id, player_name, steam_id)
@@ -492,12 +586,58 @@ func _on_introduced(peer_id: int, player_name: String, steam_id: int = 0) -> voi
 		_turn_away(peer_id, "That game is full.")
 		return
 
-	_rpc_welcome.rpc_id(
-		peer_id, String(player_id), StateSync.encode_state(_authority.state, player_id)
-	)
+	_rpc_welcome.rpc_id(peer_id, String(player_id), _snapshot())
 	player_joined.emit(player_id)
 	# Everybody else needs the new arrival in their player list.
 	_broadcast_state(player_id)
+
+
+## The slot an arriving player may take back, or an empty id for one who may
+## not.
+##
+## **Steam identity is what makes this safe**, and is why it could not be built
+## until now - D47 deferred it for exactly this reason. Handing a slot over
+## hands over its cash, holdings and loan, so "is this the same person" has to
+## be answered by something the arriving client does not get to choose. A Steam
+## ID is issued by Steam and comes with the connection; a display name is typed
+## in by whoever is connecting. That difference is the whole safeguard.
+##
+## **A connection with no Steam reclaims nothing.** Direct ENet play has
+## `steam_id` 0 and so nothing to recognise anybody by, and letting 0 match 0
+## would let any arrival walk into the richest vacant slot. A match played that
+## way simply ends when its host leaves.
+##
+## This serves an ordinary mid-match dropout as much as a migration: a player
+## whose connection blinks now returns to their own portfolio instead of being
+## turned away, which is the rejoin D47 and porting-plan Phase 8 left open.
+func _slot_to_reclaim(steam_id: int) -> StringName:
+	if steam_id == 0:
+		return &""
+	for player: PlayerState in _roster:
+		if player.steam_id != steam_id:
+			continue
+		if _peer_by_player.has(player.id):
+			# That slot is already being played. A second client signed in to
+			# one Steam account is not somebody returning.
+			return &""
+		return player.id
+	return &""
+
+
+## Puts a returning player back into the match with the position they left.
+##
+## Their `PlayerState` was never destroyed - a dropped player is set aside in
+## `_roster` rather than thrown away (D47) - so there is nothing to rebuild. It
+## is a matter of seating their new peer and putting them back on the active
+## roster.
+func _reclaim_slot(peer_id: int, player_id: StringName) -> void:
+	_vacated_player_ids.erase(player_id)
+	var player: PlayerState = _player_in_roster(player_id)
+	if player != null:
+		# They were not here for whatever the others have readied for.
+		player.is_ready = false
+	_seat(peer_id, player_id)
+	_rebuild_active_players()
 
 
 ## Creates a fresh player for an arriving peer, or an empty id if the match is

@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+[gd_resource type="Resource" script_class="StalkDefinition" format=3 uid="uid://deimpaomnif84"]
 
-[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_210u2"]
-[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_pqjo0"]
+[ext_resource type="Script" uid="uid://b4u2r4nw06mfj" path="res://src/data/special_event_definition.gd" id="1_210u2"]
+[ext_resource type="Script" uid="uid://ci8lb28f2a7dc" path="res://src/data/stalk_definition.gd" id="2_pqjo0"]
 
 [sub_resource type="Resource" id="Resource_nmndn"]
 script = ExtResource("1_210u2")
@@ -82,7 +82,7 @@ price_change = 15
 script = ExtResource("2_pqjo0")
 id = &"teamsters"
 display_name = "Teamsters Pension Fund"
-description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+description = "We're a pension fund. We aren't associated with the mob. Why? Are you? If you are let me know I got something for ya."
 ticker = &"TEAM"
 bear_change = Vector2i(15, 40)
 bull_change = Vector2i(0, 15)

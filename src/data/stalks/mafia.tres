@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+[gd_resource type="Resource" script_class="StalkDefinition" format=3 uid="uid://cx4xv42kmkrf6"]
 
-[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_pb4jj"]
-[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_srju3"]
+[ext_resource type="Script" uid="uid://b4u2r4nw06mfj" path="res://src/data/special_event_definition.gd" id="1_pb4jj"]
+[ext_resource type="Script" uid="uid://ci8lb28f2a7dc" path="res://src/data/stalk_definition.gd" id="2_srju3"]
 
 [sub_resource type="Resource" id="Resource_q3xeg"]
 script = ExtResource("1_pb4jj")
@@ -82,7 +82,7 @@ price_change = 15
 script = ExtResource("2_srju3")
 id = &"mafia"
 display_name = "Mafia HUD Scam"
-description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+description = "Hey, you! Yeah, you! You want in on this? It's easy. Tell all your poor schmuck friends you gonna modify their loans and shit. Small fee, but then easy money. You won't want to say no. They should, but they won't, and you know it, asshole."
 ticker = &"MAFIA"
 bear_change = Vector2i(5, 25)
 bull_change = Vector2i(5, 15)

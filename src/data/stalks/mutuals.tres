@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+[gd_resource type="Resource" script_class="StalkDefinition" format=3 uid="uid://s0xg4d1dnitr"]
 
-[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_h58ci"]
-[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_qd61r"]
+[ext_resource type="Script" uid="uid://b4u2r4nw06mfj" path="res://src/data/special_event_definition.gd" id="1_h58ci"]
+[ext_resource type="Script" uid="uid://ci8lb28f2a7dc" path="res://src/data/stalk_definition.gd" id="2_qd61r"]
 
 [sub_resource type="Resource" id="Resource_3h2y4"]
 script = ExtResource("1_h58ci")
@@ -82,7 +82,7 @@ price_change = 5
 script = ExtResource("2_qd61r")
 id = &"mutuals"
 display_name = "My Mutuals and Me Inc."
-description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+description = "We here, we mutual friends of friends, we may not know one another. No. We may not have met before, or we may have, we don't really know. No. What we do know, is our friend is never coming, are they?"
 ticker = &"MUTL"
 bear_change = Vector2i(0, 10)
 bull_change = Vector2i(0, 5)

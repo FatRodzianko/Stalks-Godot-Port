@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+[gd_resource type="Resource" script_class="StalkDefinition" format=3 uid="uid://k0cw3c3y60sl"]
 
-[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_2x7yb"]
-[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_jxek0"]
+[ext_resource type="Script" uid="uid://b4u2r4nw06mfj" path="res://src/data/special_event_definition.gd" id="1_2x7yb"]
+[ext_resource type="Script" uid="uid://ci8lb28f2a7dc" path="res://src/data/stalk_definition.gd" id="2_jxek0"]
 
 [sub_resource type="Resource" id="Resource_ny6y7"]
 script = ExtResource("1_2x7yb")
@@ -82,7 +82,7 @@ price_change = 10
 script = ExtResource("2_jxek0")
 id = &"monorail"
 display_name = "North Haverbrook MONORAIL"
-description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+description = "Have you ever been on a train and thought, \"isn't there one too many rails here?\" It's not because you stopped taking your medication, it's because you're a God damned genius! One rail! Half the cost (on rails)! Who could say no to that, Mr. Mayor? And think what you can do with all the left over rails!"
 ticker = &"MONO"
 bear_change = Vector2i(5, 30)
 bull_change = Vector2i(0, 20)

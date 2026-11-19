@@ -649,14 +649,67 @@ Three things the owner has asked for that are **not** port work: the original di
 none of them. Recorded here with enough reasoning to act on, and deliberately not
 started, so the port ships first.
 
-### Public holdings — seeing who owns what — **partly done 2026-11-17**
+### Public holdings — seeing who owns what — **done 2026-11-18**
 
-**The membership half is built** (D103): a stalk's row opens a panel listing
-the players holding it, and the host puts that membership on the wire. What is
-below was written before that and described sending the amounts as well, which
-the owner decided against. The `GameSettings` toggle it recommends is settled
-rather than outstanding - there is no toggle, and holdings-membership is always
-public.
+**The membership half shipped first** (D103): a stalk's row opens a panel
+listing the players holding it. **The amounts followed on 2026-11-18** (D105),
+not because the feature asked for them but because host migration did - a new
+host continues the match from a client's copy, and a redacted copy is not a
+match. The owner settled it in one line: secrecy is not important in this game,
+integrity is.
+
+So the wire now carries every player's cash, holdings and loan schedule, and
+the `GameSettings` toggle below is settled rather than outstanding: there is no
+toggle, and the book is open. What the **screens** show is a separate question
+and unchanged - the Investors panel still lists names without amounts, because
+that is what it was designed to say.
+
+### Rejoining a match you were already in — **wanted, not finished**
+
+Asked for 2026-11-18, and **to be done after host migration is working**, not
+instead of it.
+
+**The distinction that matters.** A player who was in the match and lost it -
+quit, crashed, dropped - should be able to get back into it. A player who was
+*not* in it should not, and the host must not be able to invite one in after
+the start either. Those are different things and were briefly conflated into
+one; the owner wants the first and not the second.
+
+**The mechanism already exists**, because host migration needed it.
+`HostSession._slot_to_reclaim` matches an arrival's Steam ID against the
+roster and gives them back the seat they left with the cash, holdings and loan
+still on it; anybody not on the roster is turned away with a reason (D105).
+The lobby also stays joinable while a match runs so such an arrival is not
+stopped by Steam before the host can decide (D106).
+
+**What is missing is a way to arrive.** A running match is deliberately absent
+from the lobby browser, so a returning player has no route to it from inside
+the game. Steam's own friends list should already offer "Join Game" on a
+friend who is in a joinable lobby, which arrives as `Steam.join_requested` and
+is already wired to `Main.join_online_game` - that wants confirming in play
+before anything is built on top of it.
+
+If it does work, this may need no new UI at all. If it does not, the natural
+in-game form is the title screen remembering the last lobby and offering to
+return to it - **not** an invite from the host, which is the thing that was
+explicitly not wanted.
+
+### Host migration — **done 2026-11-18, untested in play**
+
+Not in the original either, and asked for on 2026-11-18. When the host leaves a
+Steam game, the lobby or the match carries on with somebody else hosting.
+
+Delivered: `LobbyMigration` for who takes over (D104), `HostSession.take_over`
+for continuing a match from a client's own copy, reclaiming a seat by Steam ID
+— which is also the rejoin D47 deferred — and the `Main` plumbing that polls
+Steam and holds the match while it waits.
+
+**Not verified in play.** Every piece that talks to Steam needs two accounts on
+two machines. The decision core and the takeover are unit-tested
+(`test_lobby_migration.gd`, `test_host_migration.gd`); see manual-testing.md A9
+for the first run, and D105 for the two things deliberately left out — a
+cross-check of the new host's first snapshot, and anything on screen telling a
+waiting player what is happening.
 
 ### The original note, kept for its reasoning
 

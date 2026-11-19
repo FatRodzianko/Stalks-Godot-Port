@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+[gd_resource type="Resource" script_class="StalkDefinition" format=3 uid="uid://be738rbas3ncv"]
 
-[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_m6int"]
-[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_y54ms"]
+[ext_resource type="Script" uid="uid://b4u2r4nw06mfj" path="res://src/data/special_event_definition.gd" id="1_m6int"]
+[ext_resource type="Script" uid="uid://ci8lb28f2a7dc" path="res://src/data/stalk_definition.gd" id="2_y54ms"]
 
 [sub_resource type="Resource" id="Resource_g7s0t"]
 script = ExtResource("1_m6int")
@@ -82,7 +82,7 @@ price_change = 5
 script = ExtResource("2_y54ms")
 id = &"pillows"
 display_name = "My Pillow, Your Pillow, We're All Pillows!"
-description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+description = "Our pillows are made from the finest, premium grade pillows that your pillow money can buy. And the best part, they're YOUR pillows! They're my pillows, I made them, but they're yours too. You can smuggle cocaine in them and a drug sniffing dog can't smell it. I swear"
 ticker = &"PLLW"
 bear_change = Vector2i(5, 25)
 bull_change = Vector2i(0, 15)

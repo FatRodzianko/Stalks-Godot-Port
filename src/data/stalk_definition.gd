@@ -25,6 +25,19 @@ extends Resource
 ## panel simply shows nothing.
 @export_multiline var description: String = ""
 
+## Whether this company's investors are kept off its details panel.
+##
+## **True for BERRY BONDS**, the risk-free instrument everybody parks money in.
+## Who is sitting in the safe haven is nobody's business - that is the point of
+## a safe haven - while who has bet on a company is exactly what the rest of
+## the board is for. See decisions.md D103.
+##
+## A flag rather than a check against the id in code: the original matched
+## stalks by comparing display strings and needed a hardcoded BERRY BONDS case
+## for it, which is the mistake this project avoids everywhere else. A future
+## instrument that wants the same treatment sets this and needs no code change.
+@export var investors_are_anonymous: bool = false
+
 ## Short board symbol, the way a terminal lists an instrument.
 ##
 ## Nothing displays this yet: the board shows the full `display_name` and scrolls

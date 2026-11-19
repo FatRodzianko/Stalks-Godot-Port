@@ -347,3 +347,34 @@ func test_warming_up_steam_does_nothing_without_a_display() -> void:
 		"this assertion only means anything headless, which is where the suite runs",
 	)
 	assert_null(main.session(), "and nothing about the game changed")
+
+
+# ------------------------------------------- lobby visibility, without Steam
+#
+# **The behaviour these guard cannot be tested here.** Advertising a lobby,
+# hiding it and shutting it down are three calls into Steam, and the suite must
+# not reach for Steam (testing.md). What is testable is the guard in front of
+# each one: a local game, or a client with no lobby, calls them freely, and
+# they must do nothing rather than fault. See manual-testing.md A9 for the
+# behaviour itself, and decisions.md D106.
+
+func test_lobby_visibility_is_a_no_op_without_steam() -> void:
+	var service: SteamService = SteamService.new()
+	add_child_autofree(service)
+
+	service.hide_lobby_from_the_browser()
+	service.reopen_lobby_to_the_browser(null)
+	service.leave_lobby_as_host()
+
+	assert_eq(service.current_lobby(), 0, "nothing invented a lobby")
+
+
+func test_lobby_visibility_is_a_no_op_with_a_lobby_but_no_steam() -> void:
+	# The guard is on `_initialised`, not only on the lobby id, so a stale
+	# lobby id without a running Steam must not reach `Steam.setLobbyData`.
+	var service: SteamService = _service_in_lobby(77)
+
+	service.hide_lobby_from_the_browser()
+	service.reopen_lobby_to_the_browser(null)
+
+	assert_eq(service.current_lobby(), 77, "and the id is left alone")

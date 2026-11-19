@@ -7,9 +7,11 @@ extends Control
 ## See docs/decisions.md D103.
 ##
 ## **Names, not amounts.** A player can see *that* a rival has bought into a
-## company and not how much they hold. The host sends the membership and keeps
-## the sizes back (`StateSync.encode_player`), so this panel could not show the
-## amounts even if it wanted to.
+## company, and this panel does not say how much they hold. That is a choice
+## about what the panel is for, not a limit on what it could show: since D105
+## the wire carries the amounts as well, because host migration needs every
+## client to hold a whole match. Listing names is what this was designed to
+## say, so it still says only that.
 ##
 ## **It knows nothing about the market.** It is handed a name, a description
 ## and a list of names; working out who those are belongs to the screen.
@@ -24,6 +26,10 @@ const NOBODY: String = "Nobody owns any yet."
 
 ## Shown in place of the description when a stalk has none written.
 const NO_DESCRIPTION: String = "No description."
+
+## Shown in place of the list for a company that keeps its investors to
+## itself.
+const ANONYMOUS: String = "Anonymous."
 
 
 @onready var _name_label: Label = %StalkName
@@ -40,13 +46,31 @@ func _ready() -> void:
 ## Puts a company's details up.
 ##
 ## `investors` is the display names of the players holding it, in board order.
-func show_stalk(display_name: String, description: String, investors: PackedStringArray) -> void:
+func show_stalk(
+	display_name: String,
+	description: String,
+	investors: PackedStringArray,
+	anonymous: bool = false,
+) -> void:
 	_name_label.text = display_name
 	_description.text = description if not description.is_empty() else NO_DESCRIPTION
-	_investors.text = NOBODY if investors.is_empty() else "\n".join(investors)
+	_investors.text = _investor_lines(investors, anonymous)
 
 	show()
 	_close_button.grab_focus()
+
+
+## **An anonymous company says so whether or not anybody holds it.**
+##
+## Saying "nobody owns any yet" when the truth is "we are not telling you"
+## would be a lie, and a player could read the difference between the two
+## messages to work out the very thing being withheld.
+func _investor_lines(investors: PackedStringArray, anonymous: bool) -> String:
+	if anonymous:
+		return ANONYMOUS
+	if investors.is_empty():
+		return NOBODY
+	return "\n".join(investors)
 
 
 func close() -> void:

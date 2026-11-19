@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+[gd_resource type="Resource" script_class="StalkDefinition" format=3 uid="uid://bqulytahghiw3"]
 
-[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_8btsd"]
-[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_1wrqu"]
+[ext_resource type="Script" uid="uid://b4u2r4nw06mfj" path="res://src/data/special_event_definition.gd" id="1_8btsd"]
+[ext_resource type="Script" uid="uid://ci8lb28f2a7dc" path="res://src/data/stalk_definition.gd" id="2_1wrqu"]
 
 [sub_resource type="Resource" id="Resource_fl0ss"]
 script = ExtResource("1_8btsd")
@@ -82,7 +82,7 @@ price_change = 20
 script = ExtResource("2_1wrqu")
 id = &"stryker"
 display_name = "strYker!!!"
-description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+description = "Oil is our life. Oil IS life. Or it was, once, long ago. When the Godless monstrosities roamed the Earth, terrorizing our meek mammalian ancestors. And where are they now? That's right, in the tank of your truck, in your clothes, your food, everything. We are all oil, and oil is all of us. Stryke! Stryke while the oil still flows within you!"
 ticker = &"STRYK"
 bear_change = Vector2i(15, 50)
 bull_change = Vector2i(13, 42)

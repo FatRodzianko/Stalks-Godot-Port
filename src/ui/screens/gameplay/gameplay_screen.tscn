@@ -52,33 +52,23 @@ size_flags_horizontal = 3
 layout_mode = 2
 theme_type_variation = &"TightVBox"
 
-[node name="EventFlavour" type="Label" parent="Root/TopBar/EventPanel/EventBox"]
+[node name="EventFlavour" type="RichTextLabel" parent="Root/TopBar/EventPanel/EventBox"]
 unique_name_in_owner = true
 script = ExtResource("3_scrolling")
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_type_variation = &"EventFlavour"
-text = ""
-autowrap_mode = 3
-text_overrun_behavior = 3
+theme_type_variation = &"EventFlavourRich"
+bbcode_enabled = true
+scroll_active = false
+autowrap_mode = 0
 max_lines_visible = 2
 
-[node name="EffectRow" type="HBoxContainer" parent="Root/TopBar/EventPanel/EventBox"]
-layout_mode = 2
-
-[node name="EventEffect" type="Label" parent="Root/TopBar/EventPanel/EventBox/EffectRow"]
+[node name="EventEffect" type="Label" parent="Root/TopBar/EventPanel/EventBox"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
 text = ""
 text_overrun_behavior = 3
-
-[node name="MoreButton" type="Button" parent="Root/TopBar/EventPanel/EventBox/EffectRow"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-size_flags_vertical = 4
-text = "... MORE"
 
 [node name="YeehawPanel" type="PanelContainer" parent="Root/TopBar"]
 custom_minimum_size = Vector2(128, 0)

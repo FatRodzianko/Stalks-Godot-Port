@@ -171,13 +171,13 @@ func test_the_top_bar_holds_one_height_for_every_event() -> void:
 	await wait_process_frames(2)
 
 	var bar: Control = screen.get_node("Root/TopBar")
-	var flavour: Label = screen.get_node("%EventFlavour")
-	flavour.text = ""
+	var flavour: ScrollingLabel = screen.get_node("%EventFlavour")
+	flavour.set_full_text("")
 	await wait_process_frames(1)
 	var empty_height: float = bar.size.y
 
 	for event: SpecialEventDefinition in ContentLibrary.load_from().all_events():
-		flavour.text = event.flavour_text
+		flavour.set_full_text(event.flavour_text)
 		await wait_process_frames(1)
 		assert_eq(
 			bar.size.y, empty_height,
@@ -364,10 +364,101 @@ func test_a_clipped_description_offers_more_and_reopens_the_panel() -> void:
 
 	var panel: NewsPanel = screen.news_panel()
 	panel.close()
-	(screen.get_node("%MoreButton") as Button).pressed.emit()
+	flavour.more_requested.emit()
 
-	assert_true(panel.is_open(), "pressing it brings the panel back")
+	assert_true(panel.is_open(), "clicking it brings the panel back")
 	assert_eq(panel.description_text(), long, "with the whole description")
+
+
+## **The marker is in the text, which is what was asked for three times.**
+##
+## It was a column in a container first, which narrowed every line of the
+## description; then an overlay, which sat on top of them. Both failed for the
+## same reason - a `Label` wraps every line to one width, so there is no way to
+## leave room on the last line only. In the text there is no box to align and
+## nothing to cover. See decisions.md D107a.
+func test_a_clipped_description_ends_with_the_marker_in_its_own_text() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var flavour: ScrollingLabel = screen.get_node("%EventFlavour")
+	flavour.set_full_text(_too_long_for_the_strip())
+	await wait_process_frames(1)
+
+	assert_true(flavour.overflows(), "the test needs a description that is cut")
+	assert_true(
+		flavour.text.contains(flavour.marker_markup()),
+		"the marker should be in the strip's own text",
+	)
+	assert_true(
+		flavour.marker_markup().contains("[color="),
+		"and its word should be picked out from the description's colour",
+	)
+	assert_eq(
+		flavour.get_node_or_null("%MoreButton"),
+		null,
+		"and there should be no button beside it",
+	)
+
+
+## The marker ends the last visible line rather than starting a new one.
+func test_the_marker_ends_the_last_line_the_strip_shows() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var flavour: ScrollingLabel = screen.get_node("%EventFlavour")
+	flavour.set_full_text(_too_long_for_the_strip())
+	await wait_process_frames(1)
+
+	var lines: PackedStringArray = flavour.text.split("\n")
+	assert_eq(lines.size(), flavour.max_lines_visible, "two lines, no more")
+	assert_true(
+		lines[lines.size() - 1].ends_with("[/url]"),
+		"the marker should close the last line",
+	)
+	assert_false(lines[0].contains(ScrollingLabel.MARKER), "and not the first")
+
+
+## Line and marker together still fit, which is the whole reason this widget
+## does its own wrapping.
+func test_the_marker_does_not_push_the_line_past_the_strip() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var flavour: ScrollingLabel = screen.get_node("%EventFlavour")
+	flavour.set_full_text(_too_long_for_the_strip())
+	await wait_process_frames(1)
+
+	var room: int = flavour.characters_per_line()
+	assert_gt(room, 0, "the test needs a measured width")
+	for line: String in flavour.text.split("\n"):
+		var visible: String = line.replace(
+			flavour.marker_markup(), ScrollingLabel.MARKER
+		)
+		assert_lte(visible.length(), room, "line too long: %s" % visible)
+
+
+## A description that fits is left alone - no marker, nothing to click.
+func test_a_description_that_fits_carries_no_marker() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var flavour: ScrollingLabel = screen.get_node("%EventFlavour")
+	flavour.set_full_text("Monorail train cars installed with no brakes.")
+	await wait_process_frames(1)
+
+	assert_false(flavour.overflows())
+	assert_false(flavour.text.contains(ScrollingLabel.MARKER_WORD))
+
+
+## Long enough to need a third line at any width the strip is ever given.
+func _too_long_for_the_strip() -> String:
+	return (
+		"After a hard day's night working (drinking and playing cards in the "
+		+ "back of a strip club), your tummy grumbles and you need to poo. "
+		+ "It's the first poo in a week, and you've been eating nothing but "
+		+ "cured meats during that time."
+	)
 
 
 # ------------------------------------------------------- a company's details
@@ -386,14 +477,14 @@ func test_opening_a_stalk_shows_its_name_and_description() -> void:
 
 
 func test_a_stalk_nobody_holds_says_so() -> void:
-	var stalk: StalkState = _first_tradable_stalk()
+	var stalk: StalkState = _first_named_stalk()
 	_screen.show_stalk_details(stalk.id)
 
 	assert_eq(_screen.stalk_panel().investors_text(), StalkPanel.NOBODY)
 
 
 func test_a_holder_is_listed_as_an_investor() -> void:
-	var stalk: StalkState = _first_tradable_stalk()
+	var stalk: StalkState = _first_named_stalk()
 	_player().set_shares(stalk.id, 3)
 
 	_screen.show_stalk_details(stalk.id)
@@ -406,7 +497,7 @@ func test_a_holder_is_listed_as_an_investor() -> void:
 ## Names only, which is the whole rule. A client is told who is in a company
 ## and not how deep. See decisions.md D103.
 func test_the_investor_list_never_says_how_much() -> void:
-	var stalk: StalkState = _first_tradable_stalk()
+	var stalk: StalkState = _first_named_stalk()
 	_player().set_shares(stalk.id, 4242)
 
 	_screen.show_stalk_details(stalk.id)
@@ -418,7 +509,7 @@ func test_the_investor_list_never_says_how_much() -> void:
 
 
 func test_selling_out_takes_you_off_the_investor_list() -> void:
-	var stalk: StalkState = _first_tradable_stalk()
+	var stalk: StalkState = _first_named_stalk()
 	_player().set_shares(stalk.id, 3)
 	_player().set_shares(stalk.id, 0)
 
@@ -458,6 +549,43 @@ func test_the_name_lets_a_click_reach_the_row() -> void:
 		Control.MOUSE_FILTER_PASS,
 		"and the name does not swallow them"
 	)
+
+
+## A company that does list its investors.
+##
+## `_first_tradable_stalk` returns BERRY BONDS, which deliberately does not -
+## so a test about the investor list has to ask for something else or it is
+## testing the anonymity instead.
+func _first_named_stalk() -> StalkState:
+	for stalk: StalkState in _session.state().stalks:
+		if stalk.has_value() and not stalk.definition.investors_are_anonymous:
+			return stalk
+	return null
+
+
+## BERRY BONDS keeps its investors to itself.
+##
+## It is the risk-free instrument everybody parks money in, and who is sitting
+## in the safe haven is nobody's business. Driven by a flag on the resource
+## rather than a check against the id in code - the original's hardcoded
+## BERRY BONDS name check is the mistake this project avoids. See D103.
+func test_berry_bonds_never_names_its_investors() -> void:
+	var berry: StalkState = _session.state().stalk_by_id(&"berry_bonds")
+	assert_not_null(berry, "the fixture has it")
+	assert_true(berry.definition.investors_are_anonymous)
+
+	_player().set_shares(berry.id, 50)
+	_screen.show_stalk_details(berry.id)
+
+	assert_eq(_screen.stalk_panel().investors_text(), StalkPanel.ANONYMOUS)
+
+
+## The same whether or not anybody is in it, so the message cannot be read as
+## an answer to the question it is withholding.
+func test_an_anonymous_company_says_the_same_with_nobody_in_it() -> void:
+	_screen.show_stalk_details(&"berry_bonds")
+
+	assert_eq(_screen.stalk_panel().investors_text(), StalkPanel.ANONYMOUS)
 
 
 func _player() -> PlayerState:
@@ -656,7 +784,7 @@ func test_the_event_panel_always_holds_its_space() -> void:
 
 
 func test_a_special_event_is_shown_when_one_fires() -> void:
-	var flavour: Label = _screen.get_node("%EventFlavour")
+	var flavour: ScrollingLabel = _screen.get_node("%EventFlavour")
 	var effect: Label = _screen.get_node("%EventEffect")
 
 	# With 45 events per pool one fires almost every year, but loop rather than
@@ -666,7 +794,7 @@ func test_a_special_event_is_shown_when_one_fires() -> void:
 	while not fired and guard < 9:
 		(_screen.get_node("%ReadyButton") as Button).pressed.emit()
 		guard += 1
-		fired = not flavour.text.is_empty()
+		fired = not flavour.full_text().is_empty()
 
 	assert_true(fired, "an event should have fired within nine years")
 	assert_true(effect.text.contains("by"),
@@ -833,3 +961,71 @@ func test_what_is_on_screen_matches_a_headless_simulation_of_the_same_seed() -> 
 	for stalk: StalkState in _session.state().stalks:
 		assert_eq(stalk.price, headless.state().stalk_by_id(stalk.id).price,
 			"%s price should match the headless run" % stalk.id)
+
+
+# ------------------------------------------------- reading the rest by hovering
+
+## Hovering has to move the text, and soon enough to look deliberate.
+##
+## Reported as "it does not scroll on mouse over": it did, after three idle
+## steps of the timer - nearly five seconds - which is indistinguishable from
+## nothing happening. See decisions.md D100.
+func test_hovering_a_clipped_description_moves_it_on() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var flavour: ScrollingLabel = screen.get_node("%EventFlavour")
+	flavour.set_full_text(_too_long_for_the_strip())
+	await wait_process_frames(1)
+	var first: String = flavour.text
+
+	flavour.mouse_entered.emit()
+	assert_true(flavour.is_scrolling(), "hovering should start it")
+
+	flavour.step()
+
+	assert_eq(flavour.lines_skipped(), 1, "the very first step should move a line")
+	assert_ne(flavour.text, first, "and the strip should be showing something else")
+
+
+func test_leaving_a_clipped_description_puts_it_back() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var flavour: ScrollingLabel = screen.get_node("%EventFlavour")
+	flavour.set_full_text(_too_long_for_the_strip())
+	await wait_process_frames(1)
+	var first: String = flavour.text
+
+	flavour.mouse_entered.emit()
+	flavour.step()
+	flavour.mouse_exited.emit()
+
+	assert_false(flavour.is_scrolling())
+	assert_eq(flavour.lines_skipped(), 0, "back to the top")
+	assert_eq(flavour.text, first)
+
+
+## It can only be hovered if it takes the mouse at all, which a plain `Label`
+## does not by default.
+func test_the_description_takes_the_mouse() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var flavour: ScrollingLabel = screen.get_node("%EventFlavour")
+
+	assert_eq(flavour.mouse_filter, Control.MOUSE_FILTER_STOP)
+
+
+## The tooltip is gone. It repeated the description on one unwrapped line, so
+## the only descriptions worth hovering were the ones it could not show -
+## redundant where it worked and useless where it was needed.
+func test_a_clipped_description_has_no_tooltip() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+
+	var flavour: ScrollingLabel = screen.get_node("%EventFlavour")
+	flavour.set_full_text(_too_long_for_the_strip())
+	await wait_process_frames(1)
+
+	assert_eq(flavour.tooltip_text, "")

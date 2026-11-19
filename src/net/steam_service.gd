@@ -237,23 +237,78 @@ func owns_supporter_dlc() -> bool:
 	return Steam.isDLCInstalled(SUPPORTER_DLC_APP_ID)
 
 
-## Shuts this process's lobby to anybody else, by both means Steam offers.
+# -------------------------------------------------- what the browser is shown
+#
+# Two mechanisms, and they stop different things. The `state` key is what the
+# browser's string filter reads, so it controls whether a lobby is *listed*.
+# `setLobbyJoinable` is Steam's own switch and stops anybody getting in at all,
+# invite or stale lobby id included.
+#
+# **They were used together until 2026-11-18 and are now separate**, because a
+# match in progress wants to be unlisted but still reachable: a player whose
+# connection dropped comes back through the same lobby, and the host decides
+# whether they get their seat (D105). Slamming Steam's door shut made that
+# impossible. The host is the gatekeeper now; Steam only decides who is
+# advertised. See docs/decisions.md D68 and D106.
+#
+# Each is a no-op without a lobby, so a local game may call them without asking
+# whether Steam is involved, and only the lobby's owner can write lobby data -
+# a client calling one changes nothing.
+
+## Takes the lobby out of the browser while leaving the door open.
 ##
-## Called when the host starts the match, and again when the host leaves. A
-## no-op when there is no lobby, so a local game can call it without asking
-## whether Steam is involved, and only the lobby's owner can do either of
-## these, so a client calling it changes nothing.
-##
-## **Two mechanisms, because they stop different things.** `setLobbyJoinable`
-## is Steam's own switch and also blocks somebody holding an invite or a stale
-## lobby id. The `state` key is what the browser's string filter reads, and a
-## string filter on lobby data is the part of the documentation I could read
-## verbatim. See docs/decisions.md D68.
-func close_lobby_to_newcomers() -> void:
+## Called when the match starts, and by a new host taking over a match that was
+## already under way. Nobody new may have a seat, but somebody coming back can
+## still reach the lobby to ask for theirs.
+func hide_lobby_from_the_browser() -> void:
 	if not _initialised or _lobby_id == 0:
 		return
 	Steam.setLobbyData(_lobby_id, String(KEY_STATE), STATE_PLAYING)
-	Steam.setLobbyJoinable(_lobby_id, false)
+
+
+## Puts the lobby back in the browser, joinable, with its settings fresh.
+##
+## For a new host taking over a **lobby** rather than a match. The player who
+## left may have shut the lobby down on their way out - they had no way to know
+## somebody else was about to own it - so this is what undoes that. Without it
+## the migrated lobby works for the people already in it and is invisible and
+## unjoinable to everybody else, which is exactly how it was first seen to
+## fail.
+func reopen_lobby_to_the_browser(settings: GameSettings = null) -> void:
+	if not _initialised or _lobby_id == 0:
+		return
+	# `game` and `name` are rewritten too: this lobby is being advertised again
+	# from scratch, and a key the departing owner cleared would otherwise leave
+	# a row the browser filters out or cannot label.
+	Steam.setLobbyData(_lobby_id, String(KEY_GAME), GAME_TAG)
+	Steam.setLobbyData(_lobby_id, String(KEY_STATE), STATE_OPEN)
+	Steam.setLobbyJoinable(_lobby_id, true)
+	_pending_settings = settings
+	_publish_settings(_lobby_id)
+
+
+## The host leaving for good. Shuts the lobby down **only if nobody else is in
+## it.**
+##
+## **Steam has no way to destroy a lobby**: one exists until its last member
+## leaves, and the owner leaving simply promotes somebody else. So when the
+## host is the last one out, closing the lobby by both means is the closest
+## thing to killing it that Steam offers, and it has to happen before leaving,
+## because afterwards this process no longer owns it (D68).
+##
+## **But when somebody else is still there, the lobby is not dying - it is
+## changing hands** (D105), and shutting it down on the way out is sabotage.
+## That is what made a migrated lobby unlistable, and this check is the fix:
+## the lobby outlives this process either way, so the only question is whether
+## it still has anybody in it.
+func leave_lobby_as_host() -> void:
+	if not _initialised or _lobby_id == 0:
+		leave_lobby()
+		return
+	if Steam.getNumLobbyMembers(_lobby_id) <= 1:
+		Steam.setLobbyData(_lobby_id, String(KEY_STATE), STATE_PLAYING)
+		Steam.setLobbyJoinable(_lobby_id, false)
+	leave_lobby()
 
 
 ## The lobby this process is currently in, or 0.

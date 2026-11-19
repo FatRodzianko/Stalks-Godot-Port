@@ -146,6 +146,22 @@ func advance_year() -> YearResult:
 	return _resolver.advance_year(state, _rng)
 
 
+## How far this match's random stream has run.
+##
+## **Part of match state, not a detail of the generator.** A match is
+## reproducible from its seed plus the number of draws taken off it, so a new
+## host taking over mid-match needs this as much as it needs the prices: seeded
+## afresh from `rng_seed` it would deal year one's rolls out all over again.
+## Travels in every snapshot (`state_sync.gd`). See docs/decisions.md D105.
+func rng_state() -> int:
+	return int(_rng.state)
+
+
+## Picks the random stream up where another host left it.
+func adopt_rng_state(value: int) -> void:
+	_rng.state = value
+
+
 ## The seed this match is running on. What makes it reproducible, and worth
 ## quoting in a bug report.
 func seed_value() -> int:

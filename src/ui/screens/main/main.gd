@@ -470,7 +470,11 @@ func host_steam_match(lobby_id: int, settings: GameSettings, player_name: String
 
 	_is_online_match = true
 	var result: Dictionary = HostSession.host(
-		SteamTransport.new(lobby_id), settings, library, player_name, local_steam_id()
+		_steam_transports.host_in(lobby_id),
+		settings,
+		library,
+		player_name,
+		local_steam_id(),
 	)
 	if not String(result["error"]).is_empty():
 		return String(result["error"])
@@ -483,8 +487,23 @@ func host_steam_match(lobby_id: int, settings: GameSettings, player_name: String
 	return ""
 
 
-func join_steam_match(lobby_id: int, owner_steam_id: int, player_name: String) -> String:
-	_discard_session()
+## Joins a Steam host, whether this is a first join or a reconnection after the
+## host changed.
+##
+## `during_migration` means this is one attempt among several at reaching a
+## host that has just taken over, and changes two things. The Steam lobby is
+## **kept**, because it is the lobby the new host is in rather than one being
+## left behind. And no screen is swapped: whatever is on screen stays, stale,
+## until a welcome actually arrives, because a half-built session would
+## otherwise put an empty lobby or an empty market up on every attempt.
+## `Main` watches for the welcome in `_process` and shows the right screen then.
+func join_steam_match(
+	lobby_id: int,
+	owner_steam_id: int,
+	player_name: String,
+	during_migration: bool = false,
+) -> String:
+	_discard_session(during_migration)
 	_online_host_steam_id = owner_steam_id
 
 	var library: ContentLibrary = _loaded_library()
@@ -493,7 +512,7 @@ func join_steam_match(lobby_id: int, owner_steam_id: int, player_name: String) -
 
 	_is_online_match = true
 	var result: Dictionary = ClientSession.join(
-		SteamTransport.new(lobby_id, owner_steam_id),
+		_steam_transports.client_to(lobby_id, owner_steam_id),
 		library,
 		player_name,
 		local_steam_id(),
@@ -505,6 +524,8 @@ func join_steam_match(lobby_id: int, owner_steam_id: int, player_name: String) -
 	var session: ClientSession = result["session"]
 	_mount_session(session)
 	session.attach_peer(result["peer"])
+	if during_migration:
+		return ""
 	_show_lobby()
 	return ""
 
@@ -564,8 +585,8 @@ func _watch_the_service(service: SteamService) -> void:
 	service.invited_to.connect(_on_steam_invited_to)
 
 
-## Somebody left the Steam lobby. Only the host leaving matters: this game has
-## no host migration, so their departure ends the match for everybody.
+## Somebody left the Steam lobby. Only the host leaving matters, and it now
+## starts a migration rather than ending the game. See docs/decisions.md D105.
 ##
 ## **This is the only thing that reports it over Steam.** A direct connection
 ## raises `server_disconnected` and the session acts on that; Steam's
@@ -579,7 +600,231 @@ func _on_steam_lobby_member_left(steam_id: int) -> void:
 	if _session == null or _session is HostSession:
 		return
 	_online_host_steam_id = 0
-	_on_connection_ended("The host left the game.")
+	_begin_migration(steam_id)
+
+
+# ------------------------------------------------------------- host migration
+#
+# The host walked out. Steam hands the lobby to one of the remaining members
+# on its own, so nobody votes and nobody has to agree: every client asks Steam
+# the same question until it answers, then either starts hosting or joins
+# whoever Steam picked. `LobbyMigration` is that decision, tested on its own in
+# test_lobby_migration.gd; this is the plumbing round it.
+#
+# See docs/decisions.md D105.
+
+## Holds on to the match and starts asking Steam who owns the lobby now.
+##
+## **The match is kept, not re-fetched.** This client already holds a complete
+## copy of it (`state_sync.gd`), which is the whole reason migration is
+## possible: if this process turns out to be the new host, it promotes what it
+## has rather than asking anybody for it.
+func _begin_migration(departed_steam_id: int) -> void:
+	var client: ClientSession = _session as ClientSession
+	var lobby_id: int = _steam.current_lobby() if _steam != null else 0
+	if client == null or lobby_id == 0 or local_steam_id() == 0:
+		# No Steam lobby to be handed on, or no account to be handed it. A
+		# direct connection ends here, as it always did.
+		_on_connection_ended("The host left the game.")
+		return
+
+	_migrating_in_match = _screen is GameplayScreen
+	_migrating_state = client.state()
+	_migrating_rng_state = client.rng_state()
+	_migrating_player_id = client.local_player_id()
+	_migration = LobbyMigration.new(local_steam_id(), departed_steam_id)
+	_reconnect_attempted = false
+	print(MIGRATION_LOG, "host %d left lobby %d. Asking Steam who owns it now." % [
+		departed_steam_id, lobby_id
+	])
+	print(MIGRATION_LOG, "this player is %d, in a %s." % [
+		local_steam_id(), "match" if _migrating_in_match else "lobby"
+	])
+	_since_last_poll = MIGRATION_POLL_SECONDS
+
+
+func _process(delta: float) -> void:
+	if _migration == null:
+		return
+
+	# Already decided to host, and waiting for the old peer to let go of the
+	# port before putting a new one on it.
+	if _hosting_in >= 0.0:
+		_hosting_in -= delta
+		if _hosting_in <= 0.0:
+			_hosting_in = -1.0
+			_start_hosting_the_moved_lobby()
+		return
+
+	_migration.wait(delta)
+	_since_last_poll += delta
+	if _since_last_poll < MIGRATION_POLL_SECONDS:
+		return
+	_since_last_poll = 0.0
+
+	# An attempt that has landed ends the migration, so a connection made a
+	# moment ago is not torn down to make another. Only an attempt made *by
+	# this migration* counts: the session left over from the departed host is
+	# also "joined", and taking that as success is the fault D108 was.
+	if _reconnect_attempted:
+		var client: ClientSession = _session as ClientSession
+		if client != null and client.has_joined():
+			_settle_in_behind_the_new_host()
+			return
+
+	var lobby_id: int = _steam.current_lobby() if _steam != null else 0
+	var owner: int = _steam.lobby_owner(lobby_id) if lobby_id != 0 else 0
+	var step: LobbyMigration.Step = _migration.next_step(owner)
+	if step == LobbyMigration.Step.BECOME_HOST:
+		_stand_down_to_host(lobby_id)
+	elif step == LobbyMigration.Step.JOIN_NEW_HOST:
+		_try_the_new_host(lobby_id, owner)
+	elif step == LobbyMigration.Step.GAVE_UP:
+		_give_up_on_migration("The host left the game.")
+
+
+## Steam made this player the owner, so this process carries the match on.
+## Closes the old connection and starts the clock on hosting.
+##
+## **The two halves are deliberately not in the same frame.** See
+## `NEW_HOST_START_SECONDS`: a listen socket opened while the old peer is still
+## letting go of the port comes up dead, and a dead listen socket looks exactly
+## like a working game to the player holding it.
+func _stand_down_to_host(lobby_id: int) -> void:
+	print(MIGRATION_LOG, "Steam made this player the owner. Taking over.")
+	_hosting_lobby = lobby_id
+	_hosting_in = NEW_HOST_START_SECONDS
+	# Keeps the Steam lobby: it is the thing being taken over, and leaving it
+	# would be leaving the game this is trying to save.
+	_discard_session(true)
+
+
+func _start_hosting_the_moved_lobby() -> void:
+	var lobby_id: int = _hosting_lobby
+	_hosting_lobby = 0
+
+	var library: ContentLibrary = _loaded_library()
+	if library == null:
+		_give_up_on_migration(BROKEN_CONTENT)
+		return
+
+	var in_match: bool = _migrating_in_match
+	var state: GameState = _migrating_state
+	var rng_state: int = _migrating_rng_state
+	var my_player_id: StringName = _migrating_player_id
+	_end_migration()
+
+	_is_online_match = true
+
+	var result: Dictionary = {}
+	if in_match:
+		print(MIGRATION_LOG, "continuing the match from this client's own copy.")
+		result = HostSession.take_over(
+			_steam_transports.host_in(lobby_id),
+			state,
+			library,
+			my_player_id,
+			rng_state,
+		)
+	else:
+		# **A lobby is re-hosted, not taken over.** Nobody has a position yet,
+		# so there is nothing to preserve and the others can simply rejoin as
+		# they would any new game. The settings are the ones they were already
+		# looking at, so the lobby they come back to is the same game.
+		var settings: GameSettings = GameSettings.new()
+		if state != null and state.settings != null:
+			settings = state.settings
+		# A lobby that somehow arrived unnamed would otherwise be headed
+		# "LOBBY", which is the lobby screen's last resort rather than a name.
+		_name_the_match(settings, _steam_name())
+		_last_settings = settings
+		result = HostSession.host(
+			_steam_transports.host_in(lobby_id),
+			settings,
+			library,
+			_steam_name(),
+			local_steam_id(),
+		)
+
+	if not String(result["error"]).is_empty():
+		_give_up_on_migration(String(result["error"]))
+		return
+
+	_listening_port = 0
+	var session: HostSession = result["session"]
+	_mount_session(session)
+	session.attach_peer(result["peer"])
+	print(MIGRATION_LOG, "now hosting the moved %s as %s." % [
+		"match" if in_match else "lobby", my_player_id
+	])
+
+	# **Now that this process owns the lobby, it has to say what the lobby
+	# is.** The player who left may have shut it down on the way out, so a
+	# migrated lobby has to be advertised again or nobody can find it - the
+	# first fault reported from play (D106). A match that was already under way
+	# wants the opposite: unlisted, but still reachable by somebody coming back
+	# for their seat.
+	if _steam != null and _steam.is_running():
+		if in_match:
+			_steam.hide_lobby_from_the_browser()
+		else:
+			_steam.reopen_lobby_to_the_browser(_last_settings)
+
+	if in_match:
+		_show_gameplay()
+	else:
+		_show_lobby()
+
+
+## Steam picked somebody else, so this process reconnects to them.
+## Tries the new host, and will try again.
+##
+## **One attempt is not enough**, which is the other half of the fault reported
+## from play. Steam needs a moment to route to a host that has only just
+## started listening, and an attempt that lands too early fails for good - the
+## client sits on "connecting" until its own join timeout gives up. So every
+## poll makes another attempt, until one connects or the twenty seconds run
+## out. The owner's Unity game does the same, calling `JoinSteamHost` once a
+## second for the whole of its reconnect window.
+##
+## A failure here is not the end of the migration: the next poll tries again.
+func _try_the_new_host(lobby_id: int, owner_steam_id: int) -> void:
+	# No screen change and the Steam lobby is kept, because this may be one of
+	# several attempts and the lobby is where the new host is.
+	_reconnect_attempted = true
+	print(MIGRATION_LOG, "Steam says %d hosts now. Trying to reach them." % owner_steam_id)
+	join_steam_match(lobby_id, owner_steam_id, _steam_name(), true)
+
+
+## An attempt landed: the new host has welcomed this client back.
+func _settle_in_behind_the_new_host() -> void:
+	print(MIGRATION_LOG, "reconnected to the new host.")
+	var in_match: bool = _migrating_in_match
+	_end_migration()
+	if in_match:
+		_show_gameplay()
+	else:
+		_show_lobby()
+
+
+## Steam never named an owner, or the new session could not be built. Either
+## way the game is over for this player, which is what used to happen the
+## moment the host left.
+func _give_up_on_migration(reason: String) -> void:
+	print(MIGRATION_LOG, "giving up: %s" % reason)
+	_end_migration()
+	_on_connection_ended(reason)
+
+
+func _end_migration() -> void:
+	_migration = null
+	_hosting_in = -1.0
+	_hosting_lobby = 0
+	_reconnect_attempted = false
+	_migrating_state = null
+	_migrating_rng_state = 0
+	_migrating_player_id = &""
+	_migrating_in_match = false
 
 
 ## Steam has made the lobby. Now there is something to host in.
@@ -618,6 +863,68 @@ func _on_browse_online_requested() -> void:
 ## Steam lobby ownership and being this game's host are different things, and
 ## only the second one matters here. See docs/decisions.md D68.
 var _online_host_steam_id: int = 0
+
+## Where a Steam match's transport comes from. Replaced in tests, which must
+## never reach the Steam API - see `SteamTransportSource`.
+var _steam_transports: SteamTransportSource = SteamTransportSource.new()
+
+## A host migration under way, or null when there is none.
+##
+## Everything below it is the match as it stood when the host left, held on to
+## while Steam decides who takes over. A `GameState` is RefCounted, so keeping
+## this reference is what stops the departing session taking the match with it.
+## See docs/decisions.md D105.
+var _migration: LobbyMigration = null
+var _migrating_state: GameState = null
+var _migrating_rng_state: int = 0
+var _migrating_player_id: StringName = &""
+
+## Whether the match had actually started. A lobby has no position to preserve,
+## so it migrates by re-hosting; a match in progress is taken over.
+var _migrating_in_match: bool = false
+
+## Steam is asked who owns the lobby on a timer rather than every frame, and
+## every ask is also another attempt to reconnect. One second, the owner's
+## Unity game's `ReconnectRetrySeconds`.
+const MIGRATION_POLL_SECONDS: float = 1.0
+var _since_last_poll: float = 0.0
+
+## How long to let the old connection die before opening a listen socket in its
+## place. Half a second, the owner's Unity game's `NewHostStartDelaySeconds`.
+##
+## **This is not politeness, it is the fault reported from play.** Closing a
+## Steam peer and hosting in the same frame produced a host that reported no
+## error, played perfectly well by itself, and accepted no connections at all -
+## the virtual port was still held by the peer that was on its way out. The
+## Unity game carries the same constant for the same reason.
+const NEW_HOST_START_SECONDS: float = 0.5
+
+## Prefix on the migration's own log lines.
+##
+## **Migration is the one thing in this game that cannot be watched.** It
+## happens on somebody else's machine, in the seconds after a host walks out,
+## and every visible symptom of it going wrong looks like a symptom of
+## something else - a board that stops updating, a player who cannot connect, a
+## game that carries on single-handed. Three faults were diagnosed from
+## guesswork before this existed. These lines land in the log file (see
+## development.md §10), which is the only account of what actually happened.
+const MIGRATION_LOG: String = "[migration] "
+
+
+## Counting down to opening that listen socket, or negative when not.
+var _hosting_in: float = -1.0
+var _hosting_lobby: int = 0
+
+## Whether this migration has actually tried to reconnect yet.
+##
+## **Without this the migration ends the instant it starts.** The session still
+## mounted when the host leaves is a client that has joined - it joined the
+## host who just left - so "is the client connected?" answers yes before
+## anything has been attempted, and the migration congratulates itself and
+## stops. The symptom is a lobby that never migrates, still showing the
+## departed player as host, until the dead connection finally times out. See
+## docs/decisions.md D108.
+var _reconnect_attempted: bool = false
 
 ## Whether the match on screen is being carried by Steam. Decides whether a
 ## lobby offers to invite anybody: there is nothing to invite through on a
@@ -750,6 +1057,13 @@ func _on_automation_ready_changed(_player_id: StringName, _is_ready: bool) -> vo
 ## Kicked, or the host quit. Back to the menu, carrying the reason: a player
 ## left sitting in a lobby they are no longer part of has no idea what happened.
 func _on_connection_ended(reason: String) -> void:
+	if _migration != null:
+		# **A migration already has this covered.** The same departure reaches
+		# here twice: once from Steam, which starts the migration, and again
+		# from the session when its connection to the departed host finally
+		# gives out. Acting on the second would drop the player onto the title
+		# screen while a new host was being found for them.
+		return
 	show_menu()
 	# Says where they have ended up as well as why. Being dropped onto the title
 	# screen with a bare "The host closed the game." reads as the game having
@@ -761,9 +1075,11 @@ func _on_connection_ended(reason: String) -> void:
 ## has already begun as far as the host is concerned.
 func _on_play_requested() -> void:
 	# A started game should stop appearing in the list of games to join. Only
-	# the host can say so, and only the host owns the Steam lobby.
+	# the host can say so, and only the host owns the Steam lobby. It stays
+	# *joinable* - a player who drops comes back through this lobby and the
+	# host decides whether they get their seat (D105).
 	if _session is HostSession and _steam != null and _steam.is_running():
-		_steam.close_lobby_to_newcomers()
+		_steam.hide_lobby_from_the_browser()
 	_show_gameplay()
 
 
@@ -972,7 +1288,12 @@ func _loaded_library() -> ContentLibrary:
 
 ## Closes any transport before freeing the session, so a lobby left behind does
 ## not hold its socket open and block the next attempt on the same port.
-func _discard_session() -> void:
+## Closes the live session.
+##
+## `keep_lobby` holds on to the Steam lobby, for the one case that needs it: a
+## migration is a new session inside the *same* lobby, so leaving it would be
+## leaving the game this is trying to rescue.
+func _discard_session(keep_lobby: bool = false) -> void:
 	if _session == null:
 		return
 	var networked: NetworkedSession = _session as NetworkedSession
@@ -981,15 +1302,16 @@ func _discard_session() -> void:
 	# Leaving the match means leaving the Steam lobby too, or the browser would
 	# keep listing a game nobody is in.
 	#
-	# A host shuts theirs to newcomers first. **Steam has no way to destroy a
-	# lobby**: one exists until its last member leaves, and the owner leaving
-	# simply promotes somebody else. Shutting it is the closest thing to
-	# killing it that Steam offers, and it has to happen before leaving,
-	# because afterwards this process no longer owns it. See decisions.md D68.
-	if _steam != null and _steam.is_running():
+	# **A host leaving is two different events** and `leave_lobby_as_host`
+	# tells them apart: the last player out is a lobby dying, and should be
+	# shut down as far as Steam allows (D68), while a host leaving other
+	# players behind is a lobby changing hands, which must be left alone for
+	# them to migrate into (D106).
+	if _steam != null and _steam.is_running() and not keep_lobby:
 		if _session is HostSession:
-			_steam.close_lobby_to_newcomers()
-		_steam.leave_lobby()
+			_steam.leave_lobby_as_host()
+		else:
+			_steam.leave_lobby()
 	_online_host_steam_id = 0
 	remove_child(_session)
 	_session.queue_free()

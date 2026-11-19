@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+[gd_resource type="Resource" script_class="StalkDefinition" format=3 uid="uid://btpp52msc0yoc"]
 
-[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_ogvs3"]
-[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_01rrq"]
+[ext_resource type="Script" uid="uid://b4u2r4nw06mfj" path="res://src/data/special_event_definition.gd" id="1_ogvs3"]
+[ext_resource type="Script" uid="uid://ci8lb28f2a7dc" path="res://src/data/stalk_definition.gd" id="2_01rrq"]
 
 [sub_resource type="Resource" id="Resource_xkbbd"]
 script = ExtResource("1_ogvs3")
@@ -82,7 +82,7 @@ price_change = 10
 script = ExtResource("2_01rrq")
 id = &"springfield"
 display_name = "Springfield Nuclear Power"
-description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+description = "Fish heads are a delicacy, so I won't hear any more complaints about the two headed fish. A little salt and pepper. 5 minutes per side. Some lemon juice. Delicious. No I won't explain why the water glows at night."
 ticker = &"SPNG"
 bear_change = Vector2i(10, 20)
 bull_change = Vector2i(0, 15)

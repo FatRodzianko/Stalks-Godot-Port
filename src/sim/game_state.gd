@@ -60,7 +60,23 @@ func stalk_by_id(stalk_id: StringName) -> StalkState:
 ## is preserved through the snapshot, so a client's copy agrees. Written down
 ## here once rather than spelled `players[0]` at each screen that needs it,
 ## because it is a rule about how a match is built and not a fact about lists.
+## Which player's machine is running the match, when something has said so.
+##
+## **Not the same as "the first player", which is what this used to be.** That
+## held only while a host never changed. After a migration the new host can be
+## any slot, and the player who left is out of `players` entirely (D47), so
+## first-in-the-list names whoever happens to be left - a bystander wearing the
+## host's label. Invisible in a two-player game, where the survivor is alone
+## and therefore first; wrong from three players up.
+##
+## Empty in a local game, and in a replica built before the host said who it
+## was, where falling back to the first player is right by definition.
+var hosted_by: StringName = &""
+
+
 func host_player_id() -> StringName:
+	if not hosted_by.is_empty():
+		return hosted_by
 	if players.is_empty():
 		return &""
 	return players[0].id

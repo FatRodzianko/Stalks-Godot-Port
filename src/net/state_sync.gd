@@ -12,7 +12,7 @@ extends RefCounted
 ## wire, and every field is listed by hand. See docs/decisions.md D41.
 ##
 ## **Why whole snapshots.** This is a turn-based game with at most ten players and
-## ten stalks; a full redacted snapshot is well under a kilobyte and arrives a
+## ten stalks; a complete snapshot is a couple of kilobytes and arrives a
 ## handful of times per year. Delta encoding would buy nothing and could drift out
 ## of sync. See docs/decisions.md D42.
 ##
@@ -24,27 +24,43 @@ extends RefCounted
 
 # ---------------------------------------------------------------------- the view
 #
-# What one player is allowed to see. See docs/architecture.md §5.3.
+# What a client is told. See docs/architecture.md §5.3.
+#
+# **Everything, as of 2026-11-18.** Every client holds a complete copy of the
+# match - everybody's cash, holdings and loan, not only its own. Two reasons,
+# and the second is the one that decided it.
+#
+# The first is that there was never much worth protecting. This is a game of
+# bets on a random number generator, and nobody plays it differently for
+# knowing a rival's cash balance. The board already publishes net worth, which
+# is the figure players actually watch.
+#
+# The second is **host migration**. When the host walks out, one of the
+# remaining players has to carry the match on, and the only thing they can
+# carry it on from is a copy they already hold. A redacted copy is missing
+# every other player's position, so a new host would have to ask the remaining
+# players what they own and believe the answers - trusting precisely the people
+# a host exists not to have to trust. With a complete copy it promotes its own
+# and asks nobody anything. See docs/decisions.md D105.
+#
+# **This is about visibility, not authority.** The host still owns every rule.
+# A client sends requests - "buy 5 of X" - and the host validates them against
+# its own state and applies them (`host_session.gd`); no client writes anybody's
+# position, its own included. Being able to see a number and being able to
+# change it are different powers, and only the first one was given away.
 
-## Fields every player may see about every other player.
+
+## Encodes the whole match, in full, for everybody.
 ##
-## Net worth is public because the rankings board shows it — that is the whole
-## point of the board. Cash and holdings are not, because knowing exactly what a
-## rival holds would change how the game is played.
-const PUBLIC_PLAYER_FIELDS: PackedStringArray = [
-	"id", "display_name", "steam_id", "net_worth", "is_bankrupt", "is_ready",
-	"has_loan",
-]
-
-
-## Encodes the whole match as `for_player_id` is allowed to see it.
-##
-## Pass an empty id to encode nothing privately — useful for tests asserting that
-## redaction happens at all.
-static func encode_state(state: GameState, for_player_id: StringName) -> Dictionary:
+## `rng_state` is how far the match's random stream has run. It rides along so
+## that a client forced to take over as host can carry that stream on from
+## where it stood, instead of rewinding to the start of the match and dealing
+## year one's rolls out a second time. A client that never becomes host ignores
+## it.
+static func encode_state(state: GameState, rng_state: int = 0) -> Dictionary:
 	var players: Array[Dictionary] = []
 	for player: PlayerState in state.players:
-		players.append(encode_player(player, player.id == for_player_id))
+		players.append(encode_player(player))
 
 	var stalks: Array[Dictionary] = []
 	for stalk: StalkState in state.stalks:
@@ -53,6 +69,10 @@ static func encode_state(state: GameState, for_player_id: StringName) -> Diction
 	return {
 		"year": state.year,
 		"is_over": state.is_over,
+		"rng_state": rng_state,
+		# Public: every board draws a host marker from it, and after a
+		# migration it is the only way to know the marker has moved.
+		"hosted_by": String(state.hosted_by),
 		# Public: everybody's button depends on it.
 		"yeehaw_requested_by": String(state.yeehaw_requested_by),
 		"stalks": stalks,
@@ -61,49 +81,27 @@ static func encode_state(state: GameState, for_player_id: StringName) -> Diction
 	}
 
 
-## The private half of a player's state is included only when `is_own` is true.
-## Everything else gets the public fields and nothing more.
+## One player, with nothing held back.
 ##
-## **Who is in a stalk is public; how much they hold is not.** As of
-## 2026-11-17 every player is told which companies the others have bought into,
-## so the board can list a stalk's investors, and nothing about the size of
-## those positions. Cash and the loan schedule stay private as before. See
-## decisions.md D103.
-static func encode_player(player: PlayerState, is_own: bool) -> Dictionary:
-	var data: Dictionary = {
+## **Deliberately complete** - the note at the top of this file says why, and
+## `apply_player` is its mirror. Cash, share counts and the loan schedule all
+## travel, which is what makes any client able to take the match over.
+static func encode_player(player: PlayerState) -> Dictionary:
+	var holdings: Dictionary = {}
+	for stalk_id: StringName in player.holdings:
+		holdings[String(stalk_id)] = player.holdings[stalk_id]
+
+	return {
 		"id": String(player.id),
 		"display_name": player.display_name,
 		"steam_id": player.steam_id,
 		"net_worth": player.net_worth,
 		"is_bankrupt": player.is_bankrupt,
 		"is_ready": player.is_ready,
-		# Whether somebody has a loan at all is public — net worth already shows
-		# its effect, and the original's rankings row showed a loan marker. The
-		# balance and payment schedule are not.
-		"has_loan": player.loan != null,
-		# Names only. The amounts are below, and only for their owner.
-		"invested_in": _stalks_held(player),
+		"cash": player.cash,
+		"holdings": holdings,
+		"loan": encode_loan(player.loan),
 	}
-	if not is_own:
-		return data
-
-	var holdings: Dictionary = {}
-	for stalk_id: StringName in player.holdings:
-		holdings[String(stalk_id)] = player.holdings[stalk_id]
-
-	data["cash"] = player.cash
-	data["holdings"] = holdings
-	data["loan"] = encode_loan(player.loan)
-	return data
-
-
-## The stalks a player is in, as plain strings, in no particular order.
-static func _stalks_held(player: PlayerState) -> Array:
-	var held: Array = []
-	for stalk_id: StringName in player.holdings:
-		if player.holdings[stalk_id] > 0:
-			held.append(String(stalk_id))
-	return held
 
 
 static func encode_loan(loan: LoanState) -> Variant:
@@ -164,6 +162,7 @@ static func apply_state(
 	state.year = int(data.get("year", 0))
 	state.is_over = bool(data.get("is_over", false))
 	state.yeehaw_requested_by = StringName(data.get("yeehaw_requested_by", ""))
+	state.hosted_by = StringName(data.get("hosted_by", ""))
 	apply_settings(state, data.get("settings", {}))
 
 	var stalk_data: Array = data["stalks"]
@@ -217,9 +216,9 @@ static func apply_stalk(stalk: StalkState, data: Dictionary) -> void:
 	stalk.did_split = bool(data.get("did_split", false))
 
 
-## Applies one player entry. A redacted entry carries no `cash` key, and the
-## replica's own fields are left untouched rather than zeroed — a client holds
-## real values only for itself, and zeroing would make a rival look broke.
+## Applies one player entry, in full. The mirror of `encode_player`, field for
+## field; a snapshot carries every player's whole position, so nothing here has
+## to decide whether a field was withheld.
 static func apply_player(player: PlayerState, data: Dictionary) -> void:
 	player.id = StringName(data.get("id", ""))
 	player.display_name = String(data.get("display_name", ""))
@@ -227,22 +226,23 @@ static func apply_player(player: PlayerState, data: Dictionary) -> void:
 	player.net_worth = int(data.get("net_worth", 0))
 	player.is_bankrupt = bool(data.get("is_bankrupt", false))
 	player.is_ready = bool(data.get("is_ready", false))
+	player.cash = int(data.get("cash", 0))
 
-	# Public, so it is read before the private half is given up on below. Every
-	# player gets this; only its owner gets the amounts behind it.
-	player.invested_in.clear()
-	for held: Variant in data.get("invested_in", []):
-		player.invested_in.append(StringName(held))
-
-	if not data.has("cash"):
-		return
-
-	player.cash = int(data["cash"])
 	player.holdings.clear()
 	var holdings: Dictionary = data.get("holdings", {})
 	for key: Variant in holdings:
 		player.set_shares(StringName(key), int(holdings[key]))
+
 	player.loan = decode_loan(data.get("loan"))
+
+
+## How far the random stream had run when this snapshot was taken.
+##
+## Kept out of `apply_state`, which writes into a GameState and has nowhere to
+## put this: the random generator belongs to the authority, and only a client
+## that is becoming one has any use for the number.
+static func rng_state_of(data: Dictionary) -> int:
+	return int(data.get("rng_state", 0))
 
 
 static func decode_loan(data: Variant) -> LoanState:

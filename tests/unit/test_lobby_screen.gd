@@ -906,9 +906,7 @@ func test_the_clock_stops_once_the_host_answers() -> void:
 	var endings: Array[String] = []
 	client.connection_lost.connect(func(reason: String) -> void: endings.append(reason))
 
-	client._on_welcomed(&"p1", StateSync.encode_state(
-		StalksFixture.make_state(10, 2), &"p1"
-	))
+	client._on_welcomed(&"p1", StateSync.encode_state(StalksFixture.make_state(10, 2)))
 	assert_true(client.has_joined(), "the test needs a welcomed client")
 
 	client._process(ClientSession.JOIN_TIMEOUT_SECONDS * 2.0)

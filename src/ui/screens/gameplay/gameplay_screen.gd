@@ -39,7 +39,6 @@ signal connection_ended(reason: String)
 @onready var _mood_label: Label = %MoodLabel
 @onready var _event_flavour: ScrollingLabel = %EventFlavour
 @onready var _event_effect: Label = %EventEffect
-@onready var _more_button: Button = %MoreButton
 @onready var _yeehaw_button: Button = %YeehawButton
 @onready var _yeehaw_note: Label = %YeehawNote
 @onready var _cash_label: Label = %CashLabel
@@ -187,7 +186,7 @@ func _attach(session: GameSession) -> void:
 	_build_confirm_panel()
 	_build_news_panel()
 	_build_stalk_panel()
-	_more_button.pressed.connect(_on_more_pressed)
+	_event_flavour.more_requested.connect(_on_more_requested)
 	_reset_event_panel()
 	refresh()
 
@@ -291,12 +290,12 @@ func _build_headers() -> void:
 ## everything below it up and down as the years pass. D63 also says what to do
 ## instead, and this is it - raise the reserve, do not make it conditional.
 func _reserve_event_flavour_height() -> void:
-	var line_height: int = _event_flavour.get_theme_font("font").get_height(
-		_event_flavour.get_theme_font_size("font_size")
+	var line_height: int = _event_flavour.get_theme_font("normal_font").get_height(
+		_event_flavour.get_theme_font_size("normal_font_size")
 	)
 	var spacing: int = 0
-	if _event_flavour.has_theme_constant("line_spacing"):
-		spacing = _event_flavour.get_theme_constant("line_spacing")
+	if _event_flavour.has_theme_constant("line_separation"):
+		spacing = _event_flavour.get_theme_constant("line_separation")
 	_event_flavour.custom_minimum_size.y = (
 		(line_height + spacing) * _event_flavour.max_lines_visible
 	)
@@ -376,10 +375,10 @@ func stalk_panel() -> StalkPanel:
 
 ## Opens a company's details, with the players currently holding it.
 ##
-## **Names only.** A client is told which stalks a rival is in and not how much
-## they hold, so this asks `invests_in` rather than reading amounts - which
-## also means it gives the same answer offline and over the wire. See
-## decisions.md D103.
+## **Names only.** The panel lists who is in a company and not how much they
+## hold - a choice about what it is for, since D105 put the amounts on the wire
+## too. `invests_in` is the question being asked, which is also why this gives
+## the same answer offline and over the wire. See decisions.md D103 and D105.
 func show_stalk_details(stalk_id: StringName) -> void:
 	if _stalk_panel == null or _session == null:
 		return
@@ -394,7 +393,10 @@ func show_stalk_details(stalk_id: StringName) -> void:
 			investors.append(player.display_name)
 
 	_stalk_panel.show_stalk(
-		stalk.definition.display_name, stalk.definition.description, investors
+		stalk.definition.display_name,
+		stalk.definition.description,
+		investors,
+		stalk.definition.investors_are_anonymous,
 	)
 
 
@@ -1008,29 +1010,15 @@ func _on_game_over(winners: Array[StringName]) -> void:
 
 func _reset_event_panel() -> void:
 	_event_flavour.set_full_text("")
-	_more_button.visible = false
 	_event_effect.text = ""
-
-
-## Shows "... MORE" when the strip has had to cut the description short.
-##
-## **Twenty of the ninety descriptions do not fit the two lines the strip
-## reserves** (D101), and until this there was nothing on screen saying there
-## was more to read - the text simply stopped. Hovering has scrolled it since
-## D100, but a thing you have to hover to discover is not discoverable.
-##
-## The button reopens the panel the description already appeared in when the
-## year turned, rather than being a second way of presenting the same words.
-func _offer_the_rest_of_it() -> void:
-	_more_button.visible = _event_flavour.overflows()
 
 
 ## Puts the year's news back up, for a player who closed it and then wanted it
 ## again - or who has the panel switched off entirely and reads the strip.
-func _on_more_pressed() -> void:
+func _on_more_requested() -> void:
 	if _news_panel == null:
 		return
-	_news_panel.show_news(_event_flavour.text, _event_effect.text)
+	_news_panel.show_news(_event_flavour.full_text(), _event_effect.text)
 
 
 ## Puts the year's event in front of the player.
@@ -1052,7 +1040,6 @@ func _announce_the_news(result: YearResult) -> void:
 func _show_event(result: YearResult) -> void:
 	if result.event == null:
 		_event_flavour.set_full_text("")
-		_more_button.visible = false
 		_event_effect.text = "No special event this year."
 		_event_effect.remove_theme_color_override("font_color")
 		return
@@ -1066,7 +1053,6 @@ func _show_event(result: YearResult) -> void:
 	# returns to its first line instead of opening wherever the last one had
 	# been scrolled to. See decisions.md D100.
 	_event_flavour.set_full_text(result.event.flavour_text)
-	_offer_the_rest_of_it()
 	_event_effect.text = "%s %s by %d" % [
 		target_name,
 		"rose" if result.event.price_change > 0 else "fell",

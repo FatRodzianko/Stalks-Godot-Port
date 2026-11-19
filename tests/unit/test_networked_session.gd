@@ -310,22 +310,57 @@ func test_a_client_is_told_which_player_it_controls_and_no_other() -> void:
 	assert_false(_harness.client.controls(&"p0"), "and nobody else's")
 
 
-func test_a_client_never_learns_a_rivals_cash() -> void:
-	# The end-to-end counterpart of the redaction tests in test_state_sync: this
-	# asserts the host actually sends the redacted view, not just that it can.
+## A client ends up holding the whole match, over a real connection.
+##
+## **This is the end-to-end half of host migration.** A new host carries the
+## match on from the copy it already has (`HostSession.take_over`), so that
+## copy has to be the real thing and not a redacted sketch. The unit tests in
+## test_state_sync assert the snapshot *can* carry everything; this asserts the
+## host actually sends it and the client actually ends up holding it.
+##
+## It replaced a test asserting the opposite - that a rival's cash never
+## crossed the wire. See docs/decisions.md D105 for why that rule went.
+func test_a_client_ends_up_holding_the_hosts_whole_match() -> void:
 	if not await _connect():
 		return
 	await _open_trading()
 
-	# Move the host's cash somewhere distinctive, then let a snapshot go out.
+	# Move the host's position somewhere distinctive, then let a snapshot out.
 	_harness.host.request_buy(&"p0", _harness.host.state().stalks[0].id, 5)
 	await _harness.settle(self)
 
-	var host_cash: int = _harness.host.state().player_by_id(&"p0").cash
-	var seen_by_client: int = _harness.client.state().player_by_id(&"p0").cash
+	var stalk_id: StringName = _harness.host.state().stalks[0].id
+	var theirs: PlayerState = _harness.host.state().player_by_id(&"p0")
+	var seen: PlayerState = _harness.client.state().player_by_id(&"p0")
 
-	assert_ne(host_cash, 10000, "the host should have spent something")
-	assert_ne(seen_by_client, host_cash, "a client must not be told a rival's cash")
+	assert_ne(theirs.cash, 10000, "the host should have spent something")
+	assert_eq(seen.cash, theirs.cash, "a client holds a rival's real cash")
+	assert_eq(
+		seen.shares_of(stalk_id),
+		theirs.shares_of(stalk_id),
+		"and the size of their position",
+	)
+
+
+## Seeing is not writing, which is the rule that did not change.
+##
+## The permissive half above costs nothing only because the host validates
+## every request against its own state. A client asking to spend somebody
+## else's money is refused however much of that money it can see.
+func test_seeing_a_rivals_cash_does_not_let_a_client_spend_it() -> void:
+	if not await _connect():
+		return
+	await _open_trading()
+
+	var before: int = _harness.host.state().player_by_id(&"p0").cash
+	_harness.client.request_buy(&"p0", _harness.host.state().stalks[0].id, 1)
+	await _harness.settle(self)
+
+	assert_eq(
+		_harness.host.state().player_by_id(&"p0").cash,
+		before,
+		"a client must not move a rival's money",
+	)
 
 
 func test_a_client_does_learn_a_rivals_net_worth() -> void:

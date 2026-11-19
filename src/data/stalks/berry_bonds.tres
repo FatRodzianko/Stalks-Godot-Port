@@ -1,13 +1,14 @@
-[gd_resource type="Resource" script_class="StalkDefinition" format=3]
+[gd_resource type="Resource" script_class="StalkDefinition" format=3 uid="uid://cr0v8cpyq6p0q"]
 
-[ext_resource type="Script" path="res://src/data/special_event_definition.gd" id="1_5apky"]
-[ext_resource type="Script" path="res://src/data/stalk_definition.gd" id="2_eo70k"]
+[ext_resource type="Script" uid="uid://b4u2r4nw06mfj" path="res://src/data/special_event_definition.gd" id="1_5apky"]
+[ext_resource type="Script" uid="uid://ci8lb28f2a7dc" path="res://src/data/stalk_definition.gd" id="2_eo70k"]
 
 [resource]
 script = ExtResource("2_eo70k")
 id = &"berry_bonds"
 display_name = "BERRY BONDS FROM DIE HARD"
-description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+description = "Hello from your friendly neighborhood bondsmen. If you're too scared to invest your hard earned money in the big scary market, invest it in us. No one will even know. You can't lose, unless our safe in an LA skyscrapper is robbed after a planned power failure."
+investors_are_anonymous = true
 ticker = &"BERRY"
 bear_dividend = 3
 bull_dividend = 3

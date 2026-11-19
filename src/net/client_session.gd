@@ -59,6 +59,14 @@ var _steam_id: int = 0
 
 ## Set when the host turned this client away, so a subsequent disconnect is
 ## reported with the host's reason rather than a generic one.
+## How far the match's random stream had run at the last snapshot.
+##
+## Kept against the day the host walks out and this client is the one Steam
+## makes the new owner: it promotes its own copy of the match and picks the
+## stream up here, rather than reseeding and dealing year one again. Unused
+## until then. See docs/decisions.md D105.
+var _rng_state: int = 0
+
 var _refusal: String = ""
 
 ## Seconds spent waiting for the welcome, or -1 when not waiting. See
@@ -127,6 +135,12 @@ func _on_connected() -> void:
 
 func state() -> GameState:
 	return _state
+
+
+## How far the match's random stream had run at the last snapshot. What a new
+## host needs in order to continue the match rather than re-roll its past.
+func rng_state() -> int:
+	return _rng_state
 
 
 func local_player_id() -> StringName:
@@ -203,6 +217,7 @@ func _on_welcomed(player_id: StringName, state_data: Dictionary) -> void:
 		connection_lost.emit(problem)
 		close()
 		return
+	_rng_state = StateSync.rng_state_of(state_data)
 	_has_joined = true
 	_waiting_for = -1.0
 	joined.emit(player_id)
@@ -264,6 +279,7 @@ func _on_yeehaw_given_pushed(giver_id: StringName, receiver_id: StringName) -> v
 func _absorb(state_data: Dictionary) -> bool:
 	var problem: String = StateSync.apply_state(_state, state_data, _library)
 	if problem.is_empty():
+		_rng_state = StateSync.rng_state_of(state_data)
 		return true
 	connection_lost.emit(problem)
 	close()
