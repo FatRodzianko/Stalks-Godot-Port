@@ -15,9 +15,38 @@ extends GutTest
 const GameOverScene: PackedScene = preload("res://src/ui/screens/game_over/game_over_screen.tscn")
 const LobbyScene: PackedScene = preload("res://src/ui/screens/lobby/lobby_screen.tscn")
 const LobbyRowScene: PackedScene = preload("res://src/ui/widgets/lobby_row.tscn")
+const MenuScene: PackedScene = preload("res://src/ui/screens/main_menu/main_menu.tscn")
 
 ## Ten players, host included — the most a match can hold. See game-rules.md §2.
 const FULL_HOUSE: int = 10
+
+## The window the game runs in (project.godot). A screen is laid out at this
+## size here rather than at whatever the test runner's viewport happens to be,
+## or the numbers mean nothing.
+const WINDOW: Vector2 = Vector2(1280, 720)
+
+
+## A row with a player in it. An empty `LobbyRow` is shorter than a real one -
+## it has no name to set its height - so a test that fills the list with bare
+## instances measures a lobby that cannot happen.
+## Added to the list first, then filled: `display` writes to `@onready` nodes,
+## which do not exist until the row is in the tree. The lobby screen seats them
+## in that order for the same reason.
+func _seat_row(list: VBoxContainer, index: int) -> void:
+	var row: LobbyRow = LobbyRowScene.instantiate()
+	list.add_child(row)
+	row.display(
+		PlayerState.new(StringName("p%d" % index), "Player %d" % index, 10000),
+		index == 0,
+		index == 0,
+	)
+
+
+## Puts a screen in the tree at the size the game would give it.
+func _laid_out(screen: Control) -> void:
+	add_child_autofree(screen)
+	screen.size = WINDOW
+	screen.position = Vector2.ZERO
 
 
 func _state_with(players: int) -> GameState:
@@ -34,7 +63,7 @@ func _state_with(players: int) -> GameState:
 
 func _result_card(players: int) -> Control:
 	var screen: GameOverScreen = GameOverScene.instantiate()
-	add_child_autofree(screen)
+	_laid_out(screen)
 	screen.display(_state_with(players), &"p0")
 	await wait_frames(2)
 	return screen.get_node("Centre/Card")
@@ -77,10 +106,10 @@ func test_a_full_result_card_still_fits_on_screen() -> void:
 
 func _lobby_card(players: int, status: String) -> Control:
 	var screen: Control = LobbyScene.instantiate()
-	add_child_autofree(screen)
+	_laid_out(screen)
 	var list: VBoxContainer = screen.get_node("%PlayerList")
 	for index: int in players:
-		list.add_child(LobbyRowScene.instantiate())
+		_seat_row(list, index)
 	(screen.get_node("%Status") as Label).text = status
 	await wait_frames(2)
 	return screen.get_node("Centre/Card")
@@ -114,18 +143,73 @@ func test_a_full_lobby_fits_on_screen() -> void:
 	assert_lt(card.size.y, 720.0, "the card has to fit the window the game runs in")
 
 
-## Ten rows is what the list reserves, so a full lobby needs no scrolling. The
-## scrollbar stays as the backstop for a row taller than it was measured at.
-func test_a_full_lobby_needs_no_scrolling() -> void:
-	var screen: Control = LobbyScene.instantiate()
-	add_child_autofree(screen)
-	var list: VBoxContainer = screen.get_node("%PlayerList")
-	for index: int in FULL_HOUSE:
-		list.add_child(LobbyRowScene.instantiate())
-	await wait_frames(2)
+## **The list area is a fixed window on the roster, whatever is in it.** How
+## many players that shows is not fixed - a row is taller once its Steam
+## avatar arrives - which is exactly why the guarantee is the window rather
+## than a row count, and why the scrollbar is what shows the rest. The owner
+## chose that over a panel sized to nothing else on screen. See decisions.md
+## D125.
+func test_the_list_area_is_the_same_whoever_is_in_it() -> void:
+	var empty: Control = await _lobby_scroll(0)
+	var reserved: float = empty.size.y
 
-	var scroll: ScrollContainer = screen.get_node("%PlayerList").get_parent()
-	assert_lte(
-		list.size.y, scroll.size.y,
-		"all ten players should be visible without scrolling",
+	var full: Control = await _lobby_scroll(FULL_HOUSE)
+
+	assert_eq(full.size.y, reserved, "the roster window does not resize")
+	assert_gt(reserved, 0.0, "and it is a window, not nothing")
+
+
+func _lobby_scroll(players: int) -> Control:
+	var screen: Control = LobbyScene.instantiate()
+	_laid_out(screen)
+	var list: VBoxContainer = screen.get_node("%PlayerList")
+	for index: int in players:
+		_seat_row(list, index)
+	await wait_frames(2)
+	return list.get_parent()
+
+# -------------------------------------------------- matching the title screen
+#
+# The lobby is the screen you arrive at from the title screen, and the two sat
+# at noticeably different sizes. Reported from play on 2026-11-20 with the two
+# marks that define it: the top of the heading text, and the bottom of the
+# panel against the bottom of QUIT TO DESKTOP.
+#
+# **Within two pixels rather than exactly**, because a vertically centred card
+# cannot hit both marks at once: the panel draws two pixels of padding above
+# its heading, which puts the two targets a pixel either side of centre. One
+# pixel at this size is a sixth of a character.
+
+const ALIGNMENT_SLACK: float = 2.0
+
+
+func _title_screen_marks() -> Vector2:
+	var menu: Control = MenuScene.instantiate()
+	_laid_out(menu)
+	await wait_frames(3)
+	var heading: Control = menu.get_node("Centre/Shell/Title")
+	var quit: Control = menu.get_node("Centre/Shell/QuitRow/QuitButton")
+	return Vector2(heading.global_position.y, quit.global_position.y + quit.size.y)
+
+
+func test_the_lobby_heading_starts_where_the_title_does() -> void:
+	var marks: Vector2 = await _title_screen_marks()
+
+	var card: Control = await _lobby_card(2, "Everybody is ready.")
+	var heading: Control = card.get_node("Body/Title")
+
+	assert_almost_eq(
+		heading.global_position.y, marks.x, ALIGNMENT_SLACK,
+		"the lobby heading should start where the title screen's does",
+	)
+
+
+func test_the_lobby_panel_ends_where_the_quit_button_does() -> void:
+	var marks: Vector2 = await _title_screen_marks()
+
+	var card: Control = await _lobby_card(2, "Everybody is ready.")
+
+	assert_almost_eq(
+		card.global_position.y + card.size.y, marks.y, ALIGNMENT_SLACK,
+		"the lobby panel should end level with QUIT TO DESKTOP",
 	)

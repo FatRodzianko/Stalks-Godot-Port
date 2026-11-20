@@ -4920,12 +4920,22 @@ card. A `Pages` container with the height written once makes them two views of
 one space, and each scrolls inside it. The height is 120 - what the standings
 tab already used - so the card looks exactly as it did, it just stops moving.
 
-**The lobby list reserves ten rows.** A row is 23 tall and ten players is the
-most a match can hold (game-rules.md 2), so 230 shows a full lobby without
-scrolling. The scrollbar stays as the backstop rather than being removed: a row
-that grows taller than it was measured at should scroll rather than overflow.
-The card is 332 tall now instead of 204, which is the cost of a size that never
-changes.
+**The lobby panel is sized to the title screen**, which was the second half of
+the report: the lobby is the screen you arrive at from the title screen and the
+two sat at noticeably different sizes. The marks are the top of the heading text
+and the bottom of the panel against the bottom of QUIT TO DESKTOP. The title
+screen runs 213 to 507 at 1280x720, so the lobby card is 296 tall, which lands
+its heading at 214 and its bottom at 508.
+
+One pixel out on each, and it cannot be better: the card is centred vertically,
+the panel draws two pixels of padding above its heading, and that puts the two
+marks a pixel either side of centre. One pixel is a sixth of a character here.
+
+**That leaves a window on the roster rather than room for everybody.** How many
+players fit is not a fixed number - a row grows once its Steam avatar arrives -
+so the guarantee is the window, and the scrollbar shows the rest. A panel that
+holds all ten at any row height would have to be taller than anything else the
+game draws, which is the trade the owner chose against.
 
 **A wrapping label is a panel that changes size.** `autowrap_mode` with
 `max_lines_visible` gives a label the height of however many lines it needs

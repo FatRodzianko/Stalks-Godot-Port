@@ -14,13 +14,24 @@ const LobbyScene: PackedScene = preload("res://src/ui/screens/lobby/lobby_screen
 const RankingRowScene: PackedScene = preload("res://src/ui/widgets/ranking_row.tscn")
 const HistoryRowScene: PackedScene = preload("res://src/ui/widgets/history_row.tscn")
 const LobbyRowScene: PackedScene = preload("res://src/ui/widgets/lobby_row.tscn")
+const MenuScene: PackedScene = preload("res://src/ui/screens/main_menu/main_menu.tscn")
+const AudioServiceScript: GDScript = preload("res://src/audio/audio_service.gd")
 
 
 func _initialize() -> void:
 	root.size = Vector2i(1280, 720)
+	# **Autoloads are not registered for a `--script` run**, and the title
+	# screen's settings panel reaches for `Audio` the moment it is built. A GUT
+	# run has them because it starts the project properly; this does not, so it
+	# stands one up by hand under the name the game looks it up by.
+	if not root.has_node("Audio"):
+		var audio: Node = AudioServiceScript.new()
+		audio.name = "Audio"
+		root.add_child(audio)
 	await process_frame
 
 	_measure_rows()
+	await _measure_title_screen()
 	await _measure_result_card(2)
 	await _measure_result_card(10)
 	await _measure_lobby(1)
@@ -73,7 +84,11 @@ func _measure_lobby(players: int) -> void:
 	await process_frame
 
 	var card: Control = screen.get_node("Centre/Card")
-	print("lobby card, %d players: %.0f tall" % [players, card.size.y])
+	print("lobby card, %d players: %.0f tall, top %.0f, bottom %.0f" % [
+		players, card.size.y, card.global_position.y, card.global_position.y + card.size.y,
+	])
+	var title: Control = screen.get_node("Centre/Card/Body/Title")
+	print("  lobby title text top: %.0f" % title.global_position.y)
 
 	# The status line is the other half of it: it wraps to a second line as
 	# soon as it has a name in it, and the card used to grow with it.
@@ -100,3 +115,20 @@ func _state_with(players: int) -> GameState:
 		)
 	state.is_over = true
 	return state
+
+## Where the title screen starts and stops, which is what the lobby card is
+## being matched to: the top of the title text, and the bottom of the quit
+## button.
+func _measure_title_screen() -> void:
+	var menu: Control = MenuScene.instantiate()
+	root.add_child(menu)
+	await process_frame
+	await process_frame
+	var title: Control = menu.get_node("Centre/Shell/Title")
+	var quit: Control = menu.get_node("Centre/Shell/QuitRow/QuitButton")
+	print("title screen: text top %.0f, quit bottom %.0f, span %.0f" % [
+		title.global_position.y,
+		quit.global_position.y + quit.size.y,
+		quit.global_position.y + quit.size.y - title.global_position.y,
+	])
+	menu.queue_free()

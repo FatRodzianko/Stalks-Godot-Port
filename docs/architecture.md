@@ -638,7 +638,7 @@ delivers unhandled input from the deepest node upwards. See decisions.md D64.
 
 **A panel the player can change the contents of has its size decided up
 front.** The result card holds both its tabs in one fixed-height wrapper, the
-lobby reserves ten rows, and a label that wraps reserves its full height through
+lobby's roster is a fixed window with a scrollbar, and a label that wraps reserves its full height through
 `ReservedLines` (`src/ui/reserved_lines.gd`) rather than growing a line at a
 time. Sizing to content is Godot's default and it makes panels jump while
 somebody is reading them; `tests/unit/test_panel_sizes.gd` holds the rule. See

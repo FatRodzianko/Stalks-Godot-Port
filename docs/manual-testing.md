@@ -1272,6 +1272,7 @@ one of three declines.
 10c. On B, press **BACK TO RESULTS**.
 10d. On B, switch between **FINAL STANDINGS** and **YEAR BY YEAR** and check the panel does not change size (D125).
 10e. On A, check the lobby panel is the same size with two players in it as it was with one.
+10f. On A, press **LEAVE**, and check the lobby panel's heading started level with STALKS STALKS STALKS and its bottom edge level with QUIT TO DESKTOP.
 11. On B, press it.
 12. Check B shows the lobby.
 13. Check A's lobby lists both players.

@@ -39,7 +39,7 @@ horizontal_alignment = 1
 layout_mode = 2
 
 [node name="ListScroll" type="ScrollContainer" parent="Centre/Card/Body"]
-custom_minimum_size = Vector2(0, 230)
+custom_minimum_size = Vector2(0, 194)
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
