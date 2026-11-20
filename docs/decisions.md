@@ -4498,3 +4498,68 @@ the live broadcast and is built-in types only, so D41 is untouched.
 
 **What it rules out.** A client's history being something it assembles for
 itself. It is now told to it, like everything else about the match.
+
+---
+
+## Phase 12 - considered and removed
+
+### D119 - Custom stalks were built, hardened, and taken back out
+**2026-11-20 · Accepted**
+
+Players writing their own companies as JSON files, choosing which companies a
+match uses, and hosting a match on them, was built on 2026-11-19, hardened on
+2026-11-20, and removed the same day. The decision is the owner's and it is
+not a verdict on the implementation: the suite was green, the receive path had
+been attacked deliberately and the two things that gave way were fixed.
+
+**Why it was removed.** The feature widened what one machine accepts from
+another, and the owner had not settled on wanting it. A permanent widening of
+that surface in exchange for a feature nobody is sure about is a poor trade,
+and the cheapest moment to decide that is before anything is built on top.
+
+**What it would cost to bring back**, which is the part worth having written
+down:
+
+The port's network rule was that **definitions are not sent**. Both machines
+load the same `.tres` content, so only ids travel and each receiver looks the
+definition up locally; `apply_state` refuses a snapshot naming a stalk it
+cannot resolve, on the grounds that a client running different content from
+the host is worth failing loudly over. Custom stalks cannot work under that
+rule - a host may be playing companies no other machine has ever seen - so the
+definitions had to travel, once, with the welcome. That is the whole of the
+design and everything else followed from it:
+
+- Content stopped being a property of an installation and became part of a
+  match, because a client that takes the match over after a migration has to
+  serve the content it received rather than re-reading its own disk. The board
+  survives either way, since the promoted `GameState` already holds its
+  definitions - but the **event pool comes from the library**, so a new host
+  reading its own files runs a match whose board shows the departed host's
+  companies while nothing can ever happen to them again.
+- A definition became hostile input, since it arrives from another player. It
+  needed the same posture D41 takes for the wire: built-in types only, every
+  field listed by hand off a whitelist, object decoding never enabled.
+- Player-written content had to be JSON rather than `.tres`, because loading a
+  `.tres` instantiates whatever script it names.
+
+**Two faults found by attacking that path**, worth knowing before writing
+anything like it again:
+
+- `NAN` defeats a magnitude guard, because every comparison against NAN is
+  false. It reached `int(NAN)` - the most negative integer there is - and was
+  caught only by a range check that happened to follow. Check `is_nan` first.
+- Refusing can be made expensive. A stalk carrying two hundred thousand bad
+  events took 1490ms to refuse, building an error string for each; ten such
+  stalks would have held a joining client for fifteen seconds. Refuse a list
+  by its size before walking it, and cap the error list.
+
+**Where it is.** Commits `042a40a` (the feature) and `15d5ab6` (the attack and
+its fixes), reverted together by `bbc58a5`. Reverting that commit restores
+both, hardened, in one step. Everything else - the shipped companies and their
+descriptions, host migration, rejoining, and the year history travelling with
+the welcome (D118) - was untouched, and the tree after the revert is
+byte-identical to the commit before the feature.
+
+**What it rules out.** Nothing permanently. If this is picked up again, start
+from the rule it has to break - definitions are not sent - rather than from
+the file format, which was the easy half.
