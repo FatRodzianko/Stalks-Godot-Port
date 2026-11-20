@@ -636,6 +636,14 @@ current screen, and only the screen host knows what that is. Overlays inside a
 screen — the loan panel, the confirmation — take Escape first, because Godot
 delivers unhandled input from the deepest node upwards. See decisions.md D64.
 
+**A panel the player can change the contents of has its size decided up
+front.** The result card holds both its tabs in one fixed-height wrapper, the
+lobby reserves ten rows, and a label that wraps reserves its full height through
+`ReservedLines` (`src/ui/reserved_lines.gd`) rather than growing a line at a
+time. Sizing to content is Godot's default and it makes panels jump while
+somebody is reading them; `tests/unit/test_panel_sizes.gd` holds the rule. See
+decisions.md D125.
+
 **Every screen's root is a container**, not an anchored `Control` — see
 decisions.md D35. The first version anchored a Control and produced dead space at the
 top and bottom of the window.

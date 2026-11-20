@@ -71,6 +71,11 @@ func _ready() -> void:
 	_start_button.pressed.connect(_on_start_pressed)
 	_leave_button.pressed.connect(_on_leave_button_pressed)
 	_invite_button.pressed.connect(_on_invite_button_pressed)
+	# **So the card does not change size when somebody joins.** The status
+	# line wraps to a second line as soon as it has a name in it, and the
+	# whole lobby jumped downwards when it did. Reported from play
+	# 2026-11-20. See docs/decisions.md D125.
+	ReservedLines.reserve(_status)
 	if _offer_invites_when_ready:
 		_invite_button.visible = true
 	if _session != null:

@@ -66,36 +66,39 @@ size_flags_horizontal = 3
 toggle_mode = true
 text = "YEAR BY YEAR"
 
-[node name="RankingScroll" type="ScrollContainer" parent="Centre/Card/Body"]
-unique_name_in_owner = true
+[node name="Pages" type="MarginContainer" parent="Centre/Card/Body"]
 custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+
+[node name="RankingScroll" type="ScrollContainer" parent="Centre/Card/Body/Pages"]
+unique_name_in_owner = true
 layout_mode = 2
 horizontal_scroll_mode = 0
 
-[node name="FinalRankings" type="VBoxContainer" parent="Centre/Card/Body/RankingScroll"]
+[node name="FinalRankings" type="VBoxContainer" parent="Centre/Card/Body/Pages/RankingScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"TightVBox"
 
-[node name="HistoryBox" type="VBoxContainer" parent="Centre/Card/Body"]
+[node name="HistoryBox" type="VBoxContainer" parent="Centre/Card/Body/Pages"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_type_variation = &"TightVBox"
 
-[node name="HistoryHeaderSlot" type="MarginContainer" parent="Centre/Card/Body/HistoryBox"]
+[node name="HistoryHeaderSlot" type="MarginContainer" parent="Centre/Card/Body/Pages/HistoryBox"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="HistoryScroll" type="ScrollContainer" parent="Centre/Card/Body/HistoryBox"]
+[node name="HistoryScroll" type="ScrollContainer" parent="Centre/Card/Body/Pages/HistoryBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
+size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 
-[node name="HistoryList" type="VBoxContainer" parent="Centre/Card/Body/HistoryBox/HistoryScroll"]
+[node name="HistoryList" type="VBoxContainer" parent="Centre/Card/Body/Pages/HistoryBox/HistoryScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3

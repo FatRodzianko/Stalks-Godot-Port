@@ -4898,3 +4898,53 @@ and it has to decide what an away player's silence means - which is the question
 that sank both rejected designs. Here the asks are host-local and advisory, the
 offer is a single broadcast, and the only durable state a rematch creates is an
 ordinary open lobby.
+
+### D125 - A panel's size is decided up front, not by what is in it
+
+Reported from play on 2026-11-20. The result card grew and shrank as you
+switched between FINAL STANDINGS and YEAR BY YEAR, and the lobby card jumped
+downwards when somebody joined. Neither showed a wrong number; both simply
+would not hold still.
+
+**Measured rather than eyeballed.** `tools/measure_panels.gd` lays both screens
+out headless at 1280x720 and prints the card heights, which is how the real
+causes were found - guessing from a screenshot would have produced a plausible
+fix for the wrong thing. The result card was 285 tall on one tab and 279 on the
+other. The lobby card was the same height for one player as for ten, because
+the list already scrolls; what moved it was the **status line**, which wraps to
+a second line as soon as it has a name in it.
+
+**The result card now holds both tabs in one fixed-height wrapper.** They were
+siblings, each with its own minimum height, so whichever was visible decided the
+card. A `Pages` container with the height written once makes them two views of
+one space, and each scrolls inside it. The height is 120 - what the standings
+tab already used - so the card looks exactly as it did, it just stops moving.
+
+**The lobby list reserves ten rows.** A row is 23 tall and ten players is the
+most a match can hold (game-rules.md 2), so 230 shows a full lobby without
+scrolling. The scrollbar stays as the backstop rather than being removed: a row
+that grows taller than it was measured at should scroll rather than overflow.
+The card is 332 tall now instead of 204, which is the cost of a size that never
+changes.
+
+**A wrapping label is a panel that changes size.** `autowrap_mode` with
+`max_lines_visible` gives a label the height of however many lines it needs
+right now, so a sentence growing from one line to two pushes everything below it
+down. The playing screen already knew this and reserved the space for two of its
+labels by measuring the theme font - and the measuring was written out twice in
+that one file. It is `ReservedLines` now, used three times: both of those and
+the lobby's status.
+
+The height has to be measured rather than written into the scene, because it
+depends on the theme's font and size and would be silently wrong the moment
+either changed.
+
+**Checked, not trusted.** `tests/unit/test_panel_sizes.gd` asserts both cards
+are the same height across a tab switch, across one player and ten, and across a
+one-line and a two-line status, and that both still fit in a 720-tall window. A
+layout that sizes to its contents is Godot's default, so this is exactly the
+kind of rule that drifts back the moment somebody adds a row - which is what
+`test_conventions.gd` exists for and the same argument applies here. See D60.
+
+**What it rules out.** Letting a container decide a panel's size from what
+happens to be inside it, anywhere the player can change what is inside it.

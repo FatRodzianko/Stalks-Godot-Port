@@ -326,27 +326,11 @@ func _reserve_event_flavour_height() -> void:
 
 
 func _reserve_yeehaw_note_height() -> void:
-	var line_height: int = _yeehaw_note.get_theme_font("font").get_height(
-		_yeehaw_note.get_theme_font_size("font_size")
-	)
-	var spacing: int = 0
-	if _yeehaw_note.has_theme_constant("line_spacing"):
-		spacing = _yeehaw_note.get_theme_constant("line_spacing")
-	_yeehaw_note.custom_minimum_size.y = (
-		(line_height + spacing) * _yeehaw_note.max_lines_visible
-	)
+	ReservedLines.reserve(_yeehaw_note)
 
 
 func _reserve_bottom_bar_height() -> void:
-	var line_height: int = _info_label.get_theme_font("font").get_height(
-		_info_label.get_theme_font_size("font_size")
-	)
-	var spacing: int = 0
-	if _info_label.has_theme_constant("line_spacing"):
-		spacing = _info_label.get_theme_constant("line_spacing")
-	_info_label.custom_minimum_size.y = (
-		(line_height + spacing) * _info_label.max_lines_visible
-	)
+	ReservedLines.reserve(_info_label)
 
 
 func _inset_header_for_scrollbar(slot: MarginContainer, scroll: ScrollContainer) -> void:
