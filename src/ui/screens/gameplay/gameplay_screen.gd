@@ -182,6 +182,11 @@ func _attach(session: GameSession) -> void:
 		# game the year advances instantly so it never showed; in a networked one
 		# it made the whole screen look dead while it waited.
 		session.ready_state_changed.connect(_on_ready_state_changed)
+		# **The final board is a place a finished match is read from too.** A
+		# player who pressed View board would otherwise be the one person not
+		# told that somebody wants another game. See decisions.md D124.
+		session.rematch_offered.connect(refresh)
+		session.rematch_requested.connect(_on_rematch_requested)
 
 	# Losing the host mid-match used to show nothing at all: the screen stayed
 	# up and every button answered "Not connected." See docs/decisions.md D61.
@@ -226,6 +231,8 @@ func _detach() -> void:
 	_session.yeehaw_requested.disconnect(_on_yeehaw_requested)
 	_session.yeehaw_given.disconnect(_on_yeehaw_given)
 	_session.ready_state_changed.disconnect(_on_ready_state_changed)
+	_session.rematch_offered.disconnect(refresh)
+	_session.rematch_requested.disconnect(_on_rematch_requested)
 	if _client != null and _client.connection_lost.is_connected(_on_connection_lost):
 		_client.connection_lost.disconnect(_on_connection_lost)
 	if _host != null and _host.player_left.is_connected(_on_player_left):
@@ -586,7 +593,12 @@ func _refresh_bottom_bar(game: GameState, player: PlayerState) -> void:
 			+ "Highest net worth after the last year wins."
 		)
 	elif game.is_over:
+		# Two lines is all this bar reserves (D63), so the rematch news shares
+		# the line the ending already uses rather than asking for a third.
 		_info_label.text = "The game is over."
+		var notice: String = RematchNotice.for_session(_session)
+		if not notice.is_empty():
+			_info_label.text = "The game is over. %s" % notice
 
 	# Once you are ready there is nothing left to do but wait, so say who for.
 	# Without this the screen simply stops responding to you, which reads as
@@ -1025,6 +1037,19 @@ func _on_player_left(player_id: StringName) -> void:
 ## player until something unrelated forced a redraw, usually another player
 ## readying up. Reported from play: a rejoined player looked, to the host, as
 ## though they were still gone. See docs/decisions.md D120.
+## What the bottom bar currently says, for a test. Nothing in the game reads
+## it back.
+func info_text_for_testing() -> String:
+	return _info_label.text
+
+
+## Somebody has asked the host for another game, or the host has offered one.
+## The board shows it in the bottom bar, because a finished match is read from
+## here as well as from the result screen. See decisions.md D124.
+func _on_rematch_requested(_player_id: StringName) -> void:
+	refresh()
+
+
 func _on_player_joined(player_id: StringName) -> void:
 	if _host == null:
 		return

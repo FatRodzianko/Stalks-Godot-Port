@@ -621,6 +621,11 @@ under, captured before the reset — and welcomed, then told by `_rpc_rematch_jo
 that it is in a lobby rather than a match. From the host pressing Play onwards
 nothing is new: it is `_on_play_requested` and the path every match takes.
 
+Both the result screen and the final board show where a rematch stands, and the
+sentence is `RematchNotice` (`src/ui/rematch_notice.gd`) rather than either
+screen's own: a player can be reading the standings or looking the market over,
+and the news is the same.
+
 The roster is built from arrivals rather than inherited, so a player who never
 answers is not in the next match and nothing waits on them (D48). Who wants a
 rematch is therefore never shared state — the asks are host-local and advisory,

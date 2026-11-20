@@ -185,10 +185,11 @@ func _refresh_rematch() -> void:
 		_rematch_note.text = ""
 		return
 
+	_rematch_note.text = RematchNotice.for_session(_session)
+
 	if _host != null:
 		_rematch_button.visible = _session.can_offer_rematch()
 		_rematch_button.text = "Return to lobby"
-		_rematch_note.text = _who_asked()
 		return
 
 	if _client == null:
@@ -198,18 +199,17 @@ func _refresh_rematch() -> void:
 		_rematch_note.text = ""
 		return
 
+	# **The offer is said outright, not left to a button quietly changing its
+	# label.** A player reading the standings is not watching the buttons, and
+	# the host going back to the lobby is news: it is the moment the game is
+	# waiting on them rather than the other way round. Reported from play on
+	# 2026-11-20; the sentence itself is `RematchNotice`, which the final board
+	# shows too.
 	if _session.rematch_is_offered():
-		# **The offer is said outright, not left to a button quietly changing
-		# its label.** A player reading the standings is not watching the
-		# buttons, and the host going back to the lobby is news: it is the
-		# moment the game is waiting on them rather than the other way round.
-		# Reported from play on 2026-11-20.
-		_rematch_note.text = "Host has restarted the lobby"
 		_rematch_button.visible = true
 		_rematch_button.disabled = false
 		_rematch_button.text = "Return to lobby"
 	else:
-		_rematch_note.text = ""
 		# No offer: all a client can do is ask. Once asked, the button stays on
 		# screen saying so rather than vanishing, because a control that
 		# disappears when pressed reads as a misfire.
@@ -222,15 +222,6 @@ func _refresh_rematch() -> void:
 ## it back.
 func rematch_note_for_testing() -> String:
 	return _rematch_note.text
-
-
-## The line on the host's screen naming whoever has asked for another game.
-## Empty when nobody has.
-func _who_asked() -> String:
-	var names: PackedStringArray = _session.rematch_asked_for_by()
-	if names.is_empty():
-		return ""
-	return "%s asked for another game." % ", ".join(names)
 
 
 func _on_rematch_requested(_player_id: StringName) -> void:

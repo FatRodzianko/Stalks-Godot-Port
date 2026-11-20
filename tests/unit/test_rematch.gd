@@ -13,6 +13,7 @@ extends GutTest
 
 
 const ResultScene: PackedScene = preload("res://src/ui/screens/game_over/game_over_screen.tscn")
+const BoardScene: PackedScene = preload("res://src/ui/screens/gameplay/gameplay_screen.tscn")
 
 const HOST_ACCOUNT: int = 7001
 const GUEST_ACCOUNT: int = 7002
@@ -53,7 +54,15 @@ func _finished_match() -> bool:
 		return false
 	await _harness.begin_match(self)
 
-	_harness.host.state().is_over = true
+	# Ended on the host **and broadcast**, so the client's replica agrees. Set
+	# on the host alone it would not: the client would still hold a match at
+	# year 0 that nobody had told it was finished, and any screen driven from
+	# that replica would render a game still in progress.
+	var finished: GameState = _harness.host.state()
+	finished.year = finished.settings.max_years
+	finished.is_over = true
+	_harness.host._broadcast_state(&"")
+	await _harness.settle(self, 6)
 	return true
 
 
@@ -389,3 +398,32 @@ func _result_screen_for(session: GameSession) -> GameOverScreen:
 	add_child_autofree(screen)
 	screen.display(session.state(), session.local_player_id())
 	return screen
+
+## **And the final board shows it too.** A player who pressed View board to
+## look the market over is still in the finished match, and would otherwise be
+## the one person never told that a rematch is on offer. The bottom bar carries
+## it on the line that already says the game is over - two lines is all that bar
+## reserves (D63).
+func test_the_final_board_carries_the_rematch_news() -> void:
+	if not await _finished_match():
+		return
+	var board: GameplayScreen = BoardScene.instantiate()
+	board.setup(_harness.client)
+	add_child_autofree(board)
+	board.show_as_final_board()
+	assert_false(
+		board.info_text_for_testing().contains("lobby"),
+		"nothing to say before the host offers",
+	)
+
+	_harness.host.offer_rematch()
+	await _harness.settle(self, 10)
+
+	assert_true(
+		board.info_text_for_testing().contains("lobby"),
+		"the board should say the host has gone back to the lobby",
+	)
+	assert_true(
+		board.info_text_for_testing().contains("over"),
+		"without losing the line saying the match has ended",
+	)

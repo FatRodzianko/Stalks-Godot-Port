@@ -1268,6 +1268,8 @@ one of three declines.
 
 10. Check B is still on the result screen, and its button now offers a way into the lobby.
 10a. Check B's result screen says in words that the host has gone back to the lobby.
+10b. On B, press **VIEW BOARD** and check the bottom bar says it too, alongside the game being over.
+10c. On B, press **BACK TO RESULTS**.
 11. On B, press it.
 12. Check B shows the lobby.
 13. Check A's lobby lists both players.

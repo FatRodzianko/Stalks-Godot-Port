@@ -4885,6 +4885,13 @@ No sound goes with it. The only cues this game owns are the bull, bear,
 bankruptcy and yeehaw ones, each of which already means something specific, and
 inventing a new one is not a decision this change gets to make.
 
+**The final board carries the same line**, on the row that already says the game
+is over. A player who pressed View board to look the market over is still in the
+finished match and would otherwise be the one person never told. The sentence
+itself lives in `RematchNotice` rather than in either screen, because two copies
+of it would mean two places to keep in step - and the board falling quietly
+behind the result screen is exactly what D120 and D121 both were.
+
 **What it rules out.** Any shared, synchronised record of who wants a rematch.
 The moment such a thing exists it has to survive a disconnect and a migration,
 and it has to decide what an away player's silence means - which is the question
