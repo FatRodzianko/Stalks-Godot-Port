@@ -40,6 +40,28 @@ func setup(session: GameSession, steam: SteamService) -> void:
 	_remember_holdings()
 
 
+## Throws away the holdings remembered from the match just finished.
+##
+## **Called when a rematch reopens the lobby.** This reporter is created once
+## per *session* (`Main._watch_for_achievements`), and a rematch reuses the
+## session — which is right, because a rematch is a real match and its wins,
+## losses and net worth should count. But `_held_before` would still hold the
+## previous match's final position when the new match's first year resolved, and
+## `AchievementRules.for_year` reads it to decide whether a stalk that split or
+## went bankrupt was one you owned. Without this, a company you held last game
+## could award you either of those in a game where you own nothing.
+##
+## See docs/decisions.md D124.
+func forget_holdings() -> void:
+	_held_before = {}
+
+
+## The remembered position, for a test that has no way to see an award.
+## Nothing in the game calls this.
+func held_before_for_testing() -> Dictionary[StringName, int]:
+	return _held_before
+
+
 func _exit_tree() -> void:
 	if _session == null:
 		return

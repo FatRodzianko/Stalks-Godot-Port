@@ -803,6 +803,64 @@ Two things were deliberately left out and are recorded in D105: a cross-check
 of the new host's first snapshot against what each client already held, and
 anything on screen telling a waiting player what is happening.
 
+**A fourth fault came back from play on 2026-11-20, and is fixed: a handover
+during the result screen.** A player reading the final standings when the host
+left was put into a *lobby* for the match that had just finished — carrying its
+name, and with a Play button that would have replayed the same market, because
+the finished seed travels in the settings. `_migrating_in_match` was read off
+the screen's class, and the result screen is not the playing screen. A finished
+match is now carried over like any other, and which screen a migrated player
+lands on is derived from the match rather than from the screen they were on, as
+a three-way whose third branch nothing can reach yet (D122). It absorbed a
+second fault — a migration from the final board left the player with no way
+back to the standings — and amended D111, so a seat-holder may now return to a
+finished match and see how it ended. The confirmation-prompt leak this made
+reachable is D123.
+
+**Play again does not exist in a networked match**, for the same report. It
+called the single-player path, so it walked the player out of the game and, on
+the host, tore the session down around everybody else. The original has no
+rematch at all, so the button is hidden rather than rewired (D122). A
+multiplayer rematch is a feature in its own right and is not built: the design,
+its edge cases and its cost are written up outside the repository.
+
+**B7a, B7c and B7d confirmed in play on 2026-11-20**, two accounts on two
+machines: the client stayed on the standings when the host left, the finished
+game was gone from the browser and not offered as a rejoin, and an open "leave
+the game?" prompt went away when the host's departure migrated the match.
+
+### A rematch — **built 2026-11-20, not yet confirmed in play**
+
+Asked for on 2026-11-20 and not in the original, which ends a match with `Quit
+Game`. The host reopens the lobby on a finished match, with the same settings
+and a new seed; the players who want another game join it, and whoever does not
+is not in the next match. A client can ask the host for one, which names them on
+the host's result screen and decides nothing.
+
+Delivered: `HostSession.offer_rematch` and the opt-in seating, four RPCs that
+all carry nothing, the result screen's rematch controls, and the `Main` plumbing
+that reopens the Steam lobby and shows the new lobby when a seat arrives.
+
+Nobody can hold a rematch up and there is no timer, because the new roster is
+built from arrivals rather than inherited — D48's rule, which is why no timeout
+or result-screen kick was needed. See decisions.md D124 for the two designs that
+were costed and rejected first, both of which failed on shared state about who
+wants a rematch.
+
+**Confirmed in play on 2026-11-20**, two accounts on two machines: asking and
+being told, both players returning to the lobby and playing a new match with a
+different seed, the host starting one alone after the client declined, and four
+cases of a rematch lobby changing hands — the lobby migrating to the client when
+the host leaves it, the new host offering a rematch of its own, and each side
+finding the other's rematch lobby in the browser after going to the title
+screen. Those four are manual-testing.md B8g.
+
+One fault came back from that run and is fixed: a client learned the host wanted
+another game only from a button quietly changing its label. The result screen
+says it in words now, on the same line the host uses to name whoever asked.
+
+Button wording is the owner's to write; what is there now is theirs.
+
 ### The original note, kept for its reasoning
 
 Players should be able to see which stalks other players hold, and how much. The

@@ -69,6 +69,22 @@ var _rng_state: int = 0
 
 var _refusal: String = ""
 
+## Whether the host has said the match is under way.
+##
+## **The snapshot cannot say it.** Year 0 is a real year, so a lobby and a match
+## that has just begun look identical in the state — which is why the host says
+## so outright (D116). That used to be re-emitted and forgotten, because the only
+## listener was the lobby screen, which acts the moment it hears.
+##
+## It is remembered now because a migration decides, long afterwards, which
+## screen to put this player back on, and "lobby or match" is exactly the
+## question the state cannot answer. See `Main._show_the_screen_for` and
+## docs/decisions.md D122.
+var _match_is_on: bool = false
+
+## Whether the host has said it is willing to play again. See D124.
+var _rematch_is_offered: bool = false
+
 ## Seconds spent waiting for the welcome, or -1 when not waiting. See
 ## `JOIN_TIMEOUT_SECONDS`.
 var _waiting_for: float = -1.0
@@ -159,6 +175,37 @@ func has_joined() -> bool:
 	return _has_joined
 
 
+## Whether the host has said the match is under way, as opposed to this client
+## sitting in a lobby. See `_match_is_on` for why the state cannot answer this.
+func match_is_on() -> bool:
+	return _match_is_on
+
+
+# ------------------------------------------------------------------ the rematch
+
+## Whether the host has offered another game. Cleared by the welcome that takes
+## this client into it, so the offer is not still standing once it is taken up.
+func rematch_is_offered() -> bool:
+	return _rematch_is_offered
+
+
+## Only the host can offer one — it is the only peer that can reopen the lobby.
+func can_offer_rematch() -> bool:
+	return false
+
+
+func ask_for_rematch() -> void:
+	if not _has_joined:
+		return
+	_rpc_ask_for_rematch.rpc_id(HOST_PEER_ID)
+
+
+func join_rematch() -> void:
+	if not _rematch_is_offered:
+		return
+	_rpc_want_rematch.rpc_id(HOST_PEER_ID)
+
+
 ## A client controls exactly one player and never acts for another. The base
 ## implementation compares against the local id, which is already correct; it is
 ## restated here because it is a security property, not a convenience.
@@ -220,6 +267,16 @@ func _on_welcomed(
 	player_id: StringName, state_data: Dictionary, history_data: Array = []
 ) -> void:
 	_local_player_id = player_id
+	# **Cleared on every welcome.** A welcome is an arrival, and an arrival is in
+	# a lobby until the host says otherwise. When there is a match to arrive in,
+	# the host sends `_rpc_match_started` straight after this one (D116), and
+	# both are reliable on the same channel, so that answer always lands after
+	# this line.
+	_match_is_on = false
+	# The offer has been taken up — this welcome is the seat it was offering —
+	# or this is an arrival somewhere else entirely. Either way it is not an
+	# offer still waiting to be accepted.
+	_rematch_is_offered = false
 	var problem: String = StateSync.apply_state(_state, state_data, _library)
 	if not problem.is_empty():
 		connection_lost.emit(problem)
@@ -265,7 +322,23 @@ func _on_ready_pushed(player_id: StringName, is_ready: bool) -> void:
 
 
 func _on_match_start_pushed() -> void:
+	_match_is_on = true
+	# **An offer this client did not take up is over.** The host has pressed
+	# Play, so there is no longer a lobby to join — and a client still on the
+	# result screen must stop showing a way into one, or its button fails when
+	# pressed. This arrives there as well as to the players who joined, because
+	# `start_match` broadcasts to every peer rather than to the seated ones.
+	_rematch_is_offered = false
 	match_started.emit()
+
+
+func _on_rematch_offer_pushed() -> void:
+	_rematch_is_offered = true
+	rematch_offered.emit()
+
+
+func _on_rematch_join_pushed() -> void:
+	rematch_joined.emit()
 
 
 ## The host refused this client. Recorded rather than emitted as a lost

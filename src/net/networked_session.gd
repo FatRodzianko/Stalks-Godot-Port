@@ -95,6 +95,27 @@ func _rpc_give_yeehaw() -> void:
 	_on_yeehaw_offered(_sender())
 
 
+## "I would like another game." Advisory and nothing more: it puts the asker's
+## name on the host's result screen and gates nothing. Only the host can start a
+## rematch, because only the host can reopen the lobby.
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_ask_for_rematch() -> void:
+	_on_rematch_asked(_sender())
+
+
+## "Put me in the rematch." Sent after the host has offered one.
+##
+## **Deliberately not a second `_rpc_introduce`.** Reusing that would get the
+## seating and the Steam ID for free, but it carries a name — and the lobby is
+## not a place to change your name (`HostSession._on_introduced`). After the
+## reset the duplicate guard there no longer applies, so a second introduction
+## would be honoured with whatever name it carried. This one cannot say
+## anything. The host already knows who this peer is, from the finished match.
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_want_rematch() -> void:
+	_on_rematch_wanted(_sender())
+
+
 # ------------------------------------------------------- host → client (results)
 
 ## `history_data` is every year resolved before this player arrived. Empty for
@@ -150,6 +171,27 @@ func _rpc_yeehaw_given(giver_id: String, receiver_id: String) -> void:
 	_on_yeehaw_given_pushed(StringName(giver_id), StringName(receiver_id))
 
 
+## The host has gone back to the lobby and is willing to play again. Every
+## client hears it, including anyone who never asked for one.
+@rpc("authority", "call_remote", "reliable")
+func _rpc_rematch_offered() -> void:
+	_on_rematch_offer_pushed()
+
+
+## This client now has a seat in the rematch lobby. Sent to one peer, straight
+## after its welcome.
+##
+## **A separate packet rather than an inference**, for the same reason D116
+## added `_rpc_match_started`: the welcome cannot say which situation it is. A
+## client is welcomed when it first joins, when it rejoins, and on every
+## migration reconnect, so `joined` alone would have `Main` guessing from which
+## screen happens to be up and whether a migration is in flight — which is the
+## shape of the fault D108 was.
+@rpc("authority", "call_remote", "reliable")
+func _rpc_rematch_joined() -> void:
+	_on_rematch_join_pushed()
+
+
 # ------------------------------------------------------------------- the handlers
 #
 # Plain methods, overridden by exactly one side. The other side never receives
@@ -182,6 +224,14 @@ func _on_yeehaw_asked(_peer: int) -> void:
 
 
 func _on_yeehaw_offered(_peer: int) -> void:
+	pass
+
+
+func _on_rematch_asked(_peer: int) -> void:
+	pass
+
+
+func _on_rematch_wanted(_peer: int) -> void:
 	pass
 
 
@@ -224,6 +274,14 @@ func _on_yeehaw_ask_pushed(_player_id: StringName) -> void:
 
 
 func _on_yeehaw_given_pushed(_giver_id: StringName, _receiver_id: StringName) -> void:
+	pass
+
+
+func _on_rematch_offer_pushed() -> void:
+	pass
+
+
+func _on_rematch_join_pushed() -> void:
 	pass
 
 

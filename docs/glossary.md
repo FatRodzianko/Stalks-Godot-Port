@@ -148,6 +148,12 @@ Steam has confirmed the lobby is still a game being played, and the host decides
 whether the arrival gets their seat. See [decisions.md D111](decisions.md) and
 [D115](decisions.md).
 
+**Rematch** — playing again with the same people, without going back to the title
+screen. The host reopens the lobby on a finished match, with the same settings and
+a new seed, and whoever wants another game joins it; whoever does not is simply not
+in the next match, and nothing waits on them. Not in the original, which ends a
+match with `Quit Game` and nothing else. See [decisions.md D124](decisions.md).
+
 **Lobby state** — the `state` key a Steam lobby carries, which is how the game
 says what the lobby *is* without anybody joining it. `open` is a lobby waiting to
 start and is the only value the browser lists; `playing` is a match under way,

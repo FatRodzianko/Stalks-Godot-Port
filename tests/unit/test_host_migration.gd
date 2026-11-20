@@ -334,12 +334,28 @@ func test_a_stranger_is_told_the_game_has_already_started() -> void:
 	assert_eq(session.why_not_rejoin(99999), "That game has already started.")
 
 
-## **The refusal REJOIN GAME made reachable.** The title screen offers a match
-## it has no way of knowing has ended - the player was not there to see it
-## finish - so without this they would be welcomed back onto a final board and
-## left looking at a result as though it were a turn.
-func test_a_finished_match_is_not_something_to_come_back_to() -> void:
+## **A seat-holder may come back into a finished match**, which reverses what
+## D111 decided and is deliberate. D111 turned them away because being welcomed
+## onto a final board read as a turn you could take; the answer to that is the
+## result screen, not a refusal, and seeing how the match you were in ended is
+## worth coming back for.
+##
+## It also has to be allowed for host migration: a handover during the results
+## leaves everybody holding a finished match, and whoever Steam does not pick
+## must reconnect into one. See docs/decisions.md D122 and
+## `Main._show_the_screen_for`.
+func test_a_seat_holder_may_come_back_to_a_finished_match() -> void:
 	var session: HostSession = _taken_over(_match_in_progress())
 	session.state().is_over = true
 
-	assert_eq(session.why_not_rejoin(HOST_STEAM), "That game has finished.")
+	assert_eq(session.why_not_rejoin(HOST_STEAM), "")
+
+
+## A stranger still gets a sentence, and the right one of the two: a game that
+## has ended is a different thing from one that is running, and somebody who
+## picked a dead match out of their title screen deserves to be told which.
+func test_a_stranger_is_told_a_finished_match_has_finished() -> void:
+	var session: HostSession = _taken_over(_match_in_progress())
+	session.state().is_over = true
+
+	assert_eq(session.why_not_rejoin(99999), "That game has finished.")

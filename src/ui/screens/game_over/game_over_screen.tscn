@@ -109,6 +109,14 @@ text = ""
 horizontal_alignment = 1
 autowrap_mode = 3
 
+[node name="RematchNote" type="Label" parent="Centre/Card/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
 [node name="Buttons" type="HBoxContainer" parent="Centre/Card/Body"]
 layout_mode = 2
 
@@ -133,3 +141,11 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"PrimaryButton"
 text = "Play again"
+
+[node name="RematchButton" type="Button" parent="Centre/Card/Body/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PrimaryButton"
+text = "Return to lobby"

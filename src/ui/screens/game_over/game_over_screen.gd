@@ -9,6 +9,16 @@ extends MarginContainer
 signal play_again_requested
 signal menu_requested
 
+## The host wants another game: reopen the lobby. Only the host's screen can
+## emit this, because only the host can reopen a lobby.
+signal rematch_offer_requested
+
+## A client is asking the host for another game. Advisory — see D124.
+signal rematch_ask_requested
+
+## A client is taking up an offer the host has made.
+signal rematch_join_requested
+
 ## Stand aside and let the player look at the board as it ended. The original
 ## did this by closing its winner panel; this screen has to step out of the
 ## way instead, because it replaced the board rather than sitting over it.
@@ -22,6 +32,8 @@ const HistoryRowScene: PackedScene = preload("res://src/ui/widgets/history_row.t
 @onready var _ranking_list: VBoxContainer = %FinalRankings
 @onready var _seed_label: Label = %SeedLabel
 @onready var _again_button: Button = %PlayAgainButton
+@onready var _rematch_button: Button = %RematchButton
+@onready var _rematch_note: Label = %RematchNote
 @onready var _menu_button: Button = %MenuButton
 @onready var _board_button: Button = %ViewBoardButton
 @onready var _standings_tab: Button = %StandingsTab
@@ -34,20 +46,207 @@ const HistoryRowScene: PackedScene = preload("res://src/ui/widgets/history_row.t
 var _state: GameState
 var _local_player_id: StringName = &""
 
+## The live session, so the rematch controls can read what is on offer and say
+## so. Null in the tests that drive this screen from a bare state, and on every
+## path that has no session to give it — the screen renders the standings
+## either way and simply shows no rematch controls.
+var _session: GameSession
+
+## The same session under its two concrete types, because `match_started` is
+## declared on each side rather than on the interface — the lobby screen holds
+## them the same way and for the same reason.
+var _host: HostSession
+var _client: ClientSession
+
+## Whether *Play again* is on this screen at all. Off for a networked match —
+## see `offer_play_again`.
+var _play_again_is_offered: bool = true
+
+## Whether this player has already asked the host for another game. Local to
+## this screen: the host is told, but nobody is told back, because an ask
+## decides nothing and a client has no use for anybody else's.
+var _has_asked: bool = false
+
 
 func _ready() -> void:
 	_again_button.pressed.connect(_on_again_button_pressed)
+	_rematch_button.pressed.connect(_on_rematch_button_pressed)
 	_menu_button.pressed.connect(_on_menu_button_pressed)
 	_board_button.pressed.connect(_on_board_button_pressed)
 	_standings_tab.pressed.connect(_on_standings_tab_pressed)
 	_history_tab.pressed.connect(_on_history_tab_pressed)
 
+	_again_button.visible = _play_again_is_offered
+
 	var header: HistoryRow = HistoryRowScene.instantiate()
 	_history_header_slot.add_child(header)
 	header.configure_as_header()
 
+	_attach()
+	_refresh_rematch()
+
 	if _state != null:
 		_render()
+
+
+## Stops listening the moment this screen leaves the tree.
+##
+## The same crash the lobby and the playing screen both had: `Main` swaps with
+## `remove_child` plus a deferred `queue_free`, so without this a replaced
+## screen still reacts to the next session signal and touches `@onready` nodes
+## that are no longer in the tree. See decisions.md D61.
+func _exit_tree() -> void:
+	_detach()
+
+
+func _attach() -> void:
+	if _session == null:
+		return
+	if _session.rematch_offered.is_connected(_refresh_rematch):
+		return
+	_session.rematch_offered.connect(_refresh_rematch)
+	_session.rematch_requested.connect(_on_rematch_requested)
+	# **The result screen reacts to the match starting by putting its own
+	# controls away, never by changing screen.** `start_match` broadcasts to
+	# every peer, seated or not (`host_session.gd`), so this arrives at players
+	# who declined the rematch as well as those who took it. Swapping them onto
+	# a board would put them in a match they chose not to join; what they need
+	# is for the way in to stop looking open. See decisions.md D124.
+	if _host != null:
+		_host.match_started.connect(_refresh_rematch)
+	if _client != null:
+		_client.match_started.connect(_refresh_rematch)
+
+
+func _detach() -> void:
+	if _session == null:
+		return
+	if not _session.rematch_offered.is_connected(_refresh_rematch):
+		return
+	_session.rematch_offered.disconnect(_refresh_rematch)
+	_session.rematch_requested.disconnect(_on_rematch_requested)
+	if _host != null:
+		_host.match_started.disconnect(_refresh_rematch)
+	if _client != null:
+		_client.match_started.disconnect(_refresh_rematch)
+
+
+## Whether to offer *Play again*. Off hides the button rather than disabling it:
+## a greyed-out button is a question the screen cannot answer.
+##
+## **It is offered in a solo game and nowhere else.** *Play again* starts a
+## single-player match from the finished settings, which is the only thing it
+## has ever done — so in a networked match it took the player out of the game
+## everybody else was still in, and on the host it tore the session down and
+## sent the others off to find a new host. The original has no rematch at all:
+## its result panel has `Quit Game` and a close box (audit §12), so a results
+## screen with *Main menu* and *View board* is what the port is meant to be.
+##
+## Follows `LobbyScreen.offer_invites`: callable before this screen is in the
+## tree, because the caller should not have to know when `@onready` ran. See
+## docs/decisions.md D122.
+func offer_play_again(offered: bool) -> void:
+	_play_again_is_offered = offered
+	if is_node_ready():
+		_again_button.visible = offered
+
+
+## Hands this screen the live session, so the rematch controls can say what is
+## on offer. Optional: without one the screen is the standings and nothing else.
+##
+## Called before the screen is in the tree, like `LobbyScreen.setup`, so the
+## wiring happens in `_ready` rather than here.
+func setup(session: GameSession) -> void:
+	_session = session
+	_host = session as HostSession
+	_client = session as ClientSession
+	if is_node_ready():
+		_attach()
+		_refresh_rematch()
+
+
+# ------------------------------------------------------------------ the rematch
+#
+# One button, which says a different thing depending on what this machine can
+# do about a rematch: the host can reopen the lobby, a client can ask for one,
+# and once the host has offered, a client can go and take a seat. Nobody is
+# waited on — a player who never presses it is simply not in the next match.
+# See docs/decisions.md D124.
+#
+# **The wording of all of it is placeholder.** Buttons and the line naming who
+# asked are the owner's words to write.
+
+## Re-reads the session and puts the button into whichever state fits. Connected
+## to three signals and called on every one, because any of them can change the
+## answer.
+func _refresh_rematch() -> void:
+	if _session == null:
+		_rematch_button.visible = false
+		_rematch_note.text = ""
+		return
+
+	if _host != null:
+		_rematch_button.visible = _session.can_offer_rematch()
+		_rematch_button.text = "Return to lobby"
+		_rematch_note.text = _who_asked()
+		return
+
+	if _client == null:
+		# A solo game. *Play again* is the rematch there, and it is a different
+		# button.
+		_rematch_button.visible = false
+		_rematch_note.text = ""
+		return
+
+	if _session.rematch_is_offered():
+		# **The offer is said outright, not left to a button quietly changing
+		# its label.** A player reading the standings is not watching the
+		# buttons, and the host going back to the lobby is news: it is the
+		# moment the game is waiting on them rather than the other way round.
+		# Reported from play on 2026-11-20.
+		_rematch_note.text = "Host has restarted the lobby"
+		_rematch_button.visible = true
+		_rematch_button.disabled = false
+		_rematch_button.text = "Return to lobby"
+	else:
+		_rematch_note.text = ""
+		# No offer: all a client can do is ask. Once asked, the button stays on
+		# screen saying so rather than vanishing, because a control that
+		# disappears when pressed reads as a misfire.
+		_rematch_button.visible = true
+		_rematch_button.disabled = _has_asked
+		_rematch_button.text = "Rematch requested" if _has_asked else "Request rematch"
+
+
+## What the rematch line currently says, for a test. Nothing in the game reads
+## it back.
+func rematch_note_for_testing() -> String:
+	return _rematch_note.text
+
+
+## The line on the host's screen naming whoever has asked for another game.
+## Empty when nobody has.
+func _who_asked() -> String:
+	var names: PackedStringArray = _session.rematch_asked_for_by()
+	if names.is_empty():
+		return ""
+	return "%s asked for another game." % ", ".join(names)
+
+
+func _on_rematch_requested(_player_id: StringName) -> void:
+	_refresh_rematch()
+
+
+func _on_rematch_button_pressed() -> void:
+	if _host != null:
+		rematch_offer_requested.emit()
+		return
+	if _session != null and _session.rematch_is_offered():
+		rematch_join_requested.emit()
+		return
+	_has_asked = true
+	_refresh_rematch()
+	rematch_ask_requested.emit()
 
 
 ## Shows the result of a finished match.

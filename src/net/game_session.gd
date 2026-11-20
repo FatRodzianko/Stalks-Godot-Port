@@ -42,6 +42,19 @@ signal yeehaw_requested(player_id: StringName)
 ## docs/game-rules.md §10.
 signal yeehaw_given(giver_id: StringName, receiver_id: StringName)
 
+## The host has reopened the lobby and is willing to play again. The result
+## screen turns this into a way in; nothing else listens.
+signal rematch_offered
+
+## Somebody asked the host for another game. Host-side only — a client is never
+## told who else asked, because nothing it could do with that is a rule. The
+## host's result screen uses it to name them.
+signal rematch_requested(player_id: StringName)
+
+## This machine now has a seat in the rematch lobby, so the screen host should
+## show the lobby. See `networked_session.gd` for why this is its own signal.
+signal rematch_joined
+
 
 ## The live match state. Read-only as far as the UI is concerned: look at it to
 ## render, never write to it.
@@ -97,6 +110,49 @@ func request_yeehaw(_player_id: StringName) -> void:
 ## and a client therefore cannot forge either end of the gesture.
 func give_yeehaw(_giver_id: StringName) -> void:
 	push_error("GameSession.give_yeehaw is abstract")
+
+
+# ------------------------------------------------------------------ the rematch
+#
+# A rematch is the host reopening the lobby after a match has ended, with the
+# same settings and a new seed. Players who want one join that lobby; players
+# who do not stay on the result screen and are simply not in the next match.
+#
+# Nothing here is a rule, so nothing is validated: the host decides when to
+# offer and when to press Play, and the only authority check is that a client
+# cannot do either. Doing nothing is the right answer for a solo game, which is
+# why these are empty rather than abstract. See docs/decisions.md D124.
+
+## Whether this session can offer a rematch — true only on a networked host.
+func can_offer_rematch() -> bool:
+	return false
+
+
+## Whether the host has offered one that this machine could join.
+func rematch_is_offered() -> bool:
+	return false
+
+
+## Reopens the lobby for another match. Host only.
+func offer_rematch() -> void:
+	pass
+
+
+## Asks the host for another game. Advisory: it names the asker on the host's
+## result screen and gates nothing.
+func ask_for_rematch() -> void:
+	pass
+
+
+## Takes a seat in the rematch the host has offered.
+func join_rematch() -> void:
+	pass
+
+
+## Display names of the players who have asked for another game, in roster
+## order. Empty on a client, which is never told who else asked.
+func rematch_asked_for_by() -> PackedStringArray:
+	return PackedStringArray()
 
 
 # ------------------------------------------------------------- local pre-checks

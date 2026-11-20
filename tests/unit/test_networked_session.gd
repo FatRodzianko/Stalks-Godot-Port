@@ -906,6 +906,45 @@ func _on_match_started_for_testing(seen: Array[bool]) -> void:
 	seen.append(true)
 
 
+## **And it remembers being told**, which the signal above does not provide for.
+## `match_started` is acted on the instant it arrives by whichever screen is up;
+## a migration has to answer "lobby or match" long afterwards, and the state
+## cannot say, because year 0 is a real year. See `ClientSession._match_is_on`
+## and `Main._show_the_screen_for`.
+func test_a_returning_player_remembers_that_the_match_is_on() -> void:
+	if not await _match_with_steam_ids():
+		return
+	if not await _harness.drop_client(self):
+		return
+
+	var back: ClientSession = _come_back()
+	await _harness.settle(self, 30)
+
+	assert_true(back.has_joined(), "the test needs the welcome to land")
+	assert_true(back.match_is_on(), "a client reclaiming a seat is in a match")
+
+
+## The other side of it: arriving in a lobby, nobody says the match is on,
+## because it is not.
+func test_a_client_in_a_lobby_does_not_think_the_match_is_on() -> void:
+	_harness = NetHarness.new()
+	add_child(_harness)
+	var problem: String = _harness.start(
+		StalksFixture.make_settings(), _library, "Host", "Guest"
+	)
+	assert_eq(problem, "", "harness should start")
+	if not problem.is_empty():
+		return
+	if not await _harness.await_join(self):
+		return
+
+	assert_true(_harness.client.has_joined(), "the test needs the welcome to land")
+	assert_false(
+		_harness.client.match_is_on(),
+		"nothing has started a match, so no screen should be told one is on",
+	)
+
+
 ## A second client on a **different** account is not somebody coming back, and
 ## must not be handed the seat that is waiting for its owner.
 func test_somebody_elses_account_cannot_take_the_waiting_seat() -> void:

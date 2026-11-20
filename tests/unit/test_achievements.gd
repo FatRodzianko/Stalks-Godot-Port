@@ -96,3 +96,37 @@ func test_the_stat_names_are_distinct() -> void:
 	for stat: StringName in stats:
 		unique[String(stat).to_lower()] = true
 	assert_eq(unique.size(), stats.size())
+
+
+# ----------------------------------------------------------------- the rematch
+#
+# The reporter is made once per session (`Main._watch_for_achievements`) and a
+# rematch reuses the session, which is right - a rematch is a real match and its
+# wins and losses should count. What must not carry over is the position it
+# judges the next first year against: `AchievementRules.for_year` reads
+# `_held_before` to decide whether a stalk that split or went bankrupt was one
+# you owned, and in year 1 of a rematch you own nothing. See decisions.md D124.
+
+func test_a_rematch_forgets_the_position_the_last_match_ended_on() -> void:
+	var library: ContentLibrary = ContentLibrary.load_from()
+	assert_true(library.is_valid(), "the test needs content")
+	var session: LocalSession = LocalSession.create(StalksFixture.make_settings(), library)
+	add_child_autofree(session)
+
+	var stalk_id: StringName = session.state().stalks[0].id
+	session.state().players[0].set_shares(stalk_id, 10)
+
+	var reporter: AchievementReporter = AchievementReporter.new()
+	add_child_autofree(reporter)
+	reporter.setup(session, null)
+	assert_eq(
+		reporter.held_before_for_testing().get(stalk_id, 0), 10,
+		"the test needs the finished match's position remembered first",
+	)
+
+	reporter.forget_holdings()
+
+	assert_eq(
+		reporter.held_before_for_testing().size(), 0,
+		"a rematch's first year must not be judged on the last match's holdings",
+	)

@@ -320,3 +320,155 @@ func test_an_unnamed_lobby_is_given_a_name_rather_than_headed_LOBBY() -> void:
 		"",
 		"the new host should name the match",
 	)
+
+
+# --------------------------------------------- a handover during the results
+#
+# The fault reported from play: a match ended, everybody was reading the final
+# standings, the host left - and the remaining player was put into a *lobby*
+# for the game they had just finished, named after it, with a Play button that
+# would start it over. A finished match is still a match to be carried over;
+# only the screen it is shown on differs. See docs/decisions.md D122.
+
+## Puts the results page up over a finished match, which is where these players
+## are when the host walks out.
+func _the_match_has_finished() -> void:
+	_main._session.state().is_over = true
+	_main.show_results()
+
+
+func test_the_results_page_is_up_before_the_host_leaves() -> void:
+	_the_match_has_finished()
+
+	assert_true(_main.current_screen() is GameOverScreen, "the test needs the results up")
+
+
+## **The fault itself.** `_migrating_in_match` was `_screen is GameplayScreen`,
+## which is false on the results page, and that one answer sent the whole
+## handover down the re-host-a-lobby branch.
+func test_a_finished_match_is_still_a_match_to_carry_over() -> void:
+	_the_match_has_finished()
+
+	_host_leaves()
+
+	assert_true(
+		_main._migrating_in_match,
+		"a player reading the results is in a match, not in a lobby",
+	)
+
+
+func test_taking_over_during_the_results_stays_on_the_results() -> void:
+	_the_match_has_finished()
+
+	_take_the_lobby_over()
+
+	assert_true(_main._session is HostSession, "it should be hosting the finished match")
+	assert_true(
+		_main.current_screen() is GameOverScreen,
+		"the new host should still be reading the standings, not sitting in a lobby",
+	)
+
+
+## A finished match is not a lobby to advertise, and not merely one to unlist
+## either: it is over, and a player who was away when it ended must not be
+## offered a game to go back into (D115).
+func test_taking_over_during_the_results_marks_the_lobby_finished() -> void:
+	_the_match_has_finished()
+
+	_take_the_lobby_over()
+
+	assert_true(_steam.calls.has(&"mark_finished"), "the lobby should be marked over")
+	assert_false(_steam.calls.has(&"reopen"), "and never put back in the browser")
+
+
+# ------------------------------------------------- which screen, in the abstract
+#
+# `_show_the_screen_for` is the whole rule in one place. Driven directly here
+# because one of its three answers cannot yet be reached by playing: it needs a
+# client holding a lobby it joined *after* a match ended, which nothing
+# produces until there is a rematch. Written as a three-way all the same, so
+# that whatever reaches it finds the rule already correct. See decisions.md D122.
+
+func test_a_match_under_way_shows_the_board() -> void:
+	_main._show_the_screen_for(_main._session.state(), true)
+
+	assert_true(_main.current_screen() is GameplayScreen)
+
+
+func test_a_finished_match_shows_the_results_whatever_else_is_true() -> void:
+	_main._session.state().is_over = true
+
+	# `true` is what a reconnecting seat-holder is told (D116), and it must not
+	# win over the match being over.
+	_main._show_the_screen_for(_main._session.state(), true)
+
+	assert_true(_main.current_screen() is GameOverScreen)
+
+
+func test_a_match_that_has_not_started_shows_the_lobby() -> void:
+	_main._show_the_screen_for(_main._session.state(), false)
+
+	assert_true(_main.current_screen() is LobbyScreen)
+
+
+# ------------------------------------------------------------ the result screen
+#
+# Play again starts a *single-player* match from the finished settings. In a
+# networked game that walked out on everybody still reading the result, and on
+# the host it tore the session down around them. The original has no rematch at
+# all (audit 12). See decisions.md D122.
+
+func test_a_networked_result_screen_does_not_offer_play_again() -> void:
+	_the_match_has_finished()
+	var over: GameOverScreen = _main.current_screen() as GameOverScreen
+
+	assert_false(
+		(over.get_node("%PlayAgainButton") as Button).visible,
+		"Play again would drop a networked player into a solo game",
+	)
+
+
+# ------------------------------------------------------- questions left hanging
+#
+# Both confirmation prompts are children of `Main` rather than of the screen
+# that asked, so one left open across a swap sat over the next screen with its
+# yes still wired to the old one. Nothing could reach it before - a screen
+# changed only when the player pressed something, and these take the keyboard
+# while they are up - but a host walking out while somebody is deciding whether
+# to leave can. Found and left by the session that built REJOIN GAME; reachable
+# because of the swap added above.
+
+func test_a_screen_swap_takes_an_open_question_with_it() -> void:
+	_main._ask_about_leaving()
+	assert_true(_main._leave_prompt.is_open(), "the test needs the question up")
+
+	_main.show_results()
+
+	assert_false(
+		_main._leave_prompt.is_open(),
+		"a question about the old screen must not sit over the new one",
+	)
+
+
+# ------------------------------------------------------- a rematch without you
+#
+# `start_match` broadcasts to every peer, not only the seated ones, so a player
+# who declined the rematch is told it went ahead. That is wanted - their way in
+# has to stop looking open, or it fails when pressed - but it must never move
+# them. See docs/decisions.md D124.
+
+func test_a_rematch_that_starts_without_you_leaves_you_on_the_results() -> void:
+	_the_match_has_finished()
+	var client: ClientSession = _main._session as ClientSession
+	client._rematch_is_offered = true
+
+	client._on_match_start_pushed()
+
+	assert_true(
+		_main.current_screen() is GameOverScreen,
+		"a player who declined must not be dragged into the match anyway",
+	)
+	assert_false(
+		client.rematch_is_offered(),
+		"and the way in must stop looking open",
+	)

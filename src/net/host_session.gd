@@ -63,6 +63,24 @@ var _lobby_is_open: bool = true
 ## and whichever slot they already held in one they took over (`take_over`).
 var _host_player_id: StringName = &""
 
+## Who has asked for another game, by their slot in the **finished** match.
+##
+## Advisory and host-local: it puts names on the host's result screen and gates
+## nothing. Cleared when a rematch is offered, because by then it has been
+## acted on, and when a peer drops, because an ask from somebody who has gone
+## is not an ask. See docs/decisions.md D124.
+var _rematch_asked_for_by: Array[StringName] = []
+
+## The finished match's seats, by peer, kept alive across the reset.
+##
+## **Two fields of each are read and nothing else:** the display name and the
+## Steam ID. A player opting into the rematch sends no arguments (D45), so this
+## is where their identity comes from — and taking it from here rather than
+## from the packet is what stops a rematch being a chance to rename yourself,
+## and what keeps every seat's Steam ID so the new match can be reconnected to
+## exactly as any other can.
+var _rematch_identities: Dictionary[int, PlayerState] = {}
+
 
 ## Starts listening on `port` with the host as the only player, and the lobby
 ## open.
@@ -352,6 +370,131 @@ func is_away(player_id: StringName) -> bool:
 	return player != null and player.is_away
 
 
+# ------------------------------------------------------------------ the rematch
+#
+# The host reopens the lobby on a finished match, with the same settings and a
+# new seed, and the players who want another game join it. See D124.
+
+func can_offer_rematch() -> bool:
+	return _authority.state.is_over and not _lobby_is_open
+
+
+func rematch_asked_for_by() -> PackedStringArray:
+	var names: PackedStringArray = PackedStringArray()
+	for player: PlayerState in _authority.state.players:
+		if _rematch_asked_for_by.has(player.id):
+			names.append(player.display_name)
+	return names
+
+
+## Reopens the lobby for another match: same settings, new seed, nobody seated
+## but the host.
+##
+## **The roster is not carried over, it is rebuilt from arrivals.** That is what
+## makes a player who never answers harmless — they are not in the new roster,
+## so `why_not_start` has nothing to wait on, and no timeout or kick is needed
+## to get past them. It is D48's rule doing the work: there is no such thing as
+## an unclaimed slot.
+##
+## **A new seed every time.** `build_authority` writes the chosen seed back into
+## the settings, so a finished match's settings carry a concrete number and
+## reusing them would deal the same market out again. Cleared here for the same
+## reason D38 clears it for *Play again*, and a typed seed is not distinguishable
+## from a generated one anyway.
+##
+## **The peer maps are rebuilt, not amended.** `local_player_id()` *is*
+## `_player_by_peer[HOST_PEER_ID]`, and every request is resolved through
+## `_require_player`, so a stale entry here does not misbehave loudly — it makes
+## buttons answer nothing.
+func offer_rematch() -> void:
+	if not can_offer_rematch():
+		return
+
+	# Captured before the reset drops the roster, and only for the two fields
+	# `_seat_new_player` needs. See `_rematch_identities`.
+	_rematch_identities.clear()
+	for peer: int in _player_by_peer:
+		var seat: PlayerState = _authority.state.player_by_id(_player_by_peer[peer])
+		if seat != null:
+			_rematch_identities[peer] = seat
+
+	var host_seat: PlayerState = _rematch_identities.get(HOST_PEER_ID, null)
+	var host_name: String = host_seat.display_name if host_seat != null else ""
+	var host_steam_id: int = host_seat.steam_id if host_seat != null else 0
+
+	var settings: GameSettings = _authority.state.settings.duplicate() as GameSettings
+	settings.rng_seed = 0
+
+	_authority = LocalSession.build_authority(
+		settings, _library, [host_name] as Array[String]
+	)
+	_lobby_is_open = true
+	_rematch_asked_for_by.clear()
+
+	_player_by_peer.clear()
+	_peer_by_player.clear()
+	_host_player_id = &"p0"
+	_seat(HOST_PEER_ID, _host_player_id)
+
+	var seats: Array[PlayerState] = _authority.state.players
+	if not seats.is_empty():
+		seats[0].steam_id = host_steam_id
+	_authority.state.hosted_by = _host_player_id
+
+	_rpc_rematch_offered.rpc()
+
+
+## The host's own ask, which there is no such thing as: offering is what the
+## host does instead. Here so the interface has one implementation per side.
+func ask_for_rematch() -> void:
+	pass
+
+
+## Nor does the host join its own rematch — `offer_rematch` seats it.
+func join_rematch() -> void:
+	pass
+
+
+func _on_rematch_asked(peer: int) -> void:
+	var player_id: StringName = _require_player(peer)
+	if player_id.is_empty() or _rematch_asked_for_by.has(player_id):
+		return
+	_rematch_asked_for_by.append(player_id)
+	rematch_requested.emit(player_id)
+
+
+## Seats a player who has taken up the offer.
+##
+## Refused in silence rather than with a reason, because every one of these is
+## a packet that should not have been sent: no offer is open, this peer already
+## has a seat, or it was not in the finished match at all. None of them is
+## something a player did, so there is nothing to tell them.
+func _on_rematch_wanted(peer: int) -> void:
+	if not _lobby_is_open or _player_by_peer.has(peer):
+		return
+	var was: PlayerState = _rematch_identities.get(peer, null)
+	if was == null:
+		return
+
+	var player_id: StringName = _seat_new_player(peer, was.display_name, was.steam_id)
+	if player_id.is_empty():
+		_turn_away(peer, "That game is full.")
+		return
+
+	_rpc_welcome.rpc_id(
+		peer, String(player_id), _snapshot(), StateSync.encode_history(state())
+	)
+	# **And that this is a lobby they have arrived in**, which the welcome
+	# cannot say — the same gap D116 filled for a match. Without it their result
+	# screen simply stays up.
+	_rpc_rematch_joined.rpc_id(peer)
+	# **Both, and the signal is not incidental.** `_broadcast_state` skips the
+	# host's own peer, so without `player_joined` the host's lobby would not
+	# show the player who just arrived. That is the fault D120 was.
+	player_joined.emit(player_id)
+	_broadcast_state(player_id)
+
+
 # ------------------------------------------- the host's own requests (no wire)
 
 func request_buy(player_id: StringName, stalk_id: StringName, shares: int) -> void:
@@ -629,22 +772,33 @@ func _on_introduced(peer_id: int, player_name: String, steam_id: int = 0) -> voi
 ## Why an arriving Steam account may not come back into this match, or an empty
 ## string if it may.
 ##
-## **A sentence per refusal, decided in one place.** The two are different
-## things and a player meeting either deserves to know which: a stranger trying
-## a game that is under way, and somebody whose own seat is still there but
-## whose match is finished. The second only became reachable with REJOIN GAME —
-## the title screen offers a match it cannot know has ended, and without this
-## the returning player would be welcomed onto a dead board and left looking at
-## a final result as though it were a turn. See docs/decisions.md D111.
+## **Having a seat comes first, and a finished match is no longer a refusal for
+## the player who has one.** D111 turned those people away: the title screen
+## offers a match it cannot know has ended, and being welcomed onto a dead board
+## read as a turn you could take. The answer was the refusal; it is now the
+## result screen, which is where a finished match belongs and what a returning
+## player actually wants to see. So this amends D111 rather than reversing it —
+## the sentence is kept for anybody who has no seat here. See decisions.md D122.
+##
+## **It also had to change for host migration.** A handover during the results
+## leaves every remaining player holding a finished match, and whoever Steam
+## does not pick has to reconnect into one. Refusing them dropped a player to
+## the title screen for no reason other than having read the standings on the
+## wrong machine — unreachable with two players, because the only client left
+## becomes the host.
+##
+## **A sentence per refusal, decided in one place.** A stranger trying a game
+## that is under way and a stranger trying one that has ended are different
+## things, and each deserves to know which.
 ##
 ## Pure and public so the rule is testable without peers; `_on_introduced` is
 ## the only caller, and turns the answer into a refusal on the wire.
 func why_not_rejoin(steam_id: int) -> String:
+	if not _slot_to_reclaim(steam_id).is_empty():
+		return ""
 	if _authority.state.is_over:
 		return "That game has finished."
-	if _slot_to_reclaim(steam_id).is_empty():
-		return "That game has already started."
-	return ""
+	return "That game has already started."
 
 
 ## The slot an arriving player may take back, or an empty id for one who may
@@ -782,6 +936,11 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 	_player_by_peer.erase(peer_id)
 	_peer_by_player.erase(player_id)
+	# An ask from somebody who has gone is not an ask, and an identity kept for
+	# a peer that has dropped would seat a ghost if that peer id came round
+	# again. See docs/decisions.md D124.
+	_rematch_asked_for_by.erase(player_id)
+	_rematch_identities.erase(peer_id)
 
 	if _lobby_is_open:
 		# Nothing to preserve and nobody waiting on them: somebody who leaves the

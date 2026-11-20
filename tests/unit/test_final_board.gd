@@ -108,3 +108,16 @@ func test_the_board_cannot_be_asked_for_without_a_match() -> void:
 	main.show_final_board()
 
 	assert_true(main.current_screen() is MainMenu)
+
+
+## **Play again survives in a solo game**, which is the only place it ever
+## worked: it starts a single-player match from the finished settings. Hidden in
+## a networked one — see `test_main_migration.gd` and decisions.md D122.
+func test_a_solo_result_screen_still_offers_play_again() -> void:
+	var main: Main = _finished_match()
+	var over: GameOverScreen = main.current_screen() as GameOverScreen
+
+	assert_true(
+		(over.get_node("%PlayAgainButton") as Button).visible,
+		"a solo game is exactly what Play again is for",
+	)

@@ -694,7 +694,13 @@ func _begin_migration(departed_steam_id: int) -> void:
 		_on_connection_ended("The host left the game.")
 		return
 
-	_migrating_in_match = _screen is GameplayScreen
+	# **The results page counts as being in a match**, which is the fault this
+	# answers: a player reading the final standings when the host walked out was
+	# put back into a *lobby* for the match they had just finished — named after
+	# it, and offering to start it again. A finished match is still a match to be
+	# carried over; what changes is only which screen it is shown on, and that is
+	# decided by `_show_the_screen_for` rather than here. See decisions.md D122.
+	_migrating_in_match = _screen is GameplayScreen or _screen is GameOverScreen
 	_migrating_state = client.state()
 	_migrating_rng_state = client.rng_state()
 	_migrating_player_id = client.local_player_id()
@@ -834,16 +840,22 @@ func _start_hosting_the_moved_lobby() -> void:
 	# first fault reported from play (D106). A match that was already under way
 	# wants the opposite: unlisted, but still reachable by somebody coming back
 	# for their seat.
+	#
+	# **A finished match is a third case.** It is not joinable and it is not
+	# going to be, so it is marked finished rather than merely unlisted — the
+	# same thing `_on_match_finished` says, for the same reason: a player who
+	# was away when it ended must not be offered a game to go back into (D115).
+	# Without this a handover during the results quietly undid that.
 	if _steam != null and _steam.is_running():
-		if in_match:
-			_steam.hide_lobby_from_the_browser()
-		else:
+		var state_now: GameState = _session.state()
+		if not in_match:
 			_steam.reopen_lobby_to_the_browser(_last_settings)
+		elif state_now != null and state_now.is_over:
+			_steam.mark_lobby_finished()
+		else:
+			_steam.hide_lobby_from_the_browser()
 
-	if in_match:
-		_show_gameplay()
-	else:
-		_show_lobby()
+	_show_the_screen_for(_session.state(), in_match)
 
 
 ## Steam picked somebody else, so this process reconnects to them.
@@ -867,11 +879,42 @@ func _try_the_new_host(lobby_id: int, owner_steam_id: int) -> void:
 
 
 ## An attempt landed: the new host has welcomed this client back.
+##
+## **What this player expected is not consulted.** The new host serves whatever
+## it holds, which need not be what this client was looking at a moment ago, so
+## the screen is chosen from the state that actually arrived. See
+## `_show_the_screen_for`.
 func _settle_in_behind_the_new_host() -> void:
 	print(MIGRATION_LOG, "reconnected to the new host.")
-	var in_match: bool = _migrating_in_match
+	var client: ClientSession = _session as ClientSession
 	_end_migration()
-	if in_match:
+	if client == null:
+		show_menu()
+		return
+	_show_the_screen_for(client.state(), client.match_is_on())
+
+
+## Puts a player back on the screen their match calls for, after a handover.
+##
+## **Three cases, and the screen they were on before is not one of them.** It
+## used to be two, read off the old screen's class, which was right only because
+## nothing could then produce the third: a client holding a lobby it joined
+## after a match ended. The moment anything can — a rematch is the obvious one —
+## a two-way answer sends somebody to a board for a game that has not started.
+## So the rule is written out in full here, in one place, even though the third
+## branch is currently unreachable in play. See docs/decisions.md D122.
+##
+## `is_over` is first because it outranks the other two: a finished match is
+## shown as a result whether or not the host also said the match was on, and a
+## reconnecting seat-holder is told both (`host_session.gd`, D116).
+##
+## `match_is_on` is the host's own word for it rather than anything derived,
+## because year 0 is a real year and a lobby's state is indistinguishable from a
+## match that has only just begun.
+func _show_the_screen_for(state: GameState, match_is_on: bool) -> void:
+	if state != null and state.is_over:
+		show_results()
+	elif match_is_on:
 		_show_gameplay()
 	else:
 		_show_lobby()
@@ -1416,6 +1459,11 @@ func _name_the_match(settings: GameSettings, host_name: String) -> void:
 func _mount_session(session: GameSession) -> void:
 	_session = session
 	add_child(_session)
+	# Connected here rather than on the result screen, because the screen this
+	# answer changes is not the one that asked: a client taking a seat in a
+	# rematch lobby leaves the result screen behind. The rejoin's `joined`
+	# connection is held here for the same reason.
+	_session.rematch_joined.connect(_on_rematch_landed)
 	_watch_for_achievements()
 
 
@@ -1494,6 +1542,15 @@ func show_results() -> void:
 	over.play_again_requested.connect(_on_play_again)
 	over.menu_requested.connect(show_menu)
 	over.view_board_requested.connect(show_final_board)
+	# **Solo only.** `_on_play_again` starts a single-player match, which in a
+	# networked game means walking out on everybody still reading the result —
+	# and on the host, tearing the match down around them. See
+	# `GameOverScreen.offer_play_again` and docs/decisions.md D122.
+	over.offer_play_again(_session is LocalSession)
+	over.rematch_offer_requested.connect(_on_rematch_offer_requested)
+	over.rematch_ask_requested.connect(_on_rematch_ask_requested)
+	over.rematch_join_requested.connect(_on_rematch_join_requested)
+	over.setup(_session)
 	_swap(over)
 	over.display(_session.state(), _session.local_player_id())
 
@@ -1516,6 +1573,62 @@ func show_final_board() -> void:
 	gameplay.connection_ended.connect(_on_connection_ended)
 	_swap(gameplay)
 	gameplay.show_as_final_board()
+
+
+# ------------------------------------------------------------------ the rematch
+#
+# The host reopens the lobby on a finished match and whoever wants another game
+# comes back to it. Everything after the host presses Play is the path that was
+# already there. See docs/decisions.md D124.
+
+## The host wants another game. Reopening the lobby is a change to the match
+## itself, so the session does it; this only follows the host's own screen.
+##
+## **The Steam lobby is advertised again**, because that is exactly what it is
+## now: an open lobby. `_on_match_finished` had marked it over, which would
+## otherwise tell anybody who quit to desktop that the game had finished, and
+## keep it out of the browser. Pressing Play hides it again, through
+## `_on_play_requested`, as it does for any lobby.
+func _on_rematch_offer_requested() -> void:
+	if _session == null or not _session.can_offer_rematch():
+		return
+	_session.offer_rematch()
+	# The match being played here is the new one now. Left pointing at the
+	# finished match's settings, a later handover out of this lobby would
+	# re-advertise it from them.
+	_last_settings = _session.state().settings
+	# The reporter is kept for the next match — a rematch counts, and its wins
+	# and losses should — but the holdings it is judging against are the
+	# finished match's until something refreshes them. See D124.
+	if _achievements != null:
+		_achievements.forget_holdings()
+	if _steam != null and _steam.is_running():
+		_steam.reopen_lobby_to_the_browser(_session.state().settings)
+	_show_lobby()
+
+
+## A client is asking for one. Nothing happens here beyond the asking: the host
+## decides, and is under no obligation.
+func _on_rematch_ask_requested() -> void:
+	if _session != null:
+		_session.ask_for_rematch()
+
+
+## A client is taking up an offer. The screen does not change yet — the seat is
+## the host's to give, and `_on_rematch_landed` shows the lobby when it arrives.
+## The same treatment a rejoin gets, and for the same reason: a screen swapped
+## before the welcome lands shows an empty lobby.
+func _on_rematch_join_requested() -> void:
+	if _session != null:
+		_session.join_rematch()
+
+
+## The host has given this client a seat in the rematch lobby.
+##
+## **Its own signal rather than `joined`**, which also fires on a first join, a
+## rejoin and every migration reconnect — see `networked_session.gd`.
+func _on_rematch_landed() -> void:
+	_show_lobby()
 
 
 func _on_play_again() -> void:
@@ -1570,6 +1683,19 @@ func _swap(next: Control) -> void:
 	# anything.
 	if _pause_menu != null:
 		_pause_menu.close()
+	# **And the confirmations, for the same reason.** Both prompts are children
+	# of this node rather than of the screen that asked, so a question left open
+	# across a swap sat over the next screen with its yes still wired to the old
+	# one. Nothing could reach it before: a screen changed only when the player
+	# pressed something, and these take the keyboard while they are up. Host
+	# migration can do it — the host walks out while somebody is deciding
+	# whether to leave — and that is now a swap to the results as well as to a
+	# board. Found by the session that built REJOIN GAME and left deliberately;
+	# fixed here because this change is what made it reachable.
+	if _leave_prompt != null:
+		_leave_prompt.hide_panel()
+	if _quit_prompt != null:
+		_quit_prompt.hide_panel()
 	# The development overlay can only start a session, so it belongs on the
 	# screen a session is started from and nowhere else.
 	if _dev_layer != null:

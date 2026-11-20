@@ -4637,3 +4637,257 @@ than obvious.
 gets its value. A signal says *when* something changed; the state says *what it
 is*, and a screen that can be rebuilt at any moment - which every screen in
 this game now can, after migration and rejoining - has to be able to ask.
+
+### D122 - A finished match is still a match, and which screen is read off the state
+
+Reported from play, 2026-11-20. A match ended, everybody was on the result
+screen, and the host left. The host reached the title screen, which is right.
+The remaining client did **not** stay on the result screen: it was put into a
+**lobby** for the match that had just finished - carrying that game's name, and
+offering to start it again.
+
+**One line decided all of it.** `Main._begin_migration` asked
+
+    _migrating_in_match = _screen is GameplayScreen
+
+and a player reading the standings is on a `GameOverScreen`, so the answer was
+false and the whole handover went down the re-host-a-lobby branch: a brand new
+`HostSession.host` rather than `take_over`, the Steam lobby advertised again,
+and `_show_lobby()`.
+
+Two consequences followed from that branch rather than from the flag, and both
+were reported as separate complaints. The lobby kept the finished game's name,
+because `_name_the_match` leaves a name that is already set. And it kept the
+finished game's **seed**: `build_authority` writes the chosen seed back into
+the settings, so by the end of a match `settings.rng_seed` is a concrete
+number, and re-hosting with those settings reuses it. Pressing Play in that
+lobby would have replayed the exact market everybody had just finished.
+
+**A finished match is a match to be carried over.** The flag now includes the
+result screen, so `take_over` runs and the match is preserved. That is safe
+without further guards: `_advance_if_everybody_is_ready` and the yeehaw rules
+are already gated on `state.is_over`, so a finished match that changes hands
+cannot resolve another year.
+
+**Which screen is a separate question, and it is now read off the state.**
+`_show_the_screen_for` is the one place that answers it, as a three-way:
+
+1. `state.is_over` - the result screen
+2. otherwise, the host has said the match is on - the board
+3. otherwise - the lobby
+
+`is_over` ranks first because a reconnecting seat-holder is told *both* that
+they are in a finished match and, by `_rpc_match_started`, that the match is on
+(D116); the result screen is the right answer to that pair.
+
+**Case 2 reads the host's own word for it, and that had to start being
+remembered.** Year 0 is a real year, so a lobby and a match that has just begun
+are indistinguishable in the state - which is exactly why D116 made the host
+say so outright. `ClientSession` re-emitted that and forgot it, because the
+only listener was the lobby screen, which acts the instant it hears. A
+migration has to answer the same question long afterwards, so `_match_is_on` is
+recorded now, set by `_rpc_match_started` and cleared by every welcome.
+
+**Case 3 is unreachable in play today, and is written anyway.** Nothing can
+currently produce a client holding a *lobby* while another client holds a
+*finished match* - it needs somebody to join a new lobby after a match has
+ended, which is what a rematch would be. A two-way answer is correct only
+because that case cannot happen; the moment it can, it sends somebody to a
+board for a game that has not started. Writing the rule out in full costs three
+lines and a test, and means whatever reaches it finds the rule already right.
+`test_main_migration.gd` drives all three branches directly, the third by
+setting the state rather than by playing, and says so.
+
+**This also absorbed a second fault.** A migration while a player was looking
+at the *final board* - which is a `GameplayScreen`, so the old flag was right -
+rebuilt that screen without `_viewing_final_board`, giving a disabled "Game
+Over" button and no route back to the standings. Under the three-way such a
+player goes to the result screen instead, because their state is over. Nothing
+is lost: View board is still there.
+
+**And it amends D111.** `why_not_rejoin` refused any arrival into a finished
+match with "That game has finished." - including somebody whose own seat was
+still on the roster. That was decided when the only way to reach it was REJOIN
+GAME from the title screen, and the objection was real: being welcomed onto a
+final board read as a turn you could take. But the answer to that is the result
+screen, which now exists on every route in, and seeing how the match you were
+in ended is worth coming back for. A seat-holder is let in and lands on the
+standings. Strangers still get a sentence, and the right one of the two.
+
+The migration above forces it as well as improving it: a handover during the
+results leaves *every* remaining player holding a finished match, and whoever
+Steam does not pick has to reconnect into one. With three players, refusing
+them dropped somebody to the title screen for no reason but having read the
+standings on the wrong machine. Two accounts cannot see it - the only client
+left becomes the host - which is why it was found by reading rather than in
+play.
+
+**Play again is hidden in a networked match.** `_on_play_again` duplicates the
+finished settings, clears the seed and calls `start_match`, which is the *solo*
+path: `LocalSession.create`. In a networked game that walked out on everybody
+still reading the result, and on the host it discarded the session - closing
+the peer and leaving the Steam lobby - which is what made the client see the
+host leave and start the migration above. So the second reported fault had the
+same cause as the first.
+
+It is hidden rather than disabled, and rather than rewired, because **the
+original has no rematch at all**: its result panel has `Quit Game` and a close
+box (original-game-audit.md 12). A result screen offering Main menu and View
+board is what the port is meant to be, and a button that drops a networked
+player into a single-player game is worse than no button. A multiplayer rematch
+is a feature in its own right; when it is built, this is the button it takes
+over.
+
+**What it rules out.** Deciding anything about a match from the class of the
+screen the player happens to be looking at. The screen is a consequence of the
+state, and this is the second time that got the wrong way round - the first was
+D121, where a piece of the board was written by a signal instead of derived.
+
+### D123 - A screen swap takes any open question with it
+
+Found by the session that built REJOIN GAME and deliberately left, because
+nothing could reach it then. Fixed here because D122 made it reachable.
+
+`Main._swap` closed the pause menu and nothing else. Both confirmation prompts
+- "leave the game?" and "quit to desktop?" - are children of `Main` rather than
+of the screen that asked, so one left open across a swap stayed on screen,
+sitting over the next screen with its **yes still wired to the old one**.
+
+Unreachable before, for a reason worth writing down: a screen changed only when
+the player pressed something, and a prompt takes the keyboard while it is up.
+Host migration broke that assumption - the host can walk out while somebody is
+deciding whether to leave - and D122 adds another swap to that same path, to
+the result screen.
+
+Both prompts are hidden on every swap. `hide_panel` rather than a signal,
+because the question is not being answered, it is being withdrawn: nothing
+should act on a prompt the player never finished.
+
+**What it rules out.** Assuming the player caused the screen change. Anything
+`Main` owns on behalf of a screen has to be put away when that screen goes,
+whoever ended it.
+
+### D124 - A rematch is the host reopening the lobby, and nobody is waited on
+
+Asked for on 2026-11-20, after the result screen's *Play again* turned out to do
+nothing useful in a networked match (D122). The want is ordinary: a group of
+friends who have just finished want another game without going back to the
+title screen and finding each other again.
+
+**The host offers; the others opt in; whoever does not is simply not in the
+next match.** That shape was the owner's, and it is what makes the feature
+safe. Two earlier designs were costed and rejected, and both failed on the same
+thing - shared state about who wants a rematch:
+
+- *Everybody must agree, then it starts.* The agreement is state, and it has to
+  survive a player dropping and a host migrating. Worse, the natural gate -
+  every player who is not away - starts the rematch the instant the last
+  undecided player's connection drops, enrolling them in a match they never
+  agreed to and throwing away the result they were reading. Avoiding that meant
+  dropping away players from the rematch roster, which contradicts D110's
+  "being away never costs you anything".
+- *Any player can return to the lobby.* A client cannot: the host holds one
+  authoritative state, and until the host resets it that state is the finished
+  match, which is what every result screen is reading. A lobby does not exist
+  until the host makes one, so a client's press can only ever be a request.
+
+**Nobody can hold a rematch up, and there is no timer.** The new lobby's roster
+is built from arrivals, not inherited from the finished match, so a player who
+walks away from the keyboard is not in it - `why_not_start` has nothing to wait
+on. That is D48 doing the work: *creating players on arrival removes the
+possibility rather than guarding against it; there is no such thing as an
+unclaimed slot*. It is also why no timeout was needed, and why there is no way
+to kick somebody from the result screen. `kick_player` still covers the person
+who joins the rematch lobby and then wanders off, which is the case D49 is for.
+
+**It returns to the lobby rather than restarting the match in place.** Same
+number of presses - the host's second press is Play in the lobby instead of
+Start on the result screen - and it reuses paths that have been played:
+`_seat_new_player` already records the Steam ID, `LobbyScreen` already relays
+`match_started`, `_on_play_requested` already unlists the lobby, and
+`_show_gameplay` already writes the rejoin record. Restarting in place would
+have reimplemented all four. The lobby also shows who is coming, so the result
+screen needs no roster of its own.
+
+It is the shape the research pointed at: the lobby is the long-lived object and
+a match is a thing that happens inside it. Steamworks has no rematch concept at
+all - no such call, no documented flow - and a Steam lobby is destroyed only
+when its last member leaves, so a rematch was always going to be the game's own
+business conducted over its existing RPCs.
+
+**Four RPCs, all carrying nothing.** `_rpc_ask_for_rematch` and
+`_rpc_want_rematch` from a client, `_rpc_rematch_offered` and
+`_rpc_rematch_joined` from the host. No arguments anywhere, so the sender's peer
+id is the only statement of who is acting (D45).
+
+`_rpc_want_rematch` is deliberately **not** a second `_rpc_introduce`. Reusing
+that would have got the seating and the Steam ID for free, but it carries a
+name, and `_on_introduced`'s duplicate guard - which exists because the lobby is
+not a place to change your name - no longer applies once the reset has cleared
+the peer map. A packet that says nothing cannot be used to say something else.
+The host already knows who each peer is, from `_rematch_identities`.
+
+`_rpc_rematch_joined` exists rather than inferring from `joined`, for the same
+reason D116 added `_rpc_match_started`: a welcome cannot say which situation it
+is. Clients are welcomed on a first join, on a rejoin and on every migration
+reconnect, so inferring would mean `Main` guessing from which screen is up and
+whether a migration is in flight - the exact shape of the fault D108 was.
+
+**Asking decides nothing.** A client can tell the host it would like another
+game; the host's result screen names whoever asked, and no gate anywhere reads
+it. It exists because without it a client's result screen has no rematch
+control at all until the host offers, which reads as a missing feature rather
+than as waiting. If it ever gates anything it has become the first rejected
+design again.
+
+**The peer maps are rebuilt, not amended.** `HostSession.local_player_id()` *is*
+`_player_by_peer[HOST_PEER_ID]`, and every request resolves through
+`_require_player`, so a map left pointing at the finished match's slots does not
+fail loudly - it makes every button answer nothing. `test_rematch.gd` drives a
+whole year and a buy after a rematch for exactly this reason.
+
+**Identities are captured before the reset, and only two fields are read.** A
+seat built without its Steam ID cannot be reclaimed, so a rematch that lost them
+would silently take reconnecting, REJOIN GAME and the seat-matching half of host
+migration with it - all at once, and only inside a rematch. There is a named
+test.
+
+**A new seed every time**, for the reason D38 gives: `build_authority` writes the
+chosen seed back into the settings, so a finished match's settings carry a
+concrete number and reusing them would deal the same years out again. A typed
+seed is not distinguishable from a generated one in `GameSettings`, so honouring
+one is not an option the data supports.
+
+**The result screen reacts to `match_started` by putting its own controls away,
+never by changing screen.** `start_match` broadcasts to every peer rather than
+to the seated ones, so a player who declined the rematch is told it went ahead.
+That is wanted - their way in has to stop looking open, or it fails when pressed
+- but swapping them onto a board would put them in a match they chose not to
+join. Scoping the broadcast instead would have left them with a live button and
+no way to know.
+
+**The achievement reporter is kept, and its memory of the last match is not.**
+It is created once per session (`Main._watch_for_achievements`) and a rematch
+reuses the session, which is right: a rematch is a real match and its wins,
+losses and net worth should count. But `_held_before` would still hold the
+finished match's final position when the new match's first year resolved, and
+`AchievementRules.for_year` reads it to decide whether a stalk that split or
+went bankrupt was one you owned. `forget_holdings` closes that one-year window.
+
+**An offer is said in words, not shown as a changed button.** Reported from
+play the same day, once the rest of it worked: a client learned that the host
+had gone back to the lobby only because its own button changed label, and a
+player reading the final standings is not watching the buttons. The result
+screen has one line for this, used by both sides — naming whoever asked, on the
+host, and saying the host has restarted the lobby, on a client.
+
+No sound goes with it. The only cues this game owns are the bull, bear,
+bankruptcy and yeehaw ones, each of which already means something specific, and
+inventing a new one is not a decision this change gets to make.
+
+**What it rules out.** Any shared, synchronised record of who wants a rematch.
+The moment such a thing exists it has to survive a disconnect and a migration,
+and it has to decide what an away player's silence means - which is the question
+that sank both rejected designs. Here the asks are host-local and advisory, the
+offer is a single broadcast, and the only durable state a rematch creates is an
+ordinary open lobby.

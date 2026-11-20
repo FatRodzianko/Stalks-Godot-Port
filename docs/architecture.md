@@ -504,8 +504,11 @@ nothing else:
   otherwise put an empty market on screen. `_on_rejoin_landed` shows the board
   when the welcome arrives.
 - The host decides whether they get their seat. `why_not_rejoin` is that rule,
-  pure and testable: a finished match and a Steam ID that is not on the roster
-  each get their own sentence.
+  pure and testable: having a seat is checked first and lets the player in even
+  when the match has finished, and a Steam ID that is not on the roster gets one
+  of two sentences depending on whether that match is running or over. A
+  returning seat-holder whose match ended lands on the result screen, which is
+  what D122 amended D111 to allow.
 
 A record is **not** deleted when a rejoin fails or when Steam is silent, so a
 bad minute on the relay does not destroy the only route back. It *is* deleted
@@ -586,6 +589,42 @@ lobby and the playing screen both do. This is a separate signal from
 reached its end, the other is a game that stopped — and only one of them has a
 result worth showing. See decisions.md D61 for how the playing screen came to be
 the one screen that had not connected it.
+
+**After a handover, the screen is derived from the match, not from the screen
+before it.** `_show_the_screen_for(state, match_is_on)` is the single place that
+decides, and it is a three-way: a match that is over shows the result screen, a
+match the host has said is on shows the board, anything else shows the lobby.
+Both halves of a migration end there, and neither consults what the player was
+looking at a moment ago — the new host serves whatever *it* holds, which need
+not be the same thing.
+
+`match_is_on` is `ClientSession.match_is_on()`, the host's own statement that
+the lobby is closed (D116), remembered rather than only re-emitted. The state
+cannot stand in for it: year 0 is a real year, so a lobby and a match that has
+just begun look identical. The third branch cannot be reached by playing today
+and is written out regardless — see decisions.md D122 for why, and for the fault
+a two-way answer caused.
+
+**Anything `Main` owns on a screen's behalf is put away when that screen goes.**
+The pause menu and both confirmation prompts are children of `Main`, not of the
+screen that asked, so `_swap` closes all three. A screen no longer changes only
+because the player pressed something — a host walking out changes it too — so a
+question left open would otherwise sit over the next screen with its yes still
+wired to the last one (D123).
+
+**A rematch is the host reopening the lobby.** On a finished match the host can
+call `offer_rematch`, which rebuilds the authority from the same settings with a
+cleared seed, reopens the lobby, clears and re-seats the peer maps, and tells
+every client. A client that takes up the offer is seated by the ordinary
+`_seat_new_player` — with the name and Steam ID it played the finished match
+under, captured before the reset — and welcomed, then told by `_rpc_rematch_joined`
+that it is in a lobby rather than a match. From the host pressing Play onwards
+nothing is new: it is `_on_play_requested` and the path every match takes.
+
+The roster is built from arrivals rather than inherited, so a player who never
+answers is not in the next match and nothing waits on them (D48). Who wants a
+rematch is therefore never shared state — the asks are host-local and advisory,
+and the lobby itself is what shows who is coming. See decisions.md D124.
 
 **`Main` also owns Escape.** Backing out means going to whatever is behind the
 current screen, and only the screen host knows what that is. Overlays inside a

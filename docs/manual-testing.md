@@ -1161,6 +1161,187 @@ cause - a match in progress is deliberately unlisted but still joinable (D106).
 - **B lands on a lobby instead of the board** - `_on_rejoin_landed` was not
   reached; the welcome arrived down the ordinary join path.
 
+### B7 - The host leaves while you are reading the result
+
+**B7a, B7c and B7d passed on 2026-11-20** with two accounts on two machines.
+B7b and B7e have not been run. Covers D122 and D123. Call the machines **A** and
+**B**; A hosts.
+
+The suite covers every decision `Main` makes here without Steam
+(`test_main_migration.gd`), so a failure in these steps is more likely to be
+Steam's answer about who owns the lobby than the game's logic.
+
+#### B7a. You stay on the standings
+
+1. On A, host an online game and set the match to 2 years.
+2. On B, join it from the lobby list.
+3. On B, press Ready.
+4. On A, press Start.
+5. Play both years out on both machines, readying up each year.
+6. Check both machines show the result screen with the final standings.
+7. Note the seed printed at the bottom of B's result screen.
+8. On A, press **MAIN MENU**.
+9. Check A is on the title screen.
+10. Check B is **still on the result screen**, with the same standings and the
+    same seed as step 7.
+11. Check B is **not** in a lobby, and that no Play button is on screen.
+
+#### B7b. There is no rematch button to press
+
+12. On B, check the result screen shows **VIEW BOARD** and **MAIN MENU** only,
+    with no PLAY AGAIN.
+13. On B, press **VIEW BOARD**.
+14. Check the board shows the final prices and **BACK TO RESULTS** in the
+    bottom bar.
+15. On B, press **BACK TO RESULTS**.
+
+#### B7c. The finished game is not offered again
+
+16. On B, press **MAIN MENU**.
+17. Check B is on the title screen and **REJOIN GAME** is not shown.
+18. On A, open the lobby list.
+19. Check the finished game is not in it.
+
+#### B7d. A question does not outlive its screen
+
+20. On A, host an online game; on B, join, ready up, and let A start it.
+21. On B, press Escape, then **Leave Game**, and leave the confirmation open.
+22. On A, press Escape, then **Leave Game**, and confirm.
+23. On B, check the confirmation has gone and B is reading the board or the
+    standings, not a question about a game that has ended.
+
+#### B7e. Play again still works on its own
+
+24. On B, start a single-player game of 2 years from the title screen.
+25. Play it out to the result screen.
+26. Check **PLAY AGAIN** is on the result screen.
+27. On B, press **PLAY AGAIN**.
+28. Check a new match starts at Year 0.
+29. Play it out and check the seed differs from the one in step 25.
+
+**If something goes wrong here**
+
+- **B lands in a lobby named after the finished game** - the fault D122 fixed.
+  `_migrating_in_match` is false on the result screen again, or
+  `_show_the_screen_for` is not being reached.
+- **B lands on the board with a disabled "Game Over" button** - the three-way
+  is picking case 2 over case 1; `state.is_over` is not arriving in the
+  snapshot.
+- **B is dropped to the title screen** - with two accounts B becomes the host,
+  so this means `take_over` failed rather than that B was refused. The log's
+  `[migration]` lines say which.
+- **A third player is refused with "That game has finished."** - `why_not_rejoin`
+  is checking `is_over` before the seat again (D122).
+
+### B8 - A rematch
+
+**Passed on 2026-11-20** with two accounts on two machines, along with four
+cases these steps do not ask for — they are B8g below, because every one of them
+is a rematch meeting host migration and that is where the last four faults came
+from. Covers D124. Two Steam accounts on two machines, **A** and **B**; A hosts.
+
+One thing came back from that run and is fixed: a client was told the host
+wanted another game only by a button quietly changing its label. There is a line
+on the result screen now, the same one the host sees naming who asked (B8a step
+10a).
+
+**Button wording is the owner's.** The steps name them by what they do.
+
+`test_rematch.gd` drives all of this over a real socket, so a failure in these
+steps is more likely to be Steam than the game's logic. What the suite cannot
+reach is a third player, so the one case left to judgement is a rematch where
+one of three declines.
+
+#### B8a. The client asks, the host offers
+
+1. On A, host an online game and set the match to 2 years.
+2. On B, join it, press Ready, and let A press Start.
+3. Play both years out on both machines.
+4. Check both machines show the result screen.
+5. On B, press the request-rematch button.
+6. Check B's button now says the request has been made and cannot be pressed again.
+7. Check A's result screen names B as having asked.
+8. On A, press the return-to-lobby button.
+9. Check A shows the lobby, headed with the same game name.
+
+#### B8b. The client takes a seat
+
+10. Check B is still on the result screen, and its button now offers a way into the lobby.
+10a. Check B's result screen says in words that the host has gone back to the lobby.
+11. On B, press it.
+12. Check B shows the lobby.
+13. Check A's lobby lists both players.
+14. On B, press Ready.
+15. On A, press Play.
+16. Check both machines show Year 0 of a new match.
+17. Check both players have the starting cash and no holdings.
+18. On B, buy one share of any company and check it appears on both machines.
+
+#### B8c. It is a different market
+
+19. Play the new match out to the result screen on both machines.
+20. Check the seed on the result screen differs from the one in step 4.
+
+#### B8d. Declining leaves you alone
+
+21. On A, press the return-to-lobby button.
+22. On B, do not press anything.
+23. Check A's lobby lists only A.
+24. On A, press Play.
+25. Check A is on Year 0 of a new match.
+26. Check B is **still on the result screen** of the finished match.
+27. Check B's rematch button no longer offers a way in.
+28. On B, press **MAIN MENU** and check B reaches the title screen.
+
+#### B8e. A rematch of a rematch
+
+29. On A, host an online game of 2 years; on B, join, ready, and let A start it.
+30. Play it out on both machines.
+31. On A, press return-to-lobby; on B, join; on A, press Play.
+32. Play that match out on both machines.
+33. On A, press return-to-lobby; on B, join; on A, press Play.
+34. Check both machines reach Year 0 again, with the starting cash and no holdings.
+35. Check the year-by-year tab shows only the current match's years.
+
+#### B8f. The host leaves mid-offer
+
+36. On A, host an online game of 2 years; on B, join, ready, and let A start it.
+37. Play it out on both machines.
+38. On A, press the return-to-lobby button.
+39. On A, press **LEAVE** in the lobby.
+40. Check B is still on the result screen and has not been dropped to the title screen.
+
+#### B8g. A rematch meeting host migration — **passed 2026-11-20**
+
+Four cases found by playing rather than by these steps. They are the ones worth
+re-running after any change to migration or to the rematch, because each is a
+rematch lobby changing hands.
+
+41. A returns to the lobby, B follows, then A leaves. Check the lobby migrates to
+    B and B can carry on.
+42. With A gone and B now hosting, check B's result screen offers the way back to
+    the lobby, and that starting a new game from it works.
+43. A returns to the lobby and B goes to the title screen instead. Check B can
+    see that lobby in the browser and join it, and that the game then starts.
+44. A goes to the title screen, so the match migrates to B. B returns to the
+    lobby. Check A can see that lobby in the browser and join it.
+
+**If something goes wrong here**
+
+- **B's buttons do nothing after a rematch** - the peer maps were not rebuilt;
+  `local_player_id()` reads `_player_by_peer[HOST_PEER_ID]` (D124).
+- **B cannot rejoin after dropping out of a rematch** - the seats lost their
+  Steam IDs when the roster was rebuilt. `test_rematch.gd` has a named test for
+  this, so suspect the Steam ID arriving as 0 rather than the rebuild.
+- **The rematch replays the same market** - the seed was not cleared, so
+  `build_authority` kept the finished match's.
+- **B is pulled into a match it declined** - the result screen is treating
+  `match_started` as a reason to change screen rather than to close its own way
+  in (D124).
+- **The game is not in the browser during a rematch lobby** -
+  `reopen_lobby_to_the_browser` was not called, so the lobby is still marked
+  finished from `_on_match_finished`.
+
 ### Known gaps, so they are not surprises
 
 - **Achievements are not being tested, on purpose.** They are implemented and
