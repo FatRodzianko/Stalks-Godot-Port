@@ -98,6 +98,10 @@ static func encode_player(player: PlayerState) -> Dictionary:
 		"net_worth": player.net_worth,
 		"is_bankrupt": player.is_bankrupt,
 		"is_ready": player.is_ready,
+		# Public: every board marks who is not here, and the year gate skips
+		# them, so a client that could not see it would be waiting on somebody
+		# the host is not waiting on. See docs/decisions.md D110.
+		"is_away": player.is_away,
 		"cash": player.cash,
 		"holdings": holdings,
 		"loan": encode_loan(player.loan),
@@ -226,6 +230,7 @@ static func apply_player(player: PlayerState, data: Dictionary) -> void:
 	player.net_worth = int(data.get("net_worth", 0))
 	player.is_bankrupt = bool(data.get("is_bankrupt", false))
 	player.is_ready = bool(data.get("is_ready", false))
+	player.is_away = bool(data.get("is_away", false))
 	player.cash = int(data.get("cash", 0))
 
 	player.holdings.clear()

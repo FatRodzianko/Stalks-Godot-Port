@@ -60,6 +60,11 @@ var _leave_prompt: ConfirmPanel
 ## The pause overlay, built the first time Escape is pressed during a match.
 var _pause_menu: PauseMenu
 
+## The "quit to desktop?" overlay, built the first time that button is pressed
+## during a match. Separate from `_leave_prompt` because the two yeses do
+## different things.
+var _quit_prompt: ConfirmPanel
+
 ## The direct-connection panel, in development builds only. Null otherwise.
 var _dev_overlay: DevOverlay
 
@@ -285,14 +290,18 @@ func show_pause_menu() -> void:
 		_pause_menu = PauseMenuScene.instantiate()
 		add_child(_pause_menu)
 		_pause_menu.leave_requested.connect(_ask_about_leaving)
-		_pause_menu.quit_requested.connect(quit_to_desktop)
+		_pause_menu.quit_requested.connect(_ask_about_quitting)
 	# Each screen swap adds the new screen last, which would cover this.
 	move_child(_pause_menu, -1)
 	_pause_menu.open()
 
 
-## Leaving a match in progress is not undoable — there is no reconnection yet —
-## so it asks first.
+## Leaving a match in progress is a real decision, so it asks first.
+##
+## **It is no longer irreversible**, which is why the wording stops short of
+## saying so: REJOIN GAME on the title screen takes you back in, and your seat
+## keeps playing while you are gone (decisions.md D110, D111). What it costs is
+## the years that resolve without you, which is reason enough to ask.
 func _ask_about_leaving() -> void:
 	if _leave_prompt == null:
 		_leave_prompt = ConfirmPanelScene.instantiate()
@@ -311,6 +320,37 @@ func _ask_about_leaving() -> void:
 
 func _on_leave_confirmed() -> void:
 	show_menu()
+
+
+## Quitting to desktop from inside a match asks first.
+##
+## **Exit to Desktop sits two buttons under one that already asks**, and until
+## 2026-11-19 it closed the game on the press. A misclick ended the session,
+## which the owner met in play. There is no argument for the asymmetry: both
+## buttons end the match you are in, and one of them also ends the program.
+##
+## **The window's X still does not ask**, and that is not an inconsistency.
+## D71's reasoning holds for it exactly: a confirmation in front of a window
+## that is already going away is an argument with somebody who has finished.
+## What changed is that this is a button inside a menu, reachable by accident,
+## which the X is not.
+##
+## Its own panel rather than the leave prompt's, because `confirmed` is
+## connected once and for all and swapping the handler on a shared panel is how
+## a yes ends up doing the wrong thing.
+func _ask_about_quitting() -> void:
+	if _quit_prompt == null:
+		_quit_prompt = ConfirmPanelScene.instantiate()
+		add_child(_quit_prompt)
+		_quit_prompt.confirmed.connect(quit_to_desktop)
+	# Raised above whatever was added last, for the same reason the leave
+	# prompt is.
+	move_child(_quit_prompt, -1)
+	_quit_prompt.ask(
+		"Leave the game and quit to desktop?",
+		"Quit",
+		"Keep playing",
+	)
 
 
 ## Hands the asking to Steam's own friend picker, which knows who is online.
@@ -332,18 +372,34 @@ func pause_menu() -> PauseMenu:
 	return _pause_menu
 
 
+## The "quit to desktop?" overlay, or null if that button has never been
+## pressed during a match. For tests.
+func quit_prompt() -> ConfirmPanel:
+	return _quit_prompt
+
+
 func show_menu() -> void:
+	# Any rejoin that was in flight is not any more. Left set, the next game
+	# picked out of the browser would be treated as a return to a match in
+	# progress and land on the board instead of in the lobby.
+	_rejoining = false
 	_discard_session()
 	var menu: MainMenu = MenuScene.instantiate()
 	menu.start_requested.connect(_on_start_requested)
 	menu.host_online_requested.connect(_on_host_online_requested)
 	menu.browse_online_requested.connect(_on_browse_online_requested)
 	menu.join_online_requested.connect(join_online_game)
+	menu.rejoin_requested.connect(_on_rejoin_requested)
 	menu.quit_requested.connect(quit_to_desktop)
 	_swap(menu)
 	# After the swap: the label is a child of the menu, which has to be in the
 	# tree before its scene-unique names resolve.
 	menu.show_supporter_note(_steam != null and _steam.owns_supporter_dlc())
+	# **Hidden until Steam says the game is still there.** Remembering a lobby
+	# is not knowing it is alive, and a button that fails when pressed is worse
+	# than one that was never offered. See `_ask_whether_the_remembered_match_is_still_there`.
+	menu.offer_rejoin(false)
+	_ask_whether_the_remembered_match_is_still_there()
 
 
 ## Starts a match. Public so a test can begin one without driving the menu.
@@ -490,20 +546,22 @@ func host_steam_match(lobby_id: int, settings: GameSettings, player_name: String
 ## Joins a Steam host, whether this is a first join or a reconnection after the
 ## host changed.
 ##
-## `during_migration` means this is one attempt among several at reaching a
-## host that has just taken over, and changes two things. The Steam lobby is
-## **kept**, because it is the lobby the new host is in rather than one being
-## left behind. And no screen is swapped: whatever is on screen stays, stale,
-## until a welcome actually arrives, because a half-built session would
-## otherwise put an empty lobby or an empty market up on every attempt.
-## `Main` watches for the welcome in `_process` and shows the right screen then.
+## `reconnecting` means this is a return to a match rather than an arrival at a
+## new one — one of several attempts at a host that has just taken over, or a
+## player pressing REJOIN GAME. It changes two things. The Steam lobby is
+## **kept**, because it is the lobby the match is in rather than one being left
+## behind. And no screen is swapped: whatever is on screen stays until a welcome
+## actually arrives, because a half-built session would otherwise put an empty
+## lobby or an empty market up on every attempt. The caller shows the right
+## screen when the welcome lands — `_process` for a migration,
+## `_on_rejoin_landed` for a rejoin.
 func join_steam_match(
 	lobby_id: int,
 	owner_steam_id: int,
 	player_name: String,
-	during_migration: bool = false,
+	reconnecting: bool = false,
 ) -> String:
-	_discard_session(during_migration)
+	_discard_session(reconnecting)
 	_online_host_steam_id = owner_steam_id
 
 	var library: ContentLibrary = _loaded_library()
@@ -524,7 +582,7 @@ func join_steam_match(
 	var session: ClientSession = result["session"]
 	_mount_session(session)
 	session.attach_peer(result["peer"])
-	if during_migration:
+	if reconnecting:
 		return ""
 	_show_lobby()
 	return ""
@@ -552,7 +610,6 @@ func _on_host_online_requested(settings: GameSettings) -> void:
 
 	if not service.lobby_created.is_connected(_on_steam_lobby_created):
 		service.lobby_created.connect(_on_steam_lobby_created)
-		service.lobby_failed.connect(_on_steam_lobby_failed)
 	_watch_the_service(service)
 
 	# Steam takes a moment, and a button that does nothing visible reads as
@@ -577,11 +634,20 @@ func _on_host_online_requested(settings: GameSettings) -> void:
 ## Listens to the Steam service. Connected once, from wherever Steam is first
 ## needed, because these answers can arrive when no screen is expecting them:
 ## an invite accepted mid-menu, a host leaving mid-lobby.
+##
+## **`lobby_failed` belongs here, and used to be connected only when hosting.**
+## A join Steam refused emitted its reason - "That game no longer exists.",
+## worded with some care in `SteamService._why_refused` - to nobody at all, so
+## picking a stale game out of the browser reported nothing and looked like a
+## button that did not work. Found while building REJOIN GAME, which must fail
+## with a sentence rather than in silence. See docs/decisions.md D112.
 func _watch_the_service(service: SteamService) -> void:
 	if service.lobby_member_left.is_connected(_on_steam_lobby_member_left):
 		return
 	service.lobby_member_left.connect(_on_steam_lobby_member_left)
 	service.lobby_joined.connect(_on_steam_lobby_joined)
+	service.lobby_failed.connect(_on_steam_lobby_failed)
+	service.lobby_details.connect(_on_steam_lobby_details)
 	service.invited_to.connect(_on_steam_invited_to)
 
 
@@ -644,6 +710,10 @@ func _begin_migration(departed_steam_id: int) -> void:
 
 
 func _process(delta: float) -> void:
+	# Before the migration guard below, because the title screen's question is
+	# asked when there is no migration at all - which is almost always.
+	_tick_the_rejoin_check(delta)
+
 	if _migration == null:
 		return
 
@@ -843,6 +913,10 @@ func _on_steam_lobby_created(lobby_id: int) -> void:
 
 func _on_steam_lobby_failed(reason: String) -> void:
 	_pending_host_settings = null
+	# Whatever was being waited for is not coming, so nothing downstream should
+	# still believe a join or a rejoin is in flight.
+	_pending_join_lobby = 0
+	_rejoining = false
 	if _screen is MainMenu:
 		_report_to_menu(reason)
 		return
@@ -990,6 +1064,10 @@ func _on_steam_lobby_joined(lobby_id: int) -> void:
 		return
 	_pending_join_lobby = 0
 
+	if _rejoining:
+		_rejoin_the_match(lobby_id)
+		return
+
 	var problem: String = join_steam_match(
 		lobby_id, _steam.lobby_owner(lobby_id), _steam_name()
 	)
@@ -997,6 +1075,231 @@ func _on_steam_lobby_joined(lobby_id: int) -> void:
 		return
 	show_menu()
 	_report_to_menu(problem)
+
+
+# ----------------------------------------------------------------- rejoining
+#
+# A player who dropped out of a match gets back into it from the title screen.
+# The host side of this already existed for host migration: `_slot_to_reclaim`
+# matches an arriving Steam ID against the roster and hands back the seat it
+# belongs to, with the position the match has gone on building for it (D110).
+#
+# What was missing was a way to arrive. A match in progress is deliberately
+# absent from the lobby browser (D67), so there was no route to it from inside
+# the game. There is nothing to invent, though: the lobby is unlisted and still
+# joinable (D106), so a remembered lobby id is the whole mechanism. See
+# docs/decisions.md D111.
+
+## Whether a rejoin is in flight, which decides what `_on_steam_lobby_joined`
+## does with the lobby and which screen the welcome lands on.
+var _rejoining: bool = false
+
+## Where the remembered match is kept. Replaced in tests, which must not write
+## over the player's own record - running the suite would otherwise either wipe
+## a match they meant to go back to or invent one that does not exist. The same
+## kind of seam as `_steam_transports`.
+var _last_match_path: String = LastMatch.PATH
+
+
+# ------------------------------------------- is the remembered game still on?
+#
+# **Remembering a lobby is not knowing it is still there**, and the first
+# version behaved as though it were. Reported from play on 2026-11-18, after
+# the feature itself worked: a player who left a game they were the last one in
+# came back to a title screen still offering it, pressed the button, and was
+# told the game no longer exists. The record outlived the match and nothing
+# ever asked.
+#
+# So the record is a candidate and Steam is the authority. `requestLobbyData`
+# answers for a lobby this process is not in, which is the only way to tell a
+# match still being played from one that ended - neither is in the browser.
+# The button appears when the answer comes back good, and goes away again when
+# it stops being. See docs/decisions.md D115.
+
+## How often the title screen re-asks. Five seconds, so a match that ends while
+## somebody is sitting on the menu takes the button away promptly, and a Steam
+## hiccup that hid it puts it back just as promptly.
+const REJOIN_CHECK_SECONDS: float = 5.0
+var _since_rejoin_check: float = 0.0
+
+
+## Asks Steam whether the remembered lobby is still a game worth offering.
+##
+## **Three answers, and only one of them offers the button.** It is still being
+## played, so offer it. It is definitely gone - the lobby no longer exists, or
+## its match is over - so forget the record and stop offering it for good.
+## Or Steam did not answer, which is not evidence of anything: leave the record
+## alone and try again on the next tick. Failing closed that way means a player
+## never presses a button that cannot work, and a flicker of a bad connection
+## costs them five seconds rather than their seat.
+func _ask_whether_the_remembered_match_is_still_there() -> void:
+	_since_rejoin_check = 0.0
+	if not LastMatch.load_from(_last_match_path).exists():
+		return
+	if _steam == null or not _steam.is_running():
+		# Nothing to ask, and nothing proved: with Steam closed they could not
+		# rejoin anything anyway, so the button stays off and the record stays.
+		return
+	# **The title screen is the one place that needs Steam without having asked
+	# for it.** Everywhere else reaches the service through hosting, browsing or
+	# joining, each of which connects the signals on the way past. A cold start
+	# lands here first, and without this the question goes out and the answer
+	# has nowhere to arrive.
+	_watch_the_service(_steam)
+	_steam.request_lobby_details(LastMatch.load_from(_last_match_path).lobby_id)
+
+
+## Steam answered. Show the button, or throw the record away.
+func _on_steam_lobby_details(lobby_id: int, exists: bool, state: String) -> void:
+	var remembered: LastMatch = LastMatch.load_from(_last_match_path)
+	if not remembered.exists() or remembered.lobby_id != lobby_id:
+		# An answer about something else, or about a match already forgotten.
+		return
+
+	if exists and state != SteamService.STATE_OVER:
+		_offer_rejoin_on_the_menu(true)
+		return
+
+	# The lobby is gone, or everybody in it is looking at a result screen.
+	# Either way there is no game to go back into, and this is the one kind of
+	# failure that is worth acting on - see `LastMatch.forget`.
+	LastMatch.forget(_last_match_path)
+	_offer_rejoin_on_the_menu(false)
+
+
+## Shows or hides the button, if the title screen is still what is on screen.
+## The answer can arrive after the player has moved on, and a menu that is no
+## longer there has nothing to show.
+func _offer_rejoin_on_the_menu(can_rejoin: bool) -> void:
+	var menu: MainMenu = _screen as MainMenu
+	if menu != null:
+		menu.offer_rejoin(can_rejoin)
+
+
+## Keeps the question current while the player sits on the title screen, so a
+## match that ends out there takes its button with it.
+##
+## Does nothing anywhere else: there is no button on any other screen, and a
+## rejoin already under way is not something to second-guess.
+func _tick_the_rejoin_check(delta: float) -> void:
+	if not (_screen is MainMenu) or _rejoining:
+		return
+	_since_rejoin_check += delta
+	if _since_rejoin_check < REJOIN_CHECK_SECONDS:
+		return
+	_ask_whether_the_remembered_match_is_still_there()
+
+
+## The player pressed REJOIN GAME.
+##
+## Nothing is checked about whether the match is still there. Steam answers that
+## when the lobby is joined, and the host answers whether the seat is still this
+## player's; both refusals arrive as a sentence on the title screen. Guessing
+## here would only be a second, worse opinion.
+func _on_rejoin_requested() -> void:
+	var remembered: LastMatch = LastMatch.load_from(_last_match_path)
+	if not remembered.exists():
+		return
+
+	_rejoining = true
+	# Steam takes a moment to let anybody into a lobby, and a button that does
+	# nothing visible reads as broken.
+	var menu: MainMenu = _screen as MainMenu
+	if menu != null:
+		if remembered.game_name.strip_edges().is_empty():
+			menu.show_status("Rejoining...")
+		else:
+			menu.show_status("Rejoining %s..." % remembered.game_name)
+
+	join_online_game(remembered.lobby_id)
+
+
+## In the lobby, and the match inside it is the one to get back into.
+##
+## **The lobby owner is read now rather than remembered**, so a match that has
+## changed hands since this player left is rejoined through whoever is hosting
+## it today. That falls out of migration having been built first: Steam names
+## the owner and the new host is the owner (D104).
+func _rejoin_the_match(lobby_id: int) -> void:
+	var problem: String = join_steam_match(
+		lobby_id, _steam.lobby_owner(lobby_id), _steam_name(), true
+	)
+	if not problem.is_empty():
+		_give_up_on_rejoin(problem)
+		return
+
+	var client: ClientSession = _session as ClientSession
+	if client == null:
+		_give_up_on_rejoin("Could not rejoin that game.")
+		return
+	client.joined.connect(_on_rejoin_landed)
+	client.connection_lost.connect(_give_up_on_rejoin)
+
+
+## The host welcomed this player back, so put the board up.
+##
+## **The board, not the lobby.** A match is only remembered once it has reached
+## the playing screen (`_remember_this_match`), so there is no lobby for a
+## rejoin to land in: the host has closed it and `_slot_to_reclaim` is the only
+## way back in. A player whose match has finished never gets here — the host
+## turns them away with a reason instead.
+func _on_rejoin_landed(_player_id: StringName) -> void:
+	_rejoining = false
+	_stop_watching_the_rejoin()
+	_show_gameplay()
+
+
+## Steam would not let us in, the host would not have us back, or the welcome
+## never came. The reason goes on the title screen.
+##
+## The remembered match is **not** forgotten here. A relay having a bad minute
+## would otherwise destroy the only route back into a game that is still being
+## played, and a button that says "That game no longer exists." is the smaller
+## problem. See `LastMatch.forget`.
+func _give_up_on_rejoin(reason: String) -> void:
+	_rejoining = false
+	_stop_watching_the_rejoin()
+	_on_connection_ended(reason)
+
+
+## Takes the rejoin's handlers off the session, because from here on it is an
+## ordinary client and the playing screen reports its own lost connections.
+## Left connected, a disconnect an hour later would be answered twice.
+func _stop_watching_the_rejoin() -> void:
+	var client: ClientSession = _session as ClientSession
+	if client == null:
+		return
+	if client.joined.is_connected(_on_rejoin_landed):
+		client.joined.disconnect(_on_rejoin_landed)
+	if client.connection_lost.is_connected(_give_up_on_rejoin):
+		client.connection_lost.disconnect(_give_up_on_rejoin)
+
+
+## Writes down which Steam lobby this match is in, so the title screen can offer
+## to come back to it.
+##
+## **Every route into the playing screen passes through `_show_gameplay`** -
+## hosting, joining, a migrated host, a migrated client, a rejoin - which is why
+## this is called from there and not from each of them. A solo game writes
+## nothing: there is no lobby, and nothing to rejoin.
+##
+## An existing record is overwritten, so the offer always names the most recent
+## match. Starting a solo game deliberately does not clear it: the seat in the
+## online match is still there, and the owner's model is that it keeps playing
+## without you.
+func _remember_this_match() -> void:
+	if not _is_online_match or _steam == null or not _steam.is_running():
+		return
+	var lobby_id: int = _steam.current_lobby()
+	if lobby_id == 0:
+		return
+
+	var name_of_game: String = ""
+	if _session != null and _session.state() != null:
+		var settings: GameSettings = _session.state().settings
+		if settings != null:
+			name_of_game = settings.game_name
+	LastMatch.remember(lobby_id, name_of_game, _last_match_path)
 
 
 ## Somebody accepted an invitation while the game was already running.
@@ -1089,6 +1392,8 @@ func _on_play_requested() -> void:
 ## cannot be missed by the other - which is how the playing screen came to be
 ## the only screen that did not notice the host leaving.
 func _show_gameplay() -> void:
+	# From here this match is one the title screen will offer to come back to.
+	_remember_this_match()
 	var gameplay: GameplayScreen = GameplayScene.instantiate()
 	gameplay.setup(_session)
 	gameplay.match_finished.connect(_on_match_finished)
@@ -1157,7 +1462,19 @@ func _on_start_requested(settings: GameSettings) -> void:
 	start_match(settings)
 
 
+## The match is over, so there is nothing left to rejoin. Forgotten here rather
+## than on the way out of the result screen, because closing the window from it
+## should not leave a dead game on the title screen next time.
+##
+## **And the lobby is told, for the sake of whoever is not here to see this.**
+## A player who was away when the match ended has a remembered lobby that is
+## still alive - everybody else is in it, reading the result - so their title
+## screen would offer a game that is over. Only the host's call does anything,
+## because only the host owns the lobby. See docs/decisions.md D115.
 func _on_match_finished(_winners: Array[StringName]) -> void:
+	LastMatch.forget(_last_match_path)
+	if _session is HostSession and _steam != null and _steam.is_running():
+		_steam.mark_lobby_finished()
 	show_results()
 
 
@@ -1309,7 +1626,13 @@ func _discard_session(keep_lobby: bool = false) -> void:
 	# them to migrate into (D106).
 	if _steam != null and _steam.is_running() and not keep_lobby:
 		if _session is HostSession:
-			_steam.leave_lobby_as_host()
+			# **The last player out takes the game with them.** Nobody else was
+			# in the lobby, so there is nothing left to rejoin and no need to
+			# ask Steam later - this process watched it happen. Without this a
+			# player who hosted a game alone came back to a title screen still
+			# offering it, which is how this was reported from play (D115).
+			if _steam.leave_lobby_as_host():
+				LastMatch.forget(_last_match_path)
 		else:
 			_steam.leave_lobby()
 	_online_host_steam_id = 0

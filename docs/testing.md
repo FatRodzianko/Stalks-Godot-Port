@@ -108,7 +108,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-789 tests, about 62 seconds.
+862 tests, about 50 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -126,14 +126,16 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_gameplay_screen.gd` | **Scene tests** driving the real screen: rows built, header figures, buying and selling through actual controls, live validation disabling the Buy button, bankrupt presentation, event and year-summary display, header/row column alignment, ellipsis on long names, the UI matching a headless run of the same seed, and the "... MORE" button taking no width from the description, sitting in its bottom right corner and landing between characters rather than through one (D107a) | 30 |
 | `test_state_sync.gd` | What crosses the wire, which as of 2026-11-18 is the whole match (D105): a rival's cash, holdings and loan schedule all arriving, every player being sent the identical snapshot — the property host migration rests on — the random stream's position travelling, snapshot and `YearResult` round trips, mismatched content being reported, and a walk of the whole payload asserting nothing in it is an object | 23 |
 | `test_main_migration.gd` | **The orchestration**, driven end to end without Steam: the host leaving being noticed, Steam not having decided yet, Steam still naming the leaver, being made the owner and standing down a turn before hosting, following somebody else and retrying, giving up after twenty seconds, the dying connection not cancelling the migration, and a taken-over lobby being advertised again, keeping its name, and being hidden instead when a match was under way | 19 |
+| `test_away_players.gd` | **What the match does to a player who is not there** (D110): the year gate skipping them while still waiting for everybody present, a deserted match refusing to resolve years at all, dividends paid, splits doubling their shares, a bankruptcy wiping them out, net worth recomputed, every year away counting as a missed loan payment through the 10% and 15% penalties to seizure on the third, their place in the rankings kept, a match won while absent and a lead lost while absent, a lone survivor refused a yeehaw nobody could give, and the flag crossing the wire | 20 |
+| `test_main_rejoin.gd` | **The orchestration of REJOIN GAME**, driven without Steam (D111): the lobby being remembered on the way to the board but not for a solo game, the newest match overwriting the last, the match ending forgetting it, the button offered only when there is something to rejoin and sitting opposite QUIT TO DESKTOP, the remembered lobby being asked for, a client built rather than a host, the screen not swapping until the welcome lands and then showing the board, a match that changed hands being rejoined through its new host, Steam's refusal and the host's refusal each reaching the title screen as a sentence, a refused rejoin keeping the record, the handlers coming off once it has landed, and going back to the title screen cancelling one in flight. Then **whether the remembered game is still on** (D115): Steam being asked about the lobby before anything is offered, a lobby still playing being offered, one that no longer exists and one whose match is over both being forgotten, Steam's silence hiding the button without forgetting, Steam being closed asking nothing, an answer about another lobby being ignored, the question being re-asked on the timer and only on the title screen, the button going away when the match ends out there and coming back when Steam answers again, leaving a lobby you were the last one in forgetting it while leaving one others are still in keeps it, and the host - and only the host - marking the lobby finished | 38 |
 | `test_lobby_migration.gd` | Who takes over a lobby when its host leaves, with no Steam in it: waiting while Steam has not decided, the departed host's id not being mistaken for a new owner, becoming the host, joining the new one, giving up after twenty seconds, and a late answer still being acted on | 9 |
-| `test_host_migration.gd` | Continuing a match on a new host: the year, prices and **every** player's position surviving the handover, the departed host staying on the roster while off the active one, everybody else starting vacated so the year gate cannot hang, the random stream being picked up rather than restarted, and reclaiming a seat — matched by Steam ID, refused without Steam, refused for a seat already being played, restoring the cash and holdings that were left, and keeping the player's place in the roster order | 15 |
-| `test_networked_session.gd` | **Networked tests** with a real host and client in one process: joining and seating, yeehaw in both directions, a refused self-yeehaw, a client's buy applied by the host, an unaffordable and a nonsense request refused, a refusal reaching only the asker, a client unable to act as another player, a client ending up holding the host's whole match and still being unable to spend a rival's money, the all-ready gate, both sides agreeing on every price after a year, and the disconnect behaviour including the deadlock it used to cause | 40 |
+| `test_host_migration.gd` | Continuing a match on a new host: the year, prices and **every** player's position surviving the handover, the departed host staying in the match marked away, everybody else starting away so the year gate cannot hang while they reconnect, the random stream being picked up rather than restarted, and reclaiming a seat — matched by Steam ID, refused without Steam, refused for a seat already being played, landing them back on the position the match built for them, keeping the player's place in the roster order, and the two refusals `why_not_rejoin` decides between | 22 |
+| `test_networked_session.gd` | **Networked tests** with a real host and client in one process: joining and seating, yeehaw in both directions, a refused self-yeehaw, a client's buy applied by the host, an unaffordable and a nonsense request refused, a refusal reaching only the asker, a client unable to act as another player, a client ending up holding the host's whole match and still being unable to spend a rival's money, the all-ready gate, both sides agreeing on every price after a year, the disconnect behaviour including the deadlock it used to cause and a dropped player now staying in the match marked away (D110), and **the whole reclaim over a real socket** - a returning Steam account seated back on its own slot with the position the match kept for it, the away flag cleared, a stranger's account refused the waiting seat, and the reclaiming client being told the match is under way (D116) | 46 |
 | `test_lobby_screen.gd` | **Scene tests** for the title screen (Create Game and Join Game; one settings panel serving all three ways to start a game; a joiner offered none of them; the lobby's invite button and invite-only games; the host naming the match, that name heading the lobby on both machines, and an online game taking its player names from Steam rather than from the title screen) and the lobby over a live host session: the player list, who you are and who is hosting, arrivals and departures, ready-up both ways, Start being the host's alone, the all-ready gate and the host's kick that escapes it, that the host has no ready button because Start is their readiness, and `Main` opening a lobby, reporting a busy port and carrying on into the match; and the volume slider neither previewing until it is let go nor leaving a clip sounding into the next drag, both reported from play | 70 |
 | `test_client_board.gd` | The client's path from lobby to board, which nothing covered before two windows were played for real: the board building and filling for a `ClientSession`, a swapped-out lobby or board ignoring the signals that follow it, a live one still updating, a removed player returned to the menu with the reason, the board visibly acknowledging a Ready press — readying, un-readying, naming who it waits for, and showing another player's dot — and the host going away mid-match, which leaves the board reporting it and `Main` listening | 25 |
 | `test_display_settings.gd` | The resolution list as arithmetic over a monitor size handed in as a number: every offer being exactly 16:9, a monitor offered only what it can show, a 16:10 and an odd laptop panel both resolving to the tallest 16:9 that fits, a saved size too big for a replaced monitor being reduced, and the layout scale including the 1.5x half-step | 14 |
 | `test_confirm_panel.gd` | The yes/no overlay and its revert countdown: starting at the number given, stopped by an answer, cleared when the panel is reused for a plain question, visible in the message, and — the one that matters — nobody answering counting as no | 6 |
-| `test_pause_menu.gd` | Escape during a match opening the pause overlay rather than offering to end the game, leaving still asking first, the overlay not surviving a screen change, its volume slider applying without a preview clip, and both quit buttons being present and wired | 10 |
+| `test_pause_menu.gd` | Escape during a match opening the pause overlay rather than offering to end the game, leaving still asking first, the overlay not surviving a screen change, its volume slider applying without a preview clip, both quit buttons being present and wired, and **quitting to desktop mid-match asking first** (D117) - the question raised, its yes wired to `quit_to_desktop`, saying no leaving the match untouched, the two confirmations not sharing a panel, the pause menu getting out of the way, and the title screen still asking nothing | 16 |
 | `test_title_screen_shape.gd` | The rebuilt title screen: the card being the same size on every tab and the heading and quit button not moving, no address form anywhere on it, the development overlay hosting and joining, the lobby list's search filtering and not sticking across a refresh, the pause menu showing the same settings panel as the title screen, and the layout corrections from play: a start button narrower than the panel and over to the right, a quit button clear of the panel, a confirmation that carries the theme wherever it is parented, and the development overlay being on a canvas layer above the game rather than inside a container that swallowed its clicks | 18 |
 | `test_lobby_row.gd` | What a browser row tells a joiner before they commit: the year limit, the starting cash and whether loans are on, each one omitted rather than guessed when the lobby did not publish it, and a full game offering no join button | 8 |
 | `test_final_board.gd` | Looking at the board after the match: the result screen offering it, the board rebuilt from the session the match actually ended in rather than a fresh one, the bottom bar becoming the way back, that same button still readying up during a real match, going back and forth repeatedly, and asking for a board when there is no match | 7 |
@@ -275,13 +277,37 @@ writing anything else that touches Steam:
 
 - `StubSteamService` answers `is_running`, `local_steam_id`, `current_lobby`
   and `lobby_owner`, and records the lobby-visibility calls instead of making
-  them.
+  them. `join_lobby` records the lobby asked for and answers on the same signal
+  the real one does - `lobby_joined`, or `lobby_failed` when
+  `refuse_join_with` is set - which is what lets the rejoin's failure paths be
+  tested at all. `request_lobby_details` answers on `lobby_details` from
+  `details_exist` / `details_state`, or not at all when
+  `details_never_arrive` is set, because Steam never answering is a case the
+  title screen has to survive. `leave_lobby_as_host` returns `last_one_out`.
+**A reclaim needs no Steam at all, and is tested without it.** `_slot_to_reclaim`
+only ever asks for a Steam id, and a Steam id is an integer to everything below
+`SteamService`, so `NetHarness.start` takes one for each side and ENet carries a
+real drop-and-return end to end. The ids default to 0 — which is what a direct
+connection really has, and what makes `_slot_to_reclaim` refuse outright — so no
+test that is not about reclaiming is affected.
+
 - `StubTransportSource` replaces `Main._steam_transports`. **This one is not
   optional.** Calling `SteamMultiplayerPeer` with Steam uninitialised does not
   return an error, it crashes the process with a signal 11 - a test run that
   reaches it dies mid-suite with a C++ backtrace rather than a failure.
 
 The line is: anything `Main` decides is tested; anything Steam decides is not.
+
+**REJOIN GAME is tested the same way and for the same reason**
+(`test_main_rejoin.gd`). Writing it also found a fault by reading rather than
+from play: `lobby_failed` was connected only when hosting, so a join Steam
+refused reported nothing to anybody (D112).
+
+**A test that drives `Main` must set `_last_match_path`.** The remembered match
+lives in `user://last_match.cfg` and the real game writes it on the way to the
+board, so a suite that left the default would either wipe a match somebody
+meant to go back to or invent one that does not exist. The seam exists for that
+and nothing else.
 
 ### No test may touch Steam
 
@@ -491,6 +517,20 @@ by binding it first.
 **The lesson: capture the name and the engine error before re-running.** A
 flake that is re-run is a flake that stays open. This one cost a day of
 suspicion pointed at the wrong file.
+
+### One fix is verified by the run dying
+
+`test_pause_menu.gd` cannot press "yes" on the quit confirmation: that calls
+`get_tree().quit()`, which in a headless run takes the whole suite with it. So
+the yes is asserted as a signal connection rather than exercised.
+
+That leaves the central claim - that the button no longer closes the game on
+the press - without an ordinary assertion. It has an unusual one instead.
+Reinstating the old wiring and running that file **ends the run mid-suite with
+no summary printed at all**, because the test presses the button and the game
+quits. A green run of `test_pause_menu.gd` is therefore part of the evidence,
+not just the assertions inside it. Recorded here because it looks like a gap in
+coverage and is not. See decisions.md D117.
 
 ### A regression test that has not failed is not evidence
 

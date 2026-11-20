@@ -512,11 +512,13 @@ func _advance_a_year() -> void:
 
 # ------------------------------------------------------------------- disconnects
 #
-# Leaving a dropped player in the match deadlocked the year, because the
-# all-ready gate counts every player. These assert the fix and its limits.
-# See docs/decisions.md D47.
+# Leaving a dropped player in the match untouched deadlocked the year, because
+# the all-ready gate counted every player (D46). Taking them out of the match
+# fixed the deadlock and cost them their position (D47). Marking them away does
+# neither: they stay in the economy and out of the gate (D110). These assert
+# that, and its limits.
 
-func test_a_dropped_player_leaves_the_active_roster() -> void:
+func test_a_dropped_player_stays_in_the_match_but_is_marked_away() -> void:
 	if not await _connect():
 		return
 	assert_eq(_harness.host.state().players.size(), 2)
@@ -524,10 +526,32 @@ func test_a_dropped_player_leaves_the_active_roster() -> void:
 	assert_true(await _harness.drop_client(self), "the host should notice the drop")
 
 	assert_eq(
-		_harness.host.state().players.size(), 1,
-		"a dropped player should be out of the economy",
+		_harness.host.state().players.size(), 2,
+		"a dropped player is still in the economy",
 	)
-	assert_null(_harness.host.state().player_by_id(&"p1"))
+	var dropped: PlayerState = _harness.host.state().player_by_id(&"p1")
+	assert_not_null(dropped, "and still findable")
+	if dropped != null:
+		assert_true(dropped.is_away, "but marked away")
+	assert_true(_harness.host.is_away(&"p1"))
+
+
+## The year gate is the one thing being away changes.
+func test_a_dropped_player_is_not_waited_for() -> void:
+	if not await _connect():
+		return
+	if not await _harness.drop_client(self):
+		return
+
+	assert_eq(
+		_harness.host.state().players_present().size(), 1,
+		"only the host is here",
+	)
+	# The host has not readied up, so they are still in the list. The player who
+	# dropped is not, which is the whole difference.
+	var waiting: Array[StringName] = _harness.host.state().players_not_ready()
+	assert_has(waiting, &"p0", "the host has not readied up")
+	assert_does_not_have(waiting, &"p1", "an away player is not somebody to wait for")
 
 
 func test_the_year_can_still_advance_after_a_player_drops() -> void:
@@ -666,8 +690,8 @@ func test_leaving_the_lobby_removes_the_player_outright() -> void:
 	assert_true(await _harness.drop_client(self))
 
 	assert_eq(_harness.host.state().players.size(), 1)
-	assert_eq(_harness.host.roster().size(), 1, "the slot should be gone, not vacated")
-	assert_false(_harness.host.is_vacated(&"p1"))
+	assert_eq(_harness.host.roster().size(), 1, "the slot should be gone, not away")
+	assert_false(_harness.host.is_away(&"p1"))
 
 
 func test_the_year_does_not_advance_while_the_lobby_is_open() -> void:
@@ -760,3 +784,152 @@ func test_control_characters_are_stripped_from_a_name() -> void:
 	# A newline or a tab would corrupt a fixed-width row.
 	assert_eq(HostSession.sanitised_name("Mur\nph", 0), "Mur ph")
 	assert_eq(HostSession.sanitised_name("\n\t", 0), "Player 1")
+
+
+# ------------------------------------------------- coming back to your own seat
+#
+# **The reclaim, end to end over a real socket.** Everything else about rejoining
+# is tested either side of this: the economics of being away in
+# `test_away_players.gd`, the host's refusals in `test_host_migration.gd`, and
+# `Main`'s orchestration in `test_main_rejoin.gd`. None of them is the thing
+# itself - a peer dropping, a peer coming back, and the host putting them where
+# they were.
+#
+# It works here because `_slot_to_reclaim` only ever asks for a Steam id, and a
+# Steam id is just an integer to everything below `SteamService`. The harness
+# hands both sides one, ENet carries the match, and Steam is not involved.
+#
+# See docs/decisions.md D105, D110 and D116.
+
+const HOST_ACCOUNT: int = 76561190000000001
+const GUEST_ACCOUNT: int = 76561190000000002
+
+
+## A match in progress, with both sides carrying a Steam account.
+func _match_with_steam_ids() -> bool:
+	_harness = NetHarness.new()
+	add_child(_harness)
+	var problem: String = _harness.start(
+		StalksFixture.make_settings(), _library, "Host", "Guest",
+		HOST_ACCOUNT, GUEST_ACCOUNT,
+	)
+	assert_eq(problem, "", "harness should start")
+	if not problem.is_empty():
+		return false
+	if not await _harness.await_join(self):
+		assert_true(false, "client should connect")
+		return false
+	await _harness.begin_match(self)
+	return true
+
+
+## Builds a second client for the same Steam account and connects it, the way a
+## player who restarted the game would arrive.
+func _come_back() -> ClientSession:
+	var returning: Dictionary = ClientSession.join(
+		EnetTransport.new(_harness.port()), _library, "Guest", GUEST_ACCOUNT
+	)
+	assert_eq(String(returning["error"]), "")
+	var back: ClientSession = returning["session"]
+	_harness.attach_extra_client(back, returning["peer"])
+	return back
+
+
+func test_a_returning_player_is_seated_back_on_their_own_slot() -> void:
+	if not await _match_with_steam_ids():
+		return
+	await _open_trading()
+	var stalk: StalkState = _harness.host.state().stalks[0]
+	_harness.client.request_buy(&"p1", stalk.id, 6)
+	await _harness.settle(self)
+	if not await _harness.drop_client(self):
+		return
+
+	var back: ClientSession = _come_back()
+	await _harness.settle(self, 30)
+
+	assert_true(back.has_joined(), "the host should have welcomed them")
+	assert_eq(back.local_player_id(), &"p1", "onto their own slot, not a new one")
+	assert_eq(
+		back.state().player_by_id(&"p1").shares_of(stalk.id), 6,
+		"with the position the match has been keeping for them",
+	)
+
+
+func test_coming_back_clears_the_away_flag() -> void:
+	if not await _match_with_steam_ids():
+		return
+	if not await _harness.drop_client(self):
+		return
+	assert_true(_harness.host.is_away(&"p1"), "the test needs them away first")
+
+	_come_back()
+	await _harness.settle(self, 30)
+
+	assert_false(_harness.host.is_away(&"p1"))
+	assert_eq(
+		_harness.host.state().players_present().size(), 2,
+		"and the year waits for them again",
+	)
+
+
+## **The fault this guards.** The welcome says who you are and what the match
+## looks like; it does not say whether the match has *started*. A client that is
+## only welcomed cannot tell a lobby from a game - year 0 is a real year - so it
+## sits on the lobby screen while the match runs on without it.
+##
+## REJOIN GAME never hit this, because `Main` suppresses the lobby screen on that
+## route and puts the board up itself. Steam's friends-list "Join Game" and an
+## accepted invite both come in through the ordinary join path, which shows the
+## lobby and waits to be told. See D116.
+func test_a_returning_player_is_told_the_match_is_under_way() -> void:
+	if not await _match_with_steam_ids():
+		return
+	if not await _harness.drop_client(self):
+		return
+
+	var back: ClientSession = _come_back()
+	var started: Array[bool] = []
+	back.match_started.connect(_on_match_started_for_testing.bind(started))
+	await _harness.settle(self, 30)
+
+	assert_true(back.has_joined(), "the test needs the welcome to land")
+	assert_eq(
+		started.size(), 1,
+		"a reclaiming client must be told the lobby is closed and the game is on",
+	)
+
+
+## Named rather than inline, because connecting an anonymous function to a signal
+## is the thing `test_conventions.gd` exists to stop.
+func _on_match_started_for_testing(seen: Array[bool]) -> void:
+	seen.append(true)
+
+
+## A second client on a **different** account is not somebody coming back, and
+## must not be handed the seat that is waiting for its owner.
+func test_somebody_elses_account_cannot_take_the_waiting_seat() -> void:
+	if not await _match_with_steam_ids():
+		return
+	if not await _harness.drop_client(self):
+		return
+
+	var stranger: Dictionary = ClientSession.join(
+		EnetTransport.new(_harness.port()), _library, "Stranger", 76561190000000009
+	)
+	assert_eq(String(stranger["error"]), "")
+	var intruder: ClientSession = stranger["session"]
+	var reasons: Array[String] = []
+	intruder.connection_lost.connect(_on_refusal_for_testing.bind(reasons))
+	_harness.attach_extra_client(intruder, stranger["peer"])
+	await _harness.settle(self, 30)
+
+	assert_false(intruder.has_joined(), "a stranger must not be seated")
+	assert_true(_harness.host.is_away(&"p1"), "and the seat is still waiting")
+	assert_true(reasons.size() >= 1, "they should be told why")
+	if reasons.size() >= 1:
+		assert_string_contains(reasons[0].to_lower(), "already started")
+
+
+func _on_refusal_for_testing(reason: String, seen: Array[String]) -> void:
+	seen.append(reason)

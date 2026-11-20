@@ -82,8 +82,12 @@ func test_every_players_position_survives_the_handover() -> void:
 	assert_not_null(survivor.loan, "and their loan")
 	assert_eq(survivor.loan.balance, 2000)
 
-	# The departed host is off the active roster, but nothing was thrown away.
+	# The departed host is away, not gone: their position is untouched and the
+	# years that follow will keep paying it (D110).
 	assert_eq(session.display_name_of(&"p0"), "Departed", "still on the roster")
+	var departed: PlayerState = session.state().player_by_id(&"p0")
+	assert_not_null(departed, "still in the match, marked away")
+	assert_eq(departed.cash, 4321, "with the cash they left")
 
 
 func test_the_new_host_plays_their_own_slot() -> void:
@@ -92,18 +96,38 @@ func test_the_new_host_plays_their_own_slot() -> void:
 	# Seating happens when the peer is attached; before that the roster is what
 	# says which slot is the host's.
 	assert_eq(session.roster()[1].id, &"p1")
-	assert_false(session.is_vacated(&"p1"), "the new host is in the match")
+	assert_false(session.is_away(&"p1"), "the new host is here by definition")
 
 
-## **Everybody else starts vacated, on purpose.** Nobody is connected to the
-## new host yet, and the year gate counts every active player - so leaving them
-## in would hang the match on people who have not had a chance to reconnect.
-## Same reasoning as D47.
-func test_everybody_else_starts_vacated() -> void:
+## **Everybody else starts away, on purpose.** Nobody is connected to the new
+## host yet, and the year gate waits for every player who is here - so leaving
+## them marked present would hang the match on people who have not had a chance
+## to reconnect. Same reasoning as D47, by the means D110 replaced it with.
+##
+## **They stay in the match while they are away**, which is the change: under
+## D47 they were removed from `state.players` and stopped being paid.
+func test_everybody_else_starts_away() -> void:
 	var session: HostSession = _taken_over(_match_in_progress())
 
-	assert_true(session.is_vacated(&"p0"), "the departed host")
-	assert_eq(session.state().players.size(), 1, "only the new host is active")
+	assert_true(session.is_away(&"p0"), "the departed host")
+	assert_eq(session.state().players.size(), 2, "both are still in the match")
+	assert_eq(
+		session.state().players_present().size(), 1,
+		"but only the new host is here to be waited for",
+	)
+
+
+## The gate must be satisfied by the new host alone. This is the deadlock D47
+## was about, in the one place a migration would meet it.
+func test_the_year_does_not_wait_for_players_who_have_not_reconnected() -> void:
+	var session: HostSession = _taken_over(_match_in_progress())
+
+	session.state().player_by_id(&"p1").is_ready = true
+
+	assert_true(
+		session.state().all_players_ready(),
+		"the only player who is here has readied up",
+	)
 
 
 func test_the_lobby_is_closed_because_the_match_is_under_way() -> void:
@@ -198,14 +222,16 @@ func test_a_slot_already_being_played_cannot_be_claimed() -> void:
 	assert_eq(session._slot_to_reclaim(HOST_STEAM), &"")
 
 
-func test_reclaiming_a_slot_restores_the_position_that_was_left() -> void:
+## Nothing is restored, because nothing was taken: the position was in the match
+## the whole time. What reclaiming does is say the player is here again.
+func test_reclaiming_a_slot_puts_them_back_on_their_own_position() -> void:
 	var session: HostSession = _taken_over(_match_in_progress())
-	assert_true(session.is_vacated(&"p0"), "the test needs them out first")
+	assert_true(session.is_away(&"p0"), "the test needs them away first")
 
 	session._reclaim_slot(2, &"p0")
 
-	assert_false(session.is_vacated(&"p0"))
-	assert_eq(session.state().players.size(), 2, "back in the economy")
+	assert_false(session.is_away(&"p0"))
+	assert_eq(session.state().players.size(), 2, "back and counted again")
 	var back: PlayerState = session.state().player_by_id(&"p0")
 	assert_eq(back.cash, 4321, "with the cash they left")
 	assert_eq(back.shares_of(session.state().stalks[0].id), 11, "and their holdings")
@@ -251,14 +277,19 @@ func test_the_host_marker_follows_the_match_to_its_new_host() -> void:
 	state.players[2].steam_id = 7003
 	assert_eq(state.host_player_id(), &"p0", "p0 hosts to begin with")
 
-	# p2 takes over, so p1 is the first player still in the match.
+	# p2 takes over. Everybody stays in the match, away or not (D110), so the
+	# host who walked out is *still* first in the list - which makes reading the
+	# marker off the list wrong in the most misleading way available.
 	var opened: Dictionary = HostSession.take_over(
 		StubTransport.new(), state, _library, &"p2", 0
 	)
 	var session: HostSession = opened["session"]
 	autofree(session)
 
-	assert_eq(session.state().players[0].id, &"p2", "the roster is down to the new host")
+	assert_eq(
+		session.state().players[0].id, &"p0",
+		"the departed host is still first in the list",
+	)
 	assert_eq(session.state().host_player_id(), &"p2", "and the marker is on them")
 
 
@@ -280,3 +311,35 @@ func test_a_game_with_no_stated_host_still_names_one() -> void:
 
 	assert_eq(state.hosted_by, &"")
 	assert_eq(state.host_player_id(), &"p0")
+
+
+# ---------------------------------------------------- why somebody is refused
+#
+# The reasons an arrival is turned away, decided in one place
+# (`why_not_rejoin`) so that each has its own sentence and the rule is testable
+# without peers. `_on_introduced` is the only caller and does nothing but put
+# the answer on the wire. See docs/decisions.md D111.
+
+func test_a_returning_player_is_not_refused() -> void:
+	var session: HostSession = _taken_over(_match_in_progress())
+
+	assert_eq(session.why_not_rejoin(HOST_STEAM), "")
+
+
+## A stranger is not somebody coming back, and should be told the game is
+## running rather than left to guess.
+func test_a_stranger_is_told_the_game_has_already_started() -> void:
+	var session: HostSession = _taken_over(_match_in_progress())
+
+	assert_eq(session.why_not_rejoin(99999), "That game has already started.")
+
+
+## **The refusal REJOIN GAME made reachable.** The title screen offers a match
+## it has no way of knowing has ended - the player was not there to see it
+## finish - so without this they would be welcomed back onto a final board and
+## left looking at a result as though it were a turn.
+func test_a_finished_match_is_not_something_to_come_back_to() -> void:
+	var session: HostSession = _taken_over(_match_in_progress())
+	session.state().is_over = true
+
+	assert_eq(session.why_not_rejoin(HOST_STEAM), "That game has finished.")

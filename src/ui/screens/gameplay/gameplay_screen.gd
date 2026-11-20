@@ -974,9 +974,11 @@ func _on_action_rejected(_player_id: StringName, reason: String) -> void:
 ## seat. The player was left looking at a board that had quietly stopped being
 ## connected to anything, with no way out but to kill the process.
 ##
-## There is no reconnection yet (see docs/porting-plan.md), so there is nothing
-## to offer and nothing to decide: say what happened and hand back to the title
-## screen, which is where the reason is shown.
+## **Nothing is offered or decided here**: say what happened and hand back to
+## the title screen, which is where the reason is shown. Reconnecting is a real
+## thing now, but it is the title screen's REJOIN GAME button that does it
+## (decisions.md D111) - this screen's job is to stop pretending it is
+## connected, and the seat is waiting either way.
 func _on_connection_lost(reason: String) -> void:
 	if _loan_panel != null:
 		_loan_panel.hide_panel()

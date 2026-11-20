@@ -60,7 +60,15 @@ func display(state: GameState, local_player_id: StringName) -> void:
 
 func _render() -> void:
 	var result: YearResult = _state.latest_result()
-	var winners: Array[StringName] = result.winners if result != null else []
+	# Written as a block rather than `result.winners if result != null else []`,
+	# which looked right and was not: the bare `[]` is an untyped `Array`, and
+	# assigning one to an `Array[StringName]` fails at *run* time, so the
+	# defensive branch took the screen down instead of saving it. Nothing in
+	# play reaches it — a match that is over has a result — which is why it sat
+	# there until a test drove this screen with no history. See D113.
+	var winners: Array[StringName] = []
+	if result != null:
+		winners = result.winners
 
 	var names: PackedStringArray = PackedStringArray()
 	for winner_id: StringName in winners:

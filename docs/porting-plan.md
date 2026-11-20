@@ -664,7 +664,89 @@ toggle, and the book is open. What the **screens** show is a separate question
 and unchanged - the Investors panel still lists names without amounts, because
 that is what it was designed to say.
 
-### Rejoining a match you were already in — **wanted, not finished**
+### Quitting to desktop mid-match asks first — **done 2026-11-19**
+
+Asked for 2026-11-19, from play. The pause menu's **Exit to Desktop** closes the
+game on the press, with no confirmation, while **Leave Game** right above it
+asks before going back to the title screen. A misclick ends the session.
+
+**Why it was built that way, and why that reasoning does not hold here.**
+`Main._notification` deliberately does not ask when the window's X is clicked:
+a confirmation in front of a window that is already going away is an argument
+with somebody who has finished (D71). That is right for the X and wrong for a
+button inside a menu, which sits two pixels from one that *does* ask and is
+reachable by accident.
+
+**It should be the same question the leave button asks**, through the same
+`ConfirmPanel` — `Main._ask_about_leaving` is the shape to copy. Note that
+rejoining exists now, so quitting to desktop mid-match is no longer the end of
+your game: the wording should not say it is, and the title screen will offer
+**REJOIN GAME** when they come back (D111).
+
+Delivered: `Main._ask_about_quitting` raises its own `ConfirmPanel` - not the
+leave prompt's, because a shared panel would need its `confirmed` handler
+swapped on every ask - and `PauseMenu` closes on the press so the question is
+not asked from behind it. The window's X and the title screen's button are
+unchanged and deliberately so. Seven tests in `test_pause_menu.gd`. See D117.
+
+### Rejoining a match you were already in — **done, confirmed in play 2026-11-19**
+
+Asked for 2026-11-18, after host migration, which is what made it cheap.
+
+**Delivered.** REJOIN GAME at the right-hand end of the title screen's bottom
+row, opposite QUIT TO DESKTOP, shown only when this machine has an online match
+to go back to. Pressing it joins the remembered Steam lobby and the host's
+existing reclaim path seats the player back on their own slot.
+
+Two halves, and the second was the work:
+
+- **The route.** `src/data/last_match.gd` writes the Steam lobby id to
+  `user://last_match.cfg` when a match reaches the playing screen, and
+  `Main` offers it, joins it, lands on the board, and reports every failure as
+  a sentence on the title screen. Deliberately not in `UserSettings` (D71 and
+  D111). A rejoin does **not** forget the record on failure; the match ending
+  does.
+- **The economics of being away**, which contradicted the model and had to
+  replace it. `PlayerState.is_away` keeps a dropped player **in**
+  `state.players` — paid their dividends, split and bankrupted with their
+  stalks, charged their loan, a missed payment for every year gone, ranked in
+  the standings and able to win — and takes them out of the ready gate instead.
+  That is the owner's spec ("the game goes on without you and your position is
+  still affected"; "tough but fair"), and it amends D47, which had fixed the
+  same deadlock by removing them from the economy. See D110 and game-rules.md
+  §4.6.
+
+Three things fell out on the way: `HostSession` now keeps one roster instead of
+two, a join Steam refused reports itself instead of failing in silence (D112),
+and a typed-array fault on the result screen's defensive branch is fixed (D113).
+
+**Confirmed working over Steam on 2026-11-18**, first try, and the liveness fix
+on 2026-11-19 (manual-testing.md B6a-B6i). Two faults came back from those runs
+and both are fixed. The title screen went on offering a game that had ended,
+because remembering a lobby was treated as knowing it was alive: Steam is now
+asked before the button appears and every five seconds while the menu is up
+(D115). And a player coming back through any route other than the button was
+seated correctly and then stranded on a lobby screen, because the welcome never
+said the match had begun (D116).
+
+The round trip has been played through a migration: B rejoins A's match, A then
+quits, B takes the match over, and A rejoins the match **now hosted by B**.
+
+**The rest is not verified in play.** Everything that talks to Steam needs two
+accounts on two machines; see manual-testing.md B6. The economics, the ready
+gate and the `Main` orchestration are unit-tested — `test_away_players.gd` (20),
+`test_main_rejoin.gd` (21), and additions to `test_host_migration.gd` and
+`test_networked_session.gd`. What the code establishes and Steam has to confirm
+is that an unlisted lobby really does admit a returning client.
+
+**Still open, and now only Steam's half of it.** Whether Steam's friends-list
+"Join Game" offers a friend in an unlisted lobby cannot be tested until there
+is a build Steam installed. The game's half is done: that route goes through
+`Main.join_online_game`, and since D116 a reclaiming peer is told the match is
+under way, so it lands on the board rather than on a lobby screen. See
+manual-testing.md B6j, written for the first beta build.
+
+#### What was written before it was built, kept for its reasoning
 
 Asked for 2026-11-18, and **to be done after host migration is working**, not
 instead of it.

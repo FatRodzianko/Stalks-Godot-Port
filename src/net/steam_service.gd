@@ -43,6 +43,12 @@ signal lobby_failed(reason: String)
 ## `{id: int, name: String, players: int, capacity: int}`.
 signal lobby_list(lobbies: Array[Dictionary])
 
+## What `request_lobby_details` found out about one lobby this process is **not**
+## in. `exists` is false when Steam has nothing for that id any more, which is
+## what a lobby everybody has left looks like. `state` is the `KEY_STATE` value,
+## so `STATE_OVER` means the lobby is alive but its match is not.
+signal lobby_details(lobby_id: int, exists: bool, state: String)
+
 ## The player accepted a Steam invite or clicked "Join game" on a friend. The
 ## screen host should take them straight into that lobby.
 signal invited_to(lobby_id: int)
@@ -124,6 +130,15 @@ const KEY_STATE: StringName = &"state"
 const STATE_OPEN: String = "open"
 const STATE_PLAYING: String = "playing"
 
+## The match in this lobby has finished.
+##
+## **For somebody who was not there to see it end.** A match that is over does
+## not take its lobby with it: the players are still in it, looking at the
+## result screen, so the lobby is alive and reachable and a returning player
+## would be let through the door and onto a dead board. This key is how the
+## title screen knows not to offer that. See docs/decisions.md D115.
+const STATE_OVER: String = "over"
+
 ## The `EChatMemberStateChange` bits that mean a member is no longer in the
 ## lobby, from `lobby_chat_update`'s `chat_state`. Left is a deliberate exit
 ## and Disconnected is a drop without leaving first; for this game they have
@@ -146,6 +161,13 @@ var _pending_lobby_name: String = ""
 ## same reason the name is: lobby data can only be written to a lobby that
 ## exists, and Steam creates one asynchronously.
 var _pending_settings: GameSettings = null
+
+## Which lobby `request_lobby_details` is waiting to hear about, or 0.
+##
+## Needed because `lobby_data_update` fires for every lobby this process has
+## data on - including the one it is in, every time anybody changes a key - and
+## none of those are an answer to the question that was asked.
+var _details_wanted_for: int = 0
 
 
 ## Whether the plugin is even present. False on a checkout that has not
@@ -185,6 +207,7 @@ func start() -> String:
 	Steam.lobby_created.connect(_on_lobby_created)
 	Steam.lobby_joined.connect(_on_lobby_joined)
 	Steam.lobby_match_list.connect(_on_lobby_match_list)
+	Steam.lobby_data_update.connect(_on_lobby_data_update)
 	Steam.lobby_chat_update.connect(_on_lobby_chat_update)
 	Steam.join_requested.connect(_on_join_requested)
 	Steam.avatar_loaded.connect(_on_avatar_loaded)
@@ -266,6 +289,18 @@ func hide_lobby_from_the_browser() -> void:
 	Steam.setLobbyData(_lobby_id, String(KEY_STATE), STATE_PLAYING)
 
 
+## The match in this lobby has ended. Says so, so that a player who was away
+## when it finished is not offered a game to go back into.
+##
+## **Only the lobby's owner can write this**, which is the host, and a client
+## calling it changes nothing — the same as every other lobby-data call here.
+## It is not guarded on that for the same reason none of them are.
+func mark_lobby_finished() -> void:
+	if not _initialised or _lobby_id == 0:
+		return
+	Steam.setLobbyData(_lobby_id, String(KEY_STATE), STATE_OVER)
+
+
 ## Puts the lobby back in the browser, joinable, with its settings fresh.
 ##
 ## For a new host taking over a **lobby** rather than a match. The player who
@@ -301,14 +336,21 @@ func reopen_lobby_to_the_browser(settings: GameSettings = null) -> void:
 ## That is what made a migrated lobby unlistable, and this check is the fix:
 ## the lobby outlives this process either way, so the only question is whether
 ## it still has anybody in it.
-func leave_lobby_as_host() -> void:
+## **Returns whether the lobby died with them**, which is the one case this
+## process can be certain about without asking Steam anything later: nobody
+## else was in it, so there is no game left to go back to. The caller uses that
+## to throw the rejoin record away immediately rather than waiting to be told
+## (D115).
+func leave_lobby_as_host() -> bool:
 	if not _initialised or _lobby_id == 0:
 		leave_lobby()
-		return
-	if Steam.getNumLobbyMembers(_lobby_id) <= 1:
+		return false
+	var last_one_out: bool = Steam.getNumLobbyMembers(_lobby_id) <= 1
+	if last_one_out:
 		Steam.setLobbyData(_lobby_id, String(KEY_STATE), STATE_PLAYING)
 		Steam.setLobbyJoinable(_lobby_id, false)
 	leave_lobby()
+	return last_one_out
 
 
 ## The lobby this process is currently in, or 0.
@@ -348,6 +390,30 @@ func join_lobby(lobby_id: int) -> void:
 		lobby_failed.emit("Steam is not running.")
 		return
 	Steam.joinLobby(lobby_id)
+
+
+## Asks Steam what it knows about a lobby **without joining it**. Answers on
+## `lobby_details`.
+##
+## `Steam.requestLobbyData` exists for exactly this case: you hold a lobby id
+## and want to know what it is before committing to it. It is the only way to
+## tell a match that is still being played from one that ended an hour ago,
+## because the lobby browser cannot see either of them — a match in progress is
+## deliberately unlisted (D106).
+##
+## **Silence is an answer the caller has to cope with.** Steam may never call
+## back at all, so nothing here starts a clock: the caller asks again. See
+## `Main._ask_whether_the_remembered_match_is_still_there`, which re-asks on a
+## timer and treats "no answer yet" as "do not offer it yet".
+func request_lobby_details(lobby_id: int) -> void:
+	if not _initialised or lobby_id == 0:
+		return
+	_details_wanted_for = lobby_id
+	if not Steam.requestLobbyData(lobby_id):
+		# Steam refused to even ask - no connection, usually. Reported as "not
+		# there", because an answer that cannot be obtained is not a yes.
+		_details_wanted_for = 0
+		lobby_details.emit(lobby_id, false, "")
 
 
 func leave_lobby() -> void:
@@ -497,6 +563,25 @@ func _on_lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response:
 		return
 	_lobby_id = lobby_id
 	lobby_joined.emit(lobby_id)
+
+
+## Steam answered a `request_lobby_details`.
+##
+## `success` is Steam's `m_bSuccess`: false when it has nothing for that lobby
+## id, which is what a lobby everybody has left looks like from outside.
+##
+## Updates for any other lobby - our own, most often, since every `setLobbyData`
+## call in this file produces one - are dropped. Without that filter the first
+## key anybody changed in the current lobby would be read as the answer to a
+## question about a different one.
+func _on_lobby_data_update(success: int, lobby_id: int, _member_id: int) -> void:
+	if lobby_id != _details_wanted_for:
+		return
+	_details_wanted_for = 0
+	if success == 0:
+		lobby_details.emit(lobby_id, false, "")
+		return
+	lobby_details.emit(lobby_id, true, Steam.getLobbyData(lobby_id, String(KEY_STATE)))
 
 
 ## Somebody's membership of our lobby changed.

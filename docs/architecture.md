@@ -429,7 +429,8 @@ who owns the lobby now and acts on the answer.
   lobby. In a lobby that had not started, it re-hosts instead: there is no
   position to preserve.
 - Everybody else reconnects and **reclaims their own slot**, matched by Steam
-  ID. Their `PlayerState` was never destroyed, only set aside (D47).
+  ID. Their `PlayerState` was never removed from the match at all - they are
+  marked away and keep being paid while they reconnect (§5.6, D110).
 
 **The lobby itself has to be told what it now is** (D106). Steam offers two
 separate switches and this game uses them separately: the `state` key decides
@@ -445,12 +446,82 @@ anybody can get in at all.
 A match under way stays joinable because the host is the gatekeeper, not Steam:
 an arrival is matched against the roster by Steam ID and either reclaims a seat
 or is turned away with a reason. That is also the only way back for a player
-whose connection dropped. And a host leaving is two different events - the last
-player out is a lobby dying, and is shut down; a host leaving others behind is a
-lobby changing hands, and is left alone.
+whose connection dropped, and REJOIN GAME (§5.7) is built on it. And a host
+leaving is two different events - the last player out is a lobby dying, and is
+shut down; a host leaving others behind is a lobby changing hands, and is left
+alone.
 
 What cannot be verified here: all of the Steam plumbing. See
 docs/manual-testing.md.
+
+### 5.6 A player who is away is still in the match
+
+`PlayerState.is_away` is the whole of it: one flag, set when a peer drops and
+cleared when they come back.
+
+An away player stays in `state.players`, which is the list `YearResolver`
+walks, so the year pays them their dividends, splits and bankrupts their stalks,
+charges their loan and ranks them. The **only** thing the flag changes is
+`GameState.all_players_ready()`, which skips them, so one dropout cannot hold
+the year for everybody else. `players_present()` is the list every "is
+everybody done?" question asks, and `all_players_ready()` is false when nobody
+is present, so a deserted match does not play itself out.
+
+This replaced taking the player out of `state.players` altogether (D47), which
+fixed the same deadlock by removing them from the economy. Two consequences
+worth knowing:
+
+- **`HostSession` has one roster, not two.** It used to keep `_roster` (every
+  slot) alongside `state.players` (that list minus the dropouts), rebuilt on
+  every arrival and departure. The difference between them was this flag.
+  `roster()` now returns `state.players`.
+- **`state.players` is not ordered by anything meaningful about roles.** The
+  host who walked out is still first in it. Read `hosted_by` (D109).
+
+The flag travels in the snapshot, so a client can mark who is absent - the
+rankings show `(away)` and grey the ready dot - and so that a client promoted to
+host inherits it. See D110 and docs/game-rules.md §4.6.
+
+### 5.7 Getting back into a match you dropped out of
+
+REJOIN GAME on the title screen. The mechanism is a lobby id written down, and
+nothing else:
+
+- `Main._show_gameplay` writes the current Steam lobby to
+  `user://last_match.cfg` (`src/data/last_match.gd`). Every route onto the
+  board passes through there, so hosting, joining, both halves of a migration
+  and a rejoin are all covered by one call. `Main._on_match_finished` deletes
+  it.
+- `show_menu` hides the button and asks Steam whether that lobby is still a
+  game: `request_lobby_details` wraps `requestLobbyData`, which answers for a
+  lobby this process is **not** in. The button appears only on a good answer,
+  the question is re-asked every five seconds while the menu is up, and a
+  definite no throws the record away. Steam not answering is not a no — the
+  button stays off and the record stays put (D115).
+- Pressing it calls the existing `join_online_game`, then `_rejoin_the_match`,
+  which joins as a client **without swapping the screen** - the same treatment
+  a migration's reconnect attempts get, because a half-built session would
+  otherwise put an empty market on screen. `_on_rejoin_landed` shows the board
+  when the welcome arrives.
+- The host decides whether they get their seat. `why_not_rejoin` is that rule,
+  pure and testable: a finished match and a Steam ID that is not on the roster
+  each get their own sentence.
+
+A record is **not** deleted when a rejoin fails or when Steam is silent, so a
+bad minute on the relay does not destroy the only route back. It *is* deleted
+when the answer is definite: the lobby is gone, or its `state` key reads
+`over`, which the host writes when the match finishes so that a player who was
+away can learn it ended. See D111 and D115.
+
+The lobby's `state` key now carries three values, and the table in §5.5 gains a
+row:
+
+| | Listed | Joinable | Offered as a rejoin |
+|---|---|---|---|
+| Lobby, waiting to start (`open`) | yes | yes | no record yet |
+| Match under way (`playing`) | no | yes | **yes** |
+| Match finished (`over`) | no | yes | no |
+| Host left, nobody else there | no | no | no, the lobby is gone |
 
 ### 5.4 Transport is a choice, not a migration
 

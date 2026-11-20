@@ -35,7 +35,8 @@ signal resume_requested
 ## cannot be undone.
 signal leave_requested
 
-## Close the game.
+## Close the game. The host asks first, for the same reason it asks about
+## leaving: both are a press away from ending the session you are in.
 signal quit_requested
 
 
@@ -115,7 +116,12 @@ func _on_leave_pressed() -> void:
 	leave_requested.emit()
 
 
+## Closes on the way out, like the leave button, because the screen host asks
+## before acting now and the question should not come up behind this menu. It
+## used to leave itself open on the grounds that the game was about to go away
+## anyway, which stopped being true when the press stopped being final.
 func _on_quit_pressed() -> void:
+	close()
 	quit_requested.emit()
 
 

@@ -96,6 +96,12 @@ static func join(
 
 	var opened: Dictionary = transport.open_client()
 	if not String(opened["error"]).is_empty():
+		# A session is a Node, and this one was built before the socket was
+		# tried. Nothing adds it to the tree on this path, so without the free
+		# it is an orphan for the rest of the process. Harmless in a real game,
+		# which gives up after one, and noisy in a suite that exercises the
+		# failure deliberately.
+		session.free()
 		return {"session": null, "error": String(opened["error"])}
 
 	# The clock starts here rather than at `attach_peer`, which happens a line

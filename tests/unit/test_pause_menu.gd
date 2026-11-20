@@ -58,8 +58,15 @@ func test_leaving_asks_the_host_rather_than_acting() -> void:
 	assert_signal_emitted(menu, "leave_requested")
 
 
-func test_quitting_stays_open_until_the_host_acts() -> void:
-	# Closing first would flash the board for a frame on the way out.
+## **This used to assert the opposite**, and the reason it gave was "closing
+## first would flash the board for a frame on the way out". That was true while
+## the press was final. It stopped being true on 2026-11-19, when quitting
+## started asking first (D117): the player may well say no, and a menu left
+## open behind the question is a menu the question is being asked from behind.
+##
+## The widget still decides nothing itself - it closes and says what was asked
+## for, exactly as the leave button does.
+func test_quitting_asks_the_host_rather_than_acting() -> void:
 	var menu: PauseMenu = _pause()
 	menu.open()
 	watch_signals(menu)
@@ -67,7 +74,7 @@ func test_quitting_stays_open_until_the_host_acts() -> void:
 	_press(menu, "QuitButton")
 
 	assert_signal_emitted(menu, "quit_requested")
-	assert_true(menu.is_open())
+	assert_false(menu.is_open(), "it gets out of the way of the question")
 
 
 func test_the_volume_slider_applies_without_a_preview_clip() -> void:
@@ -130,3 +137,117 @@ func test_the_title_screen_has_a_way_out_of_the_game() -> void:
 	_press(menu, "QuitButton")
 
 	assert_signal_emitted(menu, "quit_requested")
+
+
+# --------------------------------------------------- quitting asks first too
+#
+# Reported from play on 2026-11-19. **Exit to Desktop** sat two buttons under
+# **Leave Game**, which asks, and closed the game on the press. A misclick
+# ended the session. See docs/decisions.md D117.
+#
+# **These tests are safe to run, and the safety is the assertion.** A quit that
+# still went straight through would call `get_tree().quit()` and take the whole
+# suite down with it - not a failure, a vanished run. So a green run of this
+# file is itself part of the evidence, and the explicit assertions below say
+# which question was raised and where its yes goes.
+
+func test_quitting_from_the_pause_menu_asks_first() -> void:
+	var host: Main = MainScene.instantiate()
+	add_child_autofree(host)
+	host.start_match(GameSettings.new())
+	host.show_pause_menu()
+
+	_press(host.pause_menu(), "QuitButton")
+
+	assert_not_null(host.quit_prompt(), "the confirmation was raised")
+	if host.quit_prompt() == null:
+		return
+	assert_true(host.quit_prompt().is_open())
+
+
+## The yes has to actually quit, and pressing it here would end the run, so the
+## wiring is asserted instead of exercised.
+func test_the_yes_on_that_question_closes_the_game() -> void:
+	var host: Main = MainScene.instantiate()
+	add_child_autofree(host)
+	host.start_match(GameSettings.new())
+	host.show_pause_menu()
+
+	_press(host.pause_menu(), "QuitButton")
+
+	if host.quit_prompt() == null:
+		assert_true(false, "no confirmation to check")
+		return
+	assert_true(
+		host.quit_prompt().confirmed.is_connected(host.quit_to_desktop),
+		"saying yes should close the game",
+	)
+
+
+## Saying no leaves the match exactly as it was. The panel hides itself on
+## either answer, so what matters is that nothing else happened: the session is
+## still here and the board is still the screen.
+func test_saying_no_leaves_the_match_alone() -> void:
+	var host: Main = MainScene.instantiate()
+	add_child_autofree(host)
+	host.start_match(GameSettings.new())
+	host.show_pause_menu()
+	_press(host.pause_menu(), "QuitButton")
+	if host.quit_prompt() == null:
+		assert_true(false, "no confirmation to answer")
+		return
+
+	_press(host.quit_prompt(), "CancelButton")
+
+	assert_false(host.quit_prompt().is_open(), "the question is gone")
+	assert_not_null(host.session(), "and the match is not")
+	assert_true(host.current_screen() is GameplayScreen)
+
+
+## Two buttons, two questions, two different yeses. Sharing one panel and
+## swapping its handler is how a yes ends up doing the wrong thing.
+func test_leaving_and_quitting_do_not_share_a_confirmation() -> void:
+	var host: Main = MainScene.instantiate()
+	add_child_autofree(host)
+	host.start_match(GameSettings.new())
+	host.show_pause_menu()
+	_press(host.pause_menu(), "LeaveButton")
+
+	host.show_pause_menu()
+	_press(host.pause_menu(), "QuitButton")
+
+	assert_not_null(host.leave_prompt())
+	assert_not_null(host.quit_prompt())
+	assert_ne(
+		host.leave_prompt(), host.quit_prompt(),
+		"one panel cannot answer both questions",
+	)
+
+
+## The pause menu gets out of the way, so the question is not asked from behind
+## the menu that asked it.
+func test_the_pause_menu_closes_when_the_question_comes_up() -> void:
+	var host: Main = MainScene.instantiate()
+	add_child_autofree(host)
+	host.start_match(GameSettings.new())
+	host.show_pause_menu()
+
+	_press(host.pause_menu(), "QuitButton")
+
+	assert_false(host.pause_menu().is_open())
+
+
+## **The title screen still does not ask**, and neither does the window's X
+## (D71). Both are deliberate: there is no match to lose from the title screen,
+## and a confirmation in front of a window that is already closing is an
+## argument with somebody who has finished. Only the button sitting inside a
+## menu, next to one that asks, was the problem.
+func test_the_title_screens_quit_button_still_asks_nothing() -> void:
+	var host: Main = MainScene.instantiate()
+	add_child_autofree(host)
+	host.show_menu()
+
+	assert_null(
+		host.quit_prompt(),
+		"nothing should have asked about quitting from the title screen",
+	)

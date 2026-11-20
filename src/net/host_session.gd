@@ -40,22 +40,20 @@ var _player_by_peer: Dictionary[int, StringName] = {}
 ## Reverse lookup, for sending a rejection back to one asker.
 var _peer_by_player: Dictionary[StringName, int] = {}
 
-## Every slot's player, in roster order, for the whole match — including players
-## whose peer has dropped. `state.players` is this list minus the vacated ones,
-## so rebuilding it keeps the roster order stable rather than shuffling the
-## rankings whenever somebody leaves or comes back.
-var _roster: Array[PlayerState] = []
-
-## Players whose peer has gone mid-match. They are out of `state.players` — out
-## of the economy, the standings and the ready gate — but their PlayerState stays
-## alive in `_roster` with its cash and holdings.
+## There is no roster list here, and there used to be two.
 ##
-## Nothing reads that retained position yet. It is kept because throwing it away
-## is irreversible and keeping it costs one array, and because both planned
-## successors need it: a bot taking over a vacant slot, and a real rejoin once
-## Steam identity makes "is this the same person" answerable. See
-## docs/decisions.md D47 and porting-plan Phase 8.
-var _vacated_player_ids: Array[StringName] = []
+## `_roster` held every slot for the whole match and `state.players` held that
+## list minus whoever had dropped, rebuilt on every arrival and departure. The
+## difference between them was exactly "has this player's peer gone", which is
+## now `PlayerState.is_away` — one flag on the player instead of a second list
+## to keep in step. So **`state.players` is the roster**: a player who drops
+## stays in it with their position and their place in the standings, and the
+## year gate skips them rather than waiting (`GameState.all_players_ready`).
+##
+## That is what makes rejoining mean something. Under the old model a returning
+## player got their cash and holdings back but had been out of the economy
+## while they were gone — no dividends, no splits, no loan interest. See
+## docs/decisions.md D47 and D110.
 
 ## True until the host presses Start. While open, an arriving peer is given a new
 ## slot; once closed, the roster is fixed and a late joiner is turned away.
@@ -97,18 +95,21 @@ static func host(
 	# The host is the one slot that exists before anybody connects. It is claimed
 	# when the peer is attached, once there is a MultiplayerAPI to read the host's
 	# own peer id from.
-	session._roster = session._authority.state.players.duplicate()
+	var seats: Array[PlayerState] = session._authority.state.players
 	# The host's own Steam account, so their avatar appears beside everybody
 	# else's. 0 for a direct connection, which has no Steam at all.
-	if not session._roster.is_empty():
-		session._roster[0].steam_id = steam_id
-		session._host_player_id = session._roster[0].id
+	if not seats.is_empty():
+		seats[0].steam_id = steam_id
+		session._host_player_id = seats[0].id
 		# So every board knows who is hosting rather than guessing from the
 		# order of the list. See GameState.hosted_by.
 		session._authority.state.hosted_by = session._host_player_id
 
 	var opened: Dictionary = transport.open_server(MAX_CLIENTS)
 	if not String(opened["error"]).is_empty():
+		# Freed for the same reason as the client's: nothing puts this Node in
+		# the tree on the failure path. See `ClientSession.join`.
+		session.free()
 		return {"session": null, "error": String(opened["error"])}
 
 	return {"session": session, "error": "", "peer": opened["peer"]}
@@ -128,11 +129,16 @@ static func host(
 ## `state` is that copy, `rng_state` is how far its random stream had run, and
 ## `host_player_id` is which roster slot the new host plays.
 ##
-## **The lobby is closed and everybody else starts vacated.** The match is
-## already under way, so the roster is the one it was played with, and nobody
-## is connected to the new host yet. Each player reclaims their own slot as
-## they arrive (`_slot_to_reclaim`); starting them vacated is also what stops
-## the year gate waiting on players who have not reconnected.
+## **The lobby is closed and everybody else starts away.** The match is already
+## under way, so the roster is the one it was played with, and nobody is
+## connected to the new host yet. Each player reclaims their own slot as they
+## arrive (`_slot_to_reclaim`); starting them away is also what stops the year
+## gate waiting on players who have not reconnected.
+##
+## They stay in the match while they are away, so the first year after a
+## handover pays their dividends and charges their loans exactly as the years
+## before it did (D110). Nobody loses a position by being on the wrong side of
+## a migration.
 ##
 ## Returns `{session, peer, error}`; check `error` first.
 static func take_over(
@@ -161,18 +167,20 @@ static func take_over(
 	# past out a second time.
 	session._authority.adopt_rng_state(rng_state)
 
-	session._roster = state.players.duplicate()
-	for player: PlayerState in session._roster:
+	for player: PlayerState in state.players:
 		if player.id == host_player_id:
+			# Whoever is running the match is by definition here, whatever the
+			# snapshot they promoted happened to say.
+			player.is_away = false
 			continue
-		session._vacated_player_ids.append(player.id)
+		player.is_away = true
 		# Cleared because a reconnecting player has not readied for anything
 		# yet on this host.
 		player.is_ready = false
-	session._rebuild_active_players()
 
 	var opened: Dictionary = transport.open_server(MAX_CLIENTS)
 	if not String(opened["error"]).is_empty():
+		session.free()
 		return {"session": null, "error": String(opened["error"])}
 
 	return {"session": session, "error": "", "peer": opened["peer"]}
@@ -271,9 +279,13 @@ func why_not_start() -> String:
 
 ## Display names of the players who have not readied up, in roster order. The
 ## host is never in this list.
+##
+## **Nor is anybody who is away.** Start would otherwise refuse forever on
+## account of a player who is not there to press anything — the same deadlock
+## for the lobby that D47 fixed for the year.
 func waiting_on() -> PackedStringArray:
 	var waiting: PackedStringArray = []
-	for player: PlayerState in _authority.state.players:
+	for player: PlayerState in _authority.state.players_present():
 		if player.id != local_player_id() and not player.is_ready:
 			waiting.append(player.display_name)
 	return waiting
@@ -320,20 +332,24 @@ func player_for_peer(peer_id: int) -> StringName:
 	return _player_by_peer.get(peer_id, &"")
 
 
-## Every slot's player in roster order, **including** those whose peer has
-## dropped, with their cash and holdings intact.
+## Every slot's player in roster order, including those whose peer has dropped.
 ##
-## This is what a lobby or a disconnect notice should show ("Guest —
-## disconnected"). The economy reads `state().players` instead, which is this
-## list minus the vacated ones.
+## **The same list the economy reads.** It used to be a longer one — the roster
+## kept players that `state.players` had dropped — and the two are now the same
+## thing. Kept as a name because "the roster" is what the lobby and the
+## disconnect notices mean, and because every caller of it already said so.
 func roster() -> Array[PlayerState]:
-	return _roster
+	return _authority.state.players
 
 
-## Whether this player's peer has gone. A vacated player is out of the economy
-## but not destroyed.
-func is_vacated(player_id: StringName) -> bool:
-	return _vacated_player_ids.has(player_id)
+## Whether this player's peer has gone. An away player is still in the match,
+## still paid and still ranked; the year simply does not wait for them.
+##
+## This was `is_vacated`, which meant the opposite thing about the economy: out
+## of it. See docs/decisions.md D110.
+func is_away(player_id: StringName) -> bool:
+	var player: PlayerState = _authority.state.player_by_id(player_id)
+	return player != null and player.is_away
 
 
 # ------------------------------------------- the host's own requests (no wire)
@@ -569,12 +585,26 @@ func _on_introduced(peer_id: int, player_name: String, steam_id: int = 0) -> voi
 		return
 
 	if not _lobby_is_open:
-		var returning: StringName = _slot_to_reclaim(steam_id)
-		if returning.is_empty():
-			_turn_away(peer_id, "That game has already started.")
+		var refusal: String = why_not_rejoin(steam_id)
+		if not refusal.is_empty():
+			_turn_away(peer_id, refusal)
 			return
+		var returning: StringName = _slot_to_reclaim(steam_id)
 		_reclaim_slot(peer_id, returning)
 		_rpc_welcome.rpc_id(peer_id, String(returning), _snapshot())
+		# **And tell them the match is under way**, which is the one thing the
+		# welcome does not say. A client that is only welcomed has no way to
+		# know whether it has arrived in a lobby or in a game: the snapshot
+		# looks the same either way, and year 0 is a real year.
+		#
+		# Without it, somebody coming back through Steam's friends list or an
+		# invite was seated correctly and then stranded on a lobby screen
+		# while the match ran on without them - with a Ready button that
+		# reached the year gate. REJOIN GAME did not hit this because `Main`
+		# suppresses the lobby screen on that route and shows the board itself;
+		# every other way in needs to be told. Ordered after the welcome by
+		# being reliable on the same channel. See docs/decisions.md D116.
+		_rpc_match_started.rpc_id(peer_id)
 		player_joined.emit(returning)
 		_broadcast_state(returning)
 		# Their return may be the last thing the year was waiting on.
@@ -590,6 +620,27 @@ func _on_introduced(peer_id: int, player_name: String, steam_id: int = 0) -> voi
 	player_joined.emit(player_id)
 	# Everybody else needs the new arrival in their player list.
 	_broadcast_state(player_id)
+
+
+## Why an arriving Steam account may not come back into this match, or an empty
+## string if it may.
+##
+## **A sentence per refusal, decided in one place.** The two are different
+## things and a player meeting either deserves to know which: a stranger trying
+## a game that is under way, and somebody whose own seat is still there but
+## whose match is finished. The second only became reachable with REJOIN GAME —
+## the title screen offers a match it cannot know has ended, and without this
+## the returning player would be welcomed onto a dead board and left looking at
+## a final result as though it were a turn. See docs/decisions.md D111.
+##
+## Pure and public so the rule is testable without peers; `_on_introduced` is
+## the only caller, and turns the answer into a refusal on the wire.
+func why_not_rejoin(steam_id: int) -> String:
+	if _authority.state.is_over:
+		return "That game has finished."
+	if _slot_to_reclaim(steam_id).is_empty():
+		return "That game has already started."
+	return ""
 
 
 ## The slot an arriving player may take back, or an empty id for one who may
@@ -613,7 +664,7 @@ func _on_introduced(peer_id: int, player_name: String, steam_id: int = 0) -> voi
 func _slot_to_reclaim(steam_id: int) -> StringName:
 	if steam_id == 0:
 		return &""
-	for player: PlayerState in _roster:
+	for player: PlayerState in _authority.state.players:
 		if player.steam_id != steam_id:
 			continue
 		if _peer_by_player.has(player.id):
@@ -624,46 +675,48 @@ func _slot_to_reclaim(steam_id: int) -> StringName:
 	return &""
 
 
-## Puts a returning player back into the match with the position they left.
+## Puts a returning player back at the position the match has made for them.
 ##
-## Their `PlayerState` was never destroyed - a dropped player is set aside in
-## `_roster` rather than thrown away (D47) - so there is nothing to rebuild. It
-## is a matter of seating their new peer and putting them back on the active
-## roster.
+## **Nothing is restored, because nothing was taken away.** Their `PlayerState`
+## never left `state.players`, so it has been collecting dividends, splitting
+## with its stalks, going bankrupt with them and missing a loan payment every
+## year they were gone (D110). What they get back is not the position they left
+## but the one the match carried on building for them, which is the point.
+##
+## So this is only two facts: they are here again, and they have not readied for
+## anything.
 func _reclaim_slot(peer_id: int, player_id: StringName) -> void:
-	_vacated_player_ids.erase(player_id)
-	var player: PlayerState = _player_in_roster(player_id)
+	var player: PlayerState = _authority.state.player_by_id(player_id)
 	if player != null:
+		player.is_away = false
 		# They were not here for whatever the others have readied for.
 		player.is_ready = false
 	_seat(peer_id, player_id)
-	_rebuild_active_players()
 
 
 ## Creates a fresh player for an arriving peer, or an empty id if the match is
 ## full.
 ##
-## **A vacated slot is never handed out.** Resuming somebody else's position is
-## the rejoin feature, and rejoining needs identity to be safe — without it, any
-## arrival could claim a dropped player's portfolio. Deferred until Steam IDs
-## exist; see porting-plan Phase 8 and D47. In practice no arrival gets this far
-## once a match has started anyway, because `_on_introduced` turns latecomers
-## away.
+## **An away player's slot is never handed out.** Resuming somebody else's
+## position is the rejoin feature, and it is answered by Steam ID in
+## `_slot_to_reclaim` — not by being the next person to turn up. In practice no
+## arrival gets this far once a match has started anyway, because
+## `_on_introduced` turns latecomers away. See D47 and D110.
 func _seat_new_player(
 	peer_id: int, player_name: String, steam_id: int = 0
 ) -> StringName:
-	if _roster.size() >= seat_count():
+	var seats: Array[PlayerState] = _authority.state.players
+	if seats.size() >= seat_count():
 		return &""
 
-	var index: int = _roster.size()
+	var index: int = seats.size()
 	var player: PlayerState = PlayerState.new(
 		StringName("p%d" % index),
 		sanitised_name(player_name, index),
 		_authority.state.settings.starting_cash,
 	)
 	player.steam_id = steam_id
-	_roster.append(player)
-	_rebuild_active_players()
+	seats.append(player)
 	_seat(peer_id, player.id)
 	return player.id
 
@@ -708,18 +761,16 @@ func _disconnect_soon(peer_id: int) -> void:
 		multiplayer.multiplayer_peer.disconnect_peer(peer_id)
 
 
-## A dropped peer's player leaves the **active roster**, and their portfolio is
-## kept so that reclaiming the slot resumes it.
+## A dropped peer's player is marked **away**, and the match carries on with
+## them still in it.
 ##
-## Leaving the player in the match was tried first and is wrong: the all-ready gate
-## counts every player, so a disconnect deadlocked the year for everybody still
-## playing. A game that cannot continue is worse than a game whose standings
-## changed, so the player is removed from `state.players`.
-##
-## It is removal from the roster only. The `PlayerState` itself stays alive in
-## `_roster` with its cash and holdings, so this is not destruction — it is
-## setting them aside. See docs/decisions.md D47, and the two future directions
-## (a bot taking over, and a proper rejoin) in docs/porting-plan.md.
+## Two wrong answers came before this one, and the flag is what makes the third
+## possible. Leaving the player in the match untouched deadlocked the year,
+## because the all-ready gate counted every player and a dropped one could
+## never ready up (D46). Taking them out of `state.players` fixed that and cost
+## them the match: no dividends, no splits, no loan interest, no place in the
+## standings (D47). Being away is neither — they are in the economy and out of
+## the gate. See docs/decisions.md D110.
 func _on_peer_disconnected(peer_id: int) -> void:
 	var player_id: StringName = _player_by_peer.get(peer_id, &"")
 	if player_id.is_empty():
@@ -734,14 +785,12 @@ func _on_peer_disconnected(peer_id: int) -> void:
 		# remaining players keep consecutive ids and a tidy list.
 		_forget_player(player_id)
 	else:
-		if not _vacated_player_ids.has(player_id):
-			_vacated_player_ids.append(player_id)
-		var player: PlayerState = _player_in_roster(player_id)
+		var player: PlayerState = _authority.state.player_by_id(player_id)
 		if player != null:
+			player.is_away = true
 			# Cleared so a resumed player is not already ready for a year they
 			# were not present for.
 			player.is_ready = false
-		_rebuild_active_players()
 
 	player_left.emit(player_id)
 	_broadcast_state(player_id)
@@ -752,14 +801,13 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 ## Drops a player from the lobby entirely. Only safe before the match starts:
 ## afterwards their holdings and their place in the standings matter, which is
-## what D47 is about.
+## what D47 and D110 are about.
 func _forget_player(player_id: StringName) -> void:
-	for index: int in _roster.size():
-		if _roster[index].id == player_id:
-			_roster.remove_at(index)
+	var seats: Array[PlayerState] = _authority.state.players
+	for index: int in seats.size():
+		if seats[index].id == player_id:
+			seats.remove_at(index)
 			break
-	_vacated_player_ids.erase(player_id)
-	_rebuild_active_players()
 
 
 ## Records which player a peer controls, both ways round.
@@ -768,34 +816,16 @@ func _seat(peer_id: int, player_id: StringName) -> void:
 	_peer_by_player[player_id] = peer_id
 
 
-## `state.players` is the roster minus whoever has dropped, rebuilt in roster
-## order. The authority reads this list for the ready gate, dividends, net worth
-## and rankings, so removing somebody here is what takes them out of the economy.
-func _rebuild_active_players() -> void:
-	var active: Array[PlayerState] = []
-	for player: PlayerState in _roster:
-		if not _vacated_player_ids.has(player.id):
-			active.append(player)
-	_authority.state.players = active
-
-
-## What to call a player who is no longer in `state().players`.
+## What to call a player, including one who has just dropped.
 ##
-## A player who disconnects mid-match is taken off the active roster but kept in
-## `_roster` with their holdings intact (D47), so the usual
-## `state().player_by_id()` stops finding them at exactly the moment the screen
-## wants to say "so-and-so left". This looks in the place they still exist.
-## Returns an empty string for an id this host has never seated.
+## It used to need its own lookup, because a disconnect took the player out of
+## `state.players` at exactly the moment a screen wanted to say "so-and-so
+## left". An away player is still in that list (D110), so the ordinary lookup
+## now answers. Returns an empty string for an id this host has never seated —
+## which is what a player forgotten in the lobby becomes.
 func display_name_of(player_id: StringName) -> String:
-	var player: PlayerState = _player_in_roster(player_id)
+	var player: PlayerState = _authority.state.player_by_id(player_id)
 	return player.display_name if player != null else ""
-
-
-func _player_in_roster(player_id: StringName) -> PlayerState:
-	for player: PlayerState in _roster:
-		if player.id == player_id:
-			return player
-	return null
 
 
 ## The player a peer controls, or an empty id for a peer with no slot. Returning

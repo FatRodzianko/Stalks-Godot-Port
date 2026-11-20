@@ -59,21 +59,41 @@ func display(
 		_net_worth_label.theme_type_variation = &"Numeric"
 
 	# Red until ready, green once ready — the original used a coloured image.
+	#
+	# **Grey for a player who is away**, because red here means "the year is
+	# waiting for this person" and the year is not: the gate skips them
+	# (docs/decisions.md D110). A red dot nobody is waiting on would have the
+	# others watching for a player who is not coming back this year.
 	_ready_dot.visible = true
-	_ready_dot.modulate = Palette.BULL if is_ready else Palette.DANGER
-	_ready_dot.tooltip_text = "Ready for the new year" if is_ready else "Not ready yet"
+	if player.is_away:
+		_ready_dot.modulate = Palette.TEXT_FAINT
+		_ready_dot.tooltip_text = "Not here — the year goes on without them"
+	elif is_ready:
+		_ready_dot.modulate = Palette.BULL
+		_ready_dot.tooltip_text = "Ready for the new year"
+	else:
+		_ready_dot.modulate = Palette.DANGER
+		_ready_dot.tooltip_text = "Not ready yet"
 
 
-## "", " (Host)", " (you)" or " (Host, you)".
+## "", " (Host)", " (you)", " (Host, you)" or " (away)".
 ##
 ## "you" is left off when the name already says it, which it does in a solo
 ## game where the only player is called "You": "You (you)" was nonsense.
+##
+## "away" marks a player whose peer has gone while the match carries on without
+## them. **It is a word and not a dimmed row**, because the row still has to be
+## readable: they are still in the standings, still being paid, and still able
+## to win (docs/decisions.md D110), so fading them out would say the opposite of
+## what is true.
 func _tags_for(player: PlayerState, is_local: bool, is_host: bool) -> String:
 	var tags: PackedStringArray = []
 	if is_host:
 		tags.append("Host")
 	if is_local and player.display_name.to_lower() != "you":
 		tags.append("you")
+	if player.is_away:
+		tags.append("away")
 	if tags.is_empty():
 		return ""
 	return " (%s)" % ", ".join(tags)

@@ -42,8 +42,26 @@ var net_worth: int = 0
 ## Set when a player is wiped out by a third missed loan payment.
 var is_bankrupt: bool = false
 
-## Readiness for the next year. The year only advances once every player is ready.
+## Readiness for the next year. The year only advances once every player who is
+## here is ready — see `is_away`.
 var is_ready: bool = false
+
+## Whether this player's peer has gone while the match carries on without them.
+##
+## **They are still in the match.** An away player is paid dividends, has their
+## stalks split and bankrupted, is charged loan interest, misses a loan payment
+## every year they are gone, keeps their place in the standings and can still
+## win. The one thing being away changes is that the year does not wait for
+## them: `GameState.all_players_ready()` skips them, which is the whole purpose
+## of the flag. See docs/decisions.md D47 and D110.
+##
+## This replaced taking the player out of `state.players` altogether, which was
+## the quick way to stop one dropout deadlocking the year and cost them their
+## position in the process.
+##
+## Cleared when they come back (`HostSession._reclaim_slot`). Always false in a
+## local game, which has no peers to lose.
+var is_away: bool = false
 
 
 func _init(player_id: StringName = &"", name_to_show: String = "", starting_cash: int = 0) -> void:

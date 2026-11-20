@@ -310,7 +310,19 @@ See decisions.md D85.
 21. Press **Escape**, click **LEAVE TO TITLE SCREEN**, and confirm it this time.
 22. Check you are on the title screen.
 23. Begin another match, press **Escape**, and click **QUIT TO DESKTOP**.
-24. Check the game closes.
+24. Check it **asks before closing**, the way LEAVE TO TITLE SCREEN does, and that the pause panel gets out of the way behind the question.
+25. Click the cancel option.
+26. Check you are still in the match, with the board as you left it.
+27. Press **Escape**, click **QUIT TO DESKTOP**, and confirm it this time.
+28. Check the game closes.
+29. Start the game again and, from the title screen, click **QUIT TO DESKTOP**.
+30. Check it closes **without** asking - there is no match to lose from there.
+31. Start the game again, begin a match, and click the window's X.
+32. Check it closes without asking (D71 - a confirmation in front of a window that is already going is an argument with somebody who has finished).
+
+**Steps 24-32 were added on 2026-11-19**, after the owner met the fault in play:
+QUIT TO DESKTOP sat two buttons under one that asks and closed the game on the
+press. The three cases above are deliberately not the same, and D117 says why.
 
 ### A8h. The studio splash
 
@@ -876,6 +888,279 @@ With three machines, if available:
 39. Check B and C both end up in the same match, with one of them hosting.
 40. Check the one that did not become host can still buy and sell.
 
+### B6 - Rejoining a match you dropped out of
+
+**B6a-B6h passed on 2026-11-18** and **B6i on 2026-11-19**, on a Steam build
+with two accounts on two machines. The one fault that came back from the first
+run was that the title screen went on offering a game that had ended; B6i covers
+the fix for it (D115).
+
+**Also confirmed on 2026-11-19, unprompted by any of the steps below** - worth
+keeping because it is the whole feature end to end, through a migration:
+
+1. A hosts, B joins, both reach the board.
+2. B quits to desktop, restarts the game, sees **REJOIN GAME**, and rejoins successfully.
+3. A quits to desktop. B takes the match over as host (A9).
+4. A restarts the game, sees **REJOIN GAME**, and rejoins the match **now hosted by B**.
+
+Step 4 is the one that could only work if the lobby owner is read at rejoin
+time rather than remembered (D111), and it did.
+
+**Needs two Steam accounts on two machines.** None of the Steam plumbing is
+covered by the suite. What *is* covered is the economics of being away
+(`test_away_players.gd`), the host's refusals (`test_host_migration.gd`) and
+every decision `Main` makes (`test_main_rejoin.gd`), so a failure here is
+almost certainly Steam's answer rather than the game's logic. See decisions.md
+D110 and D111.
+
+Call the machines **A** and **B** throughout. A hosts.
+
+#### B6a. The button only appears when there is something to rejoin
+
+1. On B, delete `%APPDATA%\Godot\app_userdata\Stalks Stalks Stalks\last_match.cfg` if it exists.
+2. Start the game on B.
+3. Check the bottom row of the title screen shows **QUIT TO DESKTOP** on the left and nothing on the right.
+4. On A, host an online game.
+5. On B, join it from the lobby list.
+6. On B, press Ready.
+7. On A, press Start.
+8. Check both machines are on the playing screen.
+9. On B, press Escape, then **Leave Game**, then confirm.
+10. Check B is on the title screen.
+11. Check **REJOIN GAME** is now at the right-hand end of the bottom row, level with QUIT TO DESKTOP.
+
+#### B6b. Going back in, as a client
+
+12. On B, press **REJOIN GAME**.
+13. Check B shows **Rejoining <the game's name>...** under the panel while it works.
+14. Check B lands on the **playing screen**, not on a lobby.
+15. Check B is on the same year as A.
+16. Check B's cash matches what A's rankings show for B.
+17. Check B's owned-stalks list shows the holdings B had before leaving.
+18. On B, buy one share of any stalk.
+19. Check A's rankings show B's net worth change.
+
+#### B6c. The match goes on without you
+
+20. On A, note B's net worth from the rankings.
+21. On B, press Escape, then **Leave Game**, then confirm.
+22. On A, check B's row is still in the rankings, tagged **(away)**.
+23. On A, check B's ready dot is grey rather than red.
+24. On A, check the waiting line does not name B.
+25. On A, press Ready.
+26. Check the year advances **without waiting for B**.
+27. On A, check B's net worth has changed - they were paid their dividends.
+28. On A, advance two more years the same way.
+29. On B, press **REJOIN GAME**.
+30. Check B lands on the current year, not the year they left.
+31. Check B's cash and holdings reflect the three years that passed.
+
+#### B6d. A loan goes unpaid while you are away
+
+Loans must be enabled, and B must be past year 2.
+
+32. On B, take a loan.
+33. Note the balance and the minimum payment shown on B.
+34. On B, press Escape, then **Leave Game**, then confirm.
+35. On A, advance one year.
+36. On B, press **REJOIN GAME**.
+37. Check B's loan balance has grown by roughly 10% plus a year's interest.
+38. Check B's loan panel shows one missed payment.
+39. On B, press Escape, then **Leave Game**, then confirm.
+40. On A, advance one year.
+41. On B, press **REJOIN GAME**.
+42. Check the balance has grown again, by roughly 15% plus interest, and shows two missed payments.
+43. On B, press Escape, then **Leave Game**, then confirm.
+44. On A, advance one year.
+45. On B, press **REJOIN GAME**.
+46. Check B is **bankrupt**: no cash, no holdings, and BANKRUPT in the rankings on both machines.
+
+#### B6e. Rejoining a match that changed hands
+
+47. Start a fresh online game with A hosting and B joining, and reach the playing screen.
+48. On B, press Escape, then **Leave Game**, then confirm.
+49. On A, press Escape, then **Leave Game**, then confirm.
+50. On B, press **REJOIN GAME**.
+51. Check B fails with a sentence on the title screen rather than hanging.
+
+A third account would be needed to test rejoining a match that migrated and is
+still running; with two, step 49 ends the match, which is what step 51 checks.
+
+#### B6f. Failing cleanly
+
+52. On B, with REJOIN GAME showing, close the game on A entirely.
+53. On B, press **REJOIN GAME**.
+54. Check B stays on the title screen with a sentence saying the game is gone.
+55. Check **REJOIN GAME** is still there - a failed attempt does not forget the match.
+56. On B, open the **JOIN GAME** tab and pick a game that is no longer there (host one on A, start it, then press Join on B).
+57. Check B reports a reason rather than appearing to do nothing. This is the fault D112 fixed, on the path REJOIN GAME shares.
+
+#### B6g. A finished match is not offered
+
+58. Play a short online match (set the year limit to 1 or 2) through to the result screen on both machines.
+59. On B, go back to the title screen from the result screen.
+60. Check **REJOIN GAME** is absent.
+
+#### B6h. The host rejoining
+
+61. Start an online game with A hosting and B joining, and reach the playing screen.
+62. On A, press Escape, then **Leave Game**, then confirm.
+63. Wait for B to take the match over - B should end up on the playing screen as the host (see A9).
+64. On A, check **REJOIN GAME** is showing.
+65. On A, press it.
+66. Check A lands on the playing screen as a **client** of B, with A's own cash and holdings.
+67. On B, check A's row loses its **(away)** tag.
+68. Check the **(Host)** tag is on B on both machines.
+
+#### B6i. The button is only there when the game is — ✅ passed 2026-11-19
+
+**Added after the first Steam run, 2026-11-18.** Everything else in B6 passed;
+this did not exist, and the title screen went on offering a game that had
+ended. Steam is now asked before the button appears, and again every five
+seconds while the title screen is up (D115). These steps are the ones that
+check it, and they are worth running first: the rest of B6 assumes the button
+means something.
+
+Machine **B** does all of this unless a step says otherwise.
+
+The case that was reported — a game you were the last one in:
+
+1. Host an online game on B and do not let anybody join it.
+2. Press Start and reach the playing screen.
+3. Press Escape, then **Leave Game**, then confirm.
+4. Check **REJOIN GAME** is **not** on the title screen.
+5. Start a single-player game.
+6. Leave it back to the title screen.
+7. Check **REJOIN GAME** is still absent.
+
+A game that is still being played:
+
+8. On A, host an online game; join it from B and reach the playing screen.
+9. On B, press Escape, then **Leave Game**, then confirm.
+10. Check **REJOIN GAME** appears, within a second or two of the title screen.
+11. Start a single-player game on B.
+12. Leave it back to the title screen.
+13. Check **REJOIN GAME** is still there - the match on A is still running, and a solo game in between changes nothing.
+
+The button going away on its own:
+
+14. With B sitting on the title screen and REJOIN GAME showing, finish the match on A - play it out to the result screen.
+15. Watch B's title screen without touching it.
+16. Check **REJOIN GAME** disappears within about five seconds.
+17. Check it does not come back.
+
+The same, for a host who closes the game rather than finishing it:
+
+18. On A, host an online game; join from B and reach the playing screen.
+19. On B, press Escape, then **Leave Game**, then confirm.
+20. Check **REJOIN GAME** is showing on B.
+21. On A, close the game entirely.
+22. Watch B's title screen.
+23. Check **REJOIN GAME** disappears within about five seconds.
+
+Steam closed, and a connection that drops:
+
+**Closing Steam while the game is running is not a test you can do.** Steam
+closes the game with it, because the game was launched through Steam. The steps
+that used to be here asked for exactly that and were replaced on 2026-11-19
+after the owner met it. **The replacements passed the same day**, and the run
+went further than the steps ask: A exited Steam, which closed A's game; the
+match migrated to B; A reopened the game with Steam closed and saw no button;
+A then started Steam, relaunched, saw the button, and rejoined the match now
+hosted by B.
+
+24. Close Steam entirely.
+25. Launch the build by double-clicking it, rather than through Steam. (No `steam_appid.txt` is needed - see the prerequisites at the top of Test B.)
+26. Check **REJOIN GAME** is absent, and that the title screen is otherwise normal.
+27. Start Steam, wait for it to sign in, then start the game again.
+28. Check **REJOIN GAME** is back, and that pressing it still works.
+
+A host that loses its connection rather than leaving — run on 2026-11-19 and
+**passed**:
+
+29. On A, host an online game; join from B and reach the playing screen.
+30. On B, press Escape, then **Leave Game**, then confirm.
+31. Check **REJOIN GAME** is showing on B.
+32. Disconnect A from the internet, leaving the game running.
+33. Wait a minute, watching B's title screen.
+34. Check **REJOIN GAME** is **still showing** on B.
+35. Reconnect A to the internet.
+36. Check **REJOIN GAME** disappears from B.
+
+**Step 34 is the deliberate part, not a bug.** A host that has gone quiet for a
+minute may be back in the next one, and D115's rule is that only a definite "that
+game is not there" forgets the record - a silence never does. The cost is that B
+could press the button during the outage and be told it could not reach the host
+(the twelve-second join timeout, D67). The alternative is a player losing their
+seat because their friend's router blinked, which is worse.
+
+**Step 36 is right, and the mechanism is Steam's rather than the game's.** The
+lobby had one member left in it, and that member's membership did not survive
+the outage, so by the time Steam's view settled there was no lobby - which is
+what B's next query found. The game did nothing special here; it asked the same
+question it asks every five seconds and acted on a different answer. The exact
+Steam-side sequence was not established and is not relied on: the game treats
+"the lobby is gone" the same whatever made it go.
+
+#### B6j. Coming back through Steam's friends list — **cannot be run yet**
+
+**Needs a build Steam installed**, not one copied onto the machine, because
+Steam's friends list only offers "Join Game" for a game it owns the
+installation of. Written down now because the code path exists and was fixed
+for it on 2026-11-19 (D116); run it at the first beta or release build.
+
+1. On A, host an online game; join from B and reach the playing screen.
+2. On B, quit to desktop entirely.
+3. On A, keep playing - advance a year or two.
+4. On B, open Steam's friends list and find A.
+5. Check Steam offers **Join Game** on A.
+6. Click it.
+7. Check B's game launches, or comes to the front if it is running.
+8. Check B lands on the **playing screen**, on the same year as A, with B's own cash and holdings.
+9. On A, check B's row loses its **(away)** tag.
+
+**Step 8 is the one that was broken.** Until D116 the host welcomed a returning
+peer back onto its seat and never told it the match had begun, so B was left on
+a lobby screen while the game ran on - with a Ready button that reached the
+year gate. REJOIN GAME was unaffected and is not a test of this.
+
+**If step 5 shows nothing**, that is Steam's decision, not the game's. Two
+things to check before suspecting the port: whether the lobby was created
+**invite only**, which makes it `k_ELobbyTypePrivate` and may not be offered to
+friends at all, and whether both accounts actually see each other as friends.
+The lobby being absent from the in-game browser is expected and is not the
+cause - a match in progress is deliberately unlisted but still joinable (D106).
+
+#### What a failure in B6i means
+
+- **The button never appears, even for a match that is definitely running** -
+  Steam is not answering `requestLobbyData` for a lobby this machine is not in,
+  or the answer is arriving with `success` 0. The game log is the place to look.
+- **The button appears and then vanishes every few seconds** - the answer is
+  arriving inconsistently. Nothing in the game decides this on a timer other
+  than the five-second re-ask.
+- **The button survives a finished match** (steps 15-17) - the host did not
+  write `state = over`, or it is not being read back. Only the lobby's owner
+  can write it, so check which machine hosted.
+- **The button survives a lobby everybody left** (steps 3-4) - this one does
+  not depend on Steam at all: leaving a lobby you were the last member of
+  forgets the record on the spot. A failure here is in the game, not in Steam.
+
+#### What a failure here means
+
+- **"That game no longer exists." when the match is still running** - Steam is
+  refusing a client into an unlisted lobby. That is the one assumption the code
+  could not verify (D111); it would mean `hide_lobby_from_the_browser` has to
+  do something other than write metadata.
+- **B sits on "Rejoining..." and then reports it could not reach the host** -
+  the 12-second join timeout (D67). The lobby was reachable and the host was
+  not.
+- **"That game has already started."** - the host did not recognise B's Steam
+  ID on the roster. A different Steam account from the one that was playing, or
+  a match the roster was rebuilt on.
+- **B lands on a lobby instead of the board** - `_on_rejoin_landed` was not
+  reached; the welcome arrived down the ordinary join path.
+
 ### Known gaps, so they are not surprises
 
 - **Achievements are not being tested, on purpose.** They are implemented and
@@ -895,8 +1180,11 @@ With three machines, if available:
   handover so far has taken the BECOME_HOST branch. The JOIN_NEW_HOST branch -
   Steam names a third player and this one reconnects to them - exists only in
   `test_main_migration.gd`. Steps 37-40 need the third machine.
-- **Reclaiming a seat has never run either**, for the same reason: nobody has
-  had to come back to a match that carried on without them.
+- **Reclaiming a seat has never run in play.** It is what REJOIN GAME is built
+  on, and B6 is the first run of it. Until that run, the one thing nothing can
+  establish is whether Steam admits a client into a lobby that is joinable but
+  unlisted - the whole feature rests on that and the code can only show that
+  nothing in *this* project closes the door (D111).
 - **A kick takes a few seconds to land over Steam**, where it is immediate over
   a direct connection. Steam's lobby callbacks are not instant and the game
   waits for them rather than guessing; it is slow, not broken. Observed in the

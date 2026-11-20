@@ -823,7 +823,18 @@ it straight away. Kept here because the reasoning is still the reasoning behind
 ---
 
 ### D47 — A dropped player leaves the roster but keeps their portfolio
-**2026-11-14 · Accepted** (supersedes D46)
+**2026-11-14 · Accepted, and amended by D110 on 2026-11-18** (supersedes D46)
+
+**Read D110 first if you are looking at this code today.** The *question* D47
+answers is still the right question and its two-part answer is still the
+reasoning the code runs on: a dropout must not deadlock the year, and their
+position must not be destroyed. What changed is the mechanism. D47 achieved the
+first by removing the player from `state.players`, which was the cheap way to
+stop the gate waiting on them and took them out of the economy as a side
+effect. D110 keeps them in `state.players` and makes the gate skip them
+instead, so the position is not merely retained but still live. Everything
+below stands as written except where it says a dropped player is removed from
+the active roster.
 
 When a peer drops, its player is removed from `state.players` — out of the ready
 gate, the rankings, dividends and net worth comparisons. The `PlayerState` object
@@ -857,17 +868,21 @@ successors need it — see porting-plan Phase 8. The owner's call on 2026-11-14
 was to defer rejoining until Steam, which is the right point: Steam IDs are what
 make "is this the same person" answerable.
 
-**What it rules out.** A player who drops loses their place in the standings for
-any year that resolves while they are away, including dividends they would have
-been paid. There is no way around that without pausing the match for everybody,
-which is the thing D46 got wrong. A departure is now also a trigger for the year
+**What it ruled out, and no longer does.** A player who dropped lost their
+place in the standings for any year that resolved while they were away,
+including dividends they would have been paid. That was accepted here as the
+price of a match that keeps running — "there is no way around that without
+pausing the match for everybody, which is the thing D46 got wrong". The claim
+was wrong: there was a third way, which is to leave them in the economy and
+take them out of the gate. See D110. A departure is now also a trigger for the year
 to resolve — `_advance_if_everybody_is_ready()` is called from the disconnect path
 as well as the ready path, because a drop can be the last thing a year was waiting
 on.
 
-**Where it lives.** `HostSession._on_peer_disconnected`, `_forget_player`,
-`_rebuild_active_players`. Six tests in `test_networked_session.gd` cover it,
-including the deadlock itself.
+**Where it lives.** `HostSession._on_peer_disconnected` and `_forget_player`.
+`_rebuild_active_players` and the second roster list it maintained are gone;
+see D110. Tests in `test_networked_session.gd` cover it, including the deadlock
+itself.
 
 ---
 
@@ -3999,3 +4014,448 @@ right by definition.
 **What it rules out.** Deriving anything about *roles* from the order of
 `players`. That list is the active roster and migration makes it change shape;
 it answers "who is playing", not "whose machine this is".
+
+---
+
+### D110 - An absent player stays in the match and leaves the ready gate
+**2026-11-18 · Accepted** (amends D47)
+
+A player whose peer has gone is marked `PlayerState.is_away` and stays in
+`state.players`. `GameState.all_players_ready()` skips away players; everything
+else - dividends, splits, bankruptcies, loan interest, missed-payment
+penalties, net worth, the rankings and the winner - treats them exactly as it
+treats a player sitting at the keyboard.
+
+**Why.** The owner asked for rejoining, and specified that while you are away
+"the game goes on without you and your position is still affected". Under D47
+that was impossible: a dropped player was removed from `state.players`, which
+is the list `YearResolver` walks, so they earned nothing, were charged nothing
+and ranked nowhere. Coming back would have returned the position they left
+rather than the one the match had been building for them, which is a save file,
+not a rejoin.
+
+D47 removed them for one reason only - the all-ready gate counted every player,
+so a dropout deadlocked the year (D46). That is a problem with the **gate**, and
+fixing it in the gate costs one flag and one loop. Removing the player fixed the
+gate by taking a sledgehammer to the economy.
+
+**What it buys beyond the rejoin.** Three things that were simply wrong before
+and are now right by construction:
+
+- **A migration no longer costs everybody a year.** `take_over` marks every
+  player except the new host as away, and they keep being paid while they
+  reconnect.
+- **`HostSession` keeps one list instead of two.** `_roster` held every slot and
+  `state.players` held that list minus the dropouts, rebuilt on every arrival
+  and departure by `_rebuild_active_players`. The difference between them *was*
+  this flag. Both are gone, and `state.players` is the roster.
+- **`display_name_of` stopped needing its own lookup.** It existed because
+  `state.player_by_id` stopped finding a player at exactly the moment a screen
+  wanted to name them.
+
+**The missed loan payments needed no new rule.** `LoanRules.process_year_end`
+records a miss whenever `paid_this_year` is false, and an absent player never
+pays, so the existing 10% / 15% / seizure schedule applies the moment they stay
+in the pipeline. Three years away with a loan outstanding wipes a player out.
+The owner was told this and called it "tough but fair". It is pinned down in
+`test_away_players.gd` because it is a load-bearing accident rather than
+something anybody wrote.
+
+**What it rules out, and the hazard it introduces.**
+
+- **An away player can win a match they were absent for half of.** The owner was
+  told and asked for it anyway. It cuts both ways: they can also be overtaken
+  while they are gone.
+- **A match everybody has left must not resolve years.** With the gate skipping
+  away players, a deserted match satisfies it vacuously - nobody present, so
+  nobody unready - and would run itself to the end before anybody could rejoin.
+  `all_players_ready()` returns false when nobody is present, which is the
+  guard, and `test_a_match_everybody_has_left_does_not_resolve_years` is why it
+  will stay.
+- **Reading a role off the order of `players` is now wronger than it was.** The
+  host who walked out is still first in the list. D109 already said not to; this
+  makes the mistake invisible in two-player play and wrong from three up.
+
+**Where it lives.** `PlayerState.is_away`, `GameState.players_present()` and
+`all_players_ready()`, `HostSession._on_peer_disconnected`, `_reclaim_slot`,
+`take_over` and `waiting_on()`, `StateSync.encode_player`/`apply_player`,
+`YeehawRules.validate_request`, and the `(away)` tag and grey dot in
+`RankingRow`. Tested in `test_away_players.gd` (20 tests),
+`test_networked_session.gd` and `test_host_migration.gd`.
+
+---
+
+### D111 - Rejoining is a remembered lobby id, and nothing more than that
+**2026-11-18 · Accepted, and amended by D115 the same day**
+
+**Two entries amend this one.** D115 is the half it was missing: the button is
+now offered only once Steam has confirmed the lobby is still a game worth going
+back to, rather than offered on trust and allowed to fail. D116 corrects the
+bullet below about the welcome landing on the playing screen, which was true of
+REJOIN GAME and false of every other way back in.
+
+REJOIN GAME sits at the right-hand end of the title screen's bottom row,
+opposite QUIT TO DESKTOP, and appears only when this machine has an online
+match to go back to. Pressing it joins the remembered Steam lobby and the
+existing reclaim path does the rest.
+
+**Why there was nothing to build.** Every piece already existed, for host
+migration:
+
+- The lobby of a match in progress is unlisted but **still joinable**. The
+  `state` metadata key is what the browser filters on and `setLobbyJoinable` is
+  Steam's own door; D106 separated them precisely so somebody could come back.
+  So `Steam.joinLobby(id)` works on a running match and needs no new API.
+- `HostSession._slot_to_reclaim` matches an arriving Steam ID against the roster
+  and `_reclaim_slot` seats them on it (D105). Steam ID is the identity check
+  and must stay that way: a display name is typed in by whoever is connecting.
+- The lobby owner is read at rejoin time, so a match that changed hands while
+  this player was away is rejoined through whoever hosts it now (D104).
+
+What was missing was a **route**, and the route is a lobby id written down.
+
+**Where the record lives: `user://last_match.cfg`, not `UserSettings`.** D71
+kept match state out of the settings file deliberately, and this is the
+opposite kind of thing from a preference: written when a match reaches the
+playing screen, forgotten when it ends, meaningless a week later. Its own file
+also means a stale rejoin record and somebody's volume setting cannot damage
+each other. It holds a lobby id and the game's name, and nothing worth forging -
+the position comes from the host, and the seat from Steam.
+
+**Written in `Main._show_gameplay`**, because every route into the playing
+screen passes through it: hosting, joining, a migrated host, a migrated client,
+and a rejoin. One call instead of five.
+
+**Decisions inside it, each put to the owner on 2026-11-18 and accepted:**
+
+- **A deliberate "quit to menu" is rejoinable, like a crash.** The host cannot
+  tell the two apart - a peer simply stops answering - so a distinction would
+  mean inventing one, and "I had to go, let me back in" is the ordinary case.
+- **A failed rejoin does not forget the match.** A Steam relay having a bad
+  minute would otherwise destroy the only route back into a game that is still
+  being played. The record is forgotten when the match *ends*, which is the one
+  thing the game knows first-hand, and overwritten by the next match.
+  *(Amended by D115: still true of a failure or a silence, but the button is no
+  longer offered on trust and then allowed to fail — Steam is asked first, and
+  a definite "that game is not there" does forget it.)*
+- **The welcome lands on the playing screen, unconditionally.** A match is only
+  remembered once it has reached the board, so there is no lobby for a rejoin to
+  arrive in. This is why no "has the match started" flag had to be added to the
+  snapshot.
+  *(Amended by D116: true of this route and of no other. Steam's friends list
+  and an accepted invite come in through the ordinary join path, which shows
+  the lobby and waits to be told the match has begun — so the host now tells a
+  reclaiming peer, rather than `Main` knowing it by arrangement.)*
+- **A finished match refuses the returning player, with its own sentence.** This
+  refusal only became reachable with this feature: the title screen offers a
+  match it has no way of knowing has ended, because the player was not there to
+  see it finish. Without it they would be welcomed onto a final board and left
+  looking at a result as though it were a turn. `HostSession.why_not_rejoin` is
+  the one place both refusals are decided, kept pure so the rule is testable
+  without peers.
+- **No confirmation on the button.** Rejoining a game you were already in takes
+  nothing away from you.
+
+**What it rules out.** An invite from the host into a running match. The owner
+was explicit that a player who was *not* in the match must not be let in, and
+the two were briefly conflated. Nothing here lets a host add anybody: the only
+way past `_on_introduced` is a Steam ID already on the roster.
+
+**Not verified in play.** Everything that talks to Steam needs two accounts on
+two machines; see manual-testing.md B6. What the code establishes is that
+nothing in this project closes the door - `hide_lobby_from_the_browser` writes
+metadata only, and the single `setLobbyJoinable(false)` is guarded by the host
+being the last member out. Whether Steam itself admits a client to an unlisted
+lobby is unverified, as is whether the friends list offers "Join Game" for one
+(which, if it does, already works: `join_requested` is wired to
+`Main.join_online_game`).
+
+**Where it lives.** `src/data/last_match.gd`, `Main._on_rejoin_requested`,
+`_rejoin_the_match`, `_on_rejoin_landed`, `_give_up_on_rejoin`,
+`_remember_this_match`, `MainMenu.offer_rejoin`, and
+`HostSession.why_not_rejoin`. Tested in `test_main_rejoin.gd` (21 tests) and
+`test_host_migration.gd`.
+
+---
+
+### D112 - A refused join reports itself, instead of failing in silence
+**2026-11-18 · Accepted**
+
+`SteamService.lobby_failed` is connected in `Main._watch_the_service`, which
+every path that touches Steam goes through, rather than only in
+`_on_host_online_requested`.
+
+**The fault.** It was connected only when *hosting*. A join Steam refused - a
+lobby that no longer exists, one that is full, one not open to new players -
+emitted its reason to nobody at all. `SteamService._why_refused` words those
+three with some care, and D67 records the owner meeting the proof that code 3
+deserves its own sentence. None of it reached the screen: picking a stale game
+out of the browser reported nothing and looked like a button that did not work.
+
+**Why it surfaced now.** REJOIN GAME must fail with a sentence rather than hang,
+and writing the test for that found the gap in the path it shares with the
+browser. Found by reading rather than from play, which is the one kind of bug
+this project has had trouble finding - see D108.
+
+**Where it lives.** `Main._watch_the_service`, and `_on_steam_lobby_failed`,
+which now also clears `_pending_join_lobby` and `_rejoining`. Tested by
+`test_main_rejoin.gd::test_steam_refusing_the_lobby_says_so_on_the_title_screen`.
+
+---
+
+### D113 - A one-line conditional hid a typed-array fault on the branch that mattered
+**2026-11-18 · Accepted**
+
+`GameOverScreen._render` read
+
+    var winners: Array[StringName] = result.winners if result != null else []
+
+which is wrong in a way that only fires when `result` is null: a bare `[]` is an
+untyped `Array`, and assigning one to an `Array[StringName]` is a **run-time**
+error, not a parse error. So the defensive branch - the one written to keep the
+screen up when a match has no result yet - was the branch that took the screen
+down. It is now an if/else block.
+
+**Why it sat there.** Nothing in play reaches it. A match that is over has a
+result, so `latest_result()` is never null by the time this screen is built. It
+was found by a test that drove `Main._on_match_finished` on a state with no
+history.
+
+**Worth recording because the shape recurs.** Static typing is enforced here as
+a parse error (`untyped_declaration=2`), and that has made it easy to assume the
+parser catches typed-collection mistakes. It does not catch this one. The
+project already bans conditional expressions split across lines for readability
+(`test_conventions.gd`); this is a second reason to prefer the block, and the
+one-line form was inside the rule.
+
+**Where it lives.** `src/ui/screens/game_over/game_over_screen.gd`.
+
+---
+
+### D114 - A session that fails to open its socket frees itself
+**2026-11-18 · Accepted**
+
+`HostSession.host`, `HostSession.take_over` and `ClientSession.join` build the
+session Node *before* asking the transport for a socket, and on failure they
+returned `{session: null, error: ...}` while leaving that Node unparented and
+unfreed - an orphan for the rest of the process. They now free it.
+
+Harmless in a real game, which gives up after one such failure, and the reason
+the suite reported orphans it was not responsible for. Worth a line because the
+"build, then try, then report" shape is the right one and will be copied: the
+free is the part that is easy to leave out.
+
+**Where it lives.** `src/net/host_session.gd`, `src/net/client_session.gd`. The
+suite's orphan count went from 10 to 3.
+
+---
+
+### D115 - A remembered lobby is a candidate, and Steam is the authority
+**2026-11-18 · Accepted** (amends D111)
+
+Before REJOIN GAME is offered, `Main` asks Steam whether the remembered lobby
+still exists and whether the match in it is still being played
+(`SteamService.request_lobby_details`, which wraps `requestLobbyData`). The
+button is hidden until that answer comes back good, re-asked every five seconds
+while the title screen is up, and the record is thrown away when the answer is
+a definite no.
+
+**The fault, reported from play on 2026-11-18** - after the feature itself
+worked over Steam, which it did first time. A player who left a game they were
+the last one in came back to a title screen still offering it. Pressing it said
+"That game no longer exists." Playing a single-player game in between changed
+nothing, because nothing in that path touches the record. The owner's words:
+"this seems like it will be very confusing to the player."
+
+**D111 got one half right and the other half wrong.** The half it got right is
+that a *failed attempt* must not forget the match: a Steam relay having a bad
+minute would otherwise destroy the only route back into a game still being
+played. That reasoning stands. The half it got wrong is that it left the
+failed attempt as the **only** way to find out, so the player did the
+discovering, by pressing a button. Remembering a lobby was treated as knowing
+it was alive, and those are different things.
+
+**Steam can be asked, and this is what it is for.** `requestLobbyData` refreshes
+the metadata of a lobby this process is **not** in and answers on
+`lobby_data_update`. It is the only way to tell a match still being played from
+one that ended, because neither is in the lobby browser - a match in progress is
+deliberately unlisted (D106). Verified against the installed plugin with
+`tools/steam_signals.gd` rather than against documentation for some other
+version.
+
+**Three answers, one of which offers the button:**
+
+| Answer | Button | Record |
+|---|---|---|
+| The lobby exists and its state is not `over` | shown | kept |
+| The lobby is gone, or its state is `over` | hidden | **forgotten** |
+| Steam did not answer | hidden | kept, asked again in five seconds |
+
+**Failing closed is the change in posture.** D111 offered the button and let the
+attempt fail; this hides it and lets the next tick put it back. A player never
+presses a button that cannot work, and a flicker of a bad connection costs five
+seconds rather than a seat. The distinction D111 drew is kept exactly where it
+belongs: a *silence* still does not forget, and only a definite "that game is
+not there" does.
+
+**`STATE_OVER` is new, and is for somebody who was not there.** A match that
+ends does not take its lobby with it - everybody is still in it, reading the
+result screen - so the lobby is alive and reachable and a returning player
+would be let in and put on a dead board. The host writes `state = over` when
+the match finishes, which is the only way a player who was away can learn that
+it did. The host's own refusal ("That game has finished.", D111) is still there
+as the backstop; this is what stops it being reached.
+
+**One case is answered without asking Steam anything.** When this process
+leaves a lobby it was the last member of, the game is definitively over and it
+watched that happen, so `leave_lobby_as_host` now reports it and the record is
+dropped on the spot. That is exactly the case that was reported, and it is
+fixed whether or not Steam's answer for a destroyed lobby turns out to be the
+one assumed.
+
+**What it rules out, and what is still unverified.**
+
+- **The button can appear a moment after the title screen does.** It is hidden,
+  then shown when Steam answers. Offering it immediately and retracting it would
+  be worse: a button that moves under the cursor.
+- **With Steam closed the button never appears.** Correct rather than
+  unfortunate - there is nothing it could do - and the record is kept, so it
+  comes back when Steam does.
+- **Whether Steam reports `success = 0` for a lobby that no longer exists** is
+  assumed, not verified. If instead it simply never answers, the behaviour is
+  still right: no button, and the record lingers harmlessly on disk. The design
+  is correct under either, which is why it was built this way rather than
+  waiting for a two-machine run to settle it.
+
+**Where it lives.** `SteamService.STATE_OVER`, `mark_lobby_finished`,
+`request_lobby_details`, `lobby_details`, `_on_lobby_data_update` and
+`leave_lobby_as_host`'s return value; `Main._ask_whether_the_remembered_match_is_still_there`,
+`_on_steam_lobby_details`, `_offer_rejoin_on_the_menu`, `_tick_the_rejoin_check`
+and `REJOIN_CHECK_SECONDS`. Seventeen tests in `test_main_rejoin.gd`.
+
+**Standing with the field.** The shape - remember a handle, ask the service
+whether it is still live, offer the action only then, treat an empty answer as
+ordinary rather than as an error - is the one Epic's EOS documents for
+reconnecting to a session, and matches the general advice to decide what to
+show from a health signal rather than from a stored id. Nothing here is novel;
+the first version simply skipped the middle step.
+
+---
+
+### D116 - The welcome says who you are; something has to say the game is on
+**2026-11-19 · Accepted** (amends D111)
+
+`HostSession._on_introduced` sends `_rpc_match_started` to a reclaiming peer,
+right after the welcome.
+
+**What was wrong.** The welcome carries a player id and a snapshot, and neither
+of them says whether the match has *started*. A client cannot work it out
+either: year 0 is a real year, and a lobby that has not begun and a match on
+its opening position produce the same snapshot. The lobby screen swaps itself
+for the board on the client's `match_started` signal, and that signal was only
+ever sent by `start_match()` - which, for somebody coming back, ran long ago.
+
+So a reclaiming client was **seated correctly and then stranded**: put back on
+its own slot with its own cash and holdings, and left looking at a lobby
+screen while the match ran on without it. With a Ready button that was
+enabled, and that reached `_apply_ready` on the host, where readiness means
+"advance the year".
+
+**Why REJOIN GAME never showed it.** That route suppresses the lobby screen
+entirely (`join_steam_match` with `reconnecting`) and `Main._on_rejoin_landed`
+puts the board up itself when the welcome arrives. D111 recorded that as a
+decision - "the welcome lands on the playing screen, unconditionally" - and
+justified it by noting a match is only remembered once it has reached the
+board, so there is no lobby to arrive in. That was true of REJOIN GAME and
+false of everything else.
+
+**Everything else** is Steam's friends-list "Join Game" and an accepted invite,
+both of which arrive through `Main.join_online_game` - the ordinary join path,
+which shows the lobby and waits to be told. The owner asked on 2026-11-19
+whether that route would work. The seat reclaim half of it did; the screen half
+did not.
+
+**Why the host tells the client, rather than the client working it out.**
+`join_online_game` could have guessed, by checking whether the arriving lobby
+matches the remembered one. That fails exactly where it matters most: a player
+on a fresh install, a different PC, or one who cleared their record has no
+remembered lobby and is precisely the person using the friends list. The host
+is the only party that knows, it already has a signal that means this, and
+saying it costs one line. One fix for every route in, including routes nobody
+has thought of yet.
+
+**Ordering is not luck.** `_rpc_welcome` and `_rpc_match_started` are both
+`("authority", "call_remote", "reliable")`, so they arrive in the order sent:
+the state is applied and `has_joined` is true before anything acts on the
+second.
+
+**What it rules out.** Nothing. The paths that already worked have no listener
+for the extra signal - REJOIN GAME and host migration both suppress the lobby
+screen - so it is received and dropped. A lobby migration never reaches this
+branch at all, because the new host re-hosts with the lobby open.
+
+**Where it lives.** `HostSession._on_introduced`. Tested in
+`test_networked_session.gd`, which now exercises the whole reclaim over a real
+socket: `NetHarness.start` takes Steam ids, and `_slot_to_reclaim` only ever
+asks for an integer, so ENet carries a reclaim end to end with no Steam
+anywhere. That is four tests covering something that previously had none below
+the `Main` level.
+
+---
+
+### D117 - Quitting to desktop mid-match asks; the window's X still does not
+**2026-11-19 · Accepted**
+
+The pause menu's **Exit to Desktop** raises a confirmation before closing the
+game. Clicking the window's X, and the title screen's QUIT TO DESKTOP, still do
+not ask.
+
+**The fault, reported from play.** Exit to Desktop sat two buttons under Leave
+Game, which asks, and closed the game on the press. A misclick ended the
+session. There was no argument for the asymmetry: both buttons end the match
+you are in, and one of them also ends the program.
+
+**Why the X is different, and why that is not an inconsistency.** D71 decided
+that `_notification` must not ask, on the grounds that a confirmation in front
+of a window that is already going away is an argument with somebody who has
+finished. That reasoning is about the *X*, and it holds. What it never covered
+is a button inside a menu, sitting beside one that asks, reachable by accident.
+The title screen's button is a third case and also stays silent: there is no
+match to lose from there, and D111's wording for it says so.
+
+So the rule is not "quitting asks". It is **"a press that can end a match you
+are in the middle of asks"**, which is true of this button, false of the X,
+and false of the title screen.
+
+**Its own `ConfirmPanel`, not the leave prompt's.** `confirmed` is connected
+once, when the panel is built, and a shared panel would need its handler
+swapped on every ask. That is precisely how a yes ends up doing the other
+thing. Two questions, two panels, two yeses that cannot be confused;
+`test_leaving_and_quitting_do_not_share_a_confirmation` is there to keep it
+that way.
+
+**The pause menu now closes on the press**, which reverses a smaller decision
+recorded in `test_quitting_stays_open_until_the_host_acts`: it used to stay
+open because "closing first would flash the board for a frame on the way out".
+True while the press was final; false now that the player may say no, and a
+menu left standing is a menu the question is being asked from behind.
+
+**The wording does not say the game is over**, because it is not. Rejoining
+exists (D111): a player who quits to desktop mid-match keeps their seat, the
+match goes on without them (D110), and the title screen offers REJOIN GAME when
+they come back. The question is "Leave the game and quit to desktop?", which is
+the leave prompt's shape and claims nothing further. It does not promise a
+rejoin either - that would be false in a single-player match, and varying the
+sentence by match type is a branch for no gain.
+
+**Testing it needed care.** Saying yes calls `get_tree().quit()`, which in a
+headless run takes the whole suite down, so the yes is asserted as a connection
+rather than pressed. The check that the fix works at all is unusual and worth
+recording: reinstating the old wiring and running
+`test_pause_menu.gd` **ends the run mid-suite with no summary at all**, which
+is the strongest available evidence that the press no longer closes the game.
+A green run of that file is part of the assertion.
+
+**Where it lives.** `Main._ask_about_quitting`, `_quit_prompt`,
+`quit_prompt()`, and `PauseMenu._on_quit_pressed`. Seven tests in
+`test_pause_menu.gd`.

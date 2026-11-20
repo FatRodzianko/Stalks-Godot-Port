@@ -203,6 +203,44 @@ and the tests must pin the chosen behaviour.
 
 ---
 
+### 4.6 A player who is away — **not in the original**
+
+A player whose connection drops mid-match, or who quits to the title screen,
+stays **in the match**. The original had no answer to this at all: its host
+simply carried on and the departed player's game was over.
+
+The rule the port settles on, asked for by the owner on 2026-11-18 and summed
+up in their words as "tough but fair":
+
+- **The end-of-year sequence does not care whether anybody is watching.** An
+  away player is paid their dividends, their stalks split and double their
+  shares, a bankruptcy wipes their holdings out, their loan is charged interest,
+  and their net worth is recomputed. Every step of §4.1 applies to them
+  unchanged.
+- **Every year away is a missed loan payment.** Nobody is there to pay, and
+  §9.3 records a miss for a year that went unpaid. So the ordinary schedule
+  applies: 10% on the first miss, 15% on the second, and everything seized on
+  the third (§9.2.2). Three years away with a loan outstanding wipes a player
+  out.
+- **They keep their place in the standings and can still win.** The rankings
+  and the winner are computed from every player in the match (§1, §12), which
+  means an absent player can win a match they were not present for, and can
+  equally be overtaken while they are gone.
+- **The year does not wait for them.** They cannot ready up, so the all-ready
+  gate skips them. This is the one and only thing being away changes.
+- **A match nobody is present for does not resolve years at all.** Otherwise it
+  would run itself to the end, unwatched, before anybody could come back.
+- **They take no actions.** There is nothing to stop: a player who is not
+  connected cannot send a request.
+- **A yeehaw needs two players who are present** (§10), since there is nobody
+  at an absent player's keyboard to answer one.
+
+Coming back is **REJOIN GAME** on the title screen. The seat is matched by
+Steam ID, so it is only ever handed back to the account that left it; see
+decisions.md D110 and D111.
+
+---
+
 ## 5. Special events
 
 One event per year, drawn from a mood-specific pool. The event names its target

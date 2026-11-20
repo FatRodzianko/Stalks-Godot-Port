@@ -30,7 +30,11 @@ static func validate_request(player_id: StringName, state: GameState) -> String:
 		return "The game is over."
 	if state.player_by_id(player_id) == null:
 		return "Unknown player."
-	if state.players.size() < MIN_PLAYERS:
+	# Players who are *here*, not players in the match. An away player still has
+	# a position and a place in the standings (D110), but nobody is at their
+	# keyboard to answer, so a lone survivor asking a roomful of absentees would
+	# be offered a gesture that can never come back.
+	if state.players_present().size() < MIN_PLAYERS:
 		return "Yeehaws need other players."
 	if state.is_yeehaw_pending():
 		var asker: PlayerState = state.player_by_id(state.yeehaw_requested_by)

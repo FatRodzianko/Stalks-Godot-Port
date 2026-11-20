@@ -124,14 +124,37 @@ that player's own copy of the match in a `MatchAuthority` and starts hosting it.
 copy is already complete, so nothing is asked of anybody.
 
 **Reclaiming a seat** — a returning player being put back into the slot they were
-playing, with the cash, holdings and loan they left. Matched by Steam ID, because a
-display name is typed in by whoever is connecting. See
-[decisions.md D105](decisions.md).
+playing. Note that it is not the position they *left*: the match went on paying and
+charging it while they were gone, so what they get back is whatever it has become.
+Matched by Steam ID, because a display name is typed in by whoever is connecting.
+See [decisions.md D105](decisions.md) and [D110](decisions.md).
 
-**Vacated** — a player whose connection has gone. They are out of `state.players`,
-and so out of the economy, the standings and the ready gate, but their `PlayerState`
-is set aside rather than destroyed, which is what makes reclaiming possible. See
-[decisions.md D47](decisions.md).
+**Away** — a player whose connection has gone while the match carries on. They
+are **still in the match**: paid their dividends, split and bankrupted with their
+stalks, charged their loan, ranked in the standings and able to win. The one
+thing being away changes is that the year does not wait for them. See
+[decisions.md D110](decisions.md) and [game-rules.md §4.6](game-rules.md).
+
+**Vacated** — what "away" used to be called, when a dropped player was taken out
+of `state.players` and so out of the economy as well as out of the ready gate.
+The word is gone from the code; it survives here because
+[decisions.md D47](decisions.md) is written in it.
+
+**Rejoining** — getting back into a match you dropped out of, from **REJOIN GAME**
+on the title screen. The whole mechanism is a Steam lobby id written down when the
+match starts (`user://last_match.cfg`): a match in progress is unlisted but still
+joinable, so the remembered id is a working door. The button is shown only once
+Steam has confirmed the lobby is still a game being played, and the host decides
+whether the arrival gets their seat. See [decisions.md D111](decisions.md) and
+[D115](decisions.md).
+
+**Lobby state** — the `state` key a Steam lobby carries, which is how the game
+says what the lobby *is* without anybody joining it. `open` is a lobby waiting to
+start and is the only value the browser lists; `playing` is a match under way,
+unlisted but still reachable by somebody coming back; `over` is a match that has
+finished, which matters because the lobby outlives it — everybody is still in
+there reading the result screen. See [decisions.md D106](decisions.md) and
+[D115](decisions.md).
 
 **The stream position** — how far a match's random number generator has run, as
 distinct from its seed. A match is reproducible from the seed *plus* the number of
@@ -199,9 +222,15 @@ nothing private in the payload to leak.
 
 **Slot** — a player position in a networked match. Slots are **created as players
 arrive**, not declared up front, and the roster is whoever is present when the host
-presses Start (decisions.md D48). A peer that drops before Start is forgotten; one
-that drops afterwards leaves the active roster while its cash and holdings are
-retained (D47).
+presses Start (decisions.md D48). A peer that drops before Start is forgotten,
+because there is nothing to keep; one that drops afterwards stays in the match and
+is marked away (D110).
+
+**Roster** — every slot in a match, in the order they were seated. It is
+`state.players`, and `HostSession.roster()` is the same list; there were once two
+of them, differing only by who had dropped (D110). Its order says nothing about
+roles — after a migration the host who left is still first in it, which is why
+`hosted_by` exists (D109).
 
 **Lobby** — the waiting room between the menu and the board. Shows who is here and
 who is ready; only the host gets a Start button. One screen serves both sides, since

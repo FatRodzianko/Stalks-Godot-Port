@@ -46,6 +46,11 @@ signal browse_online_requested
 ## The player picked a game from the list.
 signal join_online_requested(lobby_id: int)
 
+## The player asked to go back into the match they dropped out of. Which match
+## that is, and whether it is still there, is the screen host's business — this
+## screen only knows that a button was pressed.
+signal rejoin_requested
+
 ## Close the game. The screen host owns shutting the session down, so this
 ## only says that the player asked.
 signal quit_requested
@@ -82,6 +87,7 @@ enum Mode { SINGLE, HOST, JOIN, SETTINGS }
 @onready var _settings: SettingsPanel = %Settings
 @onready var _message: Label = %ContentWarning
 @onready var _quit_button: Button = %QuitButton
+@onready var _rejoin_button: Button = %RejoinButton
 @onready var _supporter_note: Label = %SupporterNote
 
 
@@ -99,6 +105,7 @@ func _ready() -> void:
 	_settings_tab.pressed.connect(_on_settings_tab_pressed)
 	_start_button.pressed.connect(_on_start_pressed)
 	_quit_button.pressed.connect(_on_quit_pressed)
+	_rejoin_button.pressed.connect(_on_rejoin_pressed)
 	_browser.join_requested.connect(_on_browser_join_requested)
 
 	show_mode(Mode.SINGLE)
@@ -188,6 +195,21 @@ func lobby_browser() -> LobbyBrowser:
 ## **Hidden unless told otherwise**, so the ordinary case needs no call at all.
 func show_supporter_note(owns_dlc: bool) -> void:
 	_supporter_note.visible = owns_dlc
+
+
+## Shows REJOIN GAME, for a player who dropped out of a match that is still
+## being played.
+##
+## **Hidden unless told otherwise**, like the supporter note, because most title
+## screens have nothing to go back to and a button that explains itself only by
+## failing is worse than no button. Whether there is a match is the screen
+## host's question to answer: it owns the record of the last one
+## (`LastMatch`), and this screen must come up identically with Steam closed.
+##
+## It sits opposite QUIT TO DESKTOP on the same row — the two things you can do
+## with a title screen that are not starting a game.
+func offer_rejoin(can_rejoin: bool) -> void:
+	_rejoin_button.visible = can_rejoin
 
 
 ## Gives the lobby list a Steam service to work with. Called by the screen host
@@ -301,3 +323,9 @@ func _on_browser_join_requested(lobby_id: int) -> void:
 ## lose from here.
 func _on_quit_pressed() -> void:
 	quit_requested.emit()
+
+
+## No confirmation here either: rejoining a game you were already in takes
+## nothing away from you, and there is nothing on this screen to lose.
+func _on_rejoin_pressed() -> void:
+	rejoin_requested.emit()

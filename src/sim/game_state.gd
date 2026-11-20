@@ -98,10 +98,32 @@ func active_stalks() -> Array[StalkState]:
 	return result
 
 
-func all_players_ready() -> bool:
-	if players.is_empty():
-		return false
+## The players whose peer is still connected, in roster order.
+##
+## **The list every "is everybody done?" question wants.** An away player is in
+## `players` for every purpose that touches their money — dividends, splits,
+## loans, the standings, who wins — and out of every purpose that waits for a
+## decision, because nobody is there to make one. See `PlayerState.is_away` and
+## docs/decisions.md D110.
+func players_present() -> Array[PlayerState]:
+	var here: Array[PlayerState] = []
 	for player: PlayerState in players:
+		if not player.is_away:
+			here.append(player)
+	return here
+
+
+## Whether the year may resolve: everybody who is here has readied up.
+##
+## **False when nobody is here**, and false for an empty roster. A match whose
+## players have all dropped must not sit resolving years to itself — there is
+## nobody to see them, and the match would run to its end unattended before
+## anybody could rejoin.
+func all_players_ready() -> bool:
+	var here: Array[PlayerState] = players_present()
+	if here.is_empty():
+		return false
+	for player: PlayerState in here:
 		if not player.is_ready:
 			return false
 	return true
@@ -111,9 +133,12 @@ func all_players_ready() -> bool:
 ##
 ## What the UI needs to say "waiting on Ann and Bob" rather than leaving a
 ## screen that looks broken while it waits.
+##
+## **Away players are not in this list.** The year does not wait for them, so
+## naming them would be telling a player to wait for somebody who is not coming.
 func players_not_ready() -> Array[StringName]:
 	var waiting: Array[StringName] = []
-	for player: PlayerState in players:
+	for player: PlayerState in players_present():
 		if not player.is_ready:
 			waiting.append(player.id)
 	return waiting

@@ -71,11 +71,19 @@ var _port: int = 0
 ## The host takes the first slot and the client the second, as they would in a
 ## real lobby: the host exists from the start and the client is seated when it
 ## introduces itself.
+## `host_steam_id` and `guest_steam_id` default to 0, which is what a direct
+## connection really has and what every test that is not about reclaiming a seat
+## wants: `_slot_to_reclaim` refuses 0 outright, so a harness with no Steam ids
+## cannot accidentally hand somebody else's portfolio to an arrival (D105).
+## A test about coming back sets them, and then the ENet harness exercises the
+## whole reclaim path without Steam being involved at all.
 func start(
 	settings: GameSettings,
 	library: ContentLibrary,
 	host_name: String = "Host",
 	guest_name: String = "Guest",
+	host_steam_id: int = 0,
+	guest_steam_id: int = 0,
 ) -> String:
 	# Retry on a taken port rather than failing the test. Ports are picked at
 	# random because one just closed can linger, and with a suite this size a
@@ -84,7 +92,7 @@ func start(
 	for attempt: int in PORT_ATTEMPTS:
 		_port = _take_port()
 		host_result = HostSession.host(
-			EnetTransport.new(_port), settings, library, host_name
+			EnetTransport.new(_port), settings, library, host_name, host_steam_id
 		)
 		if String(host_result["error"]).is_empty():
 			break
@@ -93,7 +101,7 @@ func start(
 	host = host_result["session"]
 
 	var client_result: Dictionary = ClientSession.join(
-		EnetTransport.new(_port), library, guest_name
+		EnetTransport.new(_port), library, guest_name, guest_steam_id
 	)
 	if not String(client_result["error"]).is_empty():
 		return String(client_result["error"])
@@ -137,15 +145,20 @@ func settle(test: GutTest, frames: int = 6) -> void:
 ## Closing the peer is what a crash or a pulled cable looks like from the host's
 ## side, which is the case worth testing — a clean "I am leaving" message does not
 ## exist in this game yet.
-## Waits on the player being gone from the *active* roster, which covers both
-## outcomes: a lobby drop forgets the player outright, while an in-match drop
-## vacates the slot and keeps the portfolio.
+## Waits on the host having *noticed*, which the two drops show differently. A
+## lobby drop forgets the player outright, because there is no position to keep
+## and nobody waiting on them. An in-match drop leaves them in the match and
+## marks them away (D110), so the thing to wait on there is the flag, not the
+## player disappearing — which is what this used to wait on, and why it had to
+## change.
 func drop_client(test: GutTest) -> bool:
 	if client != null:
 		client.close()
-	var gone: Callable = func() -> bool: return host.state().player_by_id(&"p1") == null
-	await test.wait_until(gone, JOIN_TIMEOUT_SECONDS)
-	return gone.call()
+	var noticed: Callable = func() -> bool:
+		var player: PlayerState = host.state().player_by_id(&"p1")
+		return player == null or player.is_away
+	await test.wait_until(noticed, JOIN_TIMEOUT_SECONDS)
+	return noticed.call()
 
 
 ## Takes the lobby through to a running match the way a real one goes: every
