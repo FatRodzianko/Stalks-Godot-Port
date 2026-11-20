@@ -72,6 +72,58 @@ holds the stalk and all ten of its events, and adding a stalk is a single-file c
 That matches the planned custom-stalk feature, where a submitted stalk carries its own
 events (decisions.md D29).
 
+### Content a player wrote, and content a match is played on
+
+Since 2026-11-19 the shipped `.tres` files are not the only content, and a
+match's content is no longer a property of an installation. Both changes are
+in the data layer and neither reaches `src/sim/`.
+
+**Custom stalks are JSON, never `.tres`.** A player writes one file per company
+in `user://custom_stalks/`. They are not Godot resources on purpose: loading a
+`.tres` instantiates whatever script it names, which is the hole D41 closed for
+the network, and a folder a player can drop files into deserves the same answer
+as a packet. See decisions.md D120 and `docs/custom-stalks.md`.
+
+```gdscript
+class_name StalkSchema extends RefCounted
+## Builds a StalkDefinition out of plain data, field by field, and refuses
+## anything it cannot vouch for. Pure - no nodes, no I/O.
+
+static func from_file_data(data: Dictionary, file_stem: String) -> StalkSchema
+static func from_wire(data: Dictionary) -> StalkSchema
+static func encode(stalk: StalkDefinition) -> Dictionary
+```
+
+**One rule set, two callers, two kinds of failure.** `CustomStalkStore` reads
+the player's own folder, where a bad file is listed in the picker and skipped.
+`StateSync.decode_content` reads a definition another player sent, where a bad
+one ends the connection with a reason. The checks are deliberately the same
+code: a rule that existed on only one of those paths would be the hole.
+
+**`ContentLibrary` gained two ways to exist.** `load_from()` is still the
+shipped directory. `available()` is everything this machine could play with,
+shipped and custom together — what the picker lists. `subset(ids)` is one
+match's content, and holds the ten-stalk cap, so every route to a match library
+passes the same check.
+
+```
+shipped .tres ─┐
+               ├─> ContentLibrary.available() ──subset(chosen)──> the match's library
+user:// JSON ──┘                                                        │
+                                                                        v
+                                              build_stalk_states() / build_event_pool()
+```
+
+The simulation is unchanged by all of this. `MatchAuthority` is handed a
+library as it always was; it cannot tell a custom company from a shipped one,
+and nothing in `src/sim/` has a reason to.
+
+**The seam this moved.** Content used to be per-install: both sides loaded the
+same files, so only ids crossed the wire. It is now **per-match**, chosen by
+the host and sent to every client with the welcome — see §5.3 and
+decisions.md D121. A client keeps the library it was given, and if it later
+takes the match over it serves that one rather than re-reading its own disk.
+
 ### Loading and validating
 
 ```gdscript
@@ -372,6 +424,13 @@ Three things make it work, and all three are easy to get wrong:
    each itself.
 
 ### 5.3 What a client is told
+
+> **And what it is given.** Since 2026-11-19 the welcome also carries the
+> match's **content** — every company it is played with — because a host may be
+> running custom companies no other machine has. It is applied before the
+> snapshot and the history, both of which name companies and events by id and
+> need something to resolve them against. Snapshots still carry ids only. See
+> decisions.md D121 and `docs/custom-stalks.md` §5.
 
 **Revised 2026-11-18 (D105): everything.** The host sends every client a
 complete snapshot of the match - every player's cash, share counts and loan

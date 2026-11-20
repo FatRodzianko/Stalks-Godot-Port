@@ -82,6 +82,8 @@ enum Mode { SINGLE, HOST, JOIN, SETTINGS }
 @onready var _invite_only_check: CheckBox = %InviteOnlyCheck
 @onready var _seed_field: LineEdit = %SeedField
 @onready var _start_button: Button = %StartButton
+@onready var _custom_stalks_button: Button = %CustomStalksButton
+@onready var _picker: StalkPicker = %Picker
 
 @onready var _browser: LobbyBrowser = %Browser
 @onready var _settings: SettingsPanel = %Settings
@@ -92,6 +94,13 @@ enum Mode { SINGLE, HOST, JOIN, SETTINGS }
 
 
 var _mode: Mode = Mode.SINGLE
+
+## Which stalks the next match uses, or empty for the shipped ten.
+##
+## Held here while the title screen is up and written back to `UserSettings`
+## when the picker closes, so it survives moving between tabs and restarting
+## the game. See docs/decisions.md D123.
+var _chosen_stalk_ids: Array[StringName] = []
 
 ## True once Join Game has asked for the lobby list. Asking twice would start
 ## Steam twice; never asking would leave the list empty.
@@ -104,9 +113,15 @@ func _ready() -> void:
 	_join_tab.pressed.connect(_on_join_tab_pressed)
 	_settings_tab.pressed.connect(_on_settings_tab_pressed)
 	_start_button.pressed.connect(_on_start_pressed)
+	_custom_stalks_button.pressed.connect(_on_custom_stalks_pressed)
+	_picker.dismissed.connect(_on_picker_dismissed)
 	_quit_button.pressed.connect(_on_quit_pressed)
 	_rejoin_button.pressed.connect(_on_rejoin_pressed)
 	_browser.join_requested.connect(_on_browser_join_requested)
+
+	# What was ticked last time, which is empty for anybody who has never
+	# opened Custom Stalks. See decisions.md D123.
+	_chosen_stalk_ids = UserSettings.load_from().chosen_stalk_ids
 
 	show_mode(Mode.SINGLE)
 
@@ -235,6 +250,7 @@ func chosen_settings() -> GameSettings:
 		GameSettings.MAX_STARTING_CASH,
 	)
 	settings.loans_enabled = _loans_check.button_pressed
+	settings.chosen_stalk_ids = _chosen_stalk_ids.duplicate()
 
 	# A single-player game is one player whatever the hidden control says, and
 	# a private lobby means nothing without a lobby.
@@ -312,6 +328,43 @@ func _on_start_pressed() -> void:
 		host_online_requested.emit(chosen_settings())
 		return
 	start_requested.emit(chosen_settings())
+
+
+## Opens the Custom Stalks list.
+##
+## **Everything it needs is read here, not in the picker.** The widget is handed
+## a list of stalks and a list of problems; going to disk for itself would make
+## it untestable without one. The shipped content and the player's own folder
+## are two separate reads because a broken custom file must be reported as that
+## file's problem, not as the library being broken.
+func _on_custom_stalks_pressed() -> void:
+	var available: ContentLibrary = ContentLibrary.available()
+	var store: CustomStalkStore = CustomStalkStore.load_from()
+	_picker.show_stalks(available.stalks, _chosen_stalk_ids, store.problems)
+
+
+## The picker closed. The choice is read back and remembered.
+##
+## **A choice identical to the shipped ten is stored as no choice at all**, so
+## a player who opens the screen, looks, and closes it again has changed
+## nothing — and the setting stays empty, which is what every other part of the
+## game reads as "the game as it ships".
+func _on_picker_dismissed() -> void:
+	var picked: Array[StringName] = _picker.chosen_ids()
+	_chosen_stalk_ids = []
+	if not _is_the_shipped_set(picked):
+		_chosen_stalk_ids = picked
+	var stored: UserSettings = UserSettings.load_from()
+	stored.chosen_stalk_ids = _chosen_stalk_ids
+	stored.save_to()
+
+
+## Whether a choice is exactly the stalks the game ships with.
+func _is_the_shipped_set(picked: Array[StringName]) -> bool:
+	for id: StringName in picked:
+		if StalkPickRow.is_custom(id):
+			return false
+	return picked.size() == ContentLibrary.load_from().stalks.size()
 
 
 func _on_browser_join_requested(lobby_id: int) -> void:

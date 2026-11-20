@@ -716,6 +716,13 @@ maintenance cost, paid deliberately. `test_state_sync.gd` walks the whole payloa
 asserting nothing in it is an `Object`, so a forgotten object field fails a test
 rather than being silently dropped at runtime.
 
+**Amended by D121**, which sends stalk *definitions* over the wire for the first
+time. That changes **what** is sent, not **how**: object decoding is still off,
+a definition still crosses as plain built-in types, and `StalkSchema` still
+rebuilds it field by field from a whitelist. If you are reading this rule
+because you want to send something new, D121 is the worked example of doing it
+without weakening this one.
+
 ---
 
 ### D42 — Replicate whole snapshots, not deltas
@@ -1160,7 +1167,12 @@ music ever arrives.
 ---
 
 ### D71 — Preferences are kept on disk, and the game leaves cleanly when closed
-**2026-11-15 · Accepted · amended the same day**
+**2026-11-15 · Accepted · amended the same day · amended 2026-11-19 by D123**
+
+> **One match setting is now remembered**: which stalks a match is played with.
+> D123 records why that is an exception rather than a reversal — the Custom
+> Stalks screen has a Reset button and a visible count, which is exactly what
+> the cases below lacked.
 
 `UserSettings` keeps preferences in `user://settings.cfg` — Godot's
 equivalent of Unity's PlayerPrefs, written as a named file rather than hidden
@@ -4498,3 +4510,184 @@ the live broadcast and is built-in types only, so D41 is untouched.
 
 **What it rules out.** A client's history being something it assembles for
 itself. It is now told to it, like everything else about the match.
+
+---
+
+## Phase 12 - custom stalks
+
+### D119 - Custom content is printable ASCII, not alphanumeric
+**2026-11-19 · Accepted**
+
+Text in a custom stalk - its name, description and event flavour - may hold any
+printable ASCII character, space (32) through tilde (126). Control characters,
+accented letters and emoji are refused with a message saying why.
+
+**Why.** The instruction when this was built was "alphanumeric strings". That was
+raised rather than implemented, because strictly alphanumeric rejects the game's
+own voice: PG&Enron, strYker!!! and "My Pillow, Your Pillow, We're All Pillows!"
+all contain punctuation, and three of the ten shipped companies would fail their
+own game's content rule.
+
+Printable ASCII is the widest rule the game can actually draw. Terminus is a
+fixed-width bitmap font and every column in the UI is measured in characters, so
+anything outside the range is either a glyph the font does not have - which
+renders as a box - or a control character that corrupts a fixed-width row. The
+owner chose this over a wider Latin-1 range for that reason.
+
+**The rule is tested against the shipped content**, which is the part worth
+keeping: `test_every_shipped_stalk_passes_the_rule_imposed_on_custom_ones`
+encodes all ten and runs them back through the validator. If a rule here would
+reject the game's own companies, the rule is wrong, and that test says so by
+name rather than leaving somebody to find out over the wire.
+
+**What it rules out.** Non-English company names, until the game has a font that
+can draw them. It also rules out sanitising text by stripping characters:
+refusing with a reason is better than silently changing what somebody wrote.
+
+**Lives in.** `src/data/stalk_schema.gd`, `docs/custom-stalks.md` S3.
+
+### D120 - Player-supplied content is JSON, and never a .tres
+**2026-11-19 · Accepted**
+
+Custom stalks are JSON files in `user://custom_stalks/`, one company per file,
+with its events inside it. They are not Godot resources, and nothing in the game
+loads a `.tres` a player supplied.
+
+**Why.** Loading a `.tres` instantiates whatever script the file names. That is
+the object-decoding hole D41 closed deliberately for the network, and a folder a
+player can drop files into is exactly as untrusted as a packet - more so, since
+a file can arrive by any route a file arrives by. `JSON` parsing returns nothing
+but built-in types, and `StalkSchema` builds the definition field by field from
+there, so one posture covers both.
+
+One file per company matches D29: a stalk and its events are one authorable
+unit, so adding a company is adding a file.
+
+**Ids are derived, never authored.** The filename is slugged and prefixed with
+`custom:`, so a custom company cannot collide with or shadow a shipped one
+whatever its file claims - a file saying `"id": "berry_bonds"` becomes
+`custom:berry_bonds`. Event ids are derived from the company and the event's
+position, which removes a whole class of duplicate-id mistake rather than
+validating against it.
+
+**What it rules out.** A custom stalk referencing an image, a sound, a scene or
+any other resource. It is data, not content with assets, and the format has
+nowhere to put a path. Adding one would reopen exactly what this closes.
+
+**Lives in.** `src/data/custom_stalk_store.gd`, `src/data/stalk_schema.gd`.
+
+### D121 - Definitions travel, which amends D41 rather than contradicting it
+**2026-11-19 · Accepted**
+
+The match's stalk definitions are sent to each client once, with the welcome.
+`state_sync.gd` used to say, in its own class documentation, that definitions
+are not sent - both sides loaded the same `.tres`, so only ids travelled and
+`apply_state` refused a snapshot naming a stalk it could not resolve. That
+sentence has been rewritten, and this records why the change is not a reversal.
+
+**Why it had to change.** A host may be playing companies no other machine has
+ever seen. No local lookup can invent them, so either the definitions travel or
+custom stalks are single-player only.
+
+**What D41 actually said, and still says.** D41 is about *how* things cross the
+wire: object decoding stays off, nothing but built-in types travels, and every
+field is listed by hand. All three hold. A definition crosses as a dictionary of
+strings, integers and booleans, and `StalkSchema` rebuilds it field by field
+from a whitelist. What changed is *what* is sent, not how.
+
+**The id rule survives.** Only ids travel in a snapshot, which goes out on every
+trade; the definitions go once, at the one moment there is a new receiver.
+`apply_state` still fails loudly on an id it cannot resolve - after a welcome,
+that can only mean the two sides disagree about a match they are both in.
+
+**Every stalk is sent, not only the custom ones.** The alternative needs both
+sides to agree about which shipped companies the host picked, and leaves two
+ways for a definition to arrive. Sending all of them makes the host's content
+the match's content outright.
+
+**Content is now match state, which is what makes migration work.** After
+`take_over` the new host serves the library that arrived with its own welcome,
+not its own files. The board would survive either way - it comes from the
+promoted `GameState`, whose `StalkState`s already hold their definitions - but
+the **event pool comes from the library**, so a host that re-read its own folder
+would run a match whose board shows the departed host's companies while nothing
+can ever happen to them again. That is the fault the migration test reinstates,
+and the first version of that test did not catch it, because it asserted on the
+board.
+
+**A received definition is hostile input.** It goes through the same validator a
+file does, with a different answer on failure: a bad file is listed and skipped,
+a bad payload ends the connection with a reason. The threat model is written out
+in `docs/custom-stalks.md` S5 - briefly, a dishonest host rewriting its own
+simulation is not the threat, because it owns every number in the match anyway;
+breaking the client that trusts it is.
+
+**What it rules out.** Any future "the client supplies part of the content"
+arrangement. Content comes from the host, whole, once.
+
+**Lives in.** `src/net/state_sync.gd`, `src/net/networked_session.gd`,
+`src/net/client_session.gd`, `src/ui/screens/main/main.gd`.
+
+### D122 - A match holds ten stalks, and the ten is one number
+**2026-11-19 · Accepted**
+
+`StalkSchema.MAX_STALKS_PER_MATCH` is 10. Raising it is that constant and
+nothing else.
+
+**Why ten.** It is what the original shipped and what the board was designed
+around. The owner asked for the limit to be raisable later - around fifty was
+the figure discussed - so the requirement was that it be a number to change
+rather than a shape to rework.
+
+**What that cost.** The cap is enforced in `ContentLibrary.subset()`, the one
+chokepoint every route to a match library passes through: the picker, a settings
+object built by a test, and a launch flag alike. The picker counts against the
+same constant and greys out what will not fit. The wire checks it before
+building anything. Nothing anywhere assumes ten.
+
+**The board already scrolled.** `AvailableStalks` has been a `ScrollContainer`
+since before this work; what was missing was a test saying so. At ten companies
+the rows fit a normal window without scrolling, so the scroll matters only once
+the cap is raised - which is precisely why it is tested at a height where they
+do not fit, rather than left to be discovered later.
+
+**Greying out rather than refusing a click.** A tick that silently undoes itself
+reads as a broken control. A tick that cannot be pressed, beside a count saying
+"10 of 10 chosen", does not.
+
+**What it rules out.** A per-match limit, or one that varies by player count.
+One number, one meaning.
+
+**Lives in.** `src/data/stalk_schema.gd`, `src/data/content_library.gd`,
+`src/ui/widgets/stalk_picker.gd`.
+
+### D123 - The chosen stalks are remembered, which amends D71
+**2026-11-19 · Accepted**
+
+Which companies a match uses is stored in `user://settings.cfg` and comes back
+next session. D71 refused to remember any Create Game field. This is an
+exception to that, deliberately, and the Reset button is the reason it is
+allowed.
+
+**What D71 was actually about.** Remembering the year limit meant the title
+screen stopped showing the game's real defaults, permanently, **with nothing on
+screen to say why**. The harm was invisibility, not persistence.
+
+**Why this one is different.** Re-ticking ten boxes every session is a real cost
+that re-typing one number is not. More importantly, the Custom Stalks screen has
+the thing D71's cases lacked: a count saying how many are chosen, every company
+listed with its state visible, and a **Reset** button that puts the shipped ten
+back. Nothing is hidden, and undoing it is one click that says what it does.
+
+**A choice identical to the shipped ten is stored as no choice at all.** So
+opening the screen, looking, and closing it changes nothing, and the stored
+setting stays empty - which is what every other part of the game reads as "the
+game as it ships".
+
+**What it rules out.** Remembering the rest of the Create Game form on the
+strength of this. D71 stands for everything that has no equivalent of the Reset
+button, and adding one in order to justify persistence would be arguing
+backwards.
+
+**Lives in.** `src/data/user_settings.gd`, `src/ui/widgets/stalk_picker.gd`,
+`src/ui/screens/main_menu/main_menu.gd`.

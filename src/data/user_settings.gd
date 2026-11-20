@@ -8,7 +8,16 @@ extends RefCounted
 ## is on, and whether the year's news panel appears. The bar for adding
 ## anything else is high.
 ##
-## **Match settings are not kept here, on purpose.** An earlier version
+## **One match setting is kept here, and it is the exception that explains the
+## rule.** The stalks a match is played with are remembered; everything else
+## about a match is not. D71 refused to remember the Create Game fields because
+## a remembered setting silently stops the title screen showing the game's real
+## defaults and there is nothing on screen to say why. The Custom Stalks screen
+## has that missing thing — a Reset button naming what it restores — and
+## re-ticking ten boxes every session is a real cost that changing a year limit
+## does not have. See docs/decisions.md D123.
+##
+## **Other match settings are not kept here, on purpose.** An earlier version
 ## remembered the Create Game fields — years, starting cash, loans, the game's
 ## name — so they came back next session. That was a convenience nobody asked
 ## for and it had a real cost: change the year limit once and the title screen
@@ -55,6 +64,11 @@ const DEFAULT_CRT_EFFECT: bool = false
 ## Section for things about how the game is played rather than how it looks.
 const SECTION_GAME: String = "game"
 
+## Where the chosen stalks are stored. A section of its own because it is
+## content rather than a preference, and because a player editing this file by
+## hand should be able to find it.
+const SECTION_CONTENT: String = "content"
+
 ## **On until a player turns it off.** The year's news panel is the point of
 ## having one - a player who has never seen it should see it. Anyone who tires
 ## of it can tick "Don't show again" on the panel itself, and turn it back on
@@ -75,6 +89,13 @@ var crt_effect: bool = DEFAULT_CRT_EFFECT
 
 ## Whether the year's news comes up in a panel when the year turns.
 var show_news: bool = DEFAULT_SHOW_NEWS
+
+## Which stalks the next match is played with, or empty for the shipped ones.
+##
+## **Empty is the default and means "the game as it ships"**, so a player who
+## has never opened Custom Stalks has nothing stored and gets the shipped ten.
+## See `GameSettings.chosen_stalk_ids`, which this feeds.
+var chosen_stalk_ids: Array[StringName] = []
 
 
 ## Reads the file, or returns the defaults above if there is not one.
@@ -103,6 +124,13 @@ static func load_from(path: String = PATH) -> UserSettings:
 	# Stored as two integers rather than a Vector2i so the file stays something
 	# a person can read and correct by hand after a bad resolution has locked
 	# them out of the settings screen.
+	# Stored as plain strings: a StringName is not something ConfigFile writes
+	# back as itself, and this file is meant to stay readable by hand.
+	var stored_stalks: Variant = file.get_value(SECTION_CONTENT, "chosen_stalks", [])
+	if stored_stalks is Array or stored_stalks is PackedStringArray:
+		for id: Variant in stored_stalks:
+			settings.chosen_stalk_ids.append(StringName(id))
+
 	var width: int = int(file.get_value(SECTION_DISPLAY, "resolution_width", 0))
 	var height: int = int(file.get_value(SECTION_DISPLAY, "resolution_height", 0))
 	settings.resolution = Vector2i(maxi(width, 0), maxi(height, 0))
@@ -118,6 +146,10 @@ func save_to(path: String = PATH) -> void:
 	file.set_value(SECTION_DISPLAY, "fullscreen", fullscreen)
 	file.set_value(SECTION_DISPLAY, "crt_effect", crt_effect)
 	file.set_value(SECTION_GAME, "show_news", show_news)
+	var stalk_names: PackedStringArray = []
+	for id: StringName in chosen_stalk_ids:
+		stalk_names.append(String(id))
+	file.set_value(SECTION_CONTENT, "chosen_stalks", stalk_names)
 	file.set_value(SECTION_DISPLAY, "resolution_width", resolution.x)
 	file.set_value(SECTION_DISPLAY, "resolution_height", resolution.y)
 	file.save(path)

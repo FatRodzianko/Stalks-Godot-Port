@@ -247,6 +247,16 @@ func state() -> GameState:
 	return _authority.state if _authority != null else null
 
 
+## The content this match is played with, which is what every joining client
+## is sent.
+##
+## **Not necessarily this machine's content.** A host that took the match over
+## serves the library it received as a client, because the match's companies
+## are part of the match. See docs/decisions.md D121.
+func match_library() -> ContentLibrary:
+	return _library
+
+
 ## One line telling the host how others can join. The lobby shows it verbatim
 ## and does not care whether it names a port or a Steam invite.
 func joining_hint() -> String:
@@ -592,7 +602,11 @@ func _on_introduced(peer_id: int, player_name: String, steam_id: int = 0) -> voi
 		var returning: StringName = _slot_to_reclaim(steam_id)
 		_reclaim_slot(peer_id, returning)
 		_rpc_welcome.rpc_id(
-			peer_id, String(returning), _snapshot(), StateSync.encode_history(state())
+			peer_id,
+			String(returning),
+			_snapshot(),
+			StateSync.encode_history(state()),
+			StateSync.encode_content(_library),
 		)
 		# **And tell them the match is under way**, which is the one thing the
 		# welcome does not say. A client that is only welcomed has no way to
@@ -619,7 +633,11 @@ func _on_introduced(peer_id: int, player_name: String, steam_id: int = 0) -> voi
 		return
 
 	_rpc_welcome.rpc_id(
-		peer_id, String(player_id), _snapshot(), StateSync.encode_history(state())
+		peer_id,
+		String(player_id),
+		_snapshot(),
+		StateSync.encode_history(state()),
+		StateSync.encode_content(_library),
 	)
 	player_joined.emit(player_id)
 	# Everybody else needs the new arrival in their player list.

@@ -100,6 +100,28 @@ port must support true offline single-player.
 
 ---
 
+**Custom stalk**
+A company a player wrote themselves, as a JSON file in `user://custom_stalks/`,
+rather than one of the ten the game ships. It becomes a real stalk in every
+sense - it moves, splits, pays dividends and can go bankrupt like any other.
+See [custom-stalks.md](custom-stalks.md).
+
+**The picker** (Custom Stalks screen)
+Reached from Create Game. Lists every company this machine has, shipped and
+custom together, with a tick against each; what is ticked is what the match is
+played with. Capped at ten.
+
+**Match content** (as opposed to installed content)
+The set of companies one match is played on. Before custom stalks these were
+the same thing - every machine loaded the same files - so only ids ever crossed
+the wire. Now the host chooses the content and sends it to everybody, which is
+why a client can see a company it has never had on disk. See decisions.md D121.
+
+**Shipped** / **custom**
+The two words the picker uses in its right-hand column, for a company that came
+with the game and one the player wrote. The id tells them apart too (`custom:`
+prefixes every custom one) but a player never types or sees an id.
+
 ## Code terms
 
 **The simulation** / **the sim** — everything in `src/sim/`. The game's rules as plain

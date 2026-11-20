@@ -50,6 +50,21 @@ const MAX_STARTING_CASH: int = 69420
 
 @export var loans_enabled: bool = false
 
+## Which stalks this match is played with, by id.
+##
+## **Empty means the shipped ten**, which is what every match built before the
+## Custom Stalks screen existed asks for and what a host who never opens that
+## screen gets. So nothing that predates this setting has to know about it.
+##
+## A match is capped at `StalkSchema.MAX_STALKS_PER_MATCH`. The cap is enforced
+## where the host assembles the content rather than here, because this is a
+## record of a choice and the content layer is what has to live within it.
+##
+## Travels with the settings in the opening snapshot, like every other match
+## setting — but the definitions themselves travel separately, because a client
+## may have never seen the host's custom companies. See docs/decisions.md D121.
+@export var chosen_stalk_ids: Array[StringName] = []
+
 ## Seed for the match RNG. Recorded as part of match state so any game can be
 ## replayed exactly — the basis of every determinism test. 0 means "choose one at
 ## match start and write it back here".

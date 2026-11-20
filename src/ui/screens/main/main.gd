@@ -407,7 +407,7 @@ func start_match(settings: GameSettings) -> void:
 	_discard_session()
 	_last_settings = settings
 
-	var library: ContentLibrary = _loaded_library()
+	var library: ContentLibrary = _match_library(settings)
 	if library == null:
 		return
 
@@ -434,7 +434,7 @@ func host_match(settings: GameSettings, player_name: String, port: int) -> Strin
 	_name_the_match(settings, player_name)
 	_last_settings = settings
 
-	var library: ContentLibrary = _loaded_library()
+	var library: ContentLibrary = _match_library(settings)
 	if library == null:
 		return BROKEN_CONTENT
 
@@ -520,7 +520,7 @@ func host_steam_match(lobby_id: int, settings: GameSettings, player_name: String
 	_name_the_match(settings, player_name)
 	_last_settings = settings
 
-	var library: ContentLibrary = _loaded_library()
+	var library: ContentLibrary = _match_library(settings)
 	if library == null:
 		return BROKEN_CONTENT
 
@@ -698,6 +698,9 @@ func _begin_migration(departed_steam_id: int) -> void:
 	_migrating_state = client.state()
 	_migrating_rng_state = client.rng_state()
 	_migrating_player_id = client.local_player_id()
+	# The content the match is being played with, which since custom stalks is
+	# not necessarily anything this machine has on disk. See D121.
+	_migrating_library = client.match_library()
 	_migration = LobbyMigration.new(local_steam_id(), departed_steam_id)
 	_reconnect_attempted = false
 	print(MIGRATION_LOG, "host %d left lobby %d. Asking Steam who owns it now." % [
@@ -773,7 +776,15 @@ func _start_hosting_the_moved_lobby() -> void:
 	var lobby_id: int = _hosting_lobby
 	_hosting_lobby = 0
 
-	var library: ContentLibrary = _loaded_library()
+	# **The match's own content, not this machine's.** The departed host chose
+	# which stalks the match is played with, custom ones included, and it
+	# arrived here with the welcome. Re-reading this machine's files would
+	# hand the remaining players a different market. Falls back to the
+	# installed content only when there is nothing carried - a lobby joined by
+	# a build that sent none. See docs/decisions.md D121.
+	var library: ContentLibrary = _migrating_library
+	if library == null:
+		library = _loaded_library()
 	if library == null:
 		_give_up_on_migration(BROKEN_CONTENT)
 		return
@@ -894,6 +905,7 @@ func _end_migration() -> void:
 	_migrating_state = null
 	_migrating_rng_state = 0
 	_migrating_player_id = &""
+	_migrating_library = null
 	_migrating_in_match = false
 
 
@@ -952,6 +964,16 @@ var _migration: LobbyMigration = null
 var _migrating_state: GameState = null
 var _migrating_rng_state: int = 0
 var _migrating_player_id: StringName = &""
+
+## The stalks this match is played with, carried across the handover.
+##
+## **Held rather than re-read**, because the new host must serve the content it
+## received and not whatever its own `user://custom_stalks` folder happens to
+## hold. A host that re-read its own files would hand the remaining players a
+## different market - one missing the companies the departed host had added,
+## or one quietly substituting this machine's version of them. See
+## docs/decisions.md D121.
+var _migrating_library: ContentLibrary = null
 
 ## Whether the match had actually started. A lobby has no position to preserve,
 ## so it migrates by re-hosting; a match in progress is taken over.
@@ -1593,9 +1615,33 @@ const BROKEN_CONTENT: String = (
 )
 
 
-## The validated content, or null with the problems already logged.
+## The validated shipped content, or null with the problems already logged.
 func _loaded_library() -> ContentLibrary:
-	var library: ContentLibrary = ContentLibrary.load_from()
+	return _checked(ContentLibrary.load_from())
+
+
+## The content one match is played with.
+##
+## **Empty means the shipped ten.** A host who never opens Custom Stalks gets
+## exactly the game that existed before the screen did, and no custom file on
+## this machine can wander into a match nobody chose it for. A choice, once
+## made, is honoured exactly — shipped stalks and custom ones are the same kind
+## of thing by then. See docs/decisions.md D122.
+func _match_library(settings: GameSettings) -> ContentLibrary:
+	var chosen: Array[StringName] = []
+	if settings != null:
+		chosen = settings.chosen_stalk_ids
+
+	# **`subset` even for the default**, which looks redundant and is not: it
+	# is where the ten-stalk cap lives, so going around it would mean an
+	# eleventh shipped `.tres` silently making eleven-stalk matches. Adding one
+	# should fail loudly against `MAX_STALKS_PER_MATCH` instead. See D122.
+	if chosen.is_empty():
+		return _checked(ContentLibrary.load_from().subset(chosen))
+	return _checked(ContentLibrary.available().subset(chosen))
+
+
+func _checked(library: ContentLibrary) -> ContentLibrary:
 	if library.is_valid():
 		return library
 	for error: String in library.errors:
