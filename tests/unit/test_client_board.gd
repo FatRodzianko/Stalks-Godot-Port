@@ -582,3 +582,63 @@ func test_the_host_is_told_when_a_player_leaves_mid_match() -> void:
 
 	assert_string_contains(board.current_message().to_lower(), who.to_lower())
 	assert_string_contains(board.current_message().to_lower(), "left")
+
+
+# ------------------------------------------- the years before this client came
+#
+# A client builds its year-by-year record from the broadcasts it is present
+# for, so a player who arrives mid-match - rejoining, or reconnecting after a
+# migration - used to end the game with a record that started wherever they
+# happened to turn up. The welcome carries the whole thing now. D118.
+
+## A client session off the tree, welcomed by hand the way the host's RPC does.
+func _welcomed_client(history: Array) -> ClientSession:
+	var session: ClientSession = ClientSession.new()
+	session.name = NetworkedSession.NODE_NAME
+	session._library = _library
+	session._state = GameState.new(null)
+	add_child_autofree(session)
+
+	var played: GameState = StalksFixture.make_state(10, 2)
+	session._on_welcomed(&"p1", StateSync.encode_state(played), history)
+	return session
+
+
+## The years a host has played, in a match this client has only just entered.
+func _two_years_of_history() -> Array:
+	var played: GameState = StalksFixture.make_state(10, 2)
+	var resolver: YearResolver = StalksFixture.real_resolver(_library.stalks)
+	var rng: RandomNumberGenerator = StalksFixture.rng(11)
+	resolver.advance_year(played, rng)
+	resolver.advance_year(played, rng)
+	return StateSync.encode_history(played)
+
+
+func test_a_client_welcomed_mid_match_gets_the_years_it_missed() -> void:
+	var session: ClientSession = _welcomed_client(_two_years_of_history())
+
+	assert_eq(
+		session.state().history.size(),
+		2,
+		"the year-by-year page should show the whole match, not just the rest of it",
+	)
+
+
+## The page reads `history` in order, so the order has to survive the wire.
+func test_the_years_it_missed_arrive_in_order() -> void:
+	var session: ClientSession = _welcomed_client(_two_years_of_history())
+
+	var years: Array[int] = []
+	for result: YearResult in session.state().history:
+		years.append(result.year)
+
+	assert_eq(years, [1, 2] as Array[int])
+
+
+## A first join has nothing behind it, and must not be broken by the new
+## argument.
+func test_a_client_joining_a_fresh_lobby_has_an_empty_record() -> void:
+	var session: ClientSession = _welcomed_client([] as Array)
+
+	assert_eq(session.state().history.size(), 0)
+	assert_true(session.has_joined(), "and is welcomed all the same")

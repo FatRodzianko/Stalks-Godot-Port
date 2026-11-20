@@ -270,6 +270,40 @@ static func decode_loan(data: Variant) -> LoanState:
 # Broadcast alongside the snapshot after a year advance. The snapshot says where
 # things stand; this says what happened, which is what the UI animates from.
 
+# ------------------------------------------------------------- the whole record
+#
+# The year-by-year history, sent once when a player is welcomed.
+#
+# **Not part of a snapshot, deliberately.** A snapshot goes out on every trade;
+# the history only changes when a year resolves and only matters to somebody
+# who was not there for it. Putting it in `encode_state` would send the whole
+# match's past every time anybody bought a share.
+#
+# A client otherwise builds its history from the year broadcasts it was present
+# for, which is fine for a player who was there from the start and wrong for
+# everybody else: a rejoining player, and - less obviously - every client that
+# reconnects after a host migration. Both are welcomed, so both are fixed by
+# the same thing. See docs/decisions.md D118.
+
+## Every year so far, in order.
+static func encode_history(state: GameState) -> Array:
+	var years: Array = []
+	for result: YearResult in state.history:
+		years.append(encode_year_result(result))
+	return years
+
+
+## Replaces a replica's history with the host's, wholesale.
+##
+## Wholesale rather than appended, because the receiver may hold years it was
+## present for and the host's record is the one that is right.
+static func apply_history(state: GameState, data: Array, library: ContentLibrary) -> void:
+	state.history.clear()
+	for entry: Variant in data:
+		if entry is Dictionary:
+			state.history.append(decode_year_result(entry, library))
+
+
 static func encode_year_result(result: YearResult) -> Dictionary:
 	var stalk_changes: Array[Dictionary] = []
 	for change: StalkYearChange in result.stalk_changes:

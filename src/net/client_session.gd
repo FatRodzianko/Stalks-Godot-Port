@@ -216,7 +216,9 @@ func give_yeehaw(giver_id: StringName) -> void:
 
 # ------------------------------------------------------------- what the host says
 
-func _on_welcomed(player_id: StringName, state_data: Dictionary) -> void:
+func _on_welcomed(
+	player_id: StringName, state_data: Dictionary, history_data: Array = []
+) -> void:
 	_local_player_id = player_id
 	var problem: String = StateSync.apply_state(_state, state_data, _library)
 	if not problem.is_empty():
@@ -224,6 +226,9 @@ func _on_welcomed(player_id: StringName, state_data: Dictionary) -> void:
 		close()
 		return
 	_rng_state = StateSync.rng_state_of(state_data)
+	# The years this client was not here for. Without it the year-by-year
+	# record starts wherever the player happened to arrive. See D118.
+	StateSync.apply_history(_state, history_data, _library)
 	_has_joined = true
 	_waiting_for = -1.0
 	joined.emit(player_id)

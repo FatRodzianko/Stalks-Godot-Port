@@ -440,3 +440,67 @@ func test_the_lobbys_privacy_crosses_the_wire() -> void:
 	assert_true(replica.settings.invite_only)
 	assert_eq(replica.settings.game_name, "Friday night")
 
+
+
+# ------------------------------------------------------------- the whole record
+#
+# The year-by-year history, which a snapshot does not carry and a welcome does.
+# See decisions.md D118.
+
+func _match_with_two_years_behind_it() -> GameState:
+	var state: GameState = _state_with_two_players()
+	var resolver: YearResolver = StalksFixture.real_resolver(_library.stalks)
+	var rng: RandomNumberGenerator = StalksFixture.rng(7)
+	resolver.advance_year(state, rng)
+	resolver.advance_year(state, rng)
+	return state
+
+
+func test_a_played_year_lands_in_the_history() -> void:
+	# The test below means nothing unless resolving a year records one.
+	assert_eq(_match_with_two_years_behind_it().history.size(), 2)
+
+
+func test_the_whole_history_crosses_the_wire() -> void:
+	var state: GameState = _match_with_two_years_behind_it()
+
+	var replica: GameState = GameState.new(null)
+	StateSync.apply_history(replica, StateSync.encode_history(state), _library)
+
+	assert_eq(replica.history.size(), 2, "both years should arrive")
+	for index: int in state.history.size():
+		assert_eq(replica.history[index].year, state.history[index].year)
+		assert_eq(replica.history[index].mood, state.history[index].mood)
+		assert_eq(
+			replica.history[index].net_worths,
+			state.history[index].net_worths,
+			"the figures the year-by-year page prints",
+		)
+
+
+## **Wholesale, not appended.** A reconnecting client may already hold the years
+## it was present for; the host's record is the one that is right, and adding
+## to it would print some years twice.
+func test_applying_a_history_replaces_whatever_was_there() -> void:
+	var state: GameState = _match_with_two_years_behind_it()
+	var replica: GameState = GameState.new(null)
+	StateSync.apply_history(replica, StateSync.encode_history(state), _library)
+
+	StateSync.apply_history(replica, StateSync.encode_history(state), _library)
+
+	assert_eq(replica.history.size(), 2, "not four")
+
+
+func test_a_history_that_is_not_a_list_of_years_is_skipped() -> void:
+	var replica: GameState = GameState.new(null)
+
+	StateSync.apply_history(replica, [1, "two", null] as Array, _library)
+
+	assert_eq(replica.history.size(), 0)
+
+
+## A snapshot still carries no history: it goes out on every trade.
+func test_a_snapshot_does_not_carry_the_history() -> void:
+	var state: GameState = _match_with_two_years_behind_it()
+
+	assert_false(StateSync.encode_state(state).has("history"))

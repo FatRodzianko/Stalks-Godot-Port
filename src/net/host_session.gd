@@ -591,7 +591,9 @@ func _on_introduced(peer_id: int, player_name: String, steam_id: int = 0) -> voi
 			return
 		var returning: StringName = _slot_to_reclaim(steam_id)
 		_reclaim_slot(peer_id, returning)
-		_rpc_welcome.rpc_id(peer_id, String(returning), _snapshot())
+		_rpc_welcome.rpc_id(
+			peer_id, String(returning), _snapshot(), StateSync.encode_history(state())
+		)
 		# **And tell them the match is under way**, which is the one thing the
 		# welcome does not say. A client that is only welcomed has no way to
 		# know whether it has arrived in a lobby or in a game: the snapshot
@@ -616,7 +618,9 @@ func _on_introduced(peer_id: int, player_name: String, steam_id: int = 0) -> voi
 		_turn_away(peer_id, "That game is full.")
 		return
 
-	_rpc_welcome.rpc_id(peer_id, String(player_id), _snapshot())
+	_rpc_welcome.rpc_id(
+		peer_id, String(player_id), _snapshot(), StateSync.encode_history(state())
+	)
 	player_joined.emit(player_id)
 	# Everybody else needs the new arrival in their player list.
 	_broadcast_state(player_id)

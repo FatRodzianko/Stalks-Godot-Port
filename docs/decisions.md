@@ -4459,3 +4459,42 @@ A green run of that file is part of the assertion.
 **Where it lives.** `Main._ask_about_quitting`, `_quit_prompt`,
 `quit_prompt()`, and `PauseMenu._on_quit_pressed`. Seven tests in
 `test_pause_menu.gd`.
+
+
+### D118 - The year-by-year record travels with the welcome
+
+Reported from play, 2026-11-19: a player who rejoined a match and played it to
+the end saw a **year-by-year page that began at their rejoin**. The screenshot
+showed one row, Y11, on a match that had run eleven years.
+
+**Why.** `GameState.history` is filled in two different places. The host's
+grows inside `YearResolver.advance_year`, which appends the `YearResult` it has
+just produced. A client's grows in `ClientSession._on_year_pushed`, one entry
+per year broadcast it is **present for**. A snapshot carries the year number
+and the prices but has never carried the history, so a client that arrives
+mid-match starts with none and accumulates only from its arrival.
+
+**It was worse than reported.** The same thing happens on every host migration:
+each surviving client reconnects to the new host, is welcomed into a fresh
+`GameState`, and loses the record of the match it has been playing all along.
+The new host keeps its own, because `take_over` promotes the copy it already
+held. So the only player with a full record after a migration was whoever
+happened to take over.
+
+**The fix is the welcome, not the snapshot.** `_rpc_welcome` gained a third
+argument carrying every year so far. It is deliberately not part of
+`encode_state`: a snapshot goes out on every trade, and the history changes
+only when a year resolves and matters only to somebody who was not there. One
+welcome of a long match costs a few tens of kilobytes on a reliable channel,
+once; the alternative would have sent the whole past every time anybody bought
+a share.
+
+**Applied wholesale rather than appended.** A reconnecting client may already
+hold the years it was present for. The host's record is the authoritative one
+and merging the two would print some years twice.
+
+Nothing new crosses the wire in kind: `encode_year_result` already existed for
+the live broadcast and is built-in types only, so D41 is untouched.
+
+**What it rules out.** A client's history being something it assembles for
+itself. It is now told to it, like everything else about the match.

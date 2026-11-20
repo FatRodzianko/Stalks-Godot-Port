@@ -108,7 +108,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-862 tests, about 50 seconds.
+870 tests, about 70 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 

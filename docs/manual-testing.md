@@ -1180,11 +1180,23 @@ cause - a match in progress is deliberately unlisted but still joinable (D106).
   handover so far has taken the BECOME_HOST branch. The JOIN_NEW_HOST branch -
   Steam names a third player and this one reconnects to them - exists only in
   `test_main_migration.gd`. Steps 37-40 need the third machine.
-- **Reclaiming a seat has never run in play.** It is what REJOIN GAME is built
-  on, and B6 is the first run of it. Until that run, the one thing nothing can
-  establish is whether Steam admits a client into a lobby that is joinable but
-  unlisted - the whole feature rests on that and the code can only show that
-  nothing in *this* project closes the door (D111).
+- **A rejoining player's year-by-year page was empty before their rejoin**,
+  found in play on 2026-11-19, fixed and **confirmed in play the same day**
+  (D118). The whole record now travels with the welcome. The run covered all
+  three ways of arriving mid-match: a client that left and rejoined, a client
+  reconnecting after a host migration, and a match where the host migrated
+  back and forth. Host and client agreed on the year-by-year page in every
+  case.
+
+  Note what that run did **not** establish: with two accounts the survivor is
+  always the player Steam promotes, so a handover "back and forth" is still
+  BECOME_HOST each time. The JOIN_NEW_HOST branch remains untried in play.
+- **Reclaiming a seat works, confirmed in play on 2026-11-19** by running B6
+  end to end. That run also answered the one question the code could not:
+  **Steam does admit a client into a lobby that is joinable but unlisted.**
+  The whole feature rested on it, and reading the code could only show that
+  nothing in *this* project closes the door (D111). It is now observed rather
+  than inferred.
 - **A kick takes a few seconds to land over Steam**, where it is immediate over
   a direct connection. Steam's lobby callbacks are not instant and the game
   waits for them rather than guessing; it is slow, not broken. Observed in the

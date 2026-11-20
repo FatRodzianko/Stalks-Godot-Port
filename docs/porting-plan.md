@@ -776,7 +776,7 @@ in-game form is the title screen remembering the last lobby and offering to
 return to it - **not** an invite from the host, which is the thing that was
 explicitly not wanted.
 
-### Host migration — **done 2026-11-18, untested in play**
+### Host migration — **done and confirmed in play 2026-11-18**
 
 Not in the original either, and asked for on 2026-11-18. When the host leaves a
 Steam game, the lobby or the match carries on with somebody else hosting.
@@ -786,12 +786,22 @@ for continuing a match from a client's own copy, reclaiming a seat by Steam ID
 — which is also the rejoin D47 deferred — and the `Main` plumbing that polls
 Steam and holds the match while it waits.
 
-**Not verified in play.** Every piece that talks to Steam needs two accounts on
-two machines. The decision core and the takeover are unit-tested
-(`test_lobby_migration.gd`, `test_host_migration.gd`); see manual-testing.md A9
-for the first run, and D105 for the two things deliberately left out — a
-cross-check of the new host's first snapshot, and anything on screen telling a
-waiting player what is happening.
+**Verified in play on 2026-11-18**, with two accounts on two machines, after
+three failed attempts (D106, D107, D108). Three handovers in both directions,
+one of a lobby and two of a match in progress; the logs are the evidence and
+are the reason migration logs what it does (D108a). Each surviving player took
+over and carried on, which is the thing that distinguishes a migration from a
+game quietly continuing single-handed and is not distinguishable on screen.
+
+**One branch has still never run: reconnecting to somebody else.** With two
+accounts the survivor is always the one Steam promotes, so every real handover
+took BECOME_HOST. The JOIN_NEW_HOST branch — Steam names a third player and
+this one reconnects to them — exists only in `test_main_migration.gd` and needs
+a third machine (manual-testing.md A9, steps 37-40).
+
+Two things were deliberately left out and are recorded in D105: a cross-check
+of the new host's first snapshot against what each client already held, and
+anything on screen telling a waiting player what is happening.
 
 ### The original note, kept for its reasoning
 
@@ -825,15 +835,23 @@ a second source of truth. The groundwork is already in place: D47 keeps a droppe
 player's portfolio alive, so a bot has a position to take over rather than needing
 one invented.
 
-### A disconnected player rejoins and resumes
+### A disconnected player rejoins and resumes — **done 2026-11-19**
 
-A player who drops can reconnect and pick their own position back up — including
-taking over from a bot, if one was playing it.
+A player who drops can reconnect and pick their own position back up.
 
-**Deferred until after Steam, by the owner's call on 2026-11-14.** None of it is
-implemented, and an earlier version of this plan wrongly said part of it worked:
-a latecomer is turned away once a match starts, so a vacated slot cannot be
-claimed at all.
+**Built and confirmed in play on 2026-11-19** — see "Rejoining a match you were
+already in" above, and D110-D117. Identity is the Steam ID, which is what made
+it possible and what the note below correctly said was missing.
+
+The one part still outstanding is **taking over from a bot**, because there are
+no bots; that is the entry below this one.
+
+### The original note, kept for its reasoning
+
+**Deferred until after Steam, by the owner's call on 2026-11-14.** At the time
+none of it was implemented, and an earlier version of this plan wrongly said
+part of it worked: a latecomer is turned away once a match starts, so a vacated
+slot could not be claimed at all.
 
 What is missing is **identity**. The host cannot tell a reconnecting player from a
 stranger, and handing a vacated slot to whoever turns up next would let any

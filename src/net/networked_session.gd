@@ -97,9 +97,12 @@ func _rpc_give_yeehaw() -> void:
 
 # ------------------------------------------------------- host → client (results)
 
+## `history_data` is every year resolved before this player arrived. Empty for
+## somebody who was there from the start, and the whole match for a player
+## rejoining or reconnecting after a migration. See docs/decisions.md D118.
 @rpc("authority", "call_remote", "reliable")
-func _rpc_welcome(player_id: String, state_data: Dictionary) -> void:
-	_on_welcomed(StringName(player_id), state_data)
+func _rpc_welcome(player_id: String, state_data: Dictionary, history_data: Array) -> void:
+	_on_welcomed(StringName(player_id), state_data, history_data)
 
 
 ## The host closed the lobby. A client's screen host swaps the lobby for the
@@ -186,7 +189,9 @@ func _on_introduced(_peer: int, _player_name: String, _steam_id: int = 0) -> voi
 	pass
 
 
-func _on_welcomed(_player_id: StringName, _state_data: Dictionary) -> void:
+func _on_welcomed(
+	_player_id: StringName, _state_data: Dictionary, _history_data: Array = []
+) -> void:
 	pass
 
 
