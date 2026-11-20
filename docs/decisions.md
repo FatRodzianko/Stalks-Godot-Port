@@ -4563,3 +4563,39 @@ byte-identical to the commit before the feature.
 **What it rules out.** Nothing permanently. If this is picked up again, start
 from the rule it has to break - definitions are not sent - rather than from
 the file format, which was the easy half.
+
+
+### D120 - A broadcast does not reach the host, so the host has to be told separately
+
+Reported from play, 2026-11-20. A player drops out mid-match and their rankings
+dot goes grey, which is right. They rejoin, and **on the host's screen they stay
+grey** - with nothing to say they are back - until something unrelated redraws
+the board, in practice another player pressing Ready.
+
+**The state was never wrong; the view was.** `_reclaim_slot` clears `is_away`
+and `_broadcast_state` sends the corrected snapshot to every peer. But
+`_broadcast_state` skips `HOST_PEER_ID` - the host is not a peer it sends to,
+because the host already holds the authoritative state. So on the host's own
+machine nothing happened that the board could react to.
+
+The host *was* told, by `player_joined`, which the reclaim path emits. **Only
+the lobby screen was listening.** The playing screen connected `player_left`
+and not its opposite, so it heard about people going and not about people
+coming back. Adding the other half is the whole fix.
+
+The board now says "so-and-so rejoined the game." on the same transient line
+that already says "so-and-so left the game.", and refreshes.
+
+**A limitation, stated rather than hidden.** Both messages are host-only,
+because both ride a `HostSession` signal and a client's `_host` is null. A
+non-host client sees the dot correct itself through the ordinary state
+broadcast but gets no sentence. That asymmetry is not new - "left the game" has
+always behaved this way - and it is not fixed here, because a client cannot
+currently tell a rejoin from any other state change: `player_changed` fires for
+a share purchase too. Telling clients would mean a signal that says what
+happened, which is a bigger change than the fault warranted.
+
+**What it rules out.** Assuming that broadcasting state informs everybody. It
+informs everybody *else*. Anything the host's own screen must notice has to
+reach it by a signal, and the two halves of a pair - joined and left, opened
+and closed - should be wired together or neither.

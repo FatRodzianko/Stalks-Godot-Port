@@ -180,6 +180,12 @@ func _attach(session: GameSession) -> void:
 		_client.connection_lost.connect(_on_connection_lost)
 	if _host != null and not _host.player_left.is_connected(_on_player_left):
 		_host.player_left.connect(_on_player_left)
+	# **And the other direction.** A player coming back is as much a change to
+	# the board as one leaving, and the host hears about it only through this
+	# signal: `_broadcast_state` skips the host's own peer, so nothing else
+	# redraws its rankings. See docs/decisions.md D120.
+	if _host != null and not _host.player_joined.is_connected(_on_player_joined):
+		_host.player_joined.connect(_on_player_joined)
 
 	_build_stalk_rows()
 	_build_loan_panel()
@@ -215,6 +221,8 @@ func _detach() -> void:
 		_client.connection_lost.disconnect(_on_connection_lost)
 	if _host != null and _host.player_left.is_connected(_on_player_left):
 		_host.player_left.disconnect(_on_player_left)
+	if _host != null and _host.player_joined.is_connected(_on_player_joined):
+		_host.player_joined.disconnect(_on_player_joined)
 
 
 func _exit_tree() -> void:
@@ -995,11 +1003,30 @@ func _on_connection_lost(reason: String) -> void:
 func _on_player_left(player_id: StringName) -> void:
 	if _host == null:
 		return
-	var who: String = _host.display_name_of(player_id)
-	if who.is_empty():
-		who = "A player"
-	_show_info("%s left the game." % who)
+	_show_info("%s left the game." % _name_for(player_id))
 	refresh()
+
+
+## Somebody who dropped out has come back and taken their seat again.
+##
+## **The board had no way to notice.** `_reclaim_slot` clears the away flag on
+## the host's own state and `_broadcast_state` tells every client, but it skips
+## the host's own peer - so the host's rankings kept the grey dot of an absent
+## player until something unrelated forced a redraw, usually another player
+## readying up. Reported from play: a rejoined player looked, to the host, as
+## though they were still gone. See docs/decisions.md D120.
+func _on_player_joined(player_id: StringName) -> void:
+	if _host == null:
+		return
+	_show_info("%s rejoined the game." % _name_for(player_id))
+	refresh()
+
+
+## What to call a player in one of those messages. A player who has just left
+## is off the active list, so this looks where they still exist.
+func _name_for(player_id: StringName) -> String:
+	var who: String = _host.display_name_of(player_id)
+	return who if not who.is_empty() else "A player"
 
 
 func _on_game_over(winners: Array[StringName]) -> void:

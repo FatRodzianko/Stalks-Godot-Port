@@ -642,3 +642,79 @@ func test_a_client_joining_a_fresh_lobby_has_an_empty_record() -> void:
 
 	assert_eq(session.state().history.size(), 0)
 	assert_true(session.has_joined(), "and is welcomed all the same")
+
+
+# --------------------------------------------- the host noticing a player return
+#
+# `_reclaim_slot` clears the away flag on the host's own state and
+# `_broadcast_state` tells every client - but it skips the host's own peer, so
+# nothing redrew the host's rankings. A rejoined player kept a grey dot on the
+# host's screen until something unrelated forced a refresh, usually another
+# player readying up. Reported from play. D120.
+
+func _host_board() -> GameplayScreen:
+	var board: GameplayScreen = GameplayScene.instantiate()
+	board.setup(_harness.host)
+	add_child_autofree(board)
+	await wait_process_frames(2)
+	return board
+
+
+## Marks the client's player away on the host, as a dropped peer does.
+func _away_on_the_host() -> PlayerState:
+	var player: PlayerState = _harness.host.state().player_by_id(&"p1")
+	player.is_away = true
+	return player
+
+
+func test_the_host_board_redraws_when_a_player_comes_back() -> void:
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _host_board()
+	var player: PlayerState = _away_on_the_host()
+	board.refresh()
+	await wait_process_frames(1)
+
+	# What the reclaim path emits once the returning peer is seated again.
+	player.is_away = false
+	_harness.host.player_joined.emit(&"p1")
+	await wait_process_frames(1)
+
+	assert_false(
+		_rankings_name_tags(board).contains("away"),
+		"the host's rankings should stop calling them away: %s" % _rankings_name_tags(board),
+	)
+
+
+## Every name in the rankings, tags included, as one string.
+func _rankings_name_tags(board: GameplayScreen) -> String:
+	var names: PackedStringArray = []
+	for row: RankingRow in board.get_node("%RankingList").get_children():
+		names.append(row.get_node("%Name").text)
+	return " | ".join(names)
+
+
+func test_the_host_is_told_a_player_rejoined() -> void:
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _host_board()
+	_away_on_the_host().is_away = false
+
+	_harness.host.player_joined.emit(&"p1")
+	await wait_process_frames(1)
+
+	assert_string_contains(board.current_message().to_lower(), "rejoined")
+
+
+## The message names whoever came back, the way the leaving one does.
+func test_the_rejoin_message_names_the_player() -> void:
+	if not await _started_match():
+		return
+	var board: GameplayScreen = await _host_board()
+	var who: String = _harness.host.display_name_of(&"p1")
+	assert_false(who.is_empty(), "the test needs a named player")
+
+	_harness.host.player_joined.emit(&"p1")
+	await wait_process_frames(1)
+
+	assert_string_contains(board.current_message(), who)
