@@ -1196,6 +1196,12 @@ The folder on Windows is:
 10. Check it now exists and contains `HOW-TO-WRITE-A-STALK.txt`.
 11. Open that file and check the example in it is complete and the limits it lists are numbers rather than placeholders.
 
+> **A faster loop than C2 onwards.** Running
+> `<godot> --headless --script res://tools/check_my_stalks.gd` from the project
+> prints every company that loaded and every file that did not, with the
+> reason, without starting the game. Use it while writing a file; use the steps
+> below to check the game agrees.
+
 ### C2. A company you wrote appears
 
 1. On A, create a file called `my_company.json` in the `custom_stalks` folder.

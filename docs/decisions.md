@@ -4691,3 +4691,61 @@ backwards.
 
 **Lives in.** `src/data/user_settings.gd`, `src/ui/widgets/stalk_picker.gd`,
 `src/ui/screens/main_menu/main_menu.gd`.
+
+### D124 - The receive path was attacked, and two things gave way
+**2026-11-20 · Accepted**
+
+The client's content-receive path was deliberately attacked rather than
+reasoned about: sixteen hostile payloads fired at `StateSync.decode_content`,
+covering numbers, structure, text, types and identity. Fifteen were refused.
+The one acceptance is deliberate and is pinned by a test. Two of the fifteen
+were refused for the wrong reason, and both are now fixed.
+
+**Finding 1 - NAN defeated its own guard.** `_whole` refuses a value too large
+for a float to represent exactly, with `absf(value) > 9.0e15`. Every comparison
+against NAN is false, so NAN passed it, reached `int(NAN)` - which is the most
+negative integer there is - and was refused by the range check that happened to
+follow, reporting `'bull_dividend' is -9223372036854775808` about a number
+nobody had sent. Safe by luck, and only because every numeric field happens to
+have a range. `is_nan` is now checked first, and `is_inf` beside it.
+
+**Finding 2 - refusing could be made expensive.** A stalk carrying two hundred
+thousand bad events took **1490ms** to refuse, because the loop built an error
+string for every one of them. A match may carry ten stalks, so a host could
+have frozen a joining client for roughly fifteen seconds; a dictionary stuffed
+with junk keys did the same thing for 313ms. Both now return in about a
+millisecond:
+
+  * `_fail` replaces every direct `errors.append`, and stops at
+    `MAX_ERRORS_PER_STALK` (20) plus one "and more" line. One place that
+    cannot be made to grow without bound.
+  * A list or a dictionary that is already absurd is refused **by its size,
+    before anything walks it**. Walking is the expensive part, so the count is
+    what gets checked first.
+
+**What was confirmed sound**, and is kept as tests so it stays that way:
+objects and resources rejected as fields and as events, non-string field names
+rejected, a five-megabyte string refused by its length before it is examined,
+a thousand-deep nested structure refused without descending, NUL and escape
+characters and a right-to-left override all outside printable ASCII, markup
+naming a resource refused while an ordinary bracket is allowed and escaped at
+the point it is drawn, and two stalks sharing an event id refused.
+
+**The deliberate acceptance.** A host may send a shipped company with invented
+numbers. That is a host rewriting its own simulation, which it can do anyway -
+it owns every price, dividend and ranking in the match. Making clients prefer
+their own files would reintroduce exactly the content mismatch D121 removed,
+and would not stop a dishonest host doing anything it cannot already do. The
+threat being defended against is a host **breaking the client that trusts it**,
+which is a different thing. `test_custom_stalk_attacks.gd` pins this so nobody
+later reads it as a hole.
+
+**Why this is a decision and not just a fix.** Both findings were invisible to
+every test that existed, and both were in code written specifically to be
+careful. The lesson is the one D108 records about orchestration, applied to
+validation: a rule you reason about is not a rule you have checked. The attack
+file stays in the suite so the next person to widen this path has something to
+run.
+
+**Lives in.** `src/data/stalk_schema.gd`,
+`tests/unit/test_custom_stalk_attacks.gd`, `docs/custom-stalks.md` S5.

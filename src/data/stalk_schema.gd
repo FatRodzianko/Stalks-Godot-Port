@@ -84,6 +84,17 @@ const MAX_STALKS_PER_MATCH: int = 10
 ## bytes are read. 64 KB is about eighty times the largest shipped stalk.
 const MAX_FILE_BYTES: int = 64 * 1024
 
+## The most problems one stalk is told about before the list stops growing.
+##
+## **This is a limit on the damage, not on the diagnosis.** An author fixing a
+## file wants every problem at once, and twenty is more than any real file has.
+## A *hostile* payload is a different thing: a stalk carrying two hundred
+## thousand bad events once took a second and a half to refuse, building an
+## error string for each one, and ten such stalks would have frozen a joining
+## client for fifteen seconds. Found by attacking the receive path on
+## 2026-11-20; see decisions.md D124.
+const MAX_ERRORS_PER_STALK: int = 20
+
 ## The format version a file declares. A file without one is assumed to be
 ## version 1, so the first generation of files need not carry it.
 const CURRENT_FORMAT: int = 1
@@ -147,6 +158,18 @@ func is_valid() -> bool:
 	return errors.is_empty() and definition != null
 
 
+## Records a problem, up to `MAX_ERRORS_PER_STALK`.
+##
+## Everything that rejects something goes through here rather than appending to
+## `errors`, so there is one place that cannot be made to grow without bound.
+func _fail(message: String) -> void:
+	if errors.size() < MAX_ERRORS_PER_STALK:
+		errors.append(message)
+		return
+	if errors.size() == MAX_ERRORS_PER_STALK:
+		errors.append("...and more. Fix these first.")
+
+
 # ----------------------------------------------------------------- the two doors
 
 ## Builds from a file the player wrote.
@@ -160,13 +183,13 @@ static func from_file_data(data: Dictionary, file_stem: String) -> StalkSchema:
 	var requested: String = file_stem
 	if data.has("id"):
 		if not (data["id"] is String):
-			schema.errors.append("'id' must be text.")
+			schema._fail("'id' must be text.")
 			return schema
 		requested = String(data["id"])
 
 	var slug: String = _slug_of(requested)
 	if slug.is_empty():
-		schema.errors.append(
+		schema._fail(
 			"Cannot make an id from '%s'. Use letters, digits, - or _." % requested
 		)
 		return schema
@@ -185,12 +208,12 @@ static func from_wire(data: Dictionary) -> StalkSchema:
 	var schema: StalkSchema = StalkSchema.new()
 
 	if not data.has("id") or not (data["id"] is String):
-		schema.errors.append("A stalk arrived with no id.")
+		schema._fail("A stalk arrived with no id.")
 		return schema
 
 	var raw: String = String(data["id"])
 	if not _is_well_formed_id(raw):
-		schema.errors.append("Stalk id '%s' is not a usable id." % _for_display(raw))
+		schema._fail("Stalk id '%s' is not a usable id." % _for_display(raw))
 		return schema
 
 	schema._build(data, StringName(raw))
@@ -262,7 +285,7 @@ func _build(data: Dictionary, stalk_id: StringName) -> void:
 	# A static-price stalk cannot be moved by anything, so an event on one could
 	# never fire. `ContentLibrary` says the same about the shipped content.
 	if built.is_price_static and not built.all_events().is_empty():
-		errors.append(
+		_fail(
 			"Stalk '%s' never moves, so its %d events could never happen."
 			% [stalk_id, built.all_events().size()]
 		)
@@ -278,16 +301,23 @@ func _build_events(data: Dictionary, built: StalkDefinition) -> void:
 	if not data.has("events"):
 		return
 	if not (data["events"] is Array):
-		errors.append("'events' must be a list.")
+		_fail("'events' must be a list.")
 		return
 
 	var entries: Array = data["events"]
+	# **Refused by its length, before a single entry is looked at.** Walking it
+	# is the expensive part, so the count is the thing to check first.
+	if entries.size() > MAX_EVENTS_PER_MOOD * 2:
+		_fail("%d events; a stalk may have %d of each mood."
+			% [entries.size(), MAX_EVENTS_PER_MOOD])
+		return
+
 	var bull_count: int = 0
 	var bear_count: int = 0
 
 	for index: int in entries.size():
 		if not (entries[index] is Dictionary):
-			errors.append("Event %d is not a set of fields." % (index + 1))
+			_fail("Event %d is not a set of fields." % (index + 1))
 			continue
 		var entry: Dictionary = entries[index]
 		_reject_unknown_keys(entry, EVENT_KEYS, "event %d" % (index + 1))
@@ -299,7 +329,7 @@ func _build_events(data: Dictionary, built: StalkDefinition) -> void:
 		var is_bull: bool = mood == MarketMood.Value.BULL
 		var position: int = bull_count if is_bull else bear_count
 		if position >= MAX_EVENTS_PER_MOOD:
-			errors.append(
+			_fail(
 				"More than %d %s events; a stalk may have %d of each."
 				% [MAX_EVENTS_PER_MOOD, mood_token(mood as MarketMood.Value), MAX_EVENTS_PER_MOOD]
 			)
@@ -331,7 +361,7 @@ func _build_event(
 	# a player as the game being broken.
 	var change: int = _whole(entry, "price_change", -MAX_CHANGE, MAX_CHANGE, 0, label)
 	if change == 0:
-		errors.append("%s changes the price by 0, so nothing would happen." % label)
+		_fail("%s changes the price by 0, so nothing would happen." % label)
 
 	var event: SpecialEventDefinition = SpecialEventDefinition.new()
 	event.id = _event_id(entry, built.id, mood, position)
@@ -360,12 +390,12 @@ func _event_id(
 	if not entry.has("id"):
 		return derived
 	if not (entry["id"] is String):
-		errors.append("An event id must be text.")
+		_fail("An event id must be text.")
 		return derived
 
 	var raw: String = String(entry["id"])
 	if not _is_well_formed_id(raw):
-		errors.append("Event id '%s' is not a usable id." % _for_display(raw))
+		_fail("Event id '%s' is not a usable id." % _for_display(raw))
 		return derived
 	return StringName(raw)
 
@@ -396,23 +426,23 @@ func _text(
 
 	if not data.has(key):
 		if required:
-			errors.append("Missing '%s'." % where)
+			_fail("Missing '%s'." % where)
 		return ""
 	if not (data[key] is String):
-		errors.append("'%s' must be text." % where)
+		_fail("'%s' must be text." % where)
 		return ""
 
 	var value: String = String(data[key])
 	if required and value.strip_edges().is_empty():
-		errors.append("'%s' is empty." % where)
+		_fail("'%s' is empty." % where)
 		return ""
 	if value.length() > limit:
-		errors.append(
+		_fail(
 			"'%s' is %d characters; the limit is %d." % [where, value.length(), limit]
 		)
 		return ""
 	if not _is_printable_ascii(value):
-		errors.append(
+		_fail(
 			"'%s' contains characters the game cannot draw. Use plain ASCII." % where
 		)
 		return ""
@@ -428,7 +458,7 @@ func _text(
 		# treated as names, ids and tickers, go through `_is_plain_token`
 		# instead, which permits no dot, slash or colon at all. Traversal is
 		# impossible there by construction rather than by a blacklist.
-		errors.append("'%s' may not contain a link." % where)
+		_fail("'%s' may not contain a link." % where)
 		return ""
 	return value
 
@@ -438,17 +468,17 @@ func _identifier(data: Dictionary, key: String, limit: int) -> String:
 	if not data.has(key):
 		return ""
 	if not (data[key] is String):
-		errors.append("'%s' must be text." % key)
+		_fail("'%s' must be text." % key)
 		return ""
 
 	var value: String = String(data[key])
 	if value.is_empty():
 		return ""
 	if value.length() > limit:
-		errors.append("'%s' is longer than %d characters." % [key, limit])
+		_fail("'%s' is longer than %d characters." % [key, limit])
 		return ""
 	if not _is_plain_token(value):
-		errors.append("'%s' may only hold letters, digits, - and _." % key)
+		_fail("'%s' may only hold letters, digits, - and _." % key)
 		return ""
 	return value
 
@@ -475,22 +505,30 @@ func _whole(
 
 	var raw: Variant = data[key]
 	if raw is bool or not (raw is int or raw is float):
-		errors.append("'%s' must be a whole number." % where)
+		_fail("'%s' must be a whole number." % where)
 		return fallback
 	if raw is float and absf(float(raw) - roundf(float(raw))) > 0.0:
-		errors.append("'%s' must be a whole number, not %s." % [where, raw])
+		_fail("'%s' must be a whole number, not %s." % [where, raw])
 		return fallback
 
 	var value: float = float(raw)
+	# **NAN before anything else.** Every comparison against NAN is false, so it
+	# passes the magnitude check below, and `int(NAN)` is the most negative
+	# integer there is - which was then refused by the range check, by luck,
+	# with a message quoting a number nobody sent. Caught by attacking this
+	# path rather than by reasoning about it.
+	if is_nan(value):
+		_fail("'%s' is not a number." % where)
+		return fallback
 	# Outside this, `int()` does not represent the value at all, so the bounds
 	# check below would be comparing something other than what was sent.
-	if absf(value) > 9.0e15:
-		errors.append("'%s' is far outside what the game can hold." % where)
+	if absf(value) > 9.0e15 or is_inf(value):
+		_fail("'%s' is far outside what the game can hold." % where)
 		return fallback
 
 	var whole: int = int(value)
 	if whole < low or whole > high:
-		errors.append("'%s' is %d; it must be between %d and %d." % [where, whole, low, high])
+		_fail("'%s' is %d; it must be between %d and %d." % [where, whole, low, high])
 		return fallback
 	return whole
 
@@ -500,12 +538,12 @@ func _range(data: Dictionary, key: String) -> Vector2i:
 	if not data.has(key):
 		return Vector2i.ZERO
 	if not (data[key] is Array):
-		errors.append("'%s' must be a list of two whole numbers." % key)
+		_fail("'%s' must be a list of two whole numbers." % key)
 		return Vector2i.ZERO
 
 	var entries: Array = data[key]
 	if entries.size() != 2:
-		errors.append("'%s' must hold exactly two numbers, not %d." % [key, entries.size()])
+		_fail("'%s' must hold exactly two numbers, not %d." % [key, entries.size()])
 		return Vector2i.ZERO
 
 	var pair: Dictionary = {"low": entries[0], "high": entries[1]}
@@ -514,7 +552,7 @@ func _range(data: Dictionary, key: String) -> Vector2i:
 	var low: int = _whole(pair, "low", 0, MAX_CHANGE, 0, key)
 	var high: int = _whole(pair, "high", 0, MAX_CHANGE, 0, key)
 	if low > high:
-		errors.append("'%s' has its smallest value above its largest." % key)
+		_fail("'%s' has its smallest value above its largest." % key)
 		return Vector2i.ZERO
 	return Vector2i(low, high)
 
@@ -527,11 +565,11 @@ func _range(data: Dictionary, key: String) -> Vector2i:
 func _mood(entry: Dictionary, index: int) -> int:
 	var label: String = "Event %d" % (index + 1)
 	if not entry.has("mood"):
-		errors.append("%s does not say whether it is a %s or %s event."
+		_fail("%s does not say whether it is a %s or %s event."
 			% [label, MOOD_BULL, MOOD_BEAR])
 		return -1
 	if not (entry["mood"] is String):
-		errors.append("%s has a 'mood' that is not text." % label)
+		_fail("%s has a 'mood' that is not text." % label)
 		return -1
 
 	var raw: String = String(entry["mood"]).strip_edges().to_lower()
@@ -540,7 +578,7 @@ func _mood(entry: Dictionary, index: int) -> int:
 	if raw == MOOD_BEAR:
 		return MarketMood.Value.BEAR
 
-	errors.append("%s has a mood of '%s'; it must be '%s' or '%s'."
+	_fail("%s has a mood of '%s'; it must be '%s' or '%s'."
 		% [label, _for_display(raw), MOOD_BULL, MOOD_BEAR])
 	return -1
 
@@ -554,7 +592,7 @@ func _flag(data: Dictionary, key: String) -> bool:
 	if not data.has(key):
 		return false
 	if not (data[key] is bool):
-		errors.append("'%s' must be true or false." % key)
+		_fail("'%s' must be true or false." % key)
 		return false
 	return bool(data[key])
 
@@ -564,10 +602,10 @@ func _check_format(data: Dictionary) -> void:
 		return
 	var raw: Variant = data["format"]
 	if raw is bool or not (raw is int or raw is float):
-		errors.append("'format' must be a whole number.")
+		_fail("'format' must be a whole number.")
 		return
 	if int(raw) != CURRENT_FORMAT:
-		errors.append(
+		_fail(
 			"This file says format %d; this version of the game reads format %d."
 			% [int(raw), CURRENT_FORMAT]
 		)
@@ -575,13 +613,21 @@ func _check_format(data: Dictionary) -> void:
 
 ## Anything not on the whitelist, named so a typo is obvious.
 func _reject_unknown_keys(data: Dictionary, allowed: PackedStringArray, what: String) -> void:
+	# A real file, typos included, has about as many fields as there are
+	# allowed. Far more than that is not an author to be helped, so it is
+	# refused by its shape rather than named key by key.
+	if data.size() > allowed.size() * 4:
+		_fail("The %s has %d fields; it may have %d."
+			% [what, data.size(), allowed.size()])
+		return
+
 	for key: Variant in data:
 		if not (key is String):
-			errors.append("A field name in the %s is not text." % what)
+			_fail("A field name in the %s is not text." % what)
 			continue
 		if String(key) in allowed:
 			continue
-		errors.append("The %s has a field called '%s', which is not one of its fields."
+		_fail("The %s has a field called '%s', which is not one of its fields."
 			% [what, _for_display(String(key))])
 
 

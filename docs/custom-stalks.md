@@ -147,6 +147,18 @@ Accented letters and emoji are therefore refused, with a message saying why.
 
 ---
 
+### Checking a file without starting the game
+
+The Custom Stalks screen reports every problem, but getting to it means
+launching the game. This prints the same thing in a terminal:
+
+```
+<godot> --headless --script res://tools/check_my_stalks.gd
+```
+
+It lists each company that loaded, with the numbers the game read out of it,
+and each file that did not, with the reason. It writes nothing.
+
 ## 4. Choosing what a match uses
 
 **Create Game → CUSTOM STALKS** lists every company this machine has, shipped
@@ -241,6 +253,24 @@ fault it guards:
   untrusted text in it is stripped of unprintable characters and cut short — a
   hostile id may not use the complaint about it as a way in.
 
+### The receive path was attacked, not just reasoned about
+
+On 2026-11-20 sixteen hostile payloads were fired at `decode_content`. Fifteen
+were refused; the sixteenth is the deliberate acceptance described below. Two
+of the fifteen were refused **for the wrong reason** and were fixed:
+
+- **NAN passed the magnitude guard**, because every comparison against NAN is
+  false. It reached `int(NAN)` and was caught only by the range check that
+  followed, reporting a number nobody had sent. `is_nan` is now checked first.
+- **Refusing could be made expensive.** A stalk carrying 200,000 bad events
+  took 1490ms to refuse, building an error string per entry; ten such stalks
+  would have frozen a joining client for about fifteen seconds. Lists and
+  dictionaries that are already absurd are now refused by their size before
+  anything walks them, and the error list itself is capped.
+
+Both are guarded by `tests/unit/test_custom_stalk_attacks.gd`, which is the
+file to extend if you widen this path. See decisions.md D124.
+
 ### What a dishonest host can still do, and why that is not the threat
 
 A host that sends a shipped company with invented numbers is a host rewriting
@@ -279,3 +309,4 @@ too. `test_custom_stalks.gd` asserts both halves of this today.
 | `src/net/state_sync.gd` | `encode_content` / `decode_content`. |
 | `src/ui/screens/main/main.gd` | `_match_library()` assembles a match's content; `_migrating_library` carries it through a handover. |
 | `tools/custom_stalks_shot.gd` | Renders the picker and the board, for looking at what a test cannot show. |
+| `tools/check_my_stalks.gd` | Reads this machine's custom stalk files and prints what the game makes of them, without starting the game. The quickest loop when a file has a typo in it. |
