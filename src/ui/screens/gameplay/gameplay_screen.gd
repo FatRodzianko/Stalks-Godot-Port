@@ -88,6 +88,15 @@ var _stalk_panel: StalkPanel
 
 ## Whether the transient message line is currently showing a refusal rather than
 ## a piece of news. Only a refusal is cleared by a state change.
+## Which year's event the strip is currently showing, or -1 for none.
+##
+## **The strip is rebuilt from state, so it needs to know when not to be.**
+## `refresh()` runs on every broadcast - every trade anybody makes - and
+## re-setting the text would snatch a long description back to its first line
+## under a player in the middle of reading it. The year is what changes when
+## there is genuinely something new to show. See docs/decisions.md D121.
+var _shown_event_year: int = -1
+
 var _message_is_error: bool = false
 
 ## What the player last asked the loan panel to do, while the answer is still
@@ -454,6 +463,7 @@ func refresh() -> void:
 	_refresh_board(game, player)
 	_refresh_holdings(game, player)
 	_refresh_rankings(game)
+	_refresh_event(game)
 	_refresh_bottom_bar(game, player)
 
 
@@ -1040,6 +1050,29 @@ func _on_game_over(winners: Array[StringName]) -> void:
 func _reset_event_panel() -> void:
 	_event_flavour.set_full_text("")
 	_event_effect.text = ""
+	_shown_event_year = -1
+
+
+## Puts the year's event back on the strip after the screen has been rebuilt.
+##
+## **The strip used to be filled only by the year-resolved signal**, so it was
+## written once, when a year turned, and never again. Any screen built after
+## that point started blank and stayed blank until the *next* year: a player
+## rejoining a match saw no event text at all, and so did a new host, because
+## migrating rebuilds the board. Reported from play both ways round, and in the
+## same year as the disconnect as well as years later.
+##
+## The year is in `state.history`, which now travels (D118), so the strip can
+## simply be derived from state like everything else on the board. See
+## docs/decisions.md D121.
+func _refresh_event(game: GameState) -> void:
+	var latest: YearResult = game.latest_result()
+	if latest == null:
+		# Year 0. Nothing has happened yet, and the blank strip is correct.
+		return
+	if latest.year == _shown_event_year:
+		return
+	_show_event(latest)
 
 
 ## Puts the year's news back up, for a player who closed it and then wanted it
@@ -1067,6 +1100,7 @@ func _announce_the_news(result: YearResult) -> void:
 
 ## Two labels, matching the original: the flavour text, then what it did.
 func _show_event(result: YearResult) -> void:
+	_shown_event_year = result.year
 	if result.event == null:
 		_event_flavour.set_full_text("")
 		_event_effect.text = "No special event this year."

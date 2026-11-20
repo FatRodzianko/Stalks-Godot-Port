@@ -4599,3 +4599,41 @@ happened, which is a bigger change than the fault warranted.
 informs everybody *else*. Anything the host's own screen must notice has to
 reach it by a signal, and the two halves of a pair - joined and left, opened
 and closed - should be wired together or neither.
+
+
+### D121 - The event strip is derived from state, not written once by a signal
+
+Reported from play, 2026-11-20, in two shapes that turned out to be one fault:
+a player who rejoined a match saw **no special event text at all**, and so did
+a **new host after a migration**. Both held whether the rejoin happened in the
+same year as the disconnect or years later.
+
+**The strip was only ever written by the year turning.** `_show_event` had one
+caller, `_on_year_resolved`, so the text was set at the moment a year resolved
+and never again. `refresh()` - which rebuilds every other part of the board
+from `GameState` - did not touch it.
+
+So any board built *after* a year had turned started blank and stayed blank
+until the next year. That is every board built on a match in progress:
+rejoining shows the playing screen fresh, and a migration rebuilds it for the
+player taking over. The mood label survived, because `_refresh_year` already
+reads `game.latest_result()` - which is precisely the value the strip needed
+and was not using.
+
+**The fix is to derive it like everything else.** `refresh()` now fills the
+strip from `state.latest_result()`. That is only possible because the history
+travels (D118); before that a rejoining client had nothing to derive it from,
+which is why these two faults arrived together.
+
+**Guarded on the year, deliberately.** `refresh()` runs on every state
+broadcast - every trade anybody makes - and `set_full_text` returns a long
+description to its first line (D100). Re-setting it each time would snatch the
+text back under a player in the middle of reading it, so the strip is rewritten
+only when the year it is showing changes. There is a test for the scroll
+position holding, because that regression would be subtle and annoying rather
+than obvious.
+
+**What it rules out.** Treating a signal as the only way a piece of the board
+gets its value. A signal says *when* something changed; the state says *what it
+is*, and a screen that can be rebuilt at any moment - which every screen in
+this game now can, after migration and rejoining - has to be able to ask.

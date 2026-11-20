@@ -718,3 +718,78 @@ func test_the_rejoin_message_names_the_player() -> void:
 	await wait_process_frames(1)
 
 	assert_string_contains(board.current_message(), who)
+
+
+# ------------------------------------------- the event strip on a rebuilt board
+#
+# The strip was written only by the year-resolved signal, so a board built
+# after a year had turned started blank and stayed blank until the next one.
+# A rejoining player saw no event text, and neither did a new host, because
+# migrating rebuilds the board. D121.
+
+## A state whose last year carried a special event, as a rejoining client's
+## replica does once the welcome brings the history (D118).
+func _state_with_an_event_behind_it() -> GameState:
+	var played: GameState = StalksFixture.make_state(10, 2)
+	var resolver: YearResolver = StalksFixture.real_resolver(_library.stalks)
+	var rng: RandomNumberGenerator = StalksFixture.rng(3)
+	var guard: int = 0
+	while guard < 12:
+		resolver.advance_year(played, rng)
+		guard += 1
+		if played.latest_result().event != null:
+			return played
+	fail_test("no special event fired in twelve years")
+	return played
+
+
+## A board built fresh on a session that is already mid-match.
+func _board_on_a_match_in_progress() -> GameplayScreen:
+	var played: GameState = _state_with_an_event_behind_it()
+	var session: LocalSession = LocalSession.create(
+		StalksFixture.make_settings(), _library
+	)
+	add_child_autofree(session)
+	# Stand in for a welcome, or for take_over promoting a client's own copy:
+	# a session holding a match that has already run.
+	session._authority.state = played
+
+	var board: GameplayScreen = GameplayScene.instantiate()
+	board.setup(session)
+	add_child_autofree(board)
+	await wait_process_frames(2)
+	return board
+
+
+func test_a_board_built_mid_match_shows_the_years_event() -> void:
+	var board: GameplayScreen = await _board_on_a_match_in_progress()
+
+	assert_false(
+		board.get_node("%EventFlavour").full_text().is_empty(),
+		"a rebuilt board should carry the year's event, not a blank strip",
+	)
+
+
+func test_the_rebuilt_strip_says_what_the_event_did() -> void:
+	var board: GameplayScreen = await _board_on_a_match_in_progress()
+
+	assert_string_contains(
+		(board.get_node("%EventEffect") as Label).text.to_lower(),
+		" by ",
+		"the effect line should name the movement",
+	)
+
+
+## `refresh()` runs on every broadcast, so it must not keep snatching a long
+## description back to its first line while somebody is reading it.
+func test_refreshing_does_not_restart_a_description_being_read() -> void:
+	var board: GameplayScreen = await _board_on_a_match_in_progress()
+	var flavour: ScrollingLabel = board.get_node("%EventFlavour")
+	flavour.mouse_entered.emit()
+	flavour.step()
+	var moved_to: int = flavour.lines_skipped()
+
+	board.refresh()
+	await wait_process_frames(1)
+
+	assert_eq(flavour.lines_skipped(), moved_to, "the scroll position should hold")
