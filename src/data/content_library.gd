@@ -1,17 +1,11 @@
 class_name ContentLibrary
 extends RefCounted
-## A set of stalks the simulation can be run on, and the rules it must satisfy.
+## Loads the authored stalk content from disk and validates it.
 ##
 ## Content is authored as one `.tres` per stalk in `src/data/stalks/`, each
-## carrying its own special events (see docs/decisions.md D29). `load_from`
-## turns that directory into something the simulation can use, and refuses to
-## hand back content it cannot vouch for.
-##
-## **It is no longer only that directory.** A match may be played on a set the
-## host chose — shipped stalks, the host's own custom ones, or both — so `of`
-## builds a library over any list of definitions and `subset` narrows one to the
-## chosen ids. Which library a match is running on is decided once, by the host,
-## and travels to every client (see `StateSync`). See docs/decisions.md D121.
+## carrying its own special events (see docs/decisions.md D29). This class turns
+## that directory into something the simulation can use, and refuses to hand back
+## content it cannot vouch for.
 ##
 ## Validation exists because the content is the easiest part of the project to get
 ## quietly wrong: ninety events referencing ten stalks by id, where a single typo
@@ -69,84 +63,6 @@ static func load_from(dir_path: String = STALKS_DIR) -> ContentLibrary:
 
 	library.stalks.sort_custom(_by_id)
 	library.validate()
-	return library
-
-
-## A library over a set of definitions that came from somewhere other than the
-## stalks directory.
-##
-## **This is what makes content per-match rather than per-install.** The shipped
-## `.tres` files used to be the only content there was, so every machine could
-## load its own copy and only ids needed to travel. Custom stalks end that: the
-## content of a match is now chosen by its host, may include companies this
-## machine has never seen, and arrives over the wire like any other match state.
-## A library built here is that match's content.
-##
-## Validated like any other, so a set assembled from a file or a packet is held
-## to the same rules as the authored one.
-static func of(stalks: Array[StalkDefinition]) -> ContentLibrary:
-	var library: ContentLibrary = ContentLibrary.new()
-	library.stalks = stalks.duplicate()
-	library.stalks.sort_custom(_by_id)
-	library.validate()
-	return library
-
-
-## Everything this installation could play with: the shipped stalks and the
-## player's own, in one library.
-##
-## What the Custom Stalks screen lists and what a match is chosen from. The
-## per-file problems are *not* here — they belong to `CustomStalkStore`, which
-## the picker reads separately so it can say which file was wrong.
-static func available(
-	stalks_dir: String = STALKS_DIR,
-	custom_dir: String = CustomStalkStore.DIR,
-) -> ContentLibrary:
-	var shipped: ContentLibrary = ContentLibrary.load_from(stalks_dir)
-	var combined: Array[StalkDefinition] = shipped.stalks.duplicate()
-	combined.append_array(CustomStalkStore.load_from(custom_dir).stalks)
-
-	var library: ContentLibrary = ContentLibrary.of(combined)
-	# A broken shipped library stays broken through the combination; a custom
-	# stalk cannot repair it and must not hide it.
-	for error: String in shipped.errors:
-		library.errors.append(error)
-	return library
-
-
-## The stalks with these ids, as a library of their own: one match's content.
-##
-## An empty `ids` means everything in this library. Callers choosing a match's
-## content pass the shipped library in that case rather than this one — "no
-## choice made" means the shipped ten, not every custom file on the machine.
-##
-## An id that is not here is reported rather than skipped: a match quietly
-## missing a company somebody chose is worse than one that refuses to start.
-##
-## **The cap lives here**, so every route to a match library passes it — the
-## picker, a settings object built by a test, and a launch flag alike.
-func subset(ids: Array[StringName]) -> ContentLibrary:
-	var picked: Array[StalkDefinition] = []
-	var missing: Array[String] = []
-
-	if ids.is_empty():
-		picked = stalks.duplicate()
-	else:
-		for wanted: StringName in ids:
-			var found: StalkDefinition = stalk_by_id(wanted)
-			if found == null:
-				missing.append(String(wanted))
-				continue
-			picked.append(found)
-
-	var library: ContentLibrary = ContentLibrary.of(picked)
-	for id: String in missing:
-		library.errors.append("No stalk called '%s' is installed." % id)
-	if picked.size() > StalkSchema.MAX_STALKS_PER_MATCH:
-		library.errors.append(
-			"A match may have %d stalks; this one has %d."
-			% [StalkSchema.MAX_STALKS_PER_MATCH, picked.size()]
-		)
 	return library
 
 

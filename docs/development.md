@@ -192,12 +192,6 @@ preference, it is what makes the game testable.
 A stalk and all its events are **one file**, so this is a single-file change
 (decisions.md D29). The easiest route is to copy an existing one.
 
-> **This section is for a stalk that ships with the game**, authored as a
-> `.tres` in the repository. A stalk a *player* writes is a JSON file in
-> `user://custom_stalks/` and is a different thing with different rules — see
-> [custom-stalks.md](custom-stalks.md). Never load a player-supplied `.tres`:
-> doing so instantiates whatever script it names (decisions.md D120).
-
 1. Copy any file in `src/data/stalks/` — `mafia.tres` is a good, ordinary example —
    and rename it.
 2. Open it in the Godot editor (double-click it) and edit it in the Inspector, or

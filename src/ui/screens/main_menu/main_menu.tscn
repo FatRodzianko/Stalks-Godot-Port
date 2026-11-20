@@ -1,10 +1,9 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/ui/screens/main_menu/main_menu.gd" id="1_menu"]
 [ext_resource type="Theme" path="res://assets/themes/stalks_theme.tres" id="2_theme"]
 [ext_resource type="PackedScene" path="res://src/ui/widgets/settings_panel.tscn" id="3_settings"]
 [ext_resource type="PackedScene" path="res://src/ui/widgets/lobby_browser.tscn" id="4_browser"]
-[ext_resource type="PackedScene" path="res://src/ui/widgets/stalk_picker.tscn" id="5_picker"]
 
 [node name="MainMenu" type="MarginContainer"]
 theme = ExtResource("2_theme")
@@ -202,12 +201,6 @@ size_flags_vertical = 3
 [node name="StartRow" type="HBoxContainer" parent="Centre/Shell/Card/Pad/Pages/GameBox"]
 layout_mode = 2
 
-[node name="CustomStalksButton" type="Button" parent="Centre/Shell/Card/Pad/Pages/GameBox/StartRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(150, 28)
-layout_mode = 2
-text = "CUSTOM STALKS"
-
 [node name="StartSpacer" type="Control" parent="Centre/Shell/Card/Pad/Pages/GameBox/StartRow"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -275,7 +268,3 @@ visible = false
 custom_minimum_size = Vector2(150, 22)
 layout_mode = 2
 text = "REJOIN GAME"
-
-[node name="Picker" parent="." instance=ExtResource("5_picker")]
-unique_name_in_owner = true
-layout_mode = 1

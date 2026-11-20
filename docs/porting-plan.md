@@ -603,24 +603,6 @@ Kept here so the record of what exists stays in one place.
   name rather than a sentence: both had been widened or heightened earlier the
   same day trying to make the strip carry the whole description on its own.
 
-- **Custom stalks** — **done 2026-11-19** (D119-D123). Players can write their
-  own companies as JSON files in `user://custom_stalks/`, choose which
-  companies a match is played with from a Custom Stalks screen on Create Game,
-  and host a match on them; the host's content reaches every client, survives a
-  host migration and a rejoin. Capped at ten companies per match, raisable by
-  changing `StalkSchema.MAX_STALKS_PER_MATCH` alone.
-
-  This was listed below as out of scope for the port, and it was: it is
-  post-port work, asked for and built after Phase 7 like the rest of this
-  section. **The part that was not a content feature** is that stalk
-  definitions now cross the wire, which amends the rule in `state_sync.gd` that
-  they never do (D121). Content became match state rather than a property of an
-  installation, which is what a new host after a migration has to serve.
-
-  **Verified by 71 new tests, each rejection checked by reinstating the fault
-  it guards.** Not yet played over Steam: `manual-testing.md` C1-C9 is written
-  for the two-machine run.
-
 ---
 
 ## Parity gaps — unscheduled
@@ -900,19 +882,12 @@ resume. Nothing reads it yet.
 ## Future direction — not in this plan
 
 "StalkleHeads" mode (earnings reports, industries, momentum, indices, charts, news
-hinting at events) is **out of scope** for the port.
+hinting at events) and JSON-authored custom stalks are **out of scope** for the port.
 
-It is not, however, ignored: `architecture.md` §7 records the four decisions taken
+They are not, however, ignored: `architecture.md` §7 records the four decisions taken
 now specifically so those features are additive later rather than a rewrite — the
 `PriceModel` interface, market-wide read access in the price model, year history from
 Year 0, and `id`-based content identity.
-
-**JSON-authored custom stalks were on this list and are now built** — see
-"Asked for after Phase 7, and built" above, and `docs/custom-stalks.md`. They
-landed additively exactly as the decisions above intended: `id`-based content
-identity meant a custom company needed no change in `src/sim/` at all. The one
-thing that did have to change was the network's assumption that both sides load
-the same content (D121).
 
 ### Questions deliberately deferred to that mode's design
 

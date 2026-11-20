@@ -86,35 +86,6 @@ special events. A test cross-checks the files on disk against this table, so if 
 two ever disagree the suite fails. To add or change a stalk, see
 [development.md §6](development.md).
 
-### 3.1 Stalks a player wrote
-
-Since 2026-11-19 the ten above are not the only companies a match can hold. A
-player can write their own as JSON files, and the host chooses which companies
-a match is played with — see [custom-stalks.md](custom-stalks.md) for the
-format and the validation. The rules that a custom stalk bends, and the ones it
-cannot:
-
-- **A match holds at most 10 companies**, shipped and custom in any mixture.
-  Empty choice means exactly the ten above. (D122)
-- **Every rule in this document still applies to a custom company.** It splits
-  above 150, goes bankrupt at 0, pays its dividends per mood, and moves within
-  its own ranges with the same 10% contrarian chance. Nothing in `src/sim/`
-  knows a custom company from a shipped one.
-- **A starting price must be 1–150.** Above the split threshold a company would
-  halve in its first year, before anybody had traded it.
-- **A company with no events is simply never picked for a special event.** This
-  needs no rule: the event pool is built from the companies in the match, so one
-  that contributes nothing cannot be drawn. A match where *no* company has
-  events has no special events at all, which §5 already allows for.
-- **A static-price company may carry no events**, for the same reason BERRY
-  BONDS carries none: nothing could ever move it.
-- **Dividends are 0–99 and change bounds 0–99.** Wider than anything shipped
-  (the largest are 8 and 50), and bounded because they feed integer money and
-  columns measured in characters.
-- **The match's content is the host's.** Every client is sent the companies the
-  host chose, and plays on those. A player who has never seen a company still
-  sees its real name, price and dividends. (D121)
-
 The design reads clearly: **BERRY BONDS** is the risk-free bond — it never moves and
 always pays 3. **strYker!!!** is the casino — the widest swings either way and no
 dividend at all. **Teamsters** pays a huge bull dividend (8) to compensate for a

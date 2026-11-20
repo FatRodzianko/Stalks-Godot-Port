@@ -100,20 +100,9 @@ func _rpc_give_yeehaw() -> void:
 ## `history_data` is every year resolved before this player arrived. Empty for
 ## somebody who was there from the start, and the whole match for a player
 ## rejoining or reconnecting after a migration. See docs/decisions.md D118.
-##
-## `content_data` is the stalks this match is played with, which the client
-## cannot look up for itself once a host may be running custom companies. It is
-## applied before anything else in the welcome, because both the snapshot and
-## the history name stalks and events by id and need a library to resolve them
-## against. See docs/decisions.md D121.
 @rpc("authority", "call_remote", "reliable")
-func _rpc_welcome(
-	player_id: String,
-	state_data: Dictionary,
-	history_data: Array,
-	content_data: Array,
-) -> void:
-	_on_welcomed(StringName(player_id), state_data, history_data, content_data)
+func _rpc_welcome(player_id: String, state_data: Dictionary, history_data: Array) -> void:
+	_on_welcomed(StringName(player_id), state_data, history_data)
 
 
 ## The host closed the lobby. A client's screen host swaps the lobby for the
@@ -201,10 +190,7 @@ func _on_introduced(_peer: int, _player_name: String, _steam_id: int = 0) -> voi
 
 
 func _on_welcomed(
-	_player_id: StringName,
-	_state_data: Dictionary,
-	_history_data: Array = [],
-	_content_data: Array = [],
+	_player_id: StringName, _state_data: Dictionary, _history_data: Array = []
 ) -> void:
 	pass
 

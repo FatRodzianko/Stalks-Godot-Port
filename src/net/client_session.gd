@@ -217,22 +217,9 @@ func give_yeehaw(giver_id: StringName) -> void:
 # ------------------------------------------------------------- what the host says
 
 func _on_welcomed(
-	player_id: StringName,
-	state_data: Dictionary,
-	history_data: Array = [],
-	content_data: Array = [],
+	player_id: StringName, state_data: Dictionary, history_data: Array = []
 ) -> void:
 	_local_player_id = player_id
-
-	# **Content first.** Everything else in the welcome names stalks and events
-	# by id, and until the library is the host's there is nothing to resolve
-	# them against. See docs/decisions.md D121.
-	var content_problem: String = _adopt_content(content_data)
-	if not content_problem.is_empty():
-		connection_lost.emit(content_problem)
-		close()
-		return
-
 	var problem: String = StateSync.apply_state(_state, state_data, _library)
 	if not problem.is_empty():
 		connection_lost.emit(problem)
@@ -297,39 +284,6 @@ func _on_yeehaw_given_pushed(giver_id: StringName, receiver_id: StringName) -> v
 
 
 # -------------------------------------------------------------------- internals
-
-## Takes the host's content as this match's content, or says why it would not.
-##
-## **An empty list means the host said nothing about content**, which is what
-## every build before custom stalks did. The honest answer to that is the one
-## that predates the feature: keep the library this install loaded, and let
-## `apply_state` refuse any id it cannot resolve. Silence is not permission to
-## guess, and it is not a reason to drop a connection either.
-##
-## Returns a player-facing reason, or an empty string.
-func _adopt_content(content_data: Array) -> String:
-	if content_data.is_empty():
-		return ""
-
-	var decoded: Dictionary = StateSync.decode_content(content_data)
-	var problem: String = String(decoded["error"])
-	if not problem.is_empty():
-		return problem
-
-	_library = decoded["library"]
-	return ""
-
-
-## The content this match is being played with.
-##
-## **Not this machine's content.** It is the host's, adopted at the welcome,
-## and it is what this client must carry on with if it ever becomes the host
-## itself: taking over means continuing the match that was being played, which
-## includes the companies in it. A new host that re-read its own files would
-## hand everybody a different market. See docs/decisions.md D121.
-func match_library() -> ContentLibrary:
-	return _library
-
 
 ## Applies a snapshot, reporting a content mismatch as a lost connection rather
 ## than rendering a board that disagrees with the host's.

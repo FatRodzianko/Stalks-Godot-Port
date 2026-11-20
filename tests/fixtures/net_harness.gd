@@ -77,12 +77,6 @@ var _port: int = 0
 ## cannot accidentally hand somebody else's portfolio to an arrival (D105).
 ## A test about coming back sets them, and then the ENet harness exercises the
 ## whole reclaim path without Steam being involved at all.
-## `client_library` is what the joining side has on disk before it is welcomed.
-## It defaults to the host's, which is what every test that is not about
-## content wants. **A test about custom stalks must pass a different one**, or
-## the client already holds the host's companies and the welcome could stop
-## carrying them without a single test noticing - which is exactly what
-## happened when this parameter did not exist.
 func start(
 	settings: GameSettings,
 	library: ContentLibrary,
@@ -90,7 +84,6 @@ func start(
 	guest_name: String = "Guest",
 	host_steam_id: int = 0,
 	guest_steam_id: int = 0,
-	client_library: ContentLibrary = null,
 ) -> String:
 	# Retry on a taken port rather than failing the test. Ports are picked at
 	# random because one just closed can linger, and with a suite this size a
@@ -107,11 +100,8 @@ func start(
 		return String(host_result["error"])
 	host = host_result["session"]
 
-	var joining_with: ContentLibrary = client_library
-	if joining_with == null:
-		joining_with = library
 	var client_result: Dictionary = ClientSession.join(
-		EnetTransport.new(_port), joining_with, guest_name, guest_steam_id
+		EnetTransport.new(_port), library, guest_name, guest_steam_id
 	)
 	if not String(client_result["error"]).is_empty():
 		return String(client_result["error"])

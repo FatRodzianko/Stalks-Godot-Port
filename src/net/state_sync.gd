@@ -16,26 +16,10 @@ extends RefCounted
 ## handful of times per year. Delta encoding would buy nothing and could drift out
 ## of sync. See docs/decisions.md D42.
 ##
-## **Definitions are sent once, with the welcome.** They used not to be: both
-## sides loaded the same `.tres` content, so only ids travelled and the receiver
-## looked each definition up locally. Custom stalks ended that — a host may be
-## playing companies this client has never seen, and no local lookup can invent
-## them. So the match's whole content crosses the wire when a player is
-## welcomed, and the client builds its library from that rather than from its
-## own files.
-##
-## **The id rule survives it.** Only ids travel in a *snapshot*, which goes out
-## on every trade; the definitions go once, at the one moment there is a new
-## receiver. `apply_state` still fails loudly on an id it cannot resolve,
-## because after a welcome that can only mean the two sides disagree about the
-## content of a match they are both in. See docs/decisions.md D121, which amends
-## D41 rather than contradicting it: nothing but built-in types crosses the
-## wire, every field is still listed by hand, and object decoding stays off.
-##
-## **A definition is hostile input.** It is supplied by another player, so it
-## goes through `StalkSchema` — the same checks a player's own file gets, with a
-## different answer on failure: the connection ends with a reason rather than
-## the file being skipped.
+## **Definitions are not sent.** Both sides load the same `.tres` content, so only
+## ids travel and the receiver looks the definition up locally. A client that
+## cannot resolve an id is running different content from the host, which is worth
+## failing loudly over rather than papering over.
 
 
 # ---------------------------------------------------------------------- the view
@@ -285,82 +269,6 @@ static func decode_loan(data: Variant) -> LoanState:
 #
 # Broadcast alongside the snapshot after a year advance. The snapshot says where
 # things stand; this says what happened, which is what the UI animates from.
-
-# ----------------------------------------------------------------- the content
-#
-# The stalks this match is played with, sent once when a player is welcomed.
-#
-# **Every stalk, not only the custom ones.** The alternative — send the customs
-# and let the client find the shipped ones in its own files — needs the two
-# sides to agree on which built-ins the host picked, and leaves two ways for a
-# definition to arrive. Sending all of them makes the host's content the
-# match's content outright, and makes `apply_state`'s "different content"
-# failure unreachable for an honest host.
-#
-# **What a dishonest host gains by it: nothing it did not have.** A host that
-# sends a built-in with invented numbers is a host rewriting its own
-# simulation, which it can already do — it owns every price, dividend and
-# ranking in the match. What it must not be able to do is break the client that
-# trusts it, and that is what the validation is for: no markup, no unprintable
-# characters, no integer that overflows a column or a money calculation, no
-# unbounded counts. See docs/decisions.md D121.
-
-## The match's stalks, each as plain data.
-static func encode_content(library: ContentLibrary) -> Array:
-	var out: Array = []
-	for stalk: StalkDefinition in library.stalks:
-		out.append(StalkSchema.encode(stalk))
-	return out
-
-
-## Rebuilds a match library from what the host sent.
-##
-## Returns `{library, error}`. A non-empty `error` is player-facing and means
-## the content could not be trusted; the caller drops the connection with it
-## rather than rendering a board built from it.
-##
-## **Nothing partial is returned.** A library missing the one stalk that failed
-## would be a board quietly short a column, which is the outcome
-## `ContentLibrary` has refused since it was written.
-static func decode_content(data: Array) -> Dictionary:
-	if data.is_empty():
-		return {"library": null, "error": "The host sent a match with no stalks in it."}
-	if data.size() > StalkSchema.MAX_STALKS_PER_MATCH:
-		return {
-			"library": null,
-			"error": "The host sent %d stalks; a match may have %d."
-				% [data.size(), StalkSchema.MAX_STALKS_PER_MATCH],
-		}
-
-	var built: Array[StalkDefinition] = []
-	var seen: Dictionary[StringName, bool] = {}
-	for entry: Variant in data:
-		if not (entry is Dictionary):
-			return {"library": null, "error": "The host sent a stalk that is not readable."}
-
-		var schema: StalkSchema = StalkSchema.from_wire(entry)
-		if not schema.is_valid():
-			return {
-				"library": null,
-				"error": "The host sent a stalk this game will not accept: %s"
-					% schema.errors[0],
-			}
-
-		var id: StringName = schema.definition.id
-		if seen.has(id):
-			return {
-				"library": null,
-				"error": "The host sent two stalks called '%s'." % id,
-			}
-		seen[id] = true
-		built.append(schema.definition)
-
-	var library: ContentLibrary = ContentLibrary.of(built)
-	if not library.is_valid():
-		return {"library": null, "error": "The host's content is not usable: %s"
-			% library.errors[0]}
-	return {"library": library, "error": ""}
-
 
 # ------------------------------------------------------------- the whole record
 #
