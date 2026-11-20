@@ -448,6 +448,10 @@ a border. That is the price of every pixel being the same size square.
 5. Check the panel stays exactly the same size on all four.
 6. Check the title text does not move as you click between them.
 7. Check the **QUIT TO DESKTOP** button does not move either.
+7a. Note where the title text sits and where the bottom of **QUIT TO DESKTOP** sits.
+7b. In the **DEV** panel in the top-left corner, leave Host and Port as they are and click **JOIN** with nothing hosting.
+7c. Check a message about not reaching the host appears at the very bottom of the window, below **QUIT TO DESKTOP**.
+7d. Check the title text and **QUIT TO DESKTOP** have not moved (D126).
 8. Click **SINGLE PLAYER**.
 9. Check there is a **Your name** field.
 10. Check there is no game name, no max players and no invite-only control.

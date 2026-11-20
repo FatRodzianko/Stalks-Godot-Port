@@ -270,6 +270,28 @@ func chosen_name() -> String:
 
 
 # ------------------------------------------------------------------ messages
+#
+# **The message sits at the foot of the window, not in the centred column.**
+# It used to be the last row of `Shell`, between the panel and the quit button,
+# which made it part of what `CenterContainer` was centring: showing a message
+# made the column taller, so the title and panel rose and QUIT TO DESKTOP sank
+# the moment anything was said. Reported from play on 2026-11-20, from
+# "Creating a lobby..." — the one message you are guaranteed to see.
+#
+# So it is a sibling of `Centre` instead, shrunk to the bottom of the screen.
+# A sibling inside a `MarginContainer` gets the same rectangle as `Centre`
+# rather than a share of it, so it takes no space from the column and cannot
+# move it, however long the text is. The window is a fixed 1280x720
+# (`project.godot`), drawn from a 640x360 picture, so the room below the column
+# is the same 33 pixels for every player.
+#
+# **It is not held at two lines' height**, the way the labels in D125 are.
+# There is very little room down there: the interface is laid out at 640x360
+# (`src/ui/stage.gd`) and the centred column fills 33 to 327 of it, so the gap
+# below the quit button is 33 pixels and a reserved second line spends most of
+# it on nothing. Left to find its own height and pinned to the bottom, a
+# one-line message sits clear of the button and a two-line one grows upwards
+# into the gap and exactly fills it.
 
 ## Shows a failure — a port already in use, an unreachable host, Steam not
 ## running — on the screen the player is still looking at.

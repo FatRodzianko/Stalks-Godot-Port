@@ -20,10 +20,15 @@ const MenuScene: PackedScene = preload("res://src/ui/screens/main_menu/main_menu
 ## Ten players, host included — the most a match can hold. See game-rules.md §2.
 const FULL_HOUSE: int = 10
 
-## The window the game runs in (project.godot). A screen is laid out at this
-## size here rather than at whatever the test runner's viewport happens to be,
-## or the numbers mean nothing.
-const WINDOW: Vector2 = Vector2(1280, 720)
+## **The size the interface is laid out at, which is not the size of the
+## window.** The whole game is drawn into a 640x360 `SubViewport` and that
+## picture is then enlarged by a whole number to fill whatever window the
+## player has (`src/ui/stage.gd`, decisions.md D40 and D96). So a screen is
+## 640x360 however big the window is, and a test that lays one out at
+## 1280x720 measures a screen with twice the room it really has - which is
+## exactly how the title screen's message came to be tested in space that does
+## not exist. See decisions.md D126.
+const WINDOW: Vector2 = Vector2(640, 360)
 
 
 ## A row with a player in it. An empty `LobbyRow` is shorter than a real one -
@@ -97,8 +102,8 @@ func test_a_full_result_card_still_fits_on_screen() -> void:
 	var card: Control = await _result_card(FULL_HOUSE)
 
 	assert_lt(
-		card.size.y, 720.0,
-		"the card has to fit the window the game runs in",
+		card.size.y, WINDOW.y,
+		"the card has to fit the picture the game is drawn into",
 	)
 
 
@@ -140,7 +145,7 @@ func test_the_lobby_card_does_not_grow_when_the_status_wraps() -> void:
 func test_a_full_lobby_fits_on_screen() -> void:
 	var card: Control = await _lobby_card(FULL_HOUSE, "Everybody is ready.")
 
-	assert_lt(card.size.y, 720.0, "the card has to fit the window the game runs in")
+	assert_lt(card.size.y, WINDOW.y, "the card has to fit the picture the game is drawn into")
 
 
 ## **The list area is a fixed window on the roster, whatever is in it.** How
@@ -183,13 +188,23 @@ func _lobby_scroll(players: int) -> Control:
 const ALIGNMENT_SLACK: float = 2.0
 
 
-func _title_screen_marks() -> Vector2:
+func _title_screen() -> Control:
 	var menu: Control = MenuScene.instantiate()
 	_laid_out(menu)
 	await wait_frames(3)
+	return menu
+
+
+## The two marks the lobby is matched to: the top of the heading text, and the
+## bottom of the quit button.
+func _marks(menu: Control) -> Vector2:
 	var heading: Control = menu.get_node("Centre/Shell/Title")
 	var quit: Control = menu.get_node("Centre/Shell/QuitRow/QuitButton")
 	return Vector2(heading.global_position.y, quit.global_position.y + quit.size.y)
+
+
+func _title_screen_marks() -> Vector2:
+	return _marks(await _title_screen())
 
 
 func test_the_lobby_heading_starts_where_the_title_does() -> void:
@@ -212,4 +227,129 @@ func test_the_lobby_panel_ends_where_the_quit_button_does() -> void:
 	assert_almost_eq(
 		card.global_position.y + card.size.y, marks.y, ALIGNMENT_SLACK,
 		"the lobby panel should end level with QUIT TO DESKTOP",
+	)
+
+
+# -------------------------------------------- the title screen's own message
+#
+# **Saying something on the title screen used to move the title screen.** The
+# message label was the last row of the centred column, so showing a message
+# made the column taller and `CenterContainer` pushed the title and the panel
+# up and the quit button down. Reported from play on 2026-11-20: hosting an
+# online game says "Creating a lobby..." and the screen jumped on the way out.
+#
+# It is now a sibling of the centred column rather than a row inside it, so it
+# can be as long as it likes without taking any space from the column. See
+# docs/decisions.md D126.
+
+## Long enough to wrap at the full width of the window, which is the case that
+## used to move the screen most.
+const LONG_PROBLEM: String = (
+	"Steam is not running. Start Steam and try again. "
+	+ "Steam is not running. Start Steam and try again. "
+	+ "Steam is not running. Start Steam and try again. "
+	+ "Steam is not running. Start Steam and try again."
+)
+
+
+func test_a_status_message_does_not_move_the_title_screen() -> void:
+	var menu: Control = await _title_screen()
+	var before: Vector2 = _marks(menu)
+
+	menu.show_status("Creating a lobby...")
+	await wait_frames(2)
+
+	assert_eq(_marks(menu), before, "saying something must not move the column")
+
+
+func test_a_message_that_wraps_does_not_move_the_title_screen_either() -> void:
+	var menu: Control = await _title_screen()
+	var before: Vector2 = _marks(menu)
+
+	menu.show_problem(LONG_PROBLEM)
+	await wait_frames(2)
+
+	assert_eq(_marks(menu), before, "a long message must not move it either")
+
+
+func test_clearing_a_message_does_not_move_the_title_screen() -> void:
+	var menu: Control = await _title_screen()
+	menu.show_problem(LONG_PROBLEM)
+	await wait_frames(2)
+	var showing: Vector2 = _marks(menu)
+
+	menu.show_problem("")
+	await wait_frames(2)
+
+	assert_eq(_marks(menu), showing, "and taking it away must not move it back")
+
+
+## Not a message, but the same promise and the same screen: A8f steps 5-7 have
+## asked a human to check this by eye since the title screen was rebuilt.
+func test_switching_tabs_does_not_move_the_title_screen() -> void:
+	var screen: Control = await _title_screen()
+	var menu: MainMenu = screen as MainMenu
+	var before: Vector2 = _marks(menu)
+
+	for mode: int in [
+		MainMenu.Mode.HOST, MainMenu.Mode.JOIN, MainMenu.Mode.SETTINGS,
+	]:
+		menu.show_mode(mode)
+		await wait_frames(2)
+		assert_eq(_marks(menu), before, "tab %d must not move the column" % mode)
+
+
+## **The room down there is 33 pixels**, so this is the assertion that matters:
+## the first version of this fix put the message at the foot of a 1280x720
+## screen, which is twice the space the game actually has, and in play it
+## landed straight on top of QUIT TO DESKTOP.
+func test_the_message_sits_below_the_quit_button() -> void:
+	var menu: Control = await _title_screen()
+	menu.show_problem("Steam is not running.")
+	await wait_frames(2)
+
+	_assert_clear_of_the_column(menu)
+
+
+func test_a_message_that_wraps_still_sits_below_the_quit_button() -> void:
+	var menu: Control = await _title_screen()
+	menu.show_problem(LONG_PROBLEM)
+	await wait_frames(2)
+
+	_assert_clear_of_the_column(menu)
+
+
+## Not overlapping rather than comfortably clear, because there is nothing to
+## be comfortable with: the gap below the quit button is 33 pixels, and two
+## lines of the body font (27) plus the screen's bottom margin (6) come to
+## exactly that. A one-line message - which is all but the longest of them at
+## this width - sits 15 pixels below the button; a two-line one starts where
+## the button ends.
+## **A supporter's title screen is 13 pixels taller than everybody else's**,
+## because the thank-you line is a row inside the centred column. That eats
+## into the gap the message lives in - 20 pixels instead of 33 - so the screen
+## the owner plays on is the tight case, and the one the first version of this
+## fix was seen to break on. A one-line message still clears the button there,
+## which is what this pins down. A message long enough to wrap does not, and
+## cannot: see decisions.md D126.
+func test_a_message_clears_the_quit_button_on_a_supporter_screen() -> void:
+	var screen: Control = await _title_screen()
+	var menu: MainMenu = screen as MainMenu
+	menu.show_supporter_note(true)
+	menu.show_problem("Steam is not running.")
+	await wait_frames(2)
+
+	_assert_clear_of_the_column(menu)
+
+
+func _assert_clear_of_the_column(menu: Control) -> void:
+	var message: Control = menu.get_node("%ContentWarning")
+
+	assert_gte(
+		message.global_position.y, _marks(menu).y,
+		"the message must not land on the column",
+	)
+	assert_lte(
+		message.global_position.y + message.size.y, WINDOW.y,
+		"and must stay on screen",
 	)

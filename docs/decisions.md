@@ -4958,3 +4958,116 @@ kind of rule that drifts back the moment somebody adds a row - which is what
 
 **What it rules out.** Letting a container decide a panel's size from what
 happens to be inside it, anywhere the player can change what is inside it.
+
+### D126 - The title screen says things at the foot of the window
+
+Reported from play on 2026-11-20, immediately after D125 and from the same
+complaint: pressing HOST ONLINE made the title screen jump. The panel rose and
+QUIT TO DESKTOP sank, and the lobby arrived too quickly to read whatever had
+appeared.
+
+**The message was not Steam's.** It is ours: `Main` calls
+`MainMenu.show_status("Creating a lobby...")` while the lobby is being made
+(`src/ui/screens/main/main.gd`). Hosting online is the one path that is
+guaranteed to say something, which is why that is the press that showed it.
+
+**The cause is the same one as D125, one level up.** The message label was the
+last row of `Centre/Shell`, between the panel and the quit button. `Shell` is
+what `CenterContainer` centres, so a row appearing made the column taller and
+the centring pushed everything outwards from the middle - the title and the
+panel up, the quit button down. Clearing the message moved it all back. Nothing
+was the wrong size; the column was simply a different size with a message in it.
+
+**So the message is no longer part of the column.** It is a sibling of `Centre`
+inside the root `MarginContainer`, shrunk to the bottom with
+`size_flags_vertical = SIZE_SHRINK_END`. A `MarginContainer` gives each child
+the same rectangle rather than a share of it, so the label overlays the bottom
+of that rectangle and takes nothing from the column. However long the text is,
+the column cannot move.
+
+This is the owner's second suggestion, taken over the first. Fixing the label's
+height would have stopped it *growing*, but not stopped it *existing*: a
+reserved row inside the column still moves everything the first time, because
+the column is taller than it was before the row was added. The only version
+where nothing moves is one where the message is not in the column.
+
+**The first version of this landed on top of the quit button**, and why is
+worth more than the fix. It was measured at 1280x720, because that is what
+`project.godot` says the window is - but **the interface is not laid out at the
+window size**. The whole game is drawn into a 640x360 `SubViewport` and that
+picture is enlarged by a whole number to fill whatever window the player has
+(`src/ui/stage.gd`, D40 and D96). A screen is 640x360 and nothing else. So the
+first attempt put the message at the foot of a screen with twice the room the
+game really has, the tests agreed with it, and in play it sat across QUIT TO
+DESKTOP. Reported from play the same day, with a screenshot.
+
+The real numbers: the centred column runs 33 to 327 of 360, so the gap below
+the quit button is **33 pixels**. That is the whole budget.
+
+**So the message is not held to two lines by `ReservedLines`** (D125), which is
+what the first version did. A reserved second line spends most of those 33
+pixels on nothing. Left to find its own height and pinned to the bottom, a one-line
+message - which is all but the longest of them at this width, around 105
+characters - sits 15 pixels below the button at 342, and a two-line one grows
+upwards into the gap and exactly fills it: 27 pixels of text plus the screen's
+6-pixel bottom margin is the 33 there are, so a long message ends up adjacent
+to the button rather than clear of it. That is the most the space allows without
+either clipping the text or shrinking the column, and losing the end of a long
+error message is worse than a tight fit on a rare one.
+
+**Everything in `test_panel_sizes.gd` is laid out at 640x360 now**, which also
+corrects the numbers D125 quoted: the lobby card is 296 tall from 32 to 328,
+and the title screen's column runs 33 to 327. The alignment D125 describes was
+right - both cards are centred in the same rectangle, so matching them holds
+whatever that rectangle is - but it was measured in a space the game never
+uses, and a test that measures in the wrong space will agree with a layout the
+player cannot live with.
+
+**`tools/measure_panels.gd` cannot measure this screen, and said so in
+numbers.** It printed the title text at y=6 and the quit button at y=300 - a
+span of 294, which is the right answer from the wrong place, so it looked
+plausible. Two reasons, both worth knowing before trusting a `--script` run:
+autoload names are resolved when a script is *compiled* and a `--script` run
+has registered none, so the settings panel's `Audio` reference fails to compile
+and takes the whole menu scene with it; and a screen added to the root keeps
+its own minimum size rather than the window's, so positions come out measured
+from the wrong origin. Standing an `Audio` node up by hand does not help - the
+failure is at compile time, before any node exists.
+
+So the title screen is measured from a GUT test, which starts the project
+properly, and the tool now says in its header that it cannot do it. The tool
+also sizes its screens, to 640x360, and with that its lobby numbers agree with
+the test's: heading 34, card 32 to 328.
+
+**Checked, not trusted.** `tests/unit/test_panel_sizes.gd` asserts that showing
+a status, showing a message long enough to wrap, and clearing one again all
+leave the heading and the quit button exactly where they were, that changing
+tab does not move them either, and that neither a short message nor a wrapping
+one lands on the column or runs off the bottom of the screen.
+
+**`SupporterNote` is the tight case, and it is still a row in the column.**
+The thank-you line for owning the supporter DLC makes a supporter's column 307
+tall instead of 294, so it ends at 333 and the gap below it is 20 pixels rather
+than 33. It is set once, from Steam ownership, before the screen is ever drawn,
+so it never moves under a player - but it is why the screenshot that reported
+this showed an overlap rather than the near-miss a non-supporter would have
+seen, and it means **a message long enough to wrap overlaps the quit button by
+six pixels on a supporter's screen**. One line always clears it, on both
+screens, and that is asserted.
+
+Nothing here fixes that, because every fix is a decision about how the screen
+looks rather than about geometry: give everybody a blank line so the two agree
+and the lobby in D125 needs re-matching; move the thank-you out of the column
+and it is no longer part of the title block; clip the message to one line and
+the end of a long error is lost, which is the one time it is worth reading.
+The exposure is a single message - `Content problem: ...`, with an authoring
+error in it - so it is recorded rather than traded away blind.
+
+**What this does not fix either.** The message is still only up for as long as
+the title screen is - hosting succeeds and the lobby replaces it, so "Creating
+a lobby..." is still too brief to read. That is a different complaint about a
+different thing (how long a transient message lives) and it is not what this
+decision is about.
+
+**What it rules out.** Putting anything in the centred column that appears and
+disappears while the player is looking at it.

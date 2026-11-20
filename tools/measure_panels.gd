@@ -6,7 +6,22 @@ extends SceneTree
 ##   <godot> --headless --script res://tools/measure_panels.gd
 ##
 ## Godot computes layout without a window, so every number here is the one the
-## game would use at 1280x720. Not part of the build.
+## game would use. Not part of the build.
+##
+## **Everything is measured at 640x360, not at the window size.** The game is
+## drawn into a 640x360 `SubViewport` and that picture is enlarged by a whole
+## number to fill the window (`src/ui/stage.gd`), so that is the only size a
+## screen is ever laid out at.
+##
+## **It cannot measure the title screen.** Autoload names are resolved when a
+## script is compiled, and a `--script` run has registered none, so the settings
+## panel's reference to `Audio` fails to compile and takes the whole menu scene
+## with it - after which this prints positions for a screen that never laid out.
+## Standing an `Audio` node up by hand does not help, because the failure is at
+## compile time. A screen that needs an autoload has to be measured from a GUT
+## test, which starts the project properly; `tests/unit/test_panel_sizes.gd`
+## does that and asserts the result rather than printing it. See decisions.md
+## D126.
 
 
 const GameOverScene: PackedScene = preload("res://src/ui/screens/game_over/game_over_screen.tscn")
@@ -14,30 +29,26 @@ const LobbyScene: PackedScene = preload("res://src/ui/screens/lobby/lobby_screen
 const RankingRowScene: PackedScene = preload("res://src/ui/widgets/ranking_row.tscn")
 const HistoryRowScene: PackedScene = preload("res://src/ui/widgets/history_row.tscn")
 const LobbyRowScene: PackedScene = preload("res://src/ui/widgets/lobby_row.tscn")
-const MenuScene: PackedScene = preload("res://src/ui/screens/main_menu/main_menu.tscn")
-const AudioServiceScript: GDScript = preload("res://src/audio/audio_service.gd")
 
 
 func _initialize() -> void:
-	root.size = Vector2i(1280, 720)
-	# **Autoloads are not registered for a `--script` run**, and the title
-	# screen's settings panel reaches for `Audio` the moment it is built. A GUT
-	# run has them because it starts the project properly; this does not, so it
-	# stands one up by hand under the name the game looks it up by.
-	if not root.has_node("Audio"):
-		var audio: Node = AudioServiceScript.new()
-		audio.name = "Audio"
-		root.add_child(audio)
+	root.size = Vector2i(640, 360)
 	await process_frame
 
 	_measure_rows()
-	await _measure_title_screen()
 	await _measure_result_card(2)
 	await _measure_result_card(10)
 	await _measure_lobby(1)
 	await _measure_lobby(10)
 
 	quit()
+
+
+## A screen added to the root keeps its own minimum size, not the window's,
+## so every position read off it would be measured from the wrong origin.
+func _laid_out(screen: Control) -> void:
+	screen.size = Vector2(640, 360)
+	screen.position = Vector2.ZERO
 
 
 func _measure_rows() -> void:
@@ -56,6 +67,7 @@ func _measure_rows() -> void:
 func _measure_result_card(players: int) -> void:
 	var screen: GameOverScreen = GameOverScene.instantiate()
 	root.add_child(screen)
+	_laid_out(screen)
 	var state: GameState = _state_with(players)
 	screen.display(state, &"p0")
 	await process_frame
@@ -75,6 +87,7 @@ func _measure_result_card(players: int) -> void:
 func _measure_lobby(players: int) -> void:
 	var screen: Control = LobbyScene.instantiate()
 	root.add_child(screen)
+	_laid_out(screen)
 	await process_frame
 	var list: VBoxContainer = screen.get_node("%PlayerList")
 	for index: int in players:
@@ -115,20 +128,3 @@ func _state_with(players: int) -> GameState:
 		)
 	state.is_over = true
 	return state
-
-## Where the title screen starts and stops, which is what the lobby card is
-## being matched to: the top of the title text, and the bottom of the quit
-## button.
-func _measure_title_screen() -> void:
-	var menu: Control = MenuScene.instantiate()
-	root.add_child(menu)
-	await process_frame
-	await process_frame
-	var title: Control = menu.get_node("Centre/Shell/Title")
-	var quit: Control = menu.get_node("Centre/Shell/QuitRow/QuitButton")
-	print("title screen: text top %.0f, quit bottom %.0f, span %.0f" % [
-		title.global_position.y,
-		quit.global_position.y + quit.size.y,
-		quit.global_position.y + quit.size.y - title.global_position.y,
-	])
-	menu.queue_free()
