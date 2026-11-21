@@ -173,6 +173,9 @@ src/
 tests/
   fixtures/      Shared test helpers. Not scanned for tests.
   unit/          Everything GUT runs.
+tools/           Headless scripts a developer runs by hand: network checks,
+                 screenshots, and the StalkleHeads balance tool (balance_report.gd,
+                 with its pieces in tools/balance/). Nothing in src/ uses them.
 project.godot    Engine configuration. Edited directly; see decisions.md D19.
 .gutconfig.json  Test runner configuration.
 CLAUDE.md        Coding standards. Addressed to an AI, but applies to everyone.
@@ -261,7 +264,52 @@ what the interface is for (decisions.md D6).
 3. Change the code.
 4. Add or update a test that pins the new behaviour.
 
----
+### Measure StalkleHeads balance
+
+The balance tool plays hundreds of seeded StalkleHeads matches with nine scripted
+player strategies and prints how each did. Run it after any change to a StalkleHeads
+number: a regime, a band, a multiple term, a company profile. What it measures, and
+what it cannot, is in [testing.md](testing.md); how it is built is
+[architecture.md §9](architecture.md).
+
+From the project root:
+
+```
+<godot> --headless --path . --script res://tools/balance_report.gd
+```
+
+That is the default: 10-year matches, 400 seeds, every strategy, no flow. To change
+any of it, put a lone `--` after the script and the options after that. The `--` tells
+Godot that what follows is for the script, not for the engine:
+
+```
+<godot> --headless --path . --script res://tools/balance_report.gd -- --years=25 --seeds=1000
+```
+
+| Option | Meaning | Default |
+|---|---|---|
+| `--years=N` | Match length in years | 10 |
+| `--seeds=N` | How many matches to play | 400 |
+| `--first-seed=N` | The first seed; the rest follow on from it | 0 |
+| `--strategies=A,B,...` | Which strategies play, from `HOLD`, `LOWPE`, `HIGHPE`, `TREND`, `MOMENTUM`, `CONTRARIAN`, `INCOME`, `RANDOM`, `BOND` | all nine |
+| `--player-flow` | The players' own buying and selling feeds the price's flow term | off |
+
+An unknown option prints the list above and exits with code 1.
+
+**How long it takes**, measured on the original author's machine: about 4 seconds for
+the default, 11 seconds at 25 years, 42 seconds for 4,000 ten-year seeds. Time grows
+in step with years × seeds. The last line of the output says how long the run took.
+
+**Reading the output.** The top lines are about the market: splits and bankruptcies
+per match, the average yearly price move, how often a year was a bull year, and the
+spread of closing prices. Then one row per strategy: its median and mean final net
+worth, and its **win share**, the fraction of matches where it finished first (a tie
+counts as a win for each). The last line names the leading strategy and compares its
+win share with the 30% ceiling of property P4 (design §1). The verdict only says
+HOLDS or FAILS at 10 years, because P4 is defined for the default length only.
+
+**The same seed always gives the same numbers.** If a change moves a figure, the
+change did it.
 
 ## 6a. Playing a networked match yourself
 

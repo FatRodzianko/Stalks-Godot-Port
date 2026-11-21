@@ -171,6 +171,12 @@ company holds more back; a distressed one pays nothing), and the result is the
 the **retention factor** `1 + (35 - policy) / 100`, so a big payer is a different
 stock rather than a better one (§3.10a).
 
+**Balance tool** — `tools/balance_report.gd`, a script that plays hundreds of seeded StalkleHeads matches with scripted player strategies and prints how often each finished first (its **win share**). How the design's balance properties P2-P4 are measured. See [development.md](development.md).
+
+**Stand-in year** — the balance tool's own minimal StalkleHeads year (`tools/balance/stand_in_year.gd`), which calls the real simulation pieces in order until phase S3 builds the real pipeline and replaces it.
+
+**Strategy (balance tool)** — a fixed rule a scripted player follows, such as `LOWPE` (hold the three cheapest by P/E) or `TREND` (hold the three whose earnings grew fastest). The list is in [stalkleheads-design.md](stalkleheads-design.md) §2.1.
+
 **Placeholder company** — a company the owner has not written yet, named by industry
 and letter (*Transportation Company A*) with an obviously temporary ticker (`TRNA`).
 

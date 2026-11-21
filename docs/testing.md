@@ -108,7 +108,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-1005 tests in 45 scripts, about 90 seconds.
+1013 tests in 46 scripts, about 90 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -124,6 +124,7 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_company_fundamentals.gd` | **StalkleHeads earnings, industries, valuation, price, split and dividends** (§3.3-§3.6, §3.10a, D129-D135): year 0 at EPS x 12.5; margin a third of the way; revenue from own growth plus industry through beta; damping and retention reaching own growth and never the industry's share; earnings season drawing exactly twice; years-in-regime counting; the industry roll's carry, tilt, clamp, one draw and id order; standing; the multiple's four terms and its clamps; sentiment clamped to 20; fair value and its clamp; the one truncation; carry halving; flow's persistence, gain and **5% clamp asserted as a constant**; a desk buying everything held at the clamp; player and NPC shares counting the same; the split value-neutral with the identity holding, the §3.6 worked example, odd prices rounding up, and 300 versus 301; policy 0 never paying, DISTRESS never paying, policy 35 against the old table, the published scales, the dividend truncation, and the retention factor | 37 |
 | `test_price_ledger.gd` | **The StalkleHeads ledger (P1) and determinism**: over forty seeds of thirty years on all eighteen companies, every company's ledger sums exactly to its price move and every price equals `int(fair + carry + flow)`; the event and fade lines; earnings, sentiment, standing and regime separated; a clamp reported on its own line; balancing across a split; the same seed giving the same market and a different one not | 6 |
 | `test_company_content.gd` | **StalkleHeads content and its validator** (D128): the 18 profiles and 6 industries load clean with no warnings; six industries of three; the owner's industry names; the approved roster; the placeholder tickers; shipped companies agreeing with their stalk's name and ticker; all 18 opening prices; neutral placeholder values; the base game never loading any of it; and the validator refusing an unresolvable industry, an industry of one or none, a missing or duplicated ticker, out-of-range fundamentals and duplicate ids, and reporting but allowing an industry of two | 16 |
+| `test_balance_smoke.gd` | **StalkleHeads balance, smoke only** (§12.1, D144-D149): 30 fixed-seed ten-year matches of the balance tool's nine strategies; the same seed replaying the same match; a strategy subset leaving the market unchanged; the bond player ending on 13,426 every time; splits, bankruptcies and bull-year rate in wide bands; no strategy winning three in four; RANDOM keeping half its cash; the best reader beating RANDOM. Does **not** assert P4 | 8 |
 | `test_loan_rules.gd` | Annuity arithmetic, eligibility, the full ten-payment schedule, penalties and default, overpayment, one-loan-per-game, pipeline integration | 40 |
 | `test_marquee_label.gd` | The scrolling name label: overflow detection against the real font, hover and click-to-pin, character-by-character stepping, reset on leave | 14 |
 | `test_content_library.gd` | The shipped content loads and validates clean, stat blocks match the documented table, 45/45 pools, deterministic order, a full match played from real content, and every validator rule rejecting bad content | 29 |
@@ -232,6 +233,38 @@ desk and short interest (S3, S4), and P2-P4, which belong to the balance tool (S
 The "every money figure that leaves the sim is an `int`" check and a scan for
 transcendental functions in the price path (§3.7) are also S3's, once there is a
 pipeline whose outputs can be walked.
+
+### StalkleHeads balance: the tool and its smoke test
+
+Phase S2 added `tools/balance_report.gd`, the balance tool. How to run it is in
+[development.md](development.md); how it is built is [architecture.md §9](architecture.md).
+
+**What it covers.** Properties P2, P3 and P4 of
+[stalkleheads-design.md](stalkleheads-design.md) §1: does reading the information win
+more often than not reading it, is the no-reader still in the game, and does any one
+strategy dominate a ten-year match. Each is a distribution over hundreds of whole
+matches, so it is measured, not asserted: the tool prints the strategy table and the
+leading strategy's win share against the 30% ceiling, and a person reads it. It plays
+the real `src/sim/` classes, which is the difference from the Python probe it replaced
+(design Appendix A).
+
+**How it differs from the GUT suite.** The suite asserts exact behaviour and has to
+stay fast; the tool measures distributions and takes seconds to minutes. Nothing the
+tool prints can fail a build. The year it plays is a stand-in until S3, so the tool
+tests S1's pieces in combination, not the real pipeline.
+
+**The smoke test.** `test_balance_smoke.gd` runs the tool's own code over 30 fixed seeds
+of ten years, in about a second, and asserts only what a badly broken market would
+violate: the same seed gives the same match; running fewer strategies leaves the
+market unchanged (D145); the bond player ends on exactly 13,426 every time; splits,
+bankruptcies and the bull-year rate stay in wide bands; no strategy wins three matches
+in four; RANDOM's median keeps half its starting cash; the best reader's median beats
+RANDOM's. **It does not assert P4**, which currently fails (D149), and thirty matches
+could not measure it anyway.
+
+**Not covered yet:** `FOLLOW` and the desk's flow (S4); the real event pool and news
+(S3, S8); loans and leverage; Mutuals as a holding; anything about how a real person
+plays. Re-run the tool when each arrives.
 
 ### Scene tests
 
