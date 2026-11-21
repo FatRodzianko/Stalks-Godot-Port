@@ -448,10 +448,21 @@ a border. That is the price of every pixel being the same size square.
 5. Check the panel stays exactly the same size on all four.
 6. Check the title text does not move as you click between them.
 7. Check the **QUIT TO DESKTOP** button does not move either.
-7a. Note where the title text sits and where the bottom of **QUIT TO DESKTOP** sits.
-7b. In the **DEV** panel in the top-left corner, leave Host and Port as they are and click **JOIN** with nothing hosting.
-7c. Check a message about not reaching the host appears at the very bottom of the window, below **QUIT TO DESKTOP**.
-7d. Check the title text and **QUIT TO DESKTOP** have not moved (D126).
+
+**7a to 7e check that the title screen does not move when it says something.**
+It used to: the message was a row inside the centred column, so showing one
+pushed the title up and the quit button down (D126). The hard part of checking
+it is that the message you normally see - "Creating a lobby..." while an online
+game is being made - is gone before you can look at it, because the lobby
+screen replaces the title screen the moment the lobby exists. A failed join is
+the way round that: it leaves a message on the title screen and goes nowhere,
+so it stays up for as long as you like.
+
+7a. Note where the title text starts, and where the bottom edge of **QUIT TO DESKTOP** is.
+7b. Find the small **DEV** panel in the top-left corner of the window. It has a Host box, a Port box, and **HOST** and **JOIN** buttons.
+7c. Leave Host and Port exactly as they are and click **JOIN**. Nothing is hosting at that address, so it will fail - that is the point.
+7d. Check a red message about not reaching the host appears along the very bottom of the window, **below** QUIT TO DESKTOP rather than across it.
+7e. Check the title text and QUIT TO DESKTOP are exactly where they were in 7a.
 8. Click **SINGLE PLAYER**.
 9. Check there is a **Your name** field.
 10. Check there is no game name, no max players and no invite-only control.
@@ -1106,12 +1117,22 @@ question it asks every five seconds and acted on a different answer. The exact
 Steam-side sequence was not established and is not relied on: the game treats
 "the lobby is gone" the same whatever made it go.
 
-#### B6j. Coming back through Steam's friends list — **cannot be run yet**
+#### B6j. Coming back through Steam's friends list — **run on 2026-11-20**
 
 **Needs a build Steam installed**, not one copied onto the machine, because
 Steam's friends list only offers "Join Game" for a game it owns the
-installation of. Written down now because the code path exists and was fixed
-for it on 2026-11-19 (D116); run it at the first beta or release build.
+installation of. That became possible when the game went up as a beta branch,
+and it was run then: **Join Game works for an ordinary online game, and is not
+offered for an invite-only one.**
+
+The second half of that is the correct answer rather than a gap. An invite-only
+game is created as `k_ELobbyTypePrivate` (`steam_service.gd`), which Steam does
+not show to friends at all - that is the whole difference between it and a
+public lobby, and it is what the setting promises. The lobby type that *would*
+put a game in the friends list without listing it in the browser is
+`k_ELobbyTypeFriendsOnly`, which this game does not use and which would not be
+invite-only any more. So there is nothing to fix here; an invite is how you get
+into an invite-only game.
 
 1. On A, host an online game; join from B and reach the playing screen.
 2. On B, quit to desktop entirely.
@@ -1130,8 +1151,9 @@ year gate. REJOIN GAME was unaffected and is not a test of this.
 
 **If step 5 shows nothing**, that is Steam's decision, not the game's. Two
 things to check before suspecting the port: whether the lobby was created
-**invite only**, which makes it `k_ELobbyTypePrivate` and may not be offered to
-friends at all, and whether both accounts actually see each other as friends.
+**invite only**, which makes it `k_ELobbyTypePrivate` and is not offered to
+friends at all - confirmed in play, see above - and whether both accounts
+actually see each other as friends.
 The lobby being absent from the in-game browser is expected and is not the
 cause - a match in progress is deliberately unlisted but still joinable (D106).
 
@@ -1352,6 +1374,34 @@ rematch lobby changing hands.
   finished from `_on_match_finished`.
 
 ### Known gaps, so they are not surprises
+
+- **Everything below was found with locally exported builds until
+  2026-11-20**, when the game first went up as a Steam **beta branch** and was
+  played from two real installs. Steam invites, host migration and rejoining
+  all worked that way. That is a stronger result than it sounds: an installed
+  build exercises the App ID, the depot and Steam's own overlay and invite
+  plumbing, none of which a local export touches. Where an entry below says
+  "confirmed in play" without saying how, it means a local export - the
+  beta-branch run is the only one so far that covers the real pipeline.
+- **The rematch has been played**, on 2026-11-20, the day it was built: a
+  client asking for one and the host seeing the request, both players going
+  back to the lobby and playing again, a different market the second time, the
+  host starting a rematch alone, and a rematch surviving a host migration. The
+  notice on the final board - the host's view of a request, and a client being
+  told the host has reopened the lobby - was confirmed the same day. What that
+  run did *not* cover is a player who declines, or a rematch from an installed
+  build rather than the editor.
+
+- **Steam's friends list was run on the beta build** (B6j). **Join Game** is
+  offered for an ordinary online game and works; it is **not** offered for an
+  invite-only one, which is what `k_ELobbyTypePrivate` means and is therefore
+  the right answer rather than a gap. See B6j.
+
+- **The two panels that would not hold still were confirmed in play on
+  2026-11-20** (D125): the result card no longer changes size when you switch
+  between FINAL STANDINGS and YEAR BY YEAR, the lobby card no longer grows when
+  somebody joins, and the lobby now sits where the title screen does. The title
+  screen's own message (D126) has **not** been looked at in play - A8f 7a-7e.
 
 - **Achievements are not being tested, on purpose.** They are implemented and
   their thresholds are covered by 28 tests, but the App ID is the published
