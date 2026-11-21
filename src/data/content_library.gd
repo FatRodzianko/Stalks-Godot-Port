@@ -15,14 +15,38 @@ extends RefCounted
 
 const STALKS_DIR: String = "res://src/data/stalks"
 
+## StalkleHeads content (docs/stalkleheads-design.md §3.2). Not loaded by
+## `load_from`, so the base game never reads it; `load_fundamentals` adds it.
+const COMPANIES_DIR: String = "res://src/data/companies"
+const INDUSTRIES_DIR: String = "res://src/data/industries"
+
+## An industry with fewer members than this is refused: an industry of one is
+## indistinguishable from the company in it (§3.2.3).
+const MIN_INDUSTRY_MEMBERS: int = 2
+
+## An industry with fewer members than this is reported but allowed: three is
+## what survives one bankruptcy without falling below the floor (§3.2.3).
+const TARGET_INDUSTRY_MEMBERS: int = 3
+
 ## Loaded stalk definitions, sorted by id so the order is identical on every
 ## machine. Directory listing order is not guaranteed, and determinism matters
 ## here (docs/architecture.md §8). Display order on the board is a separate
 ## concern for the UI phase.
 var stalks: Array[StalkDefinition] = []
 
+## StalkleHeads company profiles, sorted by id. Empty unless
+## `load_fundamentals` ran.
+var companies: Array[CompanyProfile] = []
+
+## StalkleHeads industries, sorted by id. Empty unless `load_fundamentals` ran.
+var industries: Array[IndustryDefinition] = []
+
 ## Problems found by `validate()`. Empty means the content is usable.
 var errors: Array[String] = []
+
+## What `validate()` reports without refusing the content - today only an
+## industry below its target of three members. Does not affect `is_valid()`.
+var warnings: Array[String] = []
 
 
 ## Loads and validates every stalk resource in `dir_path`.
@@ -66,6 +90,34 @@ static func load_from(dir_path: String = STALKS_DIR) -> ContentLibrary:
 	return library
 
 
+## Adds the StalkleHeads company profiles and industries, then re-validates
+## everything. Problems loading a file land in `errors`, as in `load_from`.
+func load_fundamentals(
+	companies_dir: String = COMPANIES_DIR,
+	industries_dir: String = INDUSTRIES_DIR,
+) -> void:
+	var load_errors: Array[String] = []
+	companies = []
+	for resource: Resource in _load_all(companies_dir, load_errors):
+		var profile: CompanyProfile = resource as CompanyProfile
+		if profile == null:
+			load_errors.append("%s is not a CompanyProfile" % resource.resource_path)
+			continue
+		companies.append(profile)
+	industries = []
+	for resource: Resource in _load_all(industries_dir, load_errors):
+		var industry: IndustryDefinition = resource as IndustryDefinition
+		if industry == null:
+			load_errors.append("%s is not an IndustryDefinition" % resource.resource_path)
+			continue
+		industries.append(industry)
+
+	companies.sort_custom(_company_by_id)
+	industries.sort_custom(_industry_by_id)
+	validate()
+	errors.append_array(load_errors)
+
+
 func is_valid() -> bool:
 	return errors.is_empty()
 
@@ -76,6 +128,8 @@ func is_valid() -> bool:
 ## everything an author needs to fix.
 func validate() -> Array[String]:
 	errors = []
+	warnings = []
+	_validate_fundamentals()
 
 	if stalks.is_empty():
 		errors.append("No stalks were loaded.")
@@ -168,7 +222,133 @@ func _validate_events(
 			errors.append("Event %s has no flavour text." % event_label)
 
 
+## The StalkleHeads checks (decisions.md D128). Runs only when there is
+## StalkleHeads content to check, so base-game validation is unchanged.
+##
+## The one that matters most is the industry id: `industry` is a `StringName`
+## rather than an enum (§3.2.1), so a typo would silently put a company in an
+## industry of one. This is where that typo is caught instead.
+func _validate_fundamentals() -> void:
+	if companies.is_empty() and industries.is_empty():
+		return
+
+	var members: Dictionary[StringName, int] = {}
+	for industry: IndustryDefinition in industries:
+		var label: String = str(industry.id) if industry.id != &"" else "<missing id>"
+		if industry.id == &"":
+			errors.append("An industry has no id (display name %s)." % industry.display_name)
+		elif members.has(industry.id):
+			errors.append("Duplicate industry id: %s" % label)
+		else:
+			members[industry.id] = 0
+		if industry.display_name.is_empty():
+			errors.append("Industry %s has no display name." % label)
+
+	var seen_ids: Dictionary[StringName, bool] = {}
+	var seen_tickers: Dictionary[StringName, bool] = {}
+	for company: CompanyProfile in companies:
+		_validate_company(company, members, seen_ids, seen_tickers)
+
+	var industry_ids: Array[StringName] = members.keys()
+	industry_ids.sort_custom(_string_name_order)
+	for industry_id: StringName in industry_ids:
+		var count: int = members[industry_id]
+		if count < MIN_INDUSTRY_MEMBERS:
+			errors.append("Industry %s has %d member(s); an industry needs at least %d."
+				% [industry_id, count, MIN_INDUSTRY_MEMBERS])
+		elif count < TARGET_INDUSTRY_MEMBERS:
+			warnings.append("Industry %s has %d members; the target is %d, so one bankruptcy cannot leave it with one."
+				% [industry_id, count, TARGET_INDUSTRY_MEMBERS])
+
+
+func _validate_company(
+	company: CompanyProfile,
+	members: Dictionary[StringName, int],
+	seen_ids: Dictionary[StringName, bool],
+	seen_tickers: Dictionary[StringName, bool],
+) -> void:
+	var label: String = str(company.id) if company.id != &"" else "<missing id>"
+	if company.id == &"":
+		errors.append("A company has no id (display name %s)." % company.display_name)
+	elif seen_ids.has(company.id):
+		errors.append("Duplicate company id: %s" % label)
+	else:
+		seen_ids[company.id] = true
+
+	if company.display_name.is_empty():
+		errors.append("Company %s has no display name." % label)
+	if company.ticker == &"":
+		errors.append("Company %s has no ticker." % label)
+	elif seen_tickers.has(company.ticker):
+		errors.append("Duplicate ticker %s (company %s)." % [company.ticker, label])
+	else:
+		seen_tickers[company.ticker] = true
+
+	if members.has(company.industry):
+		members[company.industry] += 1
+	else:
+		errors.append("Company %s names industry %s, which does not exist."
+			% [label, str(company.industry)])
+
+	if company.starting_earnings_per_share <= 0.0:
+		errors.append("Company %s has starting earnings per share of %s."
+			% [label, company.starting_earnings_per_share])
+	if company.starting_margin_percent <= 0.0 or company.starting_margin_percent > 100.0:
+		errors.append("Company %s has a starting margin of %s; it must be above 0 and at most 100."
+			% [label, company.starting_margin_percent])
+	if company.shares_outstanding <= 0:
+		errors.append("Company %s has %d shares outstanding." % [label, company.shares_outstanding])
+	if company.quality < 0 or company.quality > 100:
+		errors.append("Company %s has quality %d; it must be 0-100." % [label, company.quality])
+	if company.payout_policy_percent < 0 or company.payout_policy_percent > 100:
+		errors.append("Company %s has a payout policy of %d; it must be 0-100."
+			% [label, company.payout_policy_percent])
+	if company.industry_beta_percent < 0:
+		errors.append("Company %s has a negative industry beta (%d)."
+			% [label, company.industry_beta_percent])
+
+
+## Every `.tres`/`.res` resource in a directory, in file-name order. Problems go
+## into `problems` rather than being pushed, as in `load_from`.
+static func _load_all(dir_path: String, problems: Array[String]) -> Array[Resource]:
+	var loaded: Array[Resource] = []
+	var dir: DirAccess = DirAccess.open(dir_path)
+	if dir == null:
+		problems.append("Cannot open content directory: %s" % dir_path)
+		return loaded
+
+	var usable_names: Array[String] = []
+	for file_name: String in dir.get_files():
+		# Exported projects rename .tres to .res, so accept both.
+		var usable: String = file_name.trim_suffix(".remap")
+		if usable.ends_with(".tres") or usable.ends_with(".res"):
+			usable_names.append(usable)
+	usable_names.sort()
+
+	for usable: String in usable_names:
+		var path: String = "%s/%s" % [dir_path, usable]
+		var resource: Resource = load(path)
+		if resource == null:
+			problems.append("Failed to load %s" % path)
+			continue
+		loaded.append(resource)
+	return loaded
+
+
 # ------------------------------------------------------------------- accessors
+
+func company_by_id(company_id: StringName) -> CompanyProfile:
+	for company: CompanyProfile in companies:
+		if company.id == company_id:
+			return company
+	return null
+
+
+func industry_by_id(industry_id: StringName) -> IndustryDefinition:
+	for industry: IndustryDefinition in industries:
+		if industry.id == industry_id:
+			return industry
+	return null
 
 func stalk_by_id(stalk_id: StringName) -> StalkDefinition:
 	for stalk: StalkDefinition in stalks:
@@ -220,6 +400,18 @@ func build_event_pool() -> EventPool:
 
 static func _by_id(a: StalkDefinition, b: StalkDefinition) -> bool:
 	return String(a.id) < String(b.id)
+
+
+static func _company_by_id(a: CompanyProfile, b: CompanyProfile) -> bool:
+	return String(a.id) < String(b.id)
+
+
+static func _industry_by_id(a: IndustryDefinition, b: IndustryDefinition) -> bool:
+	return String(a.id) < String(b.id)
+
+
+static func _string_name_order(a: StringName, b: StringName) -> bool:
+	return String(a) < String(b)
 
 
 func _to_string() -> String:

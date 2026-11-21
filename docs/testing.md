@@ -108,7 +108,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-930 tests in 41 scripts, about 65 seconds.
+1005 tests in 45 scripts, about 90 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -120,6 +120,10 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_trade_rules.gd` | Buy/sell validation and rejection reasons, max affordable, net worth with holdings and loans, ranking and tie-breaking | 25 |
 | `test_year_resolver.gd` | Split rounding, threshold boundary, both bankruptcy passes, dividend sequencing, displayed yearly change, 10- and 99-year matches, determinism | 21 |
 | `test_golden_history.gd` | **The base game is bit-for-bit unchanged** (StalkleHeads P5, D127): one seeded 99-year match on the shipped content, with a rotating trader, a borrower who defaults and a borrower who misses once and overpays, written year by year as sorted text — prices, deltas, splits, bankruptcies, mood, event, dividends, loan assessments, cash, holdings, net worth, standings, game end — and compared by sha256 with a recorded hash; plus checks that the match really reached a split, a bankruptcy, penalties, a default and a paid-off loan | 1 |
+| `test_regime_rules.gd` | **StalkleHeads regimes** (§3.3, D131): every matrix row sums to 100 and is the published one; a neutral unaged company rolls exactly its row; the stationary distribution within half a point of 19.8 / 27.3 / 21.5 / 21.7 / 9.8; ageing taking 10 points a year off GROWTH and applying to SLOWING; STEADY and DECLINE never ageing; recovery letting DISTRESS out at 12 points a year; quality biasing both ways and its -10 to +10 range; the adjusted roll's clamp; one draw per roll; the roll following its odds over 20,000 draws; the damping ladder at 19/20 and 49/50 years; the growth, margin and premium tables | 16 |
+| `test_company_fundamentals.gd` | **StalkleHeads earnings, industries, valuation, price, split and dividends** (§3.3-§3.6, §3.10a, D129-D135): year 0 at EPS x 12.5; margin a third of the way; revenue from own growth plus industry through beta; damping and retention reaching own growth and never the industry's share; earnings season drawing exactly twice; years-in-regime counting; the industry roll's carry, tilt, clamp, one draw and id order; standing; the multiple's four terms and its clamps; sentiment clamped to 20; fair value and its clamp; the one truncation; carry halving; flow's persistence, gain and **5% clamp asserted as a constant**; a desk buying everything held at the clamp; player and NPC shares counting the same; the split value-neutral with the identity holding, the §3.6 worked example, odd prices rounding up, and 300 versus 301; policy 0 never paying, DISTRESS never paying, policy 35 against the old table, the published scales, the dividend truncation, and the retention factor | 37 |
+| `test_price_ledger.gd` | **The StalkleHeads ledger (P1) and determinism**: over forty seeds of thirty years on all eighteen companies, every company's ledger sums exactly to its price move and every price equals `int(fair + carry + flow)`; the event and fade lines; earnings, sentiment, standing and regime separated; a clamp reported on its own line; balancing across a split; the same seed giving the same market and a different one not | 6 |
+| `test_company_content.gd` | **StalkleHeads content and its validator** (D128): the 18 profiles and 6 industries load clean with no warnings; six industries of three; the owner's industry names; the approved roster; the placeholder tickers; shipped companies agreeing with their stalk's name and ticker; all 18 opening prices; neutral placeholder values; the base game never loading any of it; and the validator refusing an unresolvable industry, an industry of one or none, a missing or duplicated ticker, out-of-range fundamentals and duplicate ids, and reporting but allowing an industry of two | 16 |
 | `test_loan_rules.gd` | Annuity arithmetic, eligibility, the full ten-payment schedule, penalties and default, overpayment, one-loan-per-game, pipeline integration | 40 |
 | `test_marquee_label.gd` | The scrolling name label: overflow detection against the real font, hover and click-to-pin, character-by-character stepping, reset on leave | 14 |
 | `test_content_library.gd` | The shipped content loads and validates clean, stat blocks match the documented table, 45/45 pools, deterministic order, a full match played from real content, and every validator rule rejecting bad content | 29 |
@@ -200,6 +204,34 @@ rules of the game.
 **It was shown to bite** when written: flipping split rounding from up to down, and
 separately adding 1 to one player's net worth in year 50 only, each changed the
 hash. Both were reverted.
+
+### StalkleHeads fundamentals: what is covered and what is not
+
+Phase S1 of [stalkleheads-design.md](stalkleheads-design.md) added the four
+`test_regime_rules.gd`, `test_company_fundamentals.gd`, `test_price_ledger.gd` and
+`test_company_content.gd` files above. Three things about them are worth knowing.
+
+**Odds are enumerated, not sampled.** `RegimeRules.regime_for_roll` is a plain
+function of a roll from 1 to 100, so `RegimeRules.odds` tries all hundred and the
+tests assert exact percentages. Only one test samples, to check that `roll_next`
+really follows those odds.
+
+**Draw counts are checked against a twin.** A test seeds two generators the same,
+runs the code under test on one and makes the documented calls by hand on the
+other, then compares their `state`. It compares calls rather than counting state
+steps because one `randi_range` call can take more than one step (D131).
+
+**The ledger test uses a stand-in year.** There is no StalkleHeads year pipeline
+until S3, so `test_price_ledger.gd` calls the pieces in §4's order itself, with a
+random event and random net shares in place of the event pool and the desk.
+
+**Not covered yet, because the code does not exist yet:** the derived mood and the
+bull-rate band, the no-circularity test, the index, the event drawn from last year's
+bag, bankruptcy, holders' shares doubling on a split, dividends actually paid, the
+desk and short interest (S3, S4), and P2-P4, which belong to the balance tool (S2).
+The "every money figure that leaves the sim is an `int`" check and a scan for
+transcendental functions in the price path (§3.7) are also S3's, once there is a
+pipeline whose outputs can be walked.
 
 ### Scene tests
 

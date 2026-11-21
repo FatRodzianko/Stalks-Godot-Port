@@ -5144,3 +5144,292 @@ year 50 alone. Both perturbations were reverted.
 
 **Rules out:** treating a failure of this test as a number to refresh. A new hash
 with no entry here is the drift CLAUDE.md warns about.
+
+### D128 - StalkleHeads content sits beside the base game's, and the validator guards it
+**2026-11-21 · Accepted**
+
+Build phase S1 of [stalkleheads-design.md](stalkleheads-design.md). Company
+fundamentals are a new resource, `CompanyProfile` (`src/data/company_profile.gd`,
+one `.tres` per company in `src/data/companies/`), and industries are another,
+`IndustryDefinition` (`src/data/industries/`). Neither touches `StalkDefinition`.
+
+**Why beside, not inside.** §3.2 leaves the choice to the code and §10 recommends
+it: adding fields to `StalkDefinition` would edit the ten shipped `.tres` files,
+which are part of the record `test_golden_history.gd` (D127) guards. Separate files
+mean the base game cannot read StalkleHeads content even by accident, and
+`ContentLibrary.load_from()` still loads exactly what it did.
+
+**`CompanyProfile.industry`, not `StalkDefinition.industry`.** The stalk field was
+reserved for this mode, but using it would mean editing base-game content to fill
+it in, and eight of the eighteen companies have no `StalkDefinition` at all. So the
+reserved field stays unused, and S3 or S8 may remove it. A profile for a company the
+base game ships has the stalk's `id`, `display_name` and `ticker`; a test checks
+they agree, so the duplication cannot drift silently. How the eight new companies
+get board rows is S3's to decide.
+
+**The validator.** `ContentLibrary.load_fundamentals()` loads both directories and
+re-runs `validate()`, which now also refuses: an industry id that does not resolve
+(the typo §3.2.1 is about), an industry with fewer than two members, a missing or
+duplicated ticker, duplicate ids, and out-of-range fundamentals. An industry with
+two members is **reported** in a new `warnings` list and allowed, because §3.2.3
+makes three the target and two the floor. The checks run only when there is
+StalkleHeads content loaded, so base-game validation is unchanged.
+
+**Tickers for the five new named companies** (Landlords United, Video Chrome,
+Meowly, Chichen Pizza, Farms+) are not in the design. The validator needs one, and
+choosing a real symbol is the owner's to do. So they use the same obviously
+temporary pattern §3.2.3 gives the placeholders, continuing the letters within each
+industry: `FINA`, `TECB`, `TECC`, `FODB`, `FODC`. They are to be replaced, exactly as
+`TRNA` and the rest are.
+
+**Industry ids** are the short ones the §3.2.4 table uses: `energy`, `transport`,
+`financial`, `consumer`, `tech`, `food`. The display names are the owner's (§14).
+
+**Rules out:** filling in `StalkDefinition.industry` for this mode; an industry
+check that pushes an error at runtime instead of refusing the content at load.
+
+### D129 - A company's year 0: STEADY, a 12% margin, 1,000 shares
+**2026-11-21 · Accepted**
+
+The design gives each company's opening EPS but not the rest of its year-0 state.
+Taken from the balance probe (Appendix A), which every measured figure in the design
+came from, and recorded so S2 can reproduce it:
+
+- **Regime STEADY, in its first year** (`years_in_regime` 0). STEADY's premium is 0,
+  so with no sentiment and no industry standing the multiple is exactly the base
+  12.5 and the opening price is `EPS x 12.5`, as §3.2.4 says it is.
+- **Margin 12.0%** for every company, STEADY's target, so the margin does not drift
+  in a company's first steady year. Authored per company in the `.tres` as
+  `starting_margin_percent`, so a company can be given its own later.
+- **1,000 shares outstanding**, also authored per company. Revenue at year 0 is
+  derived: `profit x 100 / margin`, where `profit = EPS x shares`.
+- **No event carry and no flow.**
+
+The opening price is computed from the authored EPS directly, not from
+`profit / shares`, so that a float round trip cannot cost a company a coin of its
+opening price; `test_company_content.gd` checks all eighteen against the table.
+
+**Rules out:** a separately authored starting price.
+
+### D130 - Revenue, profit and margin are floats inside the sim
+**2026-11-21 · Accepted**
+
+The design contradicts itself here. §3.7's table lists revenue, expenses and profit as
+`int`. The same section's rule, in bold, is that a float becomes money in **exactly
+two places** per company per year, the price and the dividend. An `int` revenue
+compounding by a float growth rate needs a third truncation every year, and so does
+an `int` profit. §3.3 also says the margin moves a third of the way "truncating",
+which is left over from the first draft's fixed-point scheme (§3.7 says that scheme
+was dropped).
+
+**Decided:** the two-truncation rule wins. `CompanyState.revenue`, `profit` and
+`margin_percent` are `float`, and the margin step is not truncated. That is also
+what the probe does, so S2 can reproduce its numbers. Revenue and profit are
+accounting figures that are never paid to anybody; when S7 shows them as `$86,142`,
+that is a display rounding in the shared formatter, not a rule.
+
+**Rules out:** adding a truncation anywhere in the price path beyond
+`PriceIdentity.price_of` and `DividendRules.dividend_per_share`.
+
+### D131 - How the regime roll counts years and draws
+**2026-11-21 · Accepted**
+
+§3.3 states the matrix and its modifiers but not three details, taken here from the
+probe:
+
+- **The roll is `randi_range(1, 100)`**, one call, every time. The adjusted roll is
+  `roll - (quality - 50) / 5 + ageing`, in float, then walked along the row's
+  cumulative weights. It is clamped to 1-100 first; with rows that sum to 100 the
+  clamp changes no outcome.
+- **`years_in_regime` counts the years beyond the year a regime was entered.** A
+  company in its first year of GROWTH has 0 and is not aged; in its second it has
+  1 and the roll gets +10. So the stay chance in GROWTH runs 58, 48, 38, 28 - the
+  fourth straight year is below even odds, which is §3.3's "four straight growth
+  years and the odds have turned over". Recovery counts the same way at 12 points.
+- **The roll uses the regime the company is leaving**, and the growth band uses the
+  regime it lands in.
+
+`RegimeRules.regime_for_roll` is a plain function of the roll so the odds can be
+enumerated exactly (`RegimeRules.odds`), which is what the tests assert and what
+the Company tab can later publish.
+
+**Draws are fixed per call**: a regime roll is one call, earnings season is two (the
+regime, then the growth roll), an industry is one. So the stream never depends on
+what happened. One `randi_range` call is not always one step of the generator's
+state (Godot's bounded draw can reject and redraw), which is why the tests compare
+against a twin RNG making the same calls rather than counting steps.
+
+### D132 - Event carry and flow, where the probe and the design disagree
+**2026-11-21 · Accepted**
+
+**Event carry follows the design, not the probe.** §3.5 writes
+`event_carry = previous * 0.50 + this_year_event_delta`: last year's halves and this
+year's lands in full. The probe adds the event first and then halves the sum, so a
+new event counts at half strength in its own year. The design is the specification,
+and it is the reading the §3.5 ledger example assumes ("last year's event, faded:
+half of year 6's -12"). **S2 should expect its numbers to differ from the probe's
+because of this**, and should not change the code to match the probe.
+
+**The flow clamp uses the magnitude of fair value.** §3.5 writes
+`clamp(flow, -0.05 * fair_value, +0.05 * fair_value)`, which inverts if fair value
+goes negative (it can, down to -40). `PriceIdentity.flow_limit` uses
+`abs(fair_value) * 0.05`, as the probe does.
+
+**Flow's input** is `net_shares_traded / shares_outstanding * 100 * 0.55`, with the
+current shares outstanding. S1 takes the net figure as a plain `int`; S4's desk is
+what will supply it, summed with the players' own, which count identically (§3.10).
+
+### D133 - The ledger in whole coins, with two lines the design's example lacks
+**2026-11-21 · Accepted**
+
+`PriceLedger.between(before, after)` explains a price move in integer lines that sum
+**exactly** to the move, which is P1.
+
+**How float terms become whole coins.** Each line is the change in
+`int(running total)` as the float terms are added one at a time, starting from last
+year's posted price and ending at this year's. That telescopes, so the lines sum to
+the delta by construction, with no rounding step of its own and no remainder parked
+on one line. The `int()` calls are a readout, not money; they do not add to D130's
+two truncations. A split between the two years is already in last year's posted
+price, so it needs no line.
+
+**The fair-value change is split** as `(eps1 - eps0) * m0` for earnings, then
+`eps1 x` the change in each of the multiple's three moving terms: sentiment,
+industry standing, regime premium. That is exact algebra while no clamp is hit.
+
+**Two lines the §3.5 example does not show:**
+
+- **Regime premium.** The example lists earnings, sentiment, standing, the two event
+  lines and flow, but the multiple also moves when the regime changes, so it needs a
+  line or the example would not balance. S7 may print it merged into "earnings".
+- **Valuation limits.** What the 4-30 multiple clamp or the -40/1,200 fair-value
+  clamp took off. It is zero unless a clamp was hit in either year, so float noise
+  cannot print a stray coin on it.
+
+**Rules out:** a ledger that balances by adjusting whichever line is largest.
+
+### D134 - After a split the price may sit one coin above the identity
+**2026-11-21 · Accepted**
+
+§3.6 says a split halves the price **rounding up** (D22's rule, kept) and that the
+identity still holds. Both cannot be exactly true for an odd price: 333 halves to
+167, while `int(fair_value/2 + event_carry/2 + flow/2)` is 166. The design's worked
+example uses 320, which is even.
+
+**Decided:** keep rounding up, as §3.6 says explicitly. The posted price may then sit
+at most one coin above the identity until the next `reprice`, which sets it from the
+identity again. The split is value-neutral to within that coin per share (a holder's
+shares double too, which S3 does), and the next year's ledger absorbs the coin in
+its first line. Tested in `test_company_fundamentals.gd`.
+
+### D135 - The dividend scales are the published ones, and policy 35 matches the old table to a hundredth
+**2026-11-21 · Accepted**
+
+§3.10a says a company with the neutral policy of 35 "pays exactly what the previous
+draft's single table paid in every regime". It does not: the previous table was
+GROWTH 0.10, STEADY 0.35, SLOWING 0.30, DECLINE 0.20, DISTRESS 0, while 35% times
+the published scales (0.30, 1.00, 0.85, 0.55, 0.00) is 0.105, 0.35, 0.2975,
+0.1925, 0. So it reproduces STEADY and DISTRESS exactly and the other three to
+within a hundredth, which can differ by a coin per share after the truncation.
+
+**Decided:** keep the published scales. They are the table §3.10a specifies and
+the ones the v3 probe measured §2.6 with; changing them to make the sentence true
+would change the measured balance. The test asserts what is true: the ratio is the
+policy times the published scale, STEADY pays the policy exactly, and each regime is
+within 0.01 of the old table.
+
+**Also decided here, from the probe:** the long-match damping multiplies the
+regime's **own** growth roll, of either sign, before the retention factor; neither
+applies to the industry's share. So `growth = roll x damping (x retention if
+positive) + industry_performance x beta / 100`.
+
+**The design decisions S1 builds.** The entries below record them.
+
+[stalkleheads-design.md §15](stalkleheads-design.md) lists the decisions the owner
+accepted on 2026-11-21 and says each goes in here in the phase that builds it. These
+are the ones phase S1 built. Each is short because the full reasoning, with the
+measurements, is in the section named; that section is the source if the two ever
+disagree.
+
+### D136 - The price is an identity, not a convergence (§15 A, A2)
+**2026-11-21 · Accepted**
+
+`price = int(fair_value + event_carry + flow)`, and nothing else: no term pulling
+the price toward fair value and no hidden noise. A player who can compute fair
+value would otherwise have a mechanical arbitrage - buy below it, wait for the pull
+(§2.2). The general form (A2): **any bounded, mean-reverting quantity in the price is
+an arbitrage**; three were found (convergence, mean-zero noise, the valuation
+premium). Check any future price term against this. Code: `PriceIdentity`,
+`CompanyState.reprice`.
+
+### D137 - Earnings are the input; P/E is a readout and is never stored (§15 B)
+**2026-11-21 · Accepted**
+
+A company's earnings per share is what the model moves; the multiple is computed
+from published inputs; P/E and earnings yield are derived wherever they are shown
+and exist nowhere in state (§2.5, §3.7). `CompanyState.earnings_per_share()` is
+itself derived from profit and shares, so a split cannot leave it stale.
+
+### D138 - Money is `int`, ratios are `float`, with two truncations (§15 B2)
+**2026-11-21 · Accepted**
+
+The first draft's fixed-point scheme is dropped. A float becomes money in exactly two
+places: `PriceIdentity.price_of` and `DividendRules.dividend_per_share`, both
+`int()` toward zero. This is the pattern `LoanRules` already uses (§3.7). The price
+path uses only `+ - * /` and clamps, never a transcendental function, because only
+those are guaranteed identical across machines. D130 is where this rule met a
+contradiction in the design and won.
+
+### D139 - Five earnings regimes with a published transition matrix (§15 D, D2)
+**2026-11-21 · Accepted**
+
+GROWTH, STEADY, SLOWING, DECLINE and DISTRESS, an enum (`EarningsRegime`) because
+code branches on each. The matrix, the growth bands and margin targets, the quality
+bias, ageing on GROWTH and SLOWING, recovery from DISTRESS and the long-match damping
+ladder are in `RegimeRules`, all copied from §3.3. The model is Animal Crossing's
+turnip market: named patterns and a published table of which follows which
+(Appendix B). **D2:** the regime premiums are 40% of the first draft's spread
+(+0.6 / 0 / +0.24 / -0.6 / -1.4); at the wider spread a low-P/E rule took 63.7% of
+25-year matches, at this one 27.0% (§2.2). D131 records the roll's details.
+
+### D140 - A split needs no new rule, and splits above 300 (§15 E, E2)
+**2026-11-21 · Accepted**
+
+Doubling shares outstanding halves earnings per share and so halves fair value;
+halving event carry and flow with it keeps the identity. The split is value-neutral
+by construction (§3.6). **E2:** StalkleHeads sets its own scale - the threshold is
+300, not the base game's 150, because at 150 a market whose earnings mostly grow
+split 5.7 times a ten-year match; at 300, 1.8. Rounding stays **up** (D22), which
+D134 reconciles with the identity. Companies start at different prices (30 to 150)
+rather than all at 100. Code: `CompanyState.split_if_above`.
+
+### D141 - An industry needs three members, two is the floor, and it is content (§15 P, P2)
+**2026-11-21 · Accepted**
+
+An industry of one is the company in it wearing a hat; three survives one bankruptcy
+without falling below two mid-match (§3.2.3). Six industries of three, decided by
+the owner. **P2:** `industry` is a `StringName` resolved against `IndustryDefinition`
+resources, not an enum, because the code treats every industry identically and only
+its data differs - so adding one is adding a file (§3.2.1). The content validator
+catches the typo that choice risks (D128).
+
+### D142 - Order flow is in the price, clamped at 5% of fair value, persistent (§15 Q)
+**2026-11-21 · Accepted**
+
+`flow = previous * 0.70 + net_shares / shares * 100 * 0.55`, clamped to +/-5% of fair
+value. Persistent rather than reverting, so a price below fair value is not a
+reliable dip to buy (it may be a crowd still leaving). The clamp is a constant a test
+asserts: at 18% the leading strategy wins 61.3% of matches, at 5% 23.2% (§2.4,
+§3.10). The cost in long matches is unsolved and is S9's (§13.2). S1 takes the net
+shares as an input; S4's desk supplies them.
+
+### D143 - Dividends are a payout ratio of earnings, by company policy (§15 R, R2)
+**2026-11-21 · Accepted**
+
+`dividend = int(eps x policy / 100 x regime scale)`, with each company's
+`payout_policy_percent` authored on its profile and the scales GROWTH 0.30, STEADY
+1.00, SLOWING 0.85, DECLINE 0.55, DISTRESS 0 (§3.10a). Decided by the owner. **R2:**
+paying out costs growth - `retention = 1 + (35 - policy) / 100` multiplies positive
+revenue growth only - or the highest payer would simply be the best stock, since a
+dividend paid does not lower the price in this model. D135 records the one
+inconsistency in the section.

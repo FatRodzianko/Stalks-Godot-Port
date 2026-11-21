@@ -1,6 +1,6 @@
 # Glossary
 
-Terms used across the code and documentation. Game terms first, then code terms.
+Terms used across the code and documentation. Game terms first, then StalkleHeads terms, then code terms.
 
 ---
 
@@ -97,6 +97,82 @@ whatsoever. Impossible in a one-player game, since you cannot give yourself one.
 years, number of players, whether loans are enabled. The original called these "lobby
 settings" because every match ran through a Steam lobby; renamed here because the
 port must support true offline single-player.
+
+---
+
+## StalkleHeads terms
+
+StalkleHeads is a second game mode, being built in phases, in which prices come from
+simulated company earnings rather than random rolls. Its design is
+[stalkleheads-design.md](stalkleheads-design.md). None of these terms means anything
+in the base game.
+
+**Company** — in StalkleHeads, a stalk with accounts: revenue, a profit margin,
+profit, shares outstanding and earnings per share. Authored as a `CompanyProfile`;
+live as a `CompanyState`. Eighteen of them, three to an industry.
+
+**Earnings per share (EPS)** — profit divided by shares outstanding. What a company
+earns for each share of it. The model moves earnings; the price follows.
+
+**Regime** — which of five states a company's earnings are in this year: GROWTH,
+STEADY, SLOWING, DECLINE or DISTRESS. The regime sets how far revenue moves and which
+margin the company drifts toward. It changes once a year by a roll against a
+published table of odds, the **transition matrix**. See §3.3.
+
+**Ageing and recovery** — the two ways time in a regime changes the odds of leaving
+it. Each year already spent in GROWTH or SLOWING makes a worse regime likelier next
+year (a good run cannot last); each year already spent in DISTRESS makes leaving it
+likelier (a rock-bottom run also ends).
+
+**Quality** — a company's 0-100 rating that biases its regime roll toward better
+regimes. 50 is neutral.
+
+**Industry** — a group of three companies that share a yearly **performance** figure,
+which reaches each member's revenue through its **beta** (how exposed it is to its
+industry, in percent). Performance is persistent: 40% of last year's carries into
+this year's. Authored as an `IndustryDefinition`.
+
+**Standing** — what the market will pay for an industry's earnings this year, in
+turns of multiple: its performance times 0.06. A +20% industry adds 1.2 to every
+member's multiple.
+
+**Sentiment** — last year's whole-market price move, in percent, clamped to +/-20. It
+nudges every multiple this year and leans slightly into every industry's roll. It is
+*last* year's on purpose, so nothing this year depends on itself (§3.1).
+
+**Multiple** — how many years of earnings the market pays for a share:
+`12.5 + sentiment x 0.02 + standing + regime premium`, clamped to 4-30. The
+**regime premium** is a small adjustment per regime, from +0.6 for GROWTH to -1.4 for
+DISTRESS. The base of 12.5 comes from BERRY BONDS' 3% yield (§3.4).
+
+**Fair value** — earnings per share times the multiple. What a company's earnings are
+worth this year, before events and trading.
+
+**Event carry** — the part of the price still owed to announced special events. This
+year's event lands in full; each year after, half of what is left fades away.
+
+**Flow** — the part of the price pushed by what traders, NPC and human alike, bought
+and sold last year. It persists (70% carries into the next year) and is clamped to
+5% of fair value either way.
+
+**The price identity** — StalkleHeads' whole price model:
+`price = int(fair_value + event_carry + flow)`. Nothing is hidden in it, which is what
+lets the ledger explain every move.
+
+**The ledger** — the breakdown of a year's price move into its causes (earnings,
+sentiment, standing, regime premium, valuation limits, this year's event, last
+year's event fading, flow), in whole coins that add up exactly to the move. It is
+the mode's signature screen. Code: `PriceLedger`.
+
+**Payout policy** — the share of its earnings a company pays as a dividend in a
+normal (STEADY) year, 0-100, authored per company. Its regime scales it (a growing
+company holds more back; a distressed one pays nothing), and the result is the
+**payout ratio**. Paying more slows the company's positive revenue growth, through
+the **retention factor** `1 + (35 - policy) / 100`, so a big payer is a different
+stock rather than a better one (§3.10a).
+
+**Placeholder company** — a company the owner has not written yet, named by industry
+and letter (*Transportation Company A*) with an obviously temporary ticker (`TRNA`).
 
 ---
 

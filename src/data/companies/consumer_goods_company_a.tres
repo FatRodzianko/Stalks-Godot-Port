@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CompanyProfile" format=3]
+
+[ext_resource type="Script" path="res://src/data/company_profile.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"consumer_goods_company_a"
+display_name = "Consumer Goods Company A"
+ticker = &"CONA"
+industry = &"consumer"
+starting_earnings_per_share = 8.0
+starting_margin_percent = 12.0
+shares_outstanding = 1000
+quality = 50
+industry_beta_percent = 80
+payout_policy_percent = 35

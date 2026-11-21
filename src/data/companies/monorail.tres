@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CompanyProfile" format=3]
+
+[ext_resource type="Script" path="res://src/data/company_profile.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"monorail"
+display_name = "North Haverbrook MONORAIL"
+ticker = &"MONO"
+industry = &"transport"
+starting_earnings_per_share = 3.2
+starting_margin_percent = 12.0
+shares_outstanding = 1000
+quality = 35
+industry_beta_percent = 100
+payout_policy_percent = 0

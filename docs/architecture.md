@@ -867,11 +867,11 @@ decisions that would be expensive to retrofit; the rest already fit.
 
 | Future feature | Plugs into | Decision taken **now** |
 |---|---|---|
-| StalkleHeads earnings model | New `PriceModel` | **`PriceModel` interface exists from day one** |
+| StalkleHeads earnings model | New `PriceModel` | **`PriceModel` interface exists from day one.** StalkleHeads turned out to need its own year pipeline rather than a new price model (stalkleheads-design.md §10.2); its pieces are in §9 |
 | Mutual fund as a real index | `PriceModel` | **`next_change` receives the whole market, not just one stalk** |
 | Charts, YoY, P/E history | `YearResult` list | **Year history recorded from Year 0** — cheap now, impossible to backfill |
 | Custom stalks from JSON | `StalkDefinition` | **`id`-based identity, no engine-only types in definitions** |
-| Industries, sector performance | `StalkDefinition.industry` + year context | Field added now, unused; sector modifiers slot into the price model |
+| Industries, sector performance | `StalkDefinition.industry` + year context | Field added now, unused. **Superseded for StalkleHeads**: industries are `IndustryDefinition` content named from `CompanyProfile.industry`, and the field on the stalk stays unused (D128, §9) |
 | Momentum / earnings building over years | Price model reading history | History is available, so a model can be stateful across years |
 | Industry news hinting at events | Event pool selection | Events are data with a pluggable pool selector, not a hardcoded list |
 | Meme stalk / short squeeze | A price model + event type | Both are already data-driven seams |
@@ -895,3 +895,78 @@ Non-negotiable, and the thing most worth protecting:
    minimum payment **truncates**. Both are tested.
 5. Range endpoints are **inclusive**, a deliberate divergence from the original's
    max-exclusive C# behaviour. See `game-rules.md` §4.5.
+
+---
+
+## 9. StalkleHeads fundamentals (phase S1)
+
+StalkleHeads is an optional second game mode in which prices come from simulated
+earnings instead of random rolls. Its design is
+[stalkleheads-design.md](stalkleheads-design.md); this section is how the code built
+so far is laid out. **Nothing here is reachable from the base game.** No existing
+class calls any of it, `ContentLibrary.load_from()` does not load its content, and
+`test_golden_history.gd` (D127) proves the base game is unchanged.
+
+Phase S1 built the pieces of a StalkleHeads year but **not the year itself**. The
+pipeline that calls them in order is phase S3's `EarningsYearResolver`.
+
+### The files
+
+| Layer | File | What it is |
+|---|---|---|
+| data | `earnings_regime.gd` | `EarningsRegime.Value`: GROWTH, STEADY, SLOWING, DECLINE, DISTRESS. An enum because code branches on each |
+| data | `industry_definition.gd` + `industries/*.tres` | An industry as content: `id` and `display_name`. Six of them |
+| data | `company_profile.gd` + `companies/*.tres` | A company's authored fundamentals: industry, opening EPS, margin, shares, quality, beta, payout policy. Eighteen of them, placeholder values from §3.2.4 |
+| data | `content_library.gd` | `load_fundamentals()` loads both directories; `validate()` checks them (D128) |
+| sim | `regime_rules.gd` | The transition matrix and every per-regime table; the regime roll; the damping ladder |
+| sim | `company_state.gd` | One company during a match: accounts, regime, valuation, the three price terms, the posted price |
+| sim | `industry_state.gd` | One industry during a match, and its persistent yearly roll |
+| sim | `valuation_rules.gd` | The multiple and fair value |
+| sim | `price_identity.gd` | Event carry, flow, the price, the split threshold and the split price |
+| sim | `price_ledger.gd` | Why a price moved, in whole coins that sum to the move |
+| sim | `dividend_rules.gd` | Payout ratio, dividend per share, the retention factor |
+
+`CompanyState` pairs with `CompanyProfile` the way `StalkState` pairs with
+`StalkDefinition`, and `IndustryState` with `IndustryDefinition`: the resource is
+immutable content, the `RefCounted` is what changes during a match. The `*Rules`
+classes are static functions with no state, like `TradeRules` and `LoanRules`.
+
+### One year, as S3 will call it
+
+```
+sentiment = last year's index move, clamped to +/-20       # S3 computes it (§3.1)
+
+IndustryState.advance_all(industries, sentiment, rng)      # §4 step 1, one draw each, id order
+for each company:
+    before = company.copy()                                # for the ledger
+    company.advance_earnings(industry.performance,         # §4 step 2, two draws:
+                             match_years, rng)             #   regime roll, growth roll
+# draw the event                                           # §4 step 4, S3
+for each company:
+    company.reprice(sentiment, industry.performance,       # §4 steps 3 and 5, no draws
+                    event_delta, net_shares_traded)
+    PriceLedger.between(before, company)                   # the readout
+# index, mood, bankruptcy                                  # §4 steps 6-8, S3
+company.split_if_above()                                   # §4 step 9
+company.dividend_per_share()                               # §4 step 10, paid by S3
+```
+
+`test_price_ledger.gd` runs exactly this loop with a synthetic event and random net
+shares, which is the closest thing to a StalkleHeads match that exists until S3.
+
+**What S3 has to add around it:** the index (My Mutuals and Me Inc.) from the
+companies' pre-split moves, the derived mood, the single bankruptcy pass, doubling
+holders' shares on a split, paying dividends, the event draw from last year's mood's
+bag, and the shared back half (`YearSettlement`). **What S4 adds:** the desk whose
+trades become `net_shares_traded`.
+
+### The rules that hold it together
+
+- **Draw counts are fixed** (D131): an industry is one draw, earnings season two,
+  valuation and pricing none. So the random stream never depends on what happened,
+  which multiplayer and the golden-history style of test both need.
+- **Two truncations** (D130, D138): `PriceIdentity.price_of` and
+  `DividendRules.dividend_per_share`. Revenue, profit, margin, EPS, the multiple,
+  fair value, event carry and flow are all floats.
+- **The ledger balances by construction** (D133), and a test checks it over forty
+  seeded 30-year runs of all eighteen companies.
