@@ -55,6 +55,7 @@ game, not from the rules document.
 | [godot-editor-guide.md](godot-editor-guide.md) | A first-time walkthrough of the Godot editor for this project, written for a complete beginner | You have never opened Godot |
 | [glossary.md](glossary.md) | Domain and technical terms used throughout | Something is unexplained |
 | [ui-reference.md](ui-reference.md) | The pixel grid, and the original's layout read from its scenes | You are building or changing a screen |
+| [stalkleheads-design.md](stalkleheads-design.md) | The approved design for StalkleHeads, an additional game mode in which prices come from a simulated market of earnings, industries and NPC traders. Design only — nothing in it is built yet | You are building StalkleHeads, or changing anything it says must not change in the base game |
 
 There is also **[../CLAUDE.md](../CLAUDE.md)** in the repository root. It holds the
 coding standards and conventions. It is addressed to an AI assistant, but the
