@@ -5433,3 +5433,142 @@ paying out costs growth - `retention = 1 + (35 - policy) / 100` multiplies posit
 revenue growth only - or the highest payer would simply be the best stock, since a
 dividend paid does not lower the price in this model. D135 records the one
 inconsistency in the section.
+
+**Phase S2, the balance tool.** The entries below are the choices it made.
+
+### D144 - The balance tool plays the real sim through a stand-in year kept in `tools/`
+**2026-11-21 · Accepted**
+
+`tools/balance_report.gd` (phase S2, [stalkleheads-design.md](stalkleheads-design.md)
+§11) has to play whole StalkleHeads matches, but the year pipeline is S3's and does
+not exist. So `tools/balance/stand_in_year.gd` strings the S1 classes together in §4's
+order: industry year, earnings season, valuation, the event, prices, index and mood,
+bankruptcy, splits, dividends. Every price, earnings figure and dividend comes from a
+call into `src/sim/`. The file adds only three things the sim does not have yet (the
+event, the index, a bankruptcy flag), and each is marked as stand-in.
+
+**Why `tools/` and not `src/`.** Anything in `src/` is something the game may call.
+A half-pipeline there is what S3 would have to work around or delete, and it would be
+tempting to grow it into the real one without the `YearSettlement` split §10.2 asks
+for. In `tools/` nothing in the game can reach it. `YearResolver` is untouched.
+
+**No sim helper was needed.** Everything the driver calls already existed in S1, so
+nothing was added to `src/sim/`.
+
+**When S3 lands:** point `tools/balance/balance_match.gd` at `EarningsYearResolver`,
+delete `stand_in_year.gd`, and re-run the tool. A gap between the two runs is then a
+difference between the stand-in and the real pipeline, and worth explaining before
+anything is tuned.
+
+**Rules out:** a year driver in `src/`; changing `YearResolver` for the tool.
+
+### D145 - The balance tool draws the market and the players from two streams
+**2026-11-21 · Accepted**
+
+The probe drew everything from one generator, so the market a strategy was measured
+on depended on which other strategies were playing: RANDOM draws, and its draws shift
+everything after them. The tool lets you pick strategies on the command line, which
+would then change the market under the ones you kept.
+
+**Decided:** the market's generator is seeded with the match seed; RANDOM draws from a
+second one seeded with `hash("balance players <seed>")`. No other strategy draws.
+Running a subset leaves every price unchanged, and `test_balance_smoke.gd` checks it.
+
+Consequence: no seed reproduces a probe match (the probe uses Python's generator in
+any case). The tool and the probe can only agree in distribution, which is how they
+are compared (Appendix A).
+
+### D146 - TREND reads last year's earnings growth, split-adjusted; the probe's did not
+**2026-11-21 · Accepted**
+
+§2.1 defines `TREND` as "hold the three whose published earnings per share grew
+fastest". The tool measures last year's growth of **profit**, which is the growth of
+earnings per share restated for any split (profit does not change when shares
+double). A company with no previous report has no growth figure, so in year 1 TREND
+takes the first three companies by id.
+
+**The probe measured something else, by accident.** It appends each year's earnings
+per share to a history *before* updating profit, then compares the current figure
+with the second-to-last entry. From year 3 on that is growth over **two** years, and
+the stored entry predates the most recent split, so a company that split looks as if
+its earnings halved. TREND in the probe was a weaker, noisier signal than the rule it
+was named for.
+
+**What it changes, measured.** In a copy of the probe with only this corrected
+(outside the repository, like the probe), TREND's ten-year win share goes from 23% to
+51% with no flow; in the §2.6 configuration (flow at 5%, the desk, FOLLOW) from about
+22% to 46%. The tool measures 48.5%. See D149.
+
+**Rules out:** reproducing the probe's two-year comparison to match its numbers.
+
+### D147 - Where the stand-in year and the probe differ, the design wins
+**2026-11-21 · Accepted**
+
+Four places the probe and the design disagree, all decided for the design:
+
+- **Event carry** lands in full in its own year (D132, decided in S1).
+- **A constituent that goes bankrupt counts -100 in the index** (§3.9). The probe used
+  its raw move, which is below -100 when the price goes negative.
+- **The event's sign follows last year's mood** (§10.2), the bull bag in year 1. The
+  probe used `sentiment >= 0`, which differs only when last year's index move was
+  exactly zero.
+- **No zeroing of tiny event carry.** The probe set carry under 0.01 to zero;
+  `PriceIdentity` has no such rule and the tool adds none.
+
+**Kept from the probe, because the design has nothing yet:** the event's shape (one a
+year, on a living company chosen uniformly, +5 to +20 after a bull year, -5 to -25
+after a bear one) stands in for `EventPool`, which S3 wires to StalkleHeads.
+
+### D148 - Strategy details the design leaves open
+**2026-11-21 · Accepted**
+
+§2.1 gives each strategy one line. The tool needed more, and took the probe's choice
+where it had one:
+
+- **Trading:** at the start of each year a player sells everything and splits its cash
+  equally across its targets at last year's closing price, whole shares only. HOLD
+  buys every living company in year 1 and never trades again. BOND buys BERRY BONDS,
+  whose price and coupon are read from the shipped `berry_bonds.tres`. Starting cash
+  is `GameSettings`' default, 10,000.
+- **MOMENTUM and CONTRARIAN** rank by last year's move in **coins**, before splits:
+  the board's Yearly Change column, which is what a player sees.
+- **INCOME** ranks by last year's dividend per share over price. Nothing is paid
+  before year 1, so year 1 picks the first three by id.
+- **LOWPE and HIGHPE** skip a company with earnings at or below zero. If none is left,
+  LOWPE takes the first three by id and HIGHPE does not trade that year.
+- **Ties break by company id**, everywhere.
+- **FOLLOW is absent.** It copies the best NPC trader, and there is no desk until S4.
+- **Flow is off by default**, because without the desk the comparison target is the
+  probe's no-flow run. `--player-flow` passes the players' own net buying into the
+  flow term, as §3.10 says it will count once the desk exists.
+
+### D149 - P4 does not hold at ten years once TREND is measured correctly
+**2026-11-21 · Open — for the owner**
+
+The tool's first job was to reproduce the probe. It does, once the probe is given the
+same corrections (D132, D146, D147, and FOLLOW removed): the two implementations then
+agree to within sampling noise on every figure. Appendix A of
+[stalkleheads-design.md](stalkleheads-design.md) has the table. That agreement is the
+evidence that neither S1 nor the tool has a bug of its own in what was compared.
+
+What it shows is that **§2.6's headline was wrong**. With TREND as §2.1 defines it, the
+leading strategy wins 48.5% of ten-year matches with no flow (47.3% over 4,000 seeds),
+against the 30% P4 ceiling. Every configuration measured fails:
+
+| Configuration | Leader, 10 years |
+|---|---|
+| The tool, no flow | TREND 48.5% |
+| The tool, flow from player trades only | TREND 45.0% |
+| Probe, §2.6 setup (flow, desk, FOLLOW), TREND corrected | TREND 46.2% |
+| The same, also with D132's carry | TREND 40.0% |
+
+At 25 years TREND wins 58.8%. The likely reason: a company whose earnings grew fastest
+last year is usually in GROWTH, GROWTH is the stickiest good regime (58% stay in its
+first year), and next year's revenue grows 15-35% again. The regime persists, it shows
+in published earnings, and TREND reads it directly. That is an explanation, not a
+measurement; S9 should confirm it before acting on it.
+
+**Not tuned.** S2's brief forbids closing a gap by tuning, and the levers (GROWTH's
+stay chance, ageing, the growth premium, the band widths) are balance decisions for S9
+and the owner. Recorded so nobody quotes §2.6's 22% again; §1, §2.6 and Appendix A of
+the design carry a note pointing here.

@@ -898,7 +898,7 @@ Non-negotiable, and the thing most worth protecting:
 
 ---
 
-## 9. StalkleHeads fundamentals (phase S1)
+## 9. StalkleHeads fundamentals (phases S1 and S2)
 
 StalkleHeads is an optional second game mode in which prices come from simulated
 earnings instead of random rolls. Its design is
@@ -952,7 +952,9 @@ company.dividend_per_share()                               # §4 step 10, paid b
 ```
 
 `test_price_ledger.gd` runs exactly this loop with a synthetic event and random net
-shares, which is the closest thing to a StalkleHeads match that exists until S3.
+shares. The balance tool's stand-in year (below) runs it with the index, mood,
+bankruptcy and dividends added, which is the closest thing to a StalkleHeads match
+that exists until S3.
 
 **What S3 has to add around it:** the index (My Mutuals and Me Inc.) from the
 companies' pre-split moves, the derived mood, the single bankruptcy pass, doubling
@@ -970,3 +972,33 @@ trades become `net_shares_traded`.
   fair value, event carry and flow are all floats.
 - **The ledger balances by construction** (D133), and a test checks it over forty
   seeded 30-year runs of all eighteen companies.
+
+### The balance tool and its stand-in year (phase S2)
+
+The balance tool plays many seeded StalkleHeads matches and prints how each player
+strategy did (design §2.6, §12.1). It is a tool, not game code: everything is in
+`tools/`, and nothing in `src/` refers to it.
+
+| File | What it is | After S3 |
+|---|---|---|
+| `tools/balance_report.gd` | The command-line entry point: reads arguments, runs the matches, prints the table | Stays |
+| `tools/balance/balance_match.gd` | One match: the nine strategy players, their trading, dividends paid into their books, net worth at the end | Stays, pointed at the real pipeline |
+| `tools/balance/stand_in_year.gd` | **Stand-in.** A StalkleHeads market and one year of it, calling the S1 classes in §4's order | **Deleted**, replaced by `EarningsYearResolver` |
+| `tests/unit/test_balance_smoke.gd` | 30 fixed-seed matches with loose bands, in the GUT suite | Stays |
+
+**The stand-in year** is the S1 loop above, plus the steps S1 left to S3, done in the
+simplest way that matches the design: an event in the probe's shape (one a year,
+random company, sign from last year's mood), the index as the mean of pre-split
+moves with a bankrupt company at -100, the mood derived from it, next year's sentiment
+clamped, one bankruptcy pass by a flag, and dividends per share for the match to pay.
+It contains **no price rule of its own**: every price, earnings figure and dividend is
+a call into `src/sim/`. Why it is in `tools/` and not `src/` is D144.
+
+**Two random streams** (D145): the market draws from a generator seeded with the match
+seed, and only the RANDOM strategy draws from a second one. So which strategies run
+never changes the market they run on.
+
+**What it leaves out:** the NPC desk, so `net_shares_traded` is zero unless
+`--player-flow` is passed; `EventPool`, bags and news; loans; Mutuals as something a
+player can buy. Each of those arrives with its phase, and the tool should be re-run
+when it does.

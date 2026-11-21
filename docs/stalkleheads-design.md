@@ -90,6 +90,12 @@ match lengths with the recommended model:
 On the approved eighteen-company roster (§2.6); the thirteen-company draft measured
 23%, 45%, 72% and 87%.
 
+> **Superseded by the balance tool, 2026-11-21.** These figures came from a probe whose
+> `TREND` strategy compared earnings with two years earlier and was distorted by splits.
+> Measured correctly, over the real simulation, the leading strategy wins **48.5%** of
+> ten-year matches and 58.8% of 25-year ones, so **P4 does not currently hold**. See
+> [Appendix A](#appendix-a--the-balance-probe) and [D149](decisions.md).
+
 The base game escapes this only by having no edge to compound — which is why parking
 everything in BERRY BONDS wins 38% of its 10-year matches and 41% of its 25-year ones
 ([§2.1](#21-what-was-measured)). So **a long StalkleHeads match rewarding the better
@@ -473,6 +479,14 @@ cheap relative to its peers, and the player has made that judgement by looking a
 adjacent numbers. That is the design target for how hard the analysis should be.
 
 ### 2.6 Re-measured on the approved roster
+
+> **Read with care: the `TREND` row below is wrong.** The probe that produced this
+> section measured `TREND` over two years, not one, and split-distorted. With that
+> corrected `TREND` wins 40-51% of ten-year matches depending on configuration, so
+> "P4 still holds" below is no longer true. The balance tool reproduces the probe's
+> no-flow run once the probe is corrected; the flow and `FOLLOW` figures wait for the
+> desk (S4). See [Appendix A](#appendix-a--the-balance-probe) and
+> [D149](decisions.md).
 
 **Every figure in §2.1–§2.4 was measured on the thirteen-company draft.** The owner's
 decisions of 2026-11-21 changed the market under it: eighteen companies in six
@@ -2217,7 +2231,7 @@ is now an input to every price through `flow`, so it cannot come last.
 |---|---|---|---|---|
 | **S0 — Guard the base game** ✅ **Done 2026-11-21** | The P5 golden-history test, written and passing **before any other change**: a seeded 99-year base match, hashed. **Delivered:** `tests/unit/test_golden_history.gd` — shipped content, three scripted players (a rotating trader, a borrower who defaults in year 5, a borrower who misses once and overpays), every year's prices, deltas, splits, bankruptcies, mood, event, dividends, loan assessments, cash, holdings, net worth, standings and game end written as sorted text and compared by sha256. Shown to fail on two deliberate perturbations. See [D127](decisions.md) | Small | No | — |
 | **S1 — Fundamentals** ✅ **Done 2026-11-21** | Regimes and the matrix, ageing, recovery, the long-match damping ladder; revenue, margin and earnings per share; `IndustryDefinition` and the validator check; sentiment and the multiple; the price identity with `event_carry` and `flow`; the ledger; payout-ratio dividends; the split at 300. Pure `sim`, headless. **Delivered:** `EarningsRegime`, `CompanyProfile` and `IndustryDefinition` in `src/data/`; `RegimeRules`, `CompanyState`, `IndustryState`, `ValuationRules`, `PriceIdentity`, `PriceLedger` and `DividendRules` in `src/sim/`; `ContentLibrary.load_fundamentals()` with the industry, ticker and range checks and a new `warnings` list; 18 company profiles and 6 industries as placeholder `.tres`; 75 tests in four new files. **Scope:** no year pipeline - the pieces are called in §4's order by a stand-in loop in `test_price_ledger.gd`, and S3 builds the real one; flow takes net shares as a plain input until S4. Decisions D128-D135 (including where this document contradicts itself), the §15 decisions recorded as D136-D143 | Largest single phase | No | 3 |
-| **S2 — Balance tooling** | The probe of Appendix A rebuilt as a `tools/` script over the **real** `sim` code, reporting the strategy table of §2.1. Its first job is to reproduce Appendix A's numbers; if it cannot, either the probe or the implementation is wrong, and that must be settled before tuning anything | Small to build, open-ended to use | No | — |
+| **S2 — Balance tooling** ✅ **Done 2026-11-21** | The probe of Appendix A rebuilt as a `tools/` script over the **real** `sim` code, reporting the strategy table of §2.1. Its first job is to reproduce Appendix A's numbers; if it cannot, either the probe or the implementation is wrong, and that must be settled before tuning anything. **Delivered:** `tools/balance_report.gd` (arguments for years, seeds, first seed, strategies, player flow; 400 ten-year matches in about 4 s); `tools/balance/balance_match.gd`, the nine strategies and the trading loop; `tools/balance/stand_in_year.gd`, a §4-order year over the S1 classes that **S3 replaces**; `tests/unit/test_balance_smoke.gd`, 30 fixed-seed matches with loose bands, about 1 s. Nothing added to `src/`. **Finding: the probe's TREND strategy was mis-measured, and P4 fails at ten years** (TREND 48.5%) — see Appendix A and [D149](decisions.md). No FOLLOW and no desk flow until S4. Decisions D144-D149 | Small to build, open-ended to use | No | — |
 | **S3 — The pipeline** | `YearSettlement` extracted from `YearResolver` (P5 must stay green); `EarningsYearResolver` running §4 steps 1–10; the derived mood; the event drawn from last year's mood; Mutuals as an index; the bond as the yardstick | Medium | No | 2, 4, 7, 14 |
 | **S4 — The NPC desk** | About twenty-four traders, the eight strategies, the per-trader appetite draw, sorted order and fixed draw count; recording net shares traded into `flow`; short interest and its event weighting. **Then re-run S2**: `flow` is clamped and measured as free only at 5%, so this is where that is confirmed or not | Medium | No | 10, 11 |
 | **S5 — Mode and lobby** | `GameSettings.mode`, picking the resolver at match start, mode selection on the title screen, the lobby key, the browser row | Small | Yes, for the browser row | — |
@@ -2613,6 +2627,66 @@ parallel implementation of it.
   eight rivals playing simultaneously, which is not the same as how a strategy does
   against three friends. It is the right *shape* of measurement for P4 and the wrong one
   for predicting a real table.
+
+### The balance tool, and how its numbers compare with the probe's
+
+**The probe has been replaced (phase S2, 2026-11-21).** `tools/balance_report.gd` plays
+seeded matches over the real `src/sim/` classes and prints the §2.6 table; how to run
+it is in [development.md](development.md), what it covers in [testing.md](testing.md).
+Until S3 it drives the year with a stand-in, `tools/balance/stand_in_year.gd`, and
+until S4 there is no desk, so no `FOLLOW` and no flow by default. Its comparison target
+is therefore the probe's **no-flow** ten-year run.
+
+**The raw comparison.** Ten years, 400 seeds each, no flow:
+
+| Figure | Probe (no flow) | Tool | Cause of the gap |
+|---|---|---|---|
+| Leading strategy | `MOMENTUM` 21.0% | `TREND` 48.5% | The probe's `TREND` bug ([D146](decisions.md)) |
+| `TREND` win share | 19.8% | 48.5% | D146 |
+| `LOWPE` | 15.5% | 16.5% | Noise, after D132 raised it and the stronger `TREND` took wins back |
+| `MOMENTUM` | 21.0% | 9.8% | Lost wins to the corrected `TREND` |
+| `FOLLOW` | 10.0% | — | No desk until S4; its wins redistribute to the other eight |
+| `BOND` median | 13,426 | 13,426 | None: the bond is deterministic |
+| Bankruptcies per match | 0.37 | 0.66 | [D132](decisions.md): an event lands in full in its own year, so a large bear event kills a weak company more often |
+| Splits per match | 2.10 | 2.00 | Noise |
+| Mean yearly move | 21.05 | 21.27 | D132, slightly larger event moves |
+| Bull-year rate | 56.8% | 55.2% | Noise |
+
+**The check that explains every gap.** A copy of the probe (outside the repository,
+like the probe itself) was given the tool's four differences one at a time. Ten
+years, 400 seeds, no flow, win shares:
+
+| Probe variant | `TREND` | `LOWPE` | `MOMENTUM` | Bankruptcies | Leader |
+|---|---|---|---|---|---|
+| As published | 19.8% | 15.5% | 21.0% | 0.37 | 21.0% |
+| `FOLLOW` removed | 23.0% | 17.5% | 22.5% | 0.37 | 23.0% |
+| + D132 event carry | 18.5% | 23.5% | 23.2% | 0.62 | 23.5% |
+| + D146 `TREND` | 48.0% | 19.2% | 8.2% | 0.62 | 48.0% |
+| + D147 index floor | 49.2% | 18.8% | 8.2% | 0.63 | 49.2% |
+| **The tool** | **48.5%** | **16.5%** | **9.8%** | **0.66** | **48.5%** |
+| The tool, 4,000 seeds | 47.3% | 17.5% | 10.2% | 0.61 | 47.3% |
+
+With all four applied, the probe and the tool agree within sampling noise (about ±2.5
+points of win share at 400 seeds) on every figure, at 25 years too (`TREND` 61.8%
+against 58.8%, `LOWPE` 28.5% against 33.0%). **No gap is unexplained.** Two
+implementations written separately, in two languages, agreeing once their known
+differences are aligned is the evidence that S1's code does what the design says.
+D130 (floats for revenue and profit) causes no gap, because the probe used floats
+there too.
+
+**What the comparison found: P4 fails.** The probe's `TREND` was weaker than the rule
+§2.1 describes, so every P4 figure in §1 and §2.6 understated the leader. Measured
+correctly:
+
+| | 10 years | 25 years |
+|---|---|---|
+| The tool, no flow | `TREND` 48.5% | `TREND` 58.8% |
+| The tool, flow from player trades only | `TREND` 45.0% | — |
+| Probe, §2.6's setup (flow 5%, desk, `FOLLOW`), `TREND` corrected | `TREND` 46.2% | — |
+| The same, also with D132 | `TREND` 40.0% | — |
+
+**Nothing was tuned to close this.** It is [D149](decisions.md), open for the owner
+and S9. The tool is what to re-run after any change.
 
 ---
 
