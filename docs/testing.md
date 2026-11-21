@@ -108,7 +108,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-929 tests, about 60 seconds.
+930 tests in 41 scripts, about 65 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -119,6 +119,7 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_event_pool.gd` | Pool sizes 45/45, no repeats within a cycle, refill on exhaustion, bankrupt-target skipping without consuming | 9 |
 | `test_trade_rules.gd` | Buy/sell validation and rejection reasons, max affordable, net worth with holdings and loans, ranking and tie-breaking | 25 |
 | `test_year_resolver.gd` | Split rounding, threshold boundary, both bankruptcy passes, dividend sequencing, displayed yearly change, 10- and 99-year matches, determinism | 21 |
+| `test_golden_history.gd` | **The base game is bit-for-bit unchanged** (StalkleHeads P5, D127): one seeded 99-year match on the shipped content, with a rotating trader, a borrower who defaults and a borrower who misses once and overpays, written year by year as sorted text — prices, deltas, splits, bankruptcies, mood, event, dividends, loan assessments, cash, holdings, net worth, standings, game end — and compared by sha256 with a recorded hash; plus checks that the match really reached a split, a bankruptcy, penalties, a default and a paid-off loan | 1 |
 | `test_loan_rules.gd` | Annuity arithmetic, eligibility, the full ten-payment schedule, penalties and default, overpayment, one-loan-per-game, pipeline integration | 40 |
 | `test_marquee_label.gd` | The scrolling name label: overflow detection against the real font, hover and click-to-pin, character-by-character stepping, reset on leave | 14 |
 | `test_content_library.gd` | The shipped content loads and validates clean, stat blocks match the documented table, 45/45 pools, deterministic order, a full match played from real content, and every validator rule rejecting bad content | 29 |
@@ -172,6 +173,33 @@ Two tests in `test_content_library.gd` are worth knowing about:
 - **The validator tests work by breaking a good stalk one way at a time**, so each
   one proves a specific check actually fires rather than relying on the real content
   happening to be correct.
+
+### The golden history: one hash that guards the base game
+
+`test_golden_history.gd` is a different kind of test from everything else in the
+suite. It does not state what a rule should do. It records what the whole base
+game **did** in one seeded 99-year match and fails if any of it changes. It was
+written in StalkleHeads phase S0, before any StalkleHeads code, so that phase S3
+(which moves loans, net worth, standings and the game-end check out of
+`YearResolver`) can prove the move changed nothing. See
+[stalkleheads-design.md §12.1](stalkleheads-design.md) and [D127](decisions.md).
+
+**A failure means a base-game outcome moved.** It does not say which one. Every run
+writes the full record to `user://golden_history_record.txt` (the failure message
+gives the real path on that machine). To find the change, run the test at the last
+commit where it passed, copy that file aside, run it again on the current code,
+and diff the two: the first differing line is the first year and the first value
+that moved.
+
+**Only update the hash for a deliberate rule change**, and record it in
+`decisions.md` when you do. The header of the test says the same thing. Rewording
+display text (mood labels, event flavour, stalk names) does not affect the record;
+changing a stalk's numbers or an event's price change does, because those are
+rules of the game.
+
+**It was shown to bite** when written: flipping split rounding from up to down, and
+separately adding 1 to one player's net worth in year 50 only, each changed the
+hash. Both were reverted.
 
 ### Scene tests
 

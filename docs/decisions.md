@@ -5071,3 +5071,76 @@ decision is about.
 
 **What it rules out.** Putting anything in the centred column that appears and
 disappears while the player is looking at it.
+
+## StalkleHeads
+
+### D127 - The base game is guarded by a hash of one recorded match
+**2026-11-21 · Accepted**
+
+Build phase S0 of [stalkleheads-design.md](stalkleheads-design.md) (§11), property
+P5. `tests/unit/test_golden_history.gd` plays a seeded 99-year base-game match,
+writes down everything the year pipeline decided as one block of text, and
+compares the text's sha256 with a hash written into the test. It was recorded
+before any StalkleHeads code existed, because S3 moves the back half of
+`YearResolver` into a shared `YearSettlement`, and a guard written after that move
+could only prove the base game matches itself as it then is.
+
+**What goes into the record, and why each part is there.**
+
+- **Every year, every stalk:** price before and after, base delta, event delta,
+  split, bankruptcy. This is the front half of the year, which S3 does not move,
+  but which StalkleHeads must not disturb either.
+- **The mood and the event** (id, target and price change). These are the two
+  draws the rest of the year reads, so a change in the order of random draws
+  shows here first.
+- **Per player, every year:** dividend, the loan assessment (balance before and
+  after, paid, misses, penalty, interest, the new minimum, default), cash, net
+  worth as stored on the player and as reported in the `YearResult`, bankruptcy,
+  the whole loan state and the holdings. Loans, net worth, standings and the
+  game end are exactly what S3 moves, so they are recorded in full rather than
+  summarised.
+- **Standings and the end:** the ranking order, whether the match is over, whether
+  this was the final year, and the winners.
+- **The scripted players' own actions**, and whether each was allowed. Legality
+  is a rule too (`TradeRules`, `LoanRules`), and recording it means a change in
+  what is allowed cannot hide behind the script quietly skipping an action.
+
+**The players are scripted to reach the back half.** Prices alone would guard the
+part S3 does not touch. So there are three players: one who rotates through the
+board every fourth year, one who borrows the maximum in year 2 and never pays
+(10% penalty, 15% penalty, then seizure in year 5), and one who borrows, misses
+year 6 once, and overpays in year 10 so the clamp in `apply_payment` runs. Every
+action goes through the sim-layer validation first. The test also asserts that the
+match really contained a split, a bankruptcy, penalties, exactly one default and a
+paid-off loan, so an edit to the script that stopped reaching one of them fails
+loudly rather than leaving the hash guarding less.
+
+**What is deliberately left out.**
+
+- **Display text.** The mood is written as the fixed word `BULL` or `BEAR`, not
+  `MarketMood.label()`; event flavour text and stalk names are not recorded.
+  Rewording what a player reads is not a rule change and must not break this.
+- **Floats.** None are written. The loan maths uses floats internally but every
+  value that leaves it is an `int`, and only those are recorded.
+- **Dictionary order.** Stalks, players and holdings are all written in sorted-id
+  order, never in the order a `Dictionary` happens to iterate.
+
+**Shipped content is part of the record.** The match runs on `ContentLibrary.load_from()`
+and its real event pool, the way `LocalSession.build_authority` builds a match,
+rather than on the synthetic events in `StalksFixture`. The guard is about the base
+game as players get it, and a stalk's ranges or an event's price change are rules
+of that game. The cost is that a deliberate content edit also breaks the hash; that
+is intended, and is handled the same way as any other deliberate change.
+
+**When it breaks.** The header of the test says what to do: find what moved first
+(the failure message names a file, `user://golden_history_record.txt`, holding the
+full record, which can be diffed against the same file from the last passing
+commit); fix the code if the change was not meant; and only if it was meant,
+update `GOLDEN_HASH` and add an entry here saying which rule changed and why.
+
+**Proved to bite** when it was written: the hash changed when split rounding was
+switched from up to down, and again when one player's net worth was nudged by 1 in
+year 50 alone. Both perturbations were reverted.
+
+**Rules out:** treating a failure of this test as a number to refresh. A new hash
+with no entry here is the drift CLAUDE.md warns about.
