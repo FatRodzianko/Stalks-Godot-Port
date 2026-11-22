@@ -45,6 +45,12 @@ var shares_outstanding: int = 0
 ## retained) plus the industry's share. A readout for the Company tab.
 var revenue_growth_percent: float = 0.0
 
+## The growth roll the latest earnings season was drawn with, a whole percent
+## from the regime's band. 0 before the first season. **An input, not a
+## readout**: it is what the year record sends so a client can replay the
+## season (decisions.md D176).
+var growth_roll: int = 0
+
 # ---------------------------------------------------------------- the regime
 
 var regime: EarningsRegime.Value = EarningsRegime.Value.STEADY
@@ -140,15 +146,35 @@ func advance_earnings(
 	match_years: int,
 	rng: RandomNumberGenerator,
 ) -> void:
-	var was: EarningsRegime.Value = regime
-	regime = RegimeRules.roll_next(regime, profile.quality, years_in_regime, rng)
-	if regime == was:
+	var next: EarningsRegime.Value = RegimeRules.roll_next(
+		regime, profile.quality, years_in_regime, rng
+	)
+	var band: Vector2i = RegimeRules.GROWTH_BAND[next]
+	replay_earnings(next, rng.randi_range(band.x, band.y), industry_performance, match_years)
+
+
+## Earnings season from its two draws already made: the regime it lands in and
+## the growth roll. Draws nothing. `advance_earnings` is this plus the draws,
+## and a client replaying a year it was sent calls this with the host's draws
+## (`EarningsYearResolver.replay_year`, decisions.md D176), so both sides run
+## the same arithmetic.
+func replay_earnings(
+	next_regime: EarningsRegime.Value,
+	roll: int,
+	industry_performance: float,
+	match_years: int,
+) -> void:
+	enter_regime(next_regime)
+	move_accounts(roll, industry_performance, match_years)
+
+
+## Moves to `next_regime`, ageing the regime instead if it is the same one.
+func enter_regime(next_regime: EarningsRegime.Value) -> void:
+	if next_regime == regime:
 		years_in_regime += 1
 	else:
 		years_in_regime = 0
-
-	var band: Vector2i = RegimeRules.GROWTH_BAND[regime]
-	move_accounts(rng.randi_range(band.x, band.y), industry_performance, match_years)
+	regime = next_regime
 
 
 ## The accounts half of earnings season, for a growth roll already drawn from
@@ -158,9 +184,10 @@ func advance_earnings(
 ## The regime's own growth is damped for long matches, then the retention factor
 ## applies if it is positive, then the industry's share is added:
 ## `own = roll * damping; own *= retention if own > 0; growth = own + performance * beta / 100`.
-func move_accounts(growth_roll: int, industry_performance: float, match_years: int) -> void:
+func move_accounts(roll: int, industry_performance: float, match_years: int) -> void:
+	growth_roll = roll
 	profit_before_season = profit
-	var own: float = float(growth_roll) * RegimeRules.growth_damping(match_years)
+	var own: float = float(roll) * RegimeRules.growth_damping(match_years)
 	own = DividendRules.retained_growth(own, profile.payout_policy_percent)
 	var from_industry: float = industry_performance * float(profile.industry_beta_percent) / 100.0
 	revenue_growth_percent = own + from_industry
@@ -226,6 +253,65 @@ func dividend_per_share() -> int:
 	)
 
 
+## §4 step 8 for this company: it failed. Its price is 0 and it has no
+## valuation any more, so the six valuation readouts are cleared. Its accounts,
+## regime and price terms are kept as they were, as the record of what it was.
+##
+## **Why cleared rather than left.** Nothing reads a failed company's valuation,
+## but a client rebuilding readouts from the inputs it was sent
+## (`derive_readouts`) would value it on this year's market rather than on the
+## one it failed in. Clearing it on both sides is what lets a client's copy equal
+## the host's field for field (decisions.md D176).
+func fail() -> void:
+	price = 0
+	sentiment = 0.0
+	industry_standing = 0.0
+	regime_premium = 0.0
+	multiple = 0.0
+	fair_value = 0.0
+	valuation_clamped = false
+
+
+## Rebuilds every readout of a company from the inputs the wire carries, as the
+## host computed them in the latest year (docs/stalkleheads-design.md §9.1,
+## decisions.md D176). **The mirror of `reprice`, `split_if_above` and `fail`**,
+## and it must stay one: a change to any of them is a change here, and
+## `test_wire.gd` compares the two field by field over whole matches.
+##
+## - Profit is `revenue x margin / 100`, the expression `move_accounts` ends on.
+## - The valuation is `reprice`'s, from the sentiment the year was valued on
+##   (`EarningsMarket.sentiment_used`) and this year's industry performance.
+## - A company that split this year was valued on half its shares, and its fair
+##   value was then halved.
+## - A failed company has no valuation (`fail`).
+##
+## Only for a company that has had an earnings season. At year 0 a company is
+## its profile's, exactly as `_init` builds it, and is never derived.
+func derive_readouts(sentiment_valued_on: float, industry_performance: float, has_failed: bool) -> void:
+	profit = revenue * margin_percent / 100.0
+	if has_failed:
+		fail()
+		return
+	sentiment = ValuationRules.clamp_sentiment(sentiment_valued_on)
+	industry_standing = IndustryState.standing_for(industry_performance)
+	regime_premium = RegimeRules.PREMIUM[regime]
+
+	var raw_multiple: float = ValuationRules.unclamped_multiple(sentiment, industry_standing, regime)
+	multiple = ValuationRules.multiple(sentiment, industry_standing, regime)
+	var valued_on_shares: int = shares_outstanding
+	if did_split:
+		@warning_ignore("integer_division")
+		valued_on_shares = shares_outstanding / 2
+	var eps: float = 0.0
+	if valued_on_shares > 0:
+		eps = profit / float(valued_on_shares)
+	var raw_fair: float = ValuationRules.unclamped_fair_value(eps, multiple)
+	fair_value = ValuationRules.fair_value(eps, multiple)
+	valuation_clamped = raw_multiple != multiple or raw_fair != fair_value
+	if did_split:
+		fair_value /= 2.0
+
+
 ## A detached copy, for the ledger's "before" and for tests. Shares the profile,
 ## which is immutable content.
 func copy() -> CompanyState:
@@ -237,6 +323,7 @@ func copy() -> CompanyState:
 	twin.profit_before_season = profit_before_season
 	twin.shares_outstanding = shares_outstanding
 	twin.revenue_growth_percent = revenue_growth_percent
+	twin.growth_roll = growth_roll
 	twin.regime = regime
 	twin.years_in_regime = years_in_regime
 	twin.sentiment = sentiment

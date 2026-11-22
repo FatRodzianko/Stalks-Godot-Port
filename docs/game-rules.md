@@ -301,6 +301,18 @@ Each event carries: **target stalk name**, **flavour text**, **price change**.
   > of** a draw from the bag; the bag is left untouched that year. With nothing
   > flagged it cannot happen. Players cannot sell short. See decisions.md D165
   > and stalkleheads-design.md §5.3. The base game has no squeeze.
+  >
+  > **When the host changes (S6).** The bag rule above holds across a host
+  > migration in StalkleHeads: the bags travel with the match, so the player who
+  > takes over deals from what was left (decisions.md D177). **In the base game it
+  > does not:** a new host reshuffles every bag, so an event can come round again
+  > before its cycle is over. A known gap, left alone because fixing it changes the
+  > base game's network data.
+  >
+  > **A company that fails has no valuation.** In StalkleHeads a bankrupt company's
+  > price is 0 and its multiple, fair value, sentiment and the other valuation
+  > figures are cleared to 0 in the year it fails. Nothing reads them afterwards;
+  > clearing them lets a client rebuild every company exactly (D176).
 
 ---
 

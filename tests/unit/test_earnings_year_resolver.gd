@@ -289,6 +289,10 @@ func test_prices_are_valued_on_last_years_sentiment_not_this_years() -> void:
 		var carried_in: float = state.market.sentiment
 		var result: EarningsYearResult = resolver.advance_year(state, rng)
 		for company_id: StringName in result.ledgers:
+			# A company that failed this year was valued like the rest, then had
+			# its valuation cleared when it failed (decisions.md D176).
+			if state.stalk_by_id(company_id).is_bankrupt:
+				continue
 			var company: CompanyState = state.market.company_by_id(company_id)
 			assert_eq(company.sentiment, carried_in, "year %d %s" % [result.year, company_id])
 

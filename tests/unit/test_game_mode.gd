@@ -231,12 +231,16 @@ func test_a_client_with_base_content_can_show_a_stalkleheads_board() -> void:
 		assert_eq(replica.stalks[index].price, host.state.stalks[index].price)
 
 
-## Until S6 sends the market, a client's copy of a StalkleHeads match has no
-## market to carry on from, so a new host must refuse rather than invent one.
+## A copy of a StalkleHeads match with no market - a snapshot from a build
+## older than S6, which did not send one - has nothing to carry on from, so a
+## new host must refuse rather than invent one. S6's own snapshots carry the
+## market and can change hosts (test_wire.gd).
 func test_a_stalkleheads_match_without_its_market_cannot_change_hosts() -> void:
 	var host: MatchAuthority = _authority(GameMode.Value.STALKLEHEADS)
 	var replica: GameState = GameState.new(GameSettings.new())
-	StateSync.apply_state(replica, StateSync.encode_state(host.state), ContentLibrary.load_from())
+	var old_build: Dictionary = StateSync.encode_state(host.state)
+	old_build.erase("market")
+	StateSync.apply_state(replica, old_build, ContentLibrary.load_from())
 
 	var opened: Dictionary = HostSession.take_over(
 		StubTransport.new(), replica, MatchSetup.load_library(GameMode.Value.STALKLEHEADS),

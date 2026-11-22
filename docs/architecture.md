@@ -395,6 +395,7 @@ recipient, and the host builds one snapshot and sends the same one to everybody.
 | Net worth | yes |
 | Display name, ready flag, bankruptcy, Steam ID | yes |
 | How far the match's random stream has run | yes |
+| In StalkleHeads: the market's state - companies, industries, the desk's books, the flow input, the event bags (§9, D176, D177) | yes |
 
 **Two reasons, and the second is the one that decided it.** There was never
 much worth protecting - the board already publishes net worth, which is the
@@ -905,7 +906,7 @@ Non-negotiable, and the thing most worth protecting:
 
 ---
 
-## 9. StalkleHeads: fundamentals, its year, the NPC desk and the mode (phases S1-S5)
+## 9. StalkleHeads: fundamentals, its year, the NPC desk, the mode and the wire (phases S1-S6)
 
 StalkleHeads is an optional second game mode in which prices come from simulated
 earnings instead of random rolls. Its design is
@@ -921,7 +922,8 @@ Phase S1 built the pieces of a StalkleHeads year. Phase S3 built the year itself
 the NPC desk, which trades after every year settles and whose trading is next year's
 flow, and short interest, which makes a short squeeze possible. Phase S5 made the
 mode selectable: the title screen, the lobby, and `MatchSetup` choosing the board and
-the year at match start.
+the year at match start. Phase S6 put the market on the wire, so a client holds the
+whole match, can rejoin it and can take it over.
 
 ### The files
 
@@ -952,6 +954,9 @@ the year at match start.
 | data | `game_mode.gd` | **S5.** `GameMode.Value`: BASE or STALKLEHEADS. Each mode's name and lobby word (D171) |
 | sim | `year_pipeline.gd` | **S5.** The base class of `YearResolver` and `EarningsYearResolver`: `advance_year` and `record_trade` (D171) |
 | sim | `match_setup.gd` | **S5.** The one place the mode is read: content, board, pipeline, forced settings, take-over refusal (D171) |
+| net | `market_sync.gd` | **S6.** The StalkleHeads half of the wire: the market block of a snapshot, and a year as its draws, both as packed rows; called only by `StateSync` (D176-D178) |
+| tools | `wire_report.gd` | **S6.** Measures the snapshot, the year packet and the welcome in both modes, in bytes (D178) |
+| tests | `fixtures/wire_match.gd` | **S6.** A seeded StalkleHeads match with scripted players, and every field of a match or a year written as lines, so two copies compare field by field |
 
 `CompanyState` pairs with `CompanyProfile` the way `StalkState` pairs with
 `StalkDefinition`, and `IndustryState` with `IndustryDefinition`: the resource is
@@ -960,8 +965,16 @@ classes are static functions with no state, like `TradeRules` and `LoanRules`.
 
 ### One year: `EarningsYearResolver.advance_year`
 
+**Two halves since S6 (D178).** Everything up to step 4 is the year's *draws*, made
+only on the host and written into the result as inputs. Everything from steps 3 and
+5 to 10 is `_settle_prices`, arithmetic on those inputs. `advance_year` is
+draw-then-settle; `replay_year`, which a client runs, takes the host's draws and
+settles with the same code.
+
 ```
+restore the event pool from market.event_bags (D177)
 year += 1; open a StalkYearChange per row; copy() every living company
+market.sentiment_used = market.sentiment       # what this year is valued on
 
 1   IndustryState.advance_all(industries, market.sentiment, rng)  # one draw each, id order
 2   company.advance_earnings(performance, max_years, rng)         # two draws each, id order
@@ -969,16 +982,21 @@ year += 1; open a StalkYearChange per row; copy() every living company
     flagged = desk.flagged_companies(state)                       # short interest, as last year left it
     if template and roll <= squeeze_chance(flagged): event = squeeze on flagged[0]
     else: event = EventPool.draw(market.last_mood, state, rng)    # last year's bag; bull in year 1
+    market.event_bags = pool.bag_state()
+    result.net_shares_priced[id] = market.net_shares_traded[id]  # the last input
+--- _settle_prices: everything below draws nothing, and replay_year runs it too ---
 3,5 company.reprice(market.sentiment, performance, event_delta,  # no draws
-                    market.net_shares_traded[id])
+                    result.net_shares_priced[id])
     ledger = PriceLedger.between(copy, company); row.price = company.price
 6   index move = mean pre-split % move (bankrupt this year = -100)
     index_level *= (100 + move) / 100
 7   mood = BULL if move > 0 else BEAR; market.sentiment = clamp(move, -20, 20)
-8   bankruptcy, one pass: price <= 0 -> row bankrupt, holders wiped out (traders' too)
+8   bankruptcy, one pass: price <= 0 -> row bankrupt, holders wiped out (traders' too),
+    company.fail() clears its valuation readouts (D176)
 9   splits above 300: company.split_if_above(), holders' shares doubled; the index too
 10  dividends: company from earnings, bond its coupon, index the mean of its constituents'
     (traders are paid on what they hold and pay on what they are short)
+--- end of _settle_prices; replay_year stops here ---
 YearSettlement.settle(state, result)                              # loans, net worth, game end
 13  result.desk = desk.act(state, rng)                            # two draws per trader, id order
     market.record_trade(id, net) for each of the desk's trades    # next year's flow input
@@ -1053,8 +1071,8 @@ LocalSession.build_authority
 `HostSession.host` and the rematch go through `build_authority` too, so offline,
 hosted and rematched matches are built identically. `HostSession.take_over` builds
 its pipeline with `MatchSetup.new_pipeline`, and first asks
-`MatchSetup.why_not_take_over`, which refuses a StalkleHeads match without its market
-(the market is not on the wire until S6).
+`MatchSetup.why_not_take_over`, which refuses a StalkleHeads match without its market.
+Since S6 a client's copy has one, so only a snapshot from an older build is refused.
 
 **`YearPipeline`** (`src/sim/year_pipeline.gd`) is the base class of both resolvers:
 `advance_year`, and `record_trade`, which `MatchAuthority` calls after every accepted
@@ -1064,13 +1082,50 @@ becomes flow in StalkleHeads without `MatchAuthority` knowing the mode.
 **Reaching the client.** The mode travels in the snapshot's settings. A joining
 client loads the base content, then `StateSync.apply_state` tops its library up with
 `MatchSetup.prepare_library` once the settings say StalkleHeads, and resolves a
-company the base game does not ship with `MatchSetup.board_definition`. Only the
-board travels so far; the fundamentals and the desk are S6.
+company the base game does not ship with `MatchSetup.board_definition`. The
+market follows it in the same snapshot (next section).
 
 **The lobby.** `SteamService` publishes `mode` (`KEY_MODE`) as `GameMode.lobby_value`,
 a word, beside years, cash and loans (D88). `SteamLobbyRow.describe` puts
 `GameMode.label_for_lobby_value` first, and leaves it out for a lobby that published
 none.
+
+### Reaching the client (phase S6)
+
+Design §9.1's rule, **inputs travel, readouts are derived**, applied twice
+(`src/net/market_sync.gd`, D176-D178). `StateSync` calls `MarketSync` only when a
+match has a market, so the base game's wire is unchanged.
+
+```
+host                                         client
+StateSync.encode_state                       StateSync.apply_state
+  + "market": MarketSync.encode_market         board and players as before, then
+      packed rows of the market's STATE          MarketSync.apply_market
+      (no profit, multiple, fair value...)         content_key must match its own
+                                                   CompanyState.derive_readouts per company
+
+StateSync.encode_year_result(result, state)  StateSync.decode_live_year   (BEFORE the snapshot)
+  - stalk_changes, - mood                      EarningsMarket.replay_state(state)   a copy
+  + "inputs": the year's DRAWS                 EarningsYearResolver.replay_year(copy, result)
+      and the desk's record                       -> row changes, ledgers, mood, dividends
+
+StateSync.encode_history                     StateSync.apply_history
+  every year as above                          a fresh year-0 match, replayed year by year
+```
+
+**Why the client can trust its own numbers.** Every readout comes from the same
+`sim` code the host ran: `derive_readouts` mirrors `reprice`, and `replay_year`
+*is* the host's year after its draws. Both are integer arithmetic and IEEE floats
+with no transcendental functions (D130), so two machines on the same build compute
+the same bits. `test_wire.gd` checks that over whole matches.
+
+**Order matters on a live year.** The replay needs the market as it was before the
+year, and the snapshot that comes with the year replaces it, so `ClientSession`
+decodes the year first and applies the snapshot second.
+
+**Migration** needs nothing new: the promoted host's `GameState` already holds the
+whole market, including the event bags (D177), and `take_over` builds the pipeline
+as before. The first year it advances restores the pool from those bags.
 
 ### The rules that hold it together
 

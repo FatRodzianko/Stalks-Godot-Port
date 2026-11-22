@@ -83,12 +83,13 @@ static func new_pipeline(settings: GameSettings, library: ContentLibrary) -> Yea
 
 ## Why `state` cannot be continued by a new host, or an empty string if it can.
 ##
-## A StalkleHeads match's market (fundamentals, industries, the desk) does not
-## reach the clients yet — that is S6's wire (design §11) — so a client holds
-## the board but not the market, and has nothing to advance the year from.
-## Refusing is better than carrying on with a market made up afresh.
+## A StalkleHeads match's market (fundamentals, industries, the desk, the event
+## bags) travels in every snapshot (decisions.md D176), so a client's copy can
+## be carried on. One without a market - a snapshot from a build older than
+## that - has nothing to advance the year from, and refusing is better than
+## carrying on with a market made up afresh.
 static func why_not_take_over(state: GameState) -> String:
 	if state.settings != null and state.settings.mode == GameMode.Value.STALKLEHEADS:
 		if state.market == null:
-			return "A StalkleHeads match cannot change hosts yet."
+			return "This copy of the StalkleHeads match has no market to carry on from."
 	return ""

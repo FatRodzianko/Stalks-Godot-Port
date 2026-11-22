@@ -30,9 +30,34 @@ var industries: Array[IndustryState] = []
 ## This is what this year's multiples and industry rolls lean on.
 var sentiment: float = 0.0
 
+## The sentiment the latest year's prices were valued on: what `sentiment` was
+## when that year began. 0 before year 1. A readout's input: a client rebuilding
+## each company's valuation from the wire needs it, because `sentiment` has
+## already moved on to next year's (`CompanyState.derive_readouts`, D176).
+var sentiment_used: float = 0.0
+
 ## Last year's reported mood. BULL before year 1, so the first year's event is
 ## drawn from the bull bag (§14 q14).
 var last_mood: MarketMood.Value = MarketMood.Value.BULL
+
+## What is left in each mood's event bag, as positions in that mood's pool
+## (`EventPool.bag_state`), keyed by mood. Empty until the first event is drawn.
+##
+## **The bags are the pipeline's, and they are kept here as well** so that they
+## travel with the match: a host that takes the match over builds a fresh
+## pipeline, and without this it would deal its events from freshly shuffled
+## bags - an event the old host had already dealt could come round again, and
+## the match would not be the one being played. `EarningsYearResolver` restores
+## the pool from this at the start of each year and writes it back after the
+## draw (decisions.md D177).
+var event_bags: Dictionary[int, PackedInt32Array] = {}
+
+## A fingerprint of the content this market was built from: the companies,
+## industries and traders, and every event the pool can deal, in order. Two
+## machines build the same market from the same content, so a client compares
+## the host's with its own before applying a snapshot that names things only by
+## position (`StateSync`, decisions.md D176).
+var content_key: int = 0
 
 ## My Mutuals and Me Inc.'s level, unrounded. The posted price is `int()` of it
 ## (decisions.md D157). Starts at the index row's authored starting price.
@@ -70,7 +95,69 @@ static func from_library(library: ContentLibrary) -> EarningsMarket:
 	var index_definition: StalkDefinition = library.stalk_by_id(INDEX_ID)
 	if index_definition != null:
 		market.index_level = float(index_definition.starting_price)
+	market.content_key = content_key_of(market, build_event_pool(library))
 	return market
+
+
+## The fingerprint `content_key` holds: every id, in the order the wire uses,
+## hashed. Order matters as much as membership, because a packed row means
+## "the third company" and both ends must agree on which that is.
+static func content_key_of(market: EarningsMarket, pool: EventPool) -> int:
+	var parts: PackedStringArray = []
+	for company: CompanyState in market.companies:
+		parts.append(String(company.id))
+	parts.append("|")
+	for industry: IndustryState in market.industries:
+		parts.append(String(industry.id))
+	parts.append("|")
+	for trader: NpcTraderState in market.desk.traders:
+		parts.append(String(trader.id))
+	parts.append("|")
+	parts.append_array(pool.event_ids())
+	return ",".join(parts).hash()
+
+
+## A players-less match holding a detached copy of `state`'s board and market,
+## for replaying a year on (`EarningsYearResolver.replay_year`). Nothing done to
+## the copy reaches `state`. The desk is the same traders at their starting
+## books: a replay never runs the desk, it only needs to know who is on it.
+static func replay_state(state: GameState) -> GameState:
+	var copy: GameState = GameState.new(state.settings)
+	copy.year = state.year
+	for row: StalkState in state.stalks:
+		var twin: StalkState = StalkState.new(row.definition)
+		twin.price = row.price
+		twin.last_yearly_change = row.last_yearly_change
+		twin.is_bankrupt = row.is_bankrupt
+		twin.did_split = row.did_split
+		copy.stalks.append(twin)
+	copy.market = state.market.copy_for_replay()
+	return copy
+
+
+## A detached copy of everything but the traders' books: the desk is the same
+## traders, fresh.
+func copy_for_replay() -> EarningsMarket:
+	var twin: EarningsMarket = EarningsMarket.new()
+	var roster: Array[NpcTraderDefinition] = []
+	for trader: NpcTraderState in desk.traders:
+		roster.append(trader.definition)
+	twin.desk = NpcDesk.from_definitions(roster)
+	for company: CompanyState in companies:
+		twin.companies.append(company.copy())
+	for industry: IndustryState in industries:
+		var copied: IndustryState = IndustryState.new(industry.definition)
+		copied.performance = industry.performance
+		copied.roll = industry.roll
+		twin.industries.append(copied)
+	twin.sentiment = sentiment
+	twin.sentiment_used = sentiment_used
+	twin.last_mood = last_mood
+	twin.index_level = index_level
+	twin.net_shares_traded = net_shares_traded.duplicate()
+	twin.event_bags = event_bags.duplicate(true)
+	twin.content_key = content_key
+	return twin
 
 
 ## A whole StalkleHeads match at year 0, ready for `EarningsYearResolver`: the
