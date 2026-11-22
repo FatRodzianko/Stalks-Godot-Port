@@ -1,5 +1,5 @@
 class_name EarningsYearResolver
-extends RefCounted
+extends YearPipeline
 ## Runs one StalkleHeads year advance: prices from earnings, industries and the
 ## market's own momentum, then the same back half as the base game.
 ##
@@ -165,6 +165,14 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearR
 	for stalk_id: StringName in result.desk.net_shares:
 		market.record_trade(stalk_id, result.desk.net_shares[stalk_id])
 	return result
+
+
+## A player's accepted trade, added to next year's flow exactly as an NPC's is
+## (§3.10). `MatchAuthority` calls this for every buy and sell (decisions.md
+## D163, D171). A trade in the bond or the index is recorded too, and never
+## read: only companies' entries feed a price.
+func record_trade(state: GameState, stalk_id: StringName, shares: int) -> void:
+	state.market.record_trade(stalk_id, shares)
 
 
 ## §4 step 2 for one company. **A seam for the balance tool only**, which

@@ -137,6 +137,7 @@ static func encode_settings(settings: GameSettings) -> Dictionary:
 		return {}
 	return {
 		"game_name": settings.game_name,
+		"mode": int(settings.mode),
 		"invite_only": settings.invite_only,
 		"starting_cash": settings.starting_cash,
 		"max_years": settings.max_years,
@@ -169,6 +170,10 @@ static func apply_state(
 	state.yeehaw_requested_by = StringName(data.get("yeehaw_requested_by", ""))
 	state.hosted_by = StringName(data.get("hosted_by", ""))
 	apply_settings(state, data.get("settings", {}))
+	# A StalkleHeads board has companies the base game does not ship. The mode
+	# arrives in the settings, so this is the first moment a joining client can
+	# know to load them (decisions.md D171).
+	MatchSetup.prepare_library(library, state.settings.mode)
 
 	var stalk_data: Array = data["stalks"]
 	for entry: Dictionary in stalk_data:
@@ -178,7 +183,7 @@ static func apply_state(
 			# The host knows about a stalk this build does not. Mismatched
 			# content, and silently rendering a short board would be worse than
 			# saying so.
-			var definition: StalkDefinition = library.stalk_by_id(stalk_id)
+			var definition: StalkDefinition = MatchSetup.board_definition(library, stalk_id)
 			if definition == null:
 				return "Unknown stalk '%s' — host is running different content." % stalk_id
 			stalk = StalkState.new(definition)
@@ -207,6 +212,7 @@ static func apply_settings(state: GameState, data: Dictionary) -> void:
 	if state.settings == null:
 		state.settings = GameSettings.new()
 	state.settings.game_name = String(data.get("game_name", state.settings.game_name))
+	state.settings.mode = GameMode.from_int(int(data.get("mode", int(state.settings.mode))))
 	state.settings.invite_only = bool(data.get("invite_only", state.settings.invite_only))
 	state.settings.starting_cash = int(data.get("starting_cash", state.settings.starting_cash))
 	state.settings.max_years = int(data.get("max_years", state.settings.max_years))

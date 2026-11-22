@@ -166,6 +166,10 @@ static func take_over(
 	host_player_id: StringName,
 	rng_state: int,
 ) -> Dictionary:
+	var refused: String = MatchSetup.why_not_take_over(state)
+	if not refused.is_empty():
+		return {"session": null, "peer": null, "error": refused}
+
 	var session: HostSession = HostSession.new()
 	session.name = NODE_NAME
 	session._library = library
@@ -175,10 +179,9 @@ static func take_over(
 
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = state.settings.rng_seed
-	var resolver: YearResolver = YearResolver.new(
-		RandomRangePriceModel.new(), library.build_event_pool()
+	session._authority = MatchAuthority.new(
+		state, MatchSetup.new_pipeline(state.settings, library), rng
 	)
-	session._authority = MatchAuthority.new(state, resolver, rng)
 	# The match changed hands, so the board's host marker has to move with it.
 	state.hosted_by = host_player_id
 	# Where the departed host had got to, so the match does not deal its own

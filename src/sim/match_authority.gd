@@ -15,16 +15,21 @@ extends RefCounted
 ## This exists because the rules must not live in a Node. See docs/decisions.md
 ## D43 and the architecture rule in CLAUDE.md: if a change makes the economy
 ## depend on the scene tree, the change is wrong.
+##
+## **It does not know which game mode it is running.** `MatchSetup` hands it a
+## state and a `YearPipeline` built for the mode, and every accepted trade is
+## passed to that pipeline (`record_trade`), which in StalkleHeads is next
+## year's flow and in the base game is nothing. See decisions.md D171.
 
 
 var state: GameState
-var _resolver: YearResolver
+var _resolver: YearPipeline
 var _rng: RandomNumberGenerator
 
 
 func _init(
 	game_state: GameState,
-	resolver: YearResolver,
+	resolver: YearPipeline,
 	rng: RandomNumberGenerator,
 ) -> void:
 	state = game_state
@@ -45,6 +50,7 @@ func buy(player_id: StringName, stalk_id: StringName, shares: int) -> String:
 		return reason
 
 	TradeRules.apply_buy(player, stalk, shares)
+	_resolver.record_trade(state, stalk_id, shares)
 	player.net_worth = TradeRules.net_worth(player, state)
 	return ""
 
@@ -60,6 +66,7 @@ func sell(player_id: StringName, stalk_id: StringName, shares: int) -> String:
 		return reason
 
 	TradeRules.apply_sell(player, stalk, shares)
+	_resolver.record_trade(state, stalk_id, -shares)
 	player.net_worth = TradeRules.net_worth(player, state)
 	return ""
 

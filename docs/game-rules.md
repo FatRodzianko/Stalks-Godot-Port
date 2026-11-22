@@ -43,11 +43,19 @@ with no Steam dependency at all.
 | Setting | Range | Default |
 |---|---|---|
 | Game name | up to 24 characters | named after the host |
+| Game | Stalks Stalks Stalks or StalkleHeads | **Stalks Stalks Stalks** (the base game) |
 | Starting cash | **150–69,420** | **10,000** |
 | Number of years | 2–99 | — |
 | Number of players | 1–10 | — |
 | Loans enabled | on/off | — |
 | Invite only | on/off | **off** (Steam only; meaningless offline) |
+
+**Game** is new in the port (StalkleHeads phase S5): which game the match is. The
+original had one. Everything in this file is the base game unless a note says
+StalkleHeads; StalkleHeads' rules are
+[stalkleheads-design.md](stalkleheads-design.md). It cannot change during a match,
+and it is published to the lobby browser beside the years, cash and loans
+(decisions.md D171).
 
 **Read the bounds exactly:** the original tested
 `wealth > 149 && wealth < 69421`, so 150 and 69,420 are both legal and 69,421
@@ -358,8 +366,8 @@ reproduces it. See decisions.md D27.
 
 **A toggle for repeat borrowing exists, off in the base game.**
 `GameSettings.multiple_loans_enabled` lets a player borrow again once their loan is
-settled, still one loan at a time. It is for StalkleHeads (decisions.md D159); nothing
-in the base game turns it on.
+settled, still one loan at a time. It is for StalkleHeads (decisions.md D159), which
+turns it on for every match since S5 (D171); nothing in the base game turns it on.
 
 ### 9.1 Terms
 

@@ -20,6 +20,14 @@ extends Resource
 ## is created, so by the time anybody sees this it always says something.
 @export var game_name: String = ""
 
+## Which game this match is: the base game or StalkleHeads. **The base game by
+## default**, so anything that builds settings without choosing — a test, a
+## launch flag, a snapshot from an older build — plays exactly as it always has.
+##
+## Read once, by `MatchSetup`, when the match is built. Nothing during the match
+## asks it again (docs/stalkleheads-design.md §9.4 and §10.2, decisions.md D171).
+@export var mode: GameMode.Value = GameMode.Value.BASE
+
 ## Whether an online game is reachable only by invitation. Steam-only and
 ## meaningless offline — see docs/game-rules.md §2. An invite-only lobby is
 ## created `k_ELobbyTypePrivate`, which the in-game browser never lists.

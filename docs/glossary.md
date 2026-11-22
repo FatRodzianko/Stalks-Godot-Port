@@ -213,6 +213,12 @@ stock rather than a better one (§3.10a).
 
 **FOLLOW** — the balance-tool strategy that copies whichever NPC trader is worth most, holding what it holds. It reads nothing about companies, only the desk.
 
+**Game mode** — which game a match is: the base game (*Stalks Stalks Stalks*) or StalkleHeads. Chosen on the title screen's **Game** row, fixed for the whole match, published to the lobby browser. Code: `GameSettings.mode`, `GameMode`; read only by `MatchSetup` (decisions.md D171). Not the title screen's `MainMenu.Mode`, which is which tab is showing.
+
+**Base game** — the faithful port of the original, as opposed to StalkleHeads. `GameMode.Value.BASE`, and the default everywhere.
+
+**Year pipeline** — the code that advances one year for a game mode: `YearResolver` for the base game, `EarningsYearResolver` for StalkleHeads. Both extend `YearPipeline`, which is what `MatchAuthority` holds.
+
 **Placeholder company** — a company the owner has not written yet, named by industry
 and letter (*Transportation Company A*) with an obviously temporary ticker (`TRNA`).
 

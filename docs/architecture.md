@@ -904,7 +904,7 @@ Non-negotiable, and the thing most worth protecting:
 
 ---
 
-## 9. StalkleHeads: fundamentals, its year and the NPC desk (phases S1-S4)
+## 9. StalkleHeads: fundamentals, its year, the NPC desk and the mode (phases S1-S5)
 
 StalkleHeads is an optional second game mode in which prices come from simulated
 earnings instead of random rolls. Its design is
@@ -912,13 +912,15 @@ earnings instead of random rolls. Its design is
 so far is laid out. **Nothing here is reachable from the base game.** No base-game
 code path builds an `EarningsMarket` or an `EarningsYearResolver`,
 `ContentLibrary.load_from()` does not load its content, and `test_golden_history.gd`
-(D127) proves the base game is unchanged. Nothing picks the mode yet either: that is
-phase S5.
+(D127) proves the base game is unchanged. Since S5 the title screen picks the mode,
+and `MatchSetup` is the only code that reads it (D171).
 
 Phase S1 built the pieces of a StalkleHeads year. Phase S3 built the year itself,
 `EarningsYearResolver`, and the state it runs on, `EarningsMarket`. Phase S4 built
 the NPC desk, which trades after every year settles and whose trading is next year's
-flow, and short interest, which makes a short squeeze possible.
+flow, and short interest, which makes a short squeeze possible. Phase S5 made the
+mode selectable: the title screen, the lobby, and `MatchSetup` choosing the board and
+the year at match start.
 
 ### The files
 
@@ -946,6 +948,9 @@ flow, and short interest, which makes a short squeeze possible.
 | sim | `npc_desk.gd` | **S4.** `EarningsMarket.desk`: every trader in id order; `act()` (§4 step 13), each strategy's pick, short interest, the flagged companies, and what bankruptcy, splits and dividends do to traders (D162-D164, D169) |
 | sim | `npc_desk_year.gd` | **S4.** What the desk did in a year: each trader's appetite, target and action, and the net shares traded |
 | sim | `short_interest_rules.gd` | **S4.** The flag threshold, the squeeze chance and building a squeeze event from the template (D165) |
+| data | `game_mode.gd` | **S5.** `GameMode.Value`: BASE or STALKLEHEADS. Each mode's name and lobby word (D171) |
+| sim | `year_pipeline.gd` | **S5.** The base class of `YearResolver` and `EarningsYearResolver`: `advance_year` and `record_trade` (D171) |
+| sim | `match_setup.gd` | **S5.** The one place the mode is read: content, board, pipeline, forced settings, take-over refusal (D171) |
 
 `CompanyState` pairs with `CompanyProfile` the way `StalkState` pairs with
 `StalkDefinition`, and `IndustryState` with `IndustryDefinition`: the resource is
@@ -988,10 +993,10 @@ not ship gets a row definition built in memory from its profile.
 **The flow input.** `market.net_shares_traded` is filled through
 `EarningsMarket.record_trade`, and the next advance reads the companies' entries,
 then clears it. Two things fill it: the NPC desk at step 13 of every advance, and
-the players' trades during the trading phase that follows. **The second is not wired
-yet**: the game cannot start a StalkleHeads match until S5, and `MatchAuthority` is
-shared with the base game, so S5 is where its buy and sell learn to call
-`record_trade` (D163). The balance tool records its own players' trades.
+the players' trades during the trading phase that follows. Since S5 the second
+arrives through `MatchAuthority`: every accepted buy and sell calls the pipeline's
+`record_trade`, which in this mode is `EarningsMarket.record_trade` (D163, D171). The
+balance tool records its own players' trades the same way.
 
 **Four seams, for the balance tool only.** `advance_company_earnings`,
 `valuation_performance` and `squeeze_chance_percent` are public methods that
@@ -1001,8 +1006,8 @@ The game never overrides them.
 
 **The squeeze template is passed in.** `EarningsYearResolver.new(pool, squeeze)`
 takes `ContentLibrary.short_squeeze` as its second argument; without it no squeeze
-can fire, and the roll is drawn anyway so the stream is the same (D165). Whatever
-builds the resolver in S5 must pass it.
+can fire, and the roll is drawn anyway so the stream is the same (D165).
+`MatchSetup.new_pipeline` passes it (S5, D171).
 
 ### The NPC desk (phase S4)
 
@@ -1027,6 +1032,44 @@ the state and those two draws.
 **Short interest is not stored.** `NpcDesk.short_interest(id)` sums the traders'
 short positions, which are the state. A company is flagged at 10% of its shares
 outstanding (`ShortInterestRules`).
+
+### Choosing the mode (phase S5)
+
+A match is the base game or StalkleHeads, chosen before it starts:
+`GameSettings.mode`, a `GameMode.Value`, `BASE` by default. **One class reads it**,
+`src/sim/match_setup.gd`, once, when the match is built (D171):
+
+```
+title screen (Game row) -> GameSettings.mode
+Main._loaded_library(mode) -> MatchSetup.load_library   base content, + fundamentals for StalkleHeads
+LocalSession.build_authority
+    MatchSetup.apply_mode_rules(settings)               StalkleHeads: multiple_loans_enabled on
+    MatchSetup.new_game_state(settings, library)        the board (and the market)
+    MatchSetup.new_pipeline(settings, library)          YearResolver or EarningsYearResolver
+    MatchAuthority.new(state, pipeline, rng)
+```
+
+`HostSession.host` and the rematch go through `build_authority` too, so offline,
+hosted and rematched matches are built identically. `HostSession.take_over` builds
+its pipeline with `MatchSetup.new_pipeline`, and first asks
+`MatchSetup.why_not_take_over`, which refuses a StalkleHeads match without its market
+(the market is not on the wire until S6).
+
+**`YearPipeline`** (`src/sim/year_pipeline.gd`) is the base class of both resolvers:
+`advance_year`, and `record_trade`, which `MatchAuthority` calls after every accepted
+trade. The base game's `record_trade` does nothing. That is how a player's trade
+becomes flow in StalkleHeads without `MatchAuthority` knowing the mode.
+
+**Reaching the client.** The mode travels in the snapshot's settings. A joining
+client loads the base content, then `StateSync.apply_state` tops its library up with
+`MatchSetup.prepare_library` once the settings say StalkleHeads, and resolves a
+company the base game does not ship with `MatchSetup.board_definition`. Only the
+board travels so far; the fundamentals and the desk are S6.
+
+**The lobby.** `SteamService` publishes `mode` (`KEY_MODE`) as `GameMode.lobby_value`,
+a word, beside years, cash and loans (D88). `SteamLobbyRow.describe` puts
+`GameMode.label_for_lobby_value` first, and leaves it out for a lobby that published
+none.
 
 ### The rules that hold it together
 

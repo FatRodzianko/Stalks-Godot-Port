@@ -6352,3 +6352,101 @@ the lever if that reads badly in play; it is not changed now.
 
 **Rules out.** Shipping the first build without the squeeze; retuning the flow clamp
 before players' trades are in flow.
+
+### D171 - The game mode is read once, in `MatchSetup`, and a match holds a `YearPipeline`
+**2026-11-22 · Accepted**
+
+Phase S5. `GameSettings.mode` (`GameMode.Value`, `BASE` by default) says which game a
+match is. **`MatchSetup` is the only code that reads it**, once, when the match is
+built:
+
+| Question | Base game | StalkleHeads |
+|---|---|---|
+| Content (`load_library`) | the stalks | also `load_fundamentals`: companies, industries, traders, the squeeze |
+| Board (`new_game_state`) | `ContentLibrary.build_stalk_states` | `EarningsMarket.new_game_state` |
+| Year (`new_pipeline`) | `YearResolver` | `EarningsYearResolver`, passed `library.short_squeeze` (D170) |
+| Settings it forces (`apply_mode_rules`) | none | `multiple_loans_enabled` on (D159) |
+
+- **`YearPipeline`** is a new base class for both resolvers, with `advance_year` and
+  `record_trade`. `MatchAuthority` holds one and never asks which. `YearResolver`'s
+  only change is its `extends` line: its year is untouched, and the golden hash
+  (D127) did not move.
+- **Players' trades reach flow through the pipeline.** After an accepted buy or
+  sell, `MatchAuthority` calls `_resolver.record_trade(state, id, +/-shares)`. The
+  base game's is the inherited no-op; StalkleHeads' calls
+  `EarningsMarket.record_trade` (D163). A refused trade records nothing.
+- **The title screen** gains a **Game** row, an `OptionButton` listing
+  `GameMode.label` for every mode, on both SINGLE PLAYER and HOST ONLINE. The
+  labels are the two games' own names, not new wording. The card's fixed size
+  (D86, D125) holds it on the host tab, which has the most rows; a test checks.
+- **The lobby** publishes `mode` as a word, `base` or `stalkleheads`, and the browser
+  row puts the mode's name first. **A word, not a number**, because lobby data read
+  with `to_int()` gives 0 for a missing key, and 0 is `BASE`: an older build's lobby
+  would be labelled as the base game. A missing or unknown word shows nothing
+  (design §9.4, D88).
+- **The snapshot** carries `mode` with the settings. A snapshot without it is the
+  base game.
+- **A joining client** loads only the base content, because it does not know the
+  mode until the host's settings arrive. `StateSync.apply_state` then calls
+  `MatchSetup.prepare_library`, and resolves a row the base game does not ship
+  from its company profile (`MatchSetup.board_definition`), as the host built it.
+- **A promoted host refuses a StalkleHeads match** (`MatchSetup.why_not_take_over`).
+  Until S6 sends the market, a client has the board but no fundamentals and no
+  desk, and a year built from a made-up market would not be the match. A lobby that
+  has not started is re-hosted from its settings as before, which works in either
+  mode.
+
+**Why one place.** Design §10.2 and §13.3: an `if mode ==` inside a year step is
+the sign the modes have stopped being additive. Putting every mode question in one
+file makes that visible: a second file reading `settings.mode` is the thing to
+question in review.
+
+**Why trades go through the pipeline, not to `state.market` directly.** The obvious
+alternative, `if state.market != null: state.market.record_trade(...)` in
+`MatchAuthority`, is a mode test in disguise inside the class both modes share.
+
+**Rules out.** `if mode ==` anywhere but `MatchSetup` (the client's library top-up
+and the take-over refusal live there too); the mode changing during a match; a
+numeric lobby key for the mode.
+
+**Not done here.** The market on the wire, and so migration and rejoin of a
+StalkleHeads match (S6). Anything on screen beyond the mode choice: the playing
+screen shows the twenty-row board and survives a year, and that is all (S7). A
+launch flag for the mode.
+
+### D172 - With players' trades in flow in the game, P4 holds at 27.7%; the clamp stays
+**2026-11-22 · Accepted**
+
+The re-run D170 asks of S5, once `MatchAuthority` records players' trades into flow
+(D171). Ten years, 4,000 seeds from 0, published values, `--flow=all`:
+
+| | D170 baseline | S5 re-run |
+|---|---|---|
+| Leader | LOWPE 27.7% | LOWPE **27.7%** |
+| TREND | 23.9 | 23.9 |
+| HIGHPE | 2.0 | 2.0 |
+| FOLLOW | 17.2 | 17.2 |
+| Strategies winning at least 4% | 6 | 6 |
+| RANDOM's median over the leader's (P3) | 0.64 | 0.64 |
+| Squeezes per match | 1.16 | 1.16 |
+
+Also measured: splits 1.64 and bankruptcies 0.59 per match, bull years 55.5%, a
+company flagged in 47.8% of years, VALUE the desk's richest trader at the end of 36.4%
+of matches. 319 s.
+
+**Identical to the digit, and that is the expected result, not a coincidence.** The
+balance tool already recorded its players' trades through
+`EarningsMarket.record_trade` as net shares per company per year (D166), and the game
+now records the same sum, one trade at a time, through the same call. Nothing in the
+tool or the pipeline changed, so the market it measures is the one it measured before.
+What S5 changed is that the game does what the tool assumed.
+
+**P4 holds by 2.3 points, so the flow clamp is not tightened** (D170's rule: tighten
+only if the leader passes 30%).
+
+**What this does not settle.** D170's caveat stands: the tool's players sell
+everything and rebuy each year, which overstates flow against real players, so the
+true cost of flow in play is probably lower than 2.4 points. Only play (S9) measures
+that.
+
+**Rules out.** Retuning the clamp or the VALUE cohort on this evidence.

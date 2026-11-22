@@ -1373,6 +1373,103 @@ rematch lobby changing hands.
   `reopen_lobby_to_the_browser` was not called, so the lobby is still marked
   finished from `_on_match_finished`.
 
+### C - Choosing StalkleHeads (phase S5) — **not yet run**
+
+Built on 2026-11-22 (decisions.md D171). The suite covers the choice itself, the
+board it builds, players' trades reaching flow, the snapshot, the lobby row's text
+and the title card's size, all without Steam. What it cannot reach is two Steam
+accounts reading a real lobby, and whether the row reads well.
+
+**StalkleHeads is not playable on screen yet.** The playing screen is the base
+game's, showing the twenty-row board with nothing about earnings. That is S7. These
+steps check only that the mode is chosen, travels and is shown; do not judge the
+game itself from them.
+
+**The mode names are the games' own**: *Stalks Stalks Stalks* and *StalkleHeads*.
+They are in one place, `GameMode.label` in `src/data/game_mode.gd`, if they should
+read differently.
+
+#### C1. The title screen, one machine, no Steam needed
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Check there is a **Game** row, and it reads **Stalks Stalks Stalks**.
+4. Click the **Game** list.
+5. Check it offers **Stalks Stalks Stalks** and **StalkleHeads**, and nothing else.
+6. Click **StalkleHeads**.
+7. Click **HOST ONLINE**.
+8. Check the **Game** row still reads **StalkleHeads**.
+9. Check the panel is the same size as it was on **SINGLE PLAYER**.
+10. Check every row fits inside the panel, with **HOST ONLINE** at the bottom right and nothing cut off.
+11. Click **JOIN GAME**, then **SETTINGS**, then **SINGLE PLAYER**.
+12. Check the panel did not change size on any of them.
+
+#### C2. A StalkleHeads single-player match starts, one machine
+
+1. On **SINGLE PLAYER**, set **Game** to **StalkleHeads**.
+2. Click **START**.
+3. Check the board has twenty rows, including companies the base game does not have (some are placeholders named like *Transportation Company A*).
+4. Press Ready.
+5. Check the year reads **1** and prices have moved.
+6. Quit to the title screen.
+7. Set **Game** to **Stalks Stalks Stalks** and click **START**.
+8. Check the board is the usual ten stalks, all at 100.
+
+#### C3. The lobby row says which game it is, two Steam accounts
+
+Two accounts on two machines, **A** and **B**. A hosts.
+
+1. On A, click **HOST ONLINE**.
+2. Set **Game** to **StalkleHeads** and **Years** to 10.
+3. Click **HOST ONLINE** at the bottom of the panel.
+4. Check A shows the lobby.
+5. On B, click **JOIN GAME**.
+6. Find A's game in the list.
+7. Check its second line starts with **StalkleHeads**, followed by **10 years**.
+8. On A, leave the lobby.
+9. On A, click **HOST ONLINE**, set **Game** to **Stalks Stalks Stalks**, and host again.
+10. On B, refresh the list.
+11. Check A's game's second line now starts with **Stalks Stalks Stalks**.
+12. On A, leave the lobby.
+
+#### C4. A client joins a StalkleHeads game, two Steam accounts
+
+1. On A, host an online game with **Game** set to **StalkleHeads** and loans ticked.
+2. On B, join it from **JOIN GAME**.
+3. Check B reaches the lobby with no error.
+4. On A, press **Start**.
+5. Check both machines show the same twenty rows at the same prices.
+6. On both machines, press Ready.
+7. Check both machines show year 1 with the same prices.
+8. On B, buy some shares of any company.
+9. Check B's cash went down by the cost and B holds the shares.
+10. Play to the end of the match.
+11. Check both machines show the same final standings.
+
+#### C5. What must refuse, two Steam accounts
+
+**A StalkleHeads match cannot change hosts yet** (D171): the market is not sent to
+clients until S6, so a client has nothing to carry on from. This step checks it
+fails cleanly rather than inventing a market.
+
+1. On A, host a StalkleHeads game; on B, join it.
+2. On A, press **Start**.
+3. On both machines, press Ready once, to reach year 1.
+4. On A, quit the game to the desktop.
+5. Check B shows a message that the game could not continue, and returns to the title screen rather than freezing or showing a board.
+6. Write down the message B shows.
+
+#### What a failure here means
+
+- **C1 step 9 or 10** is a layout fault: the card is a fixed size (D86, D125) and
+  the Game row must fit inside it. Send a screenshot.
+- **C3 step 7 showing no mode** means the lobby key did not publish; a screenshot
+  of the row and the console output help.
+- **C4 step 3 failing with "Unknown stalk"** means the client did not load the
+  StalkleHeads companies when the host's settings arrived.
+- **C5 step 5 freezing** rather than returning is a fault; the message's wording
+  is not, and can change.
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until

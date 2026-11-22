@@ -621,6 +621,7 @@ func test_no_shared_pipeline_file_asks_which_mode_it_is() -> void:
 		"res://src/sim/trade_rules.gd",
 		"res://src/sim/loan_rules.gd",
 		"res://src/sim/event_pool.gd",
+		"res://src/sim/match_authority.gd",
 	]:
 		var text: String = FileAccess.get_file_as_string(path)
 		assert_false(text.is_empty(), "%s was read" % path)

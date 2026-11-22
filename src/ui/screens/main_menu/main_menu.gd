@@ -3,10 +3,10 @@ extends MarginContainer
 ## The title screen: four things you can do, across the top.
 ##
 ## **SINGLE PLAYER** and **HOST ONLINE** are the same panel. Both configure a
-## match — years, starting cash, loans, seed — and the only difference is that
-## an online game also has a name, a player limit and a privacy setting, and
-## takes your display name from Steam rather than from a field. They are two
-## buttons rather than one Create Game with a choice inside it, because "what
+## match — game mode, years, starting cash, loans, seed — and the only
+## difference is that an online game also has a name, a player limit and a
+## privacy setting, and takes your display name from Steam rather than from a
+## field. They are two buttons rather than one Create Game with a choice inside it, because "what
 ## do you want to do" is the question a title screen exists to ask, and burying
 ## half the answer a level down made it worse.
 ##
@@ -73,6 +73,7 @@ enum Mode { SINGLE, HOST, JOIN, SETTINGS }
 @onready var _name_field: LineEdit = %NameField
 @onready var _game_name_label: Label = %GameNameLabel
 @onready var _game_name_field: LineEdit = %GameNameField
+@onready var _game_mode_option: OptionButton = %GameModeOption
 @onready var _years_spin: SpinBox = %YearsSpin
 @onready var _cash_spin: SpinBox = %CashSpin
 @onready var _players_label: Label = %PlayersLabel
@@ -107,6 +108,14 @@ func _ready() -> void:
 	_quit_button.pressed.connect(_on_quit_pressed)
 	_rejoin_button.pressed.connect(_on_rejoin_pressed)
 	_browser.join_requested.connect(_on_browser_join_requested)
+
+	# The game modes, named in one place (`GameMode.label`). Each item's id is
+	# the mode's own value, so reading the choice back never depends on the
+	# order they are listed in.
+	_game_mode_option.clear()
+	for game_mode: GameMode.Value in GameMode.ALL:
+		_game_mode_option.add_item(GameMode.label(game_mode), int(game_mode))
+	_game_mode_option.select(_game_mode_option.get_item_index(int(GameMode.Value.BASE)))
 
 	show_mode(Mode.SINGLE)
 
@@ -221,6 +230,12 @@ func show_online_games(service: SteamService) -> void:
 
 # ------------------------------------------------------------------- choices
 
+## Picks a game mode, as choosing it from the Game list would. Public so a test
+## can choose one without opening the list.
+func choose_game_mode(game_mode: GameMode.Value) -> void:
+	_game_mode_option.select(_game_mode_option.get_item_index(int(game_mode)))
+
+
 ## The settings the player chose. Public so a test can read them back.
 func chosen_settings() -> GameSettings:
 	var settings: GameSettings = GameSettings.new()
@@ -228,6 +243,7 @@ func chosen_settings() -> GameSettings:
 	# in once it knows who that is — which, for an online game, is the Steam
 	# account rather than anything typed here.
 	settings.game_name = _game_name_field.text.strip_edges()
+	settings.mode = GameMode.from_int(_game_mode_option.get_selected_id())
 	settings.max_years = int(_years_spin.value)
 	settings.starting_cash = clampi(
 		int(_cash_spin.value),

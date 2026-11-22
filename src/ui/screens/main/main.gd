@@ -407,7 +407,7 @@ func start_match(settings: GameSettings) -> void:
 	_discard_session()
 	_last_settings = settings
 
-	var library: ContentLibrary = _loaded_library()
+	var library: ContentLibrary = _loaded_library(settings.mode)
 	if library == null:
 		return
 
@@ -434,7 +434,7 @@ func host_match(settings: GameSettings, player_name: String, port: int) -> Strin
 	_name_the_match(settings, player_name)
 	_last_settings = settings
 
-	var library: ContentLibrary = _loaded_library()
+	var library: ContentLibrary = _loaded_library(settings.mode)
 	if library == null:
 		return BROKEN_CONTENT
 
@@ -520,7 +520,7 @@ func host_steam_match(lobby_id: int, settings: GameSettings, player_name: String
 	_name_the_match(settings, player_name)
 	_last_settings = settings
 
-	var library: ContentLibrary = _loaded_library()
+	var library: ContentLibrary = _loaded_library(settings.mode)
 	if library == null:
 		return BROKEN_CONTENT
 
@@ -779,7 +779,10 @@ func _start_hosting_the_moved_lobby() -> void:
 	var lobby_id: int = _hosting_lobby
 	_hosting_lobby = 0
 
-	var library: ContentLibrary = _loaded_library()
+	var mode: GameMode.Value = GameMode.Value.BASE
+	if _migrating_state != null and _migrating_state.settings != null:
+		mode = _migrating_state.settings.mode
+	var library: ContentLibrary = _loaded_library(mode)
 	if library == null:
 		_give_up_on_migration(BROKEN_CONTENT)
 		return
@@ -1720,8 +1723,13 @@ const BROKEN_CONTENT: String = (
 
 
 ## The validated content, or null with the problems already logged.
-func _loaded_library() -> ContentLibrary:
-	var library: ContentLibrary = ContentLibrary.load_from()
+##
+## `mode` is the game mode of the match about to be built, which decides how
+## much content it needs (`MatchSetup.load_library`). A join passes nothing: it
+## does not know the mode yet, and the client tops its library up when the
+## host's settings arrive.
+func _loaded_library(mode: GameMode.Value = GameMode.Value.BASE) -> ContentLibrary:
+	var library: ContentLibrary = MatchSetup.load_library(mode)
 	if library.is_valid():
 		return library
 	for error: String in library.errors:
