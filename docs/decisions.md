@@ -6556,12 +6556,14 @@ and hiding lines to centre the bottom bar: that is what made the loan button
 move in the first place. Sharing one line between the loan reminder and a
 refusal to make the bar a neat grid.
 
-**Not fixed, and why.** The refusal line shows one line, 416px at the 640x360
-layout now the spacer is gone (309px before, which cut three messages). Two
-still need a second line and are cut: "You are ready for the new year. Press the
-ready button again to trade." and "Could not listen on port N: something else
-may already be using it." Fixing that is a wording or a layout choice the owner
-has not made.
+**Checked and not a problem.** The refusal line shows one line, 416px at the
+640x360 layout now the spacer is gone. Two refusals are longer than that, but
+neither can reach it: "You are ready for the new year. Press the ready button
+again to trade." is the host's answer to a trade after readying up, and the
+board disables BUY and SELL once ready, so the player cannot send one; "Could
+not listen on port N..." is shown on the title screen, which has the width for
+it. Found by forcing both into the bottom bar in a test, which is not where
+either appears; the owner pointed out neither is ever seen there.
 
 **Tests.** `test_gameplay_screen.gd` checks the message and both buttons share
 the bar's middle with and without a loan, the messages run up to the ready

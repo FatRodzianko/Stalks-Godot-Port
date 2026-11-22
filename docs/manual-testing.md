@@ -1418,7 +1418,7 @@ read differently.
 11. Click **JOIN GAME**, then **SETTINGS**, then **SINGLE PLAYER**.
 12. Check the panel did not change size on any of them.
 
-#### C1a. Re-check after D173: the settings line up
+#### C1a. Re-check after D173: the settings line up — **passed 2026-11-22**
 
 1. Start the game.
 2. Click **SINGLE PLAYER**.
@@ -1438,7 +1438,7 @@ read differently.
 7. Set **Game** to **Stalks Stalks Stalks** and click **START**.
 8. Check the board is the usual ten stalks, all at 100.
 
-#### C2a. Re-check after D173: a list that scrolls says so
+#### C2a. Re-check after D173: a list that scrolls says so — **passed 2026-11-22**
 
 1. On **SINGLE PLAYER**, set **Game** to **StalkleHeads** and click **START**.
 2. Check there is a thin bar down the right-hand side of the stalk list, lighter than the panel behind it.
@@ -1448,7 +1448,7 @@ read differently.
 6. Quit to the title screen, set **Game** to **Stalks Stalks Stalks**, and click **START**.
 7. Check the ten-stalk board's headings still sit above their columns.
 
-#### C2b. Re-check after D174: a list that fits has no bar
+#### C2b. Re-check after D174: a list that fits has no bar — **passed 2026-11-22**
 
 1. On **SINGLE PLAYER**, set **Game** to **Stalks Stalks Stalks** and click **START**.
 2. Check the stalk list has no scroll bar.
@@ -1461,7 +1461,7 @@ read differently.
 9. Quit to the title screen and click **HOST ONLINE**, then host.
 10. Check the lobby's players list has no scroll bar with one player in it.
 
-#### C2c. Re-check after D175: the bottom bar and scrolling text
+#### C2c. Re-check after D175: the bottom bar and scrolling text — **passed 2026-11-22**
 
 1. On **SINGLE PLAYER**, tick loans, set **Game** to **Stalks Stalks Stalks**, and click **START**.
 2. Click **Ready for New Year**.
