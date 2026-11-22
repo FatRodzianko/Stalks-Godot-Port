@@ -6450,3 +6450,32 @@ true cost of flow in play is probably lower than 2.4 points. Only play (S9) meas
 that.
 
 **Rules out.** Retuning the clamp or the VALUE cohort on this evidence.
+
+### D173 - The title screen's settings start at the tab seam; scroll bars are visible
+**2026-11-22 · Accepted**
+
+Two faults the owner found running manual-testing.md C1 and C2. Neither was S5's.
+
+**The settings column.** The title card's fields are a two-column `GridContainer`,
+and a grid column is as wide as its widest *visible* child. SINGLE PLAYER showed
+**Your name**, held at 104px; HOST ONLINE hides it, so its column shrank to
+**Starting cash** and every field started further left. Now one always-visible label,
+**Years**, holds the column at 98px, and no label is held open on its own. At the
+game's 640x360 layout that puts the fields where the SINGLE PLAYER and HOST ONLINE
+tabs meet, which is where the owner asked for them, on both tabs.
+`test_title_screen_shape.gd` checks both tabs line up, that they start within 3px of
+the seam, and that no label is wider than the column.
+
+**The scroll bar.** Every list already showed a permanent vertical bar (D36), but
+the Theme drew it 2px wide, dark grey (`BORDER_STRONG`) on the background colour, so
+a twenty-row StalkleHeads board looked cut off rather than scrollable. The Theme's
+`VScrollBar` now has a 4px grabber in `TEXT_FAINT`, `TEXT_MUTED` under the pointer
+and `ACCENT` while dragged, in a `SURFACE_RAISED` track. One change in the shared
+Theme, so every list in the game gets it. The column headers already inset by the
+bar's real width (`_inset_header_for_scrollbar`, D36), and their alignment test
+still passes. `test_gameplay_screen.gd` checks the width and the contrast.
+
+**Rules out.** A per-screen scroll bar override; holding the label column open on a
+label that one tab hides.
+
+**Not checked by a test.** How either looks on screen. manual-testing.md C1a and C2a.

@@ -341,3 +341,52 @@ func test_the_resolution_comes_back_in_a_window() -> void:
 	fullscreen.button_pressed = false
 
 	assert_false(dropdown.disabled, "a window is the case where it applies")
+
+
+# ------------------------------------------------- the settings column lines up
+
+## Found in play on 2026-11-22 (manual-testing.md C1): the label column was as
+## wide as its widest *visible* label, so the settings started further left on
+## HOST ONLINE than on SINGLE PLAYER. The owner asked for both to start where the
+## SINGLE PLAYER and HOST ONLINE tabs meet. See decisions.md D173.
+func _field_column_x(menu: MainMenu) -> float:
+	return (menu.get_node("%YearsSpin") as Control).global_position.x
+
+
+func _tab_seam_x(menu: MainMenu) -> float:
+	var single: Control = menu.get_node("%SinglePlayerTab")
+	var host: Control = menu.get_node("%HostOnlineTab")
+	return (single.global_position.x + single.size.x + host.global_position.x) / 2.0
+
+
+func test_the_settings_start_at_the_same_place_on_both_tabs() -> void:
+	var menu: MainMenu = _menu()
+	menu.show_mode(MainMenu.Mode.SINGLE)
+	await wait_process_frames(2)
+	var single_x: float = _field_column_x(menu)
+
+	menu.show_mode(MainMenu.Mode.HOST)
+	await wait_process_frames(2)
+
+	assert_eq(_field_column_x(menu), single_x)
+
+
+func test_the_settings_start_where_the_first_two_tabs_meet() -> void:
+	var menu: MainMenu = _menu()
+	for tab: MainMenu.Mode in [MainMenu.Mode.SINGLE, MainMenu.Mode.HOST]:
+		menu.show_mode(tab)
+		await wait_process_frames(2)
+		assert_almost_eq(_field_column_x(menu), _tab_seam_x(menu), 3.0,
+			"the field column starts at the seam between the first two tabs")
+
+
+## The column is held open by one label's minimum width, so a label wider than
+## it would push the column out again on whichever tab shows it.
+func test_no_label_is_wider_than_the_column() -> void:
+	var menu: MainMenu = _menu()
+	var column: float = (menu.get_node("%YearsLabel") as Control).custom_minimum_size.x
+	for child: Node in menu.get_node("%YearsLabel").get_parent().get_children():
+		var label: Label = child as Label
+		if label != null:
+			assert_true(label.get_minimum_size().x <= column,
+				"%s fits the column" % label.name)

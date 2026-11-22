@@ -1373,7 +1373,21 @@ rematch lobby changing hands.
   `reopen_lobby_to_the_browser` was not called, so the lobby is still marked
   finished from `_on_match_finished`.
 
-### C - Choosing StalkleHeads (phase S5) — **not yet run**
+### C - Choosing StalkleHeads (phase S5) — **passed 2026-11-22**
+
+**Run on 2026-11-22**, C1-C5, two Steam accounts on two machines for C3-C5. Every
+check passed. Three things came back, none of them a failure of S5:
+
+- **C1 step 9:** the panel is the same size on both tabs, but the second column
+  starts further left on HOST ONLINE than on SINGLE PLAYER, because the label column
+  was as wide as its widest visible label. Fixed afterwards: both tabs now line the
+  settings up at the same place (D173).
+- **C2 step 3:** the twenty-row board scrolls, but nothing said so except a row cut
+  off at the bottom. Fixed afterwards with a thin scroll bar (D173).
+- **C2 step 5:** Teamsters went from 150 to 207 without splitting. Correct: in
+  StalkleHeads a stalk splits above 300, not 150 (design §3.6).
+- **C5 step 6:** B showed "A StalkleHeads match cannot change hosts yet." and was
+  back at the title screen.
 
 Built on 2026-11-22 (decisions.md D171). The suite covers the choice itself, the
 board it builds, players' trades reaching flow, the snapshot, the lobby row's text
@@ -1404,6 +1418,15 @@ read differently.
 11. Click **JOIN GAME**, then **SETTINGS**, then **SINGLE PLAYER**.
 12. Check the panel did not change size on any of them.
 
+#### C1a. Re-check after D173: the settings line up
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Check the fields (the boxes after **Your name**, **Game**, **Years** and the rest) start at the line where the **SINGLE PLAYER** and **HOST ONLINE** tabs meet.
+4. Click **HOST ONLINE**.
+5. Check the fields start at exactly the same place as on **SINGLE PLAYER**.
+6. Check every label still fits to the left of its field, with nothing cut off.
+
 #### C2. A StalkleHeads single-player match starts, one machine
 
 1. On **SINGLE PLAYER**, set **Game** to **StalkleHeads**.
@@ -1414,6 +1437,16 @@ read differently.
 6. Quit to the title screen.
 7. Set **Game** to **Stalks Stalks Stalks** and click **START**.
 8. Check the board is the usual ten stalks, all at 100.
+
+#### C2a. Re-check after D173: a list that scrolls says so
+
+1. On **SINGLE PLAYER**, set **Game** to **StalkleHeads** and click **START**.
+2. Check there is a thin bar down the right-hand side of the stalk list, lighter than the panel behind it.
+3. Scroll the list with the mouse wheel.
+4. Check the bar's lighter part moves down as the list scrolls.
+5. Check the column headings still sit above their columns.
+6. Quit to the title screen, set **Game** to **Stalks Stalks Stalks**, and click **START**.
+7. Check the ten-stalk board's headings still sit above their columns, with the bar showing.
 
 #### C3. The lobby row says which game it is, two Steam accounts
 

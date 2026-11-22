@@ -1029,3 +1029,19 @@ func test_a_clipped_description_has_no_tooltip() -> void:
 	await wait_process_frames(1)
 
 	assert_eq(flavour.tooltip_text, "")
+
+
+# ------------------------------------------------- a list that scrolls says so
+
+## Found in play on 2026-11-22 (manual-testing.md C2): a StalkleHeads board has
+## twenty rows and scrolls, but its bar was 2px of dark grey on near-black, so
+## the only sign was a row cut off at the bottom. Every list's bar comes from
+## the shared Theme, so the Theme is what is checked. See decisions.md D173.
+func test_a_scroll_bar_is_wide_enough_and_stands_out_from_its_track() -> void:
+	var theme: Theme = load("res://assets/themes/stalks_theme.tres")
+	var grabber: StyleBoxFlat = theme.get_stylebox("grabber", "VScrollBar") as StyleBoxFlat
+	var track: StyleBoxFlat = theme.get_stylebox("scroll", "VScrollBar") as StyleBoxFlat
+
+	assert_gte(grabber.get_minimum_size().x, 4.0, "thin, but wider than a hairline")
+	assert_gt(grabber.bg_color.get_luminance() - track.bg_color.get_luminance(), 0.25,
+		"the grabber is clearly lighter than the track it runs in")
