@@ -339,7 +339,7 @@ comparisons in `test_wire.gd` are what guard the two halves from here.
 
 - **Steam.** No test may touch Steam. Whether a StalkleHeads match migrates and
   rejoins over Steam between two machines is [manual-testing.md](manual-testing.md)
-  D1-D4.
+  D1-D4, passed by hand on 2026-11-22.
 - **Two different machines.** Every test runs both ends in one process, on one CPU
   and one build. That float arithmetic gives the same bits on two machines running
   the same build rests on IEEE 754 and on the price path using no transcendental

@@ -1537,7 +1537,22 @@ fails cleanly rather than inventing a market.
 - **C5 step 5 freezing** rather than returning is a fault; the message's wording
   is not, and can change.
 
-### D - A StalkleHeads match over the wire (phase S6) — **not yet run**
+### D - A StalkleHeads match over the wire (phase S6) — **passed 2026-11-22**
+
+**Run on 2026-11-22**, D1-D4, two Steam accounts on two machines, on a locally
+exported build containing S6. Every check passed:
+
+- **D1:** B rejoined with **REJOIN GAME** on A's year. Prices, yearly changes and
+  B's cash matched, and so did bankruptcies after the next year.
+- **D2:** A quit. B stayed on the playing screen on the same year with the same
+  prices, and carried on: trades and year advances worked.
+- **D3:** A came back with **REJOIN GAME** (step 31 originally said a Steam invite,
+  which a locally exported build cannot accept; corrected below). A landed on B's
+  year with matching prices.
+- **D4:** The final standings and the YEAR BY YEAR page matched on both machines.
+- **Also checked, unscripted:** a rematch after the match. The rematch request and
+  the lobby notices worked, both players reached the lobby, and the new match
+  started in StalkleHeads and played normally.
 
 **The build must contain S6.** A build made before S6 is on `main` fails at step 23
 with "A StalkleHeads match cannot change hosts yet." That is the old build, not a
@@ -1602,7 +1617,7 @@ Before starting, on each machine:
 #### D3. Coming back to the match B now hosts
 
 30. Start the game on A.
-31. On B, invite A to the match, or have A use the lobby A was in.
+31. On A, press **REJOIN GAME**.
 32. Check A lands on the playing screen, on B's year.
 33. Check every price on A's board is the price on B's board.
 34. Check A's cash is the figure A had before quitting in step 22.
