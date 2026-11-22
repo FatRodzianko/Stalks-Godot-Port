@@ -650,12 +650,9 @@ func _refresh_yeehaw(game: GameState) -> void:
 ## whether to borrow more, and the figure was previously buried inside the loan
 ## panel - you had to open it to find out.
 ##
-## Nothing here is ever hidden in a way that changes the bar's height. The
-## reminder keeps its line and goes blank; the minimum label *is* hidden when
-## there is nothing owed, which is safe because the bar's height comes from the
-## message column rather than from this box. See `_reserve_bottom_bar_height`,
-## and `test_the_loans_button_is_centred_when_it_stands_alone` for the measure
-## that keeps it honest.
+## Nothing here is ever hidden. The reminder and the minimum keep their lines
+## and go blank, so neither the bar's height nor the button's position changes.
+## `test_the_message_and_both_buttons_share_the_bar_middle` keeps it honest.
 func _refresh_loan_controls(game: GameState, player: PlayerState) -> void:
 	var loans_on: bool = game.settings != null and game.settings.loans_enabled
 	_loan_box.visible = loans_on and not game.is_over
@@ -680,15 +677,10 @@ func _refresh_loan_controls(game: GameState, player: PlayerState) -> void:
 		_loan_min_label.text = "Min %s" % Palette.format_money(player.loan.min_payment)
 	else:
 		_loan_min_label.text = ""
-	# Hidden, not merely blank. A blank label still takes a line, and the box
-	# around it is centred in the bar - so with nothing owed the LOANS button
-	# rode half a line high, which is what "slightly off" looks like. Reported
-	# from play on 2026-11-17 and measured at seven pixels.
-	#
-	# This does not change the bar's height. That is held by `_info_label`'s
-	# reserved two lines in the message column (see `_reserve_bottom_bar_height`),
-	# which is taller than this box either way.
-	_loan_min_label.visible = not _loan_min_label.text.is_empty()
+	# The "Min" line always holds its place, blank or not, and a blank line of
+	# the same style sits above the button to balance it. The button is the
+	# middle of three fixed lines, so it never moves when a loan is taken or
+	# repaid, and stays level with the message beside it (D175).
 
 	# Short captions: the button is a few cells wide at this resolution.
 	#

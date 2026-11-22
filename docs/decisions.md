@@ -6506,3 +6506,65 @@ that every `vertical_scroll_mode` in a UI scene is `4`.
 measuring the bar on every layout and re-insetting headers to chase it.
 
 **Not checked by a test.** How it looks. manual-testing.md C2b.
+
+### D175 - The bottom bar shares one middle; scrolling text pauses where it can be read
+**2026-11-22 · Accepted**
+
+Four faults reported from play, fixed together and accepted by the owner after
+trying them in a build.
+
+**The bottom bar's message sat at no sensible height.** The message column is
+four reserved lines (reminder, two message lines, refusal), stacked from the top,
+so a one-line message ("Dividends $375") always landed on line 2 of 4, above the
+middle, while the buttons either side were centred. And the LOANS button jumped
+half a line up whenever "Min $191" appeared under it, because the two were one
+centred box. Now:
+
+- `InfoLabel` centres its text in its two lines (`vertical_alignment = 1`). The
+  reminder and refusal lines are one each, so the middle of `InfoLabel` is the
+  middle of the bar.
+- The loan button is the middle of three fixed lines: a blank `LoanTopSpacer`
+  above it and `LoanMinLabel` below, both always present, both the `Faint`
+  variation so they are the same height without measuring. Nothing in the box
+  is shown or hidden any more.
+
+**The messages wrapped with a quarter of the bar empty.** An empty `Gutter`
+control sat between the messages and the ready button, taking a 1:3 share of the
+free width. It was added on 2026-11-14 because the LOANS button had no minimum
+width and was being squashed; both buttons have had minimum widths since, so the
+spacer only took room from the messages. Removed.
+
+**A long stalk name never paused on its end.** `MarqueeLabel` held the start of
+the name and showed the end for one 0.2 s step before jumping back. It now holds
+the end for `END_HOLD_STEPS` (two seconds) as well.
+
+**The event strip was unreadable while scrolling.** It moved a line every 1.6 s;
+"... MORE" was placed straight after the words, so it jumped on every step; the
+words under it were cut and never shown; and the last lines showed for one step
+before it jumped back. `ScrollingLabel` now:
+
+- steps a line every `LINE_SECONDS` (3 s), holds the last lines for
+  `END_SECONDS` (5 s), and makes its first step `FIRST_TURN_SECONDS` (1.6 s)
+  after the mouse arrives, so hovering visibly does something (D100);
+- when the text overflows, wraps every line that can reach the bottom row short
+  by the marker's width, so the marker never covers a word;
+- pads the bottom row to one column, so the marker never moves.
+
+**Rules out.** Moving a whole page at a time: tried and turned down, because a
+three-line description showed its third line alone above a blank row. Showing
+and hiding lines to centre the bottom bar: that is what made the loan button
+move in the first place. Sharing one line between the loan reminder and a
+refusal to make the bar a neat grid.
+
+**Not fixed, and why.** The refusal line shows one line, 416px at the 640x360
+layout now the spacer is gone (309px before, which cut three messages). Two
+still need a second line and are cut: "You are ready for the new year. Press the
+ready button again to trade." and "Could not listen on port N: something else
+may already be using it." Fixing that is a wording or a layout choice the owner
+has not made.
+
+**Tests.** `test_gameplay_screen.gd` checks the message and both buttons share
+the bar's middle with and without a loan, the messages run up to the ready
+button, and the Pillows cruiselines event steps one line at a time with the
+marker in one column and every word shown. `test_marquee_label.gd` checks the
+hold on the end of a name. Manual: manual-testing.md C2c.

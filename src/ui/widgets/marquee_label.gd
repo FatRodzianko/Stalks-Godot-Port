@@ -24,8 +24,15 @@ extends Label
 ## through a long name before interest runs out.
 const STEP_SECONDS: float = 0.2
 
-## Steps to pause at each end, so the start and finish are readable.
+## Steps to pause on the start of the name before it moves (one second).
 const HOLD_STEPS: int = 5
+
+## Steps to pause on the end of the name before going back to the start (two
+## seconds). Longer than the start, because the end is what the player has
+## just scrolled to read. Reported from play on 2026-11-22: there used to be no
+## pause here at all - the last characters showed for one step and it jumped
+## straight back.
+const END_HOLD_STEPS: int = 10
 
 
 var _full_text: String = ""
@@ -123,11 +130,15 @@ func _step() -> void:
 		stop_scrolling()
 		return
 
-	_offset += 1
-	if _offset > furthest:
-		# Reached the end: pause on it, then start over.
+	if _offset >= furthest:
+		# The end has been read: back to the start, and pause there.
 		_offset = 0
 		_hold = HOLD_STEPS
+	else:
+		_offset += 1
+		if _offset == furthest:
+			# Just reached the end: hold it so it can be read.
+			_hold = END_HOLD_STEPS
 	text = _full_text.substr(_offset)
 
 

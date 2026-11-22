@@ -18,12 +18,22 @@ extends RichTextLabel
 ## `autowrap_mode` is off: these line breaks are the layout, so engine wrapping
 ## and this wrapping cannot disagree.
 ##
-## **It still creeps a line at a time on hover**, for a description too long for
-## two lines - the reason it was written (D100). Three of the game's ninety
-## descriptions run past three lines and twenty past two, and `overflows()` is
-## false for the rest, which never start their timer.
+## **On hover it moves up a line at a time** until the last line is at the
+## bottom, for a description too long for the strip (D100). Reported from play
+## on 2026-11-22 as unreadable: it went too fast, "... MORE" jumped about
+## because it followed the words, the words under it were never shown, and the
+## last lines flashed by before it jumped back. Now (D175):
 ##
-## See docs/decisions.md D100, D102 and D107a.
+## - each line shows for `LINE_SECONDS`; the last lines hold for
+##   `END_SECONDS` before it goes back to the top;
+## - when the text overflows, every line that can ever sit on the bottom row
+##   is wrapped short by the marker's width, so the marker never covers a word;
+## - the marker is padded out to the same column every time, so it never moves.
+##
+## Moving a page at a time was tried and turned down: a three-line description
+## showed its third line alone with a blank row under it.
+##
+## See docs/decisions.md D100, D102, D107a and D175.
 
 
 ## The player clicked the marker and wants the whole thing.
@@ -37,13 +47,18 @@ const MARKER: String = "... MORE"
 ## The word that is clickable, picked out from the ellipsis before it.
 const MARKER_WORD: String = "MORE"
 
-## Seconds between line steps. Much slower than the name marquee's 0.2, because
-## a line of prose takes longer to read than a few more characters of a name.
-const STEP_SECONDS: float = 1.6
+## Seconds between line steps while hovered. Each step brings one new line of
+## about sixty characters, roughly ten words.
+const LINE_SECONDS: float = 3.0
 
-## Steps to wait at the top and bottom, so the first and last lines can be read
-## rather than glimpsed.
-const HOLD_STEPS: int = 2
+## Seconds the last lines hold before it goes back to the top, so the end can
+## be read rather than glimpsed.
+const END_SECONDS: float = 5.0
+
+## Seconds before the first step after the mouse arrives. Shorter, because the
+## first lines have already been on screen to read, and a long wait after
+## hovering looks like hovering does nothing (D100).
+const FIRST_TURN_SECONDS: float = 1.6
 
 
 ## How many lines of the description the strip shows at once.
@@ -53,7 +68,6 @@ const HOLD_STEPS: int = 2
 var _full: String = ""
 var _lines: PackedStringArray = []
 var _skipped: int = 0
-var _hold: int = 0
 var _timer: Timer
 
 
@@ -65,7 +79,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 	_timer = Timer.new()
-	_timer.wait_time = STEP_SECONDS
+	_timer.wait_time = LINE_SECONDS
 	_timer.timeout.connect(_step)
 	add_child(_timer)
 
@@ -82,7 +96,6 @@ func _ready() -> void:
 func set_full_text(value: String) -> void:
 	_full = value
 	_skipped = 0
-	_hold = 0
 	_rewrap()
 
 
@@ -115,24 +128,18 @@ func is_scrolling() -> bool:
 	return _timer != null and not _timer.is_stopped()
 
 
-## **No hold on the way in.** The pause exists so the first lines are not
-## whisked away before they can be read - but a player who has just put the
-## mouse on the text has been reading it, and three steps of nothing (nearly
-## five seconds) looks exactly like hovering doing nothing at all. Reported
-## that way. The hold is kept for the wrap-around, where it earns its keep.
+## The first step comes after `FIRST_TURN_SECONDS`; see `_step` for the rest.
 func start_scrolling() -> void:
 	if not overflows():
 		return
-	_hold = 0
 	if _timer != null:
-		_timer.start()
+		_timer.start(FIRST_TURN_SECONDS)
 
 
 func stop_scrolling() -> void:
 	if _timer != null:
 		_timer.stop()
 	_skipped = 0
-	_hold = 0
 	_render()
 
 
@@ -146,7 +153,11 @@ func step() -> void:
 ## Re-measures and redraws. Called when the text changes and whenever the strip
 ## changes width, because a line's capacity is measured from that width.
 func _rewrap() -> void:
-	_lines = _wrapped(_full)
+	_lines = _wrapped(_full, false)
+	if overflows():
+		# Too long for the strip, so the marker will show: wrap again with
+		# every line that can reach the bottom row left short by its width.
+		_lines = _wrapped(_full, true)
 	_skipped = mini(_skipped, furthest_line())
 	_render()
 
@@ -157,20 +168,26 @@ func _rewrap() -> void:
 ## rather than a sum of glyph widths. A word longer than a whole line is broken
 ## rather than left to overflow, which no description does but a custom one
 ## might.
-func _wrapped(value: String) -> PackedStringArray:
-	var room: int = characters_per_line()
-	if room <= 0 or value.strip_edges().is_empty():
+##
+## With `leave_marker_room`, every line that can ever sit on the bottom row
+## (all but the first `max_lines_visible - 1`) is `MARKER` shorter, so the
+## marker always has its own space.
+func _wrapped(value: String, leave_marker_room: bool) -> PackedStringArray:
+	if characters_per_line() <= 0 or value.strip_edges().is_empty():
 		return PackedStringArray([value]) if not value.is_empty() else PackedStringArray()
 
 	var lines: PackedStringArray = []
 	var line: String = ""
 	for word: String in value.split(" ", false):
+		var room: int = _room_on_line(lines.size(), leave_marker_room)
 		while word.length() > room:
 			if not line.is_empty():
 				lines.append(line)
 				line = ""
+				room = _room_on_line(lines.size(), leave_marker_room)
 			lines.append(word.substr(0, room))
 			word = word.substr(room)
+			room = _room_on_line(lines.size(), leave_marker_room)
 		var candidate: String = word if line.is_empty() else "%s %s" % [line, word]
 		if candidate.length() <= room:
 			line = candidate
@@ -180,6 +197,15 @@ func _wrapped(value: String) -> PackedStringArray:
 	if not line.is_empty():
 		lines.append(line)
 	return lines
+
+
+## Characters allowed on line `index`: the whole width, or the width less the
+## marker for a line that can reach the bottom row.
+func _room_on_line(index: int, leave_marker_room: bool) -> int:
+	var room: int = characters_per_line()
+	if leave_marker_room and index >= max_lines_visible - 1:
+		room -= MARKER.length()
+	return maxi(room, 1)
 
 
 ## How many characters fit on one line at the current width.
@@ -201,36 +227,39 @@ func _cell_width() -> float:
 
 # ------------------------------------------------------------------ the drawing
 
-## Puts the visible window on screen, with the marker on the end of its last
-## line when there is more to read.
+## Puts the visible lines on screen. When the text overflows, the marker sits
+## at the end of the bottom row, in the same column every time.
 func _render() -> void:
-	var window: PackedStringArray = []
-	for offset: int in max_lines_visible:
-		var index: int = _skipped + offset
-		if index >= _lines.size():
-			break
-		window.append(_escaped(_lines[index]))
-
-	if window.is_empty():
+	if _lines.is_empty():
 		text = ""
 		return
 
-	if overflows():
-		var last: int = window.size() - 1
-		window[last] = _with_marker(_lines[_skipped + last])
+	if not overflows():
+		var plain: PackedStringArray = []
+		for line: String in _lines:
+			plain.append(_escaped(line))
+		text = "\n".join(plain)
+		return
 
+	var window: PackedStringArray = []
+	for offset: int in max_lines_visible:
+		var index: int = _skipped + offset
+		var line: String = ""
+		if index < _lines.size():
+			line = _lines[index]
+		if offset == max_lines_visible - 1:
+			window.append(_with_marker(line))
+		else:
+			window.append(_escaped(line))
 	text = "\n".join(window)
 
 
-## One line, shortened by exactly the marker's width so the two together still
-## fit, with the marker on the end.
-##
-## A line already shorter than that is left alone, so the marker follows the
-## words rather than being pushed out to the margin.
+## A bottom line, padded to the marker's column, with the marker on the end.
+## The wrapping already left this line short enough, so nothing is cut.
 func _with_marker(line: String) -> String:
-	var room: int = maxi(characters_per_line() - MARKER.length(), 0)
-	var kept: String = line if line.length() <= room else line.substr(0, room)
-	return _escaped(kept) + marker_markup()
+	var column: int = maxi(characters_per_line() - MARKER.length(), 0)
+	var padding: String = " ".repeat(maxi(column - line.length(), 0))
+	return _escaped(line) + padding + marker_markup()
 
 
 ## The marker as it is drawn: the whole of it, ellipsis included, in the
@@ -255,10 +284,6 @@ func _escaped(line: String) -> String:
 # -------------------------------------------------------------------- the input
 
 func _step() -> void:
-	if _hold > 0:
-		_hold -= 1
-		return
-
 	var furthest: int = furthest_line()
 	if furthest == 0:
 		stop_scrolling()
@@ -266,9 +291,13 @@ func _step() -> void:
 
 	_skipped += 1
 	if _skipped > furthest:
-		# Back to the top, and pause there before setting off again.
 		_skipped = 0
-		_hold = HOLD_STEPS
+	if _timer != null and not _timer.is_stopped():
+		# The last lines hold longer, so the end can be read.
+		if _skipped == furthest:
+			_timer.start(END_SECONDS)
+		else:
+			_timer.start(LINE_SECONDS)
 	_render()
 
 

@@ -1461,6 +1461,22 @@ read differently.
 9. Quit to the title screen and click **HOST ONLINE**, then host.
 10. Check the lobby's players list has no scroll bar with one player in it.
 
+#### C2c. Re-check after D175: the bottom bar and scrolling text
+
+1. On **SINGLE PLAYER**, tick loans, set **Game** to **Stalks Stalks Stalks**, and click **START**.
+2. Click **Ready for New Year**.
+3. Check the message beside **LOANS** is level with **LOANS** and **Ready for New Year**.
+4. Take a loan.
+5. Check **PAY LOAN** has not moved, with **Min** under it.
+6. Hover **My Pillow, Your Pillow, We're All Pillows!** on the board.
+7. Check the end of the name holds for about two seconds before it goes back to the start.
+8. Play on until an event description runs past two lines.
+9. Hover the description.
+10. Check it moves up one line at a time, about three seconds apart.
+11. Check the last lines hold for about five seconds before it goes back to the top.
+12. Check **... MORE** stays in one place and no word is hidden under it.
+13. Check a long bottom-bar message runs up to **Ready for New Year** before it wraps.
+
 #### C3. The lobby row says which game it is, two Steam accounts
 
 Two accounts on two machines, **A** and **B**. A hosts.

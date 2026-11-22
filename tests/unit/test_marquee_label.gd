@@ -144,3 +144,23 @@ func _click() -> InputEventMouseButton:
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = true
 	return event
+
+
+## Reported from play on 2026-11-22: the end of a long name showed for one step
+## and jumped straight back to the start, so nobody could read it.
+func test_the_end_of_the_name_holds_before_going_back_to_the_start() -> void:
+	_label.set_full_text(LONG)
+	_label.start_scrolling()
+	var furthest: int = LONG.length() - 12
+	var steps: int = 0
+	while _label.text != LONG.substr(furthest):
+		_label._step()
+		steps += 1
+		assert_lt(steps, 200, "it should reach the end")
+		if steps >= 200:
+			return
+	for i: int in MarqueeLabel.END_HOLD_STEPS:
+		_label._step()
+		assert_eq(_label.text, LONG.substr(furthest), "still holding the end, step %d" % i)
+	_label._step()
+	assert_eq(_label.text, LONG, "then back to the start")

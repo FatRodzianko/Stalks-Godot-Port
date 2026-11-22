@@ -139,25 +139,41 @@ func test_asking_for_a_yeehaw_does_not_move_the_event_text() -> void:
 	assert_eq(bar.size.y, bar_height_before, "and the top bar keeps its height")
 
 
-## The LOANS button sits in the middle of the bar when nothing is under it.
+## The message and both buttons share the bar's middle, loan or no loan.
 ##
-## Its box is centred, but a blank minimum-payment label underneath still took
-## a line, so the button rode half a line high. Reported from play as looking
-## "slightly off", which is exactly what half a line of text looks like.
-func test_the_loans_button_is_centred_when_it_stands_alone() -> void:
+## Reported from play on 2026-11-22: a one-line message ("Dividends $375") sat
+## on the second of four reserved lines, above the middle, and the LOANS button
+## jumped half a line up whenever "Min" appeared under it. The message is now
+## centred in its two lines, and the button is the middle of three fixed lines
+## (a blank one above, "Min" below, both always present). D175.
+func test_the_message_and_both_buttons_share_the_bar_middle() -> void:
 	var screen: Control = _two_player_screen()
 	await wait_process_frames(2)
-
+	var session: LocalSession = screen.session()
 	var bar: Control = screen.get_node("Root/BottomBar/Bar")
-	var button: Control = screen.get_node("%LoanButton")
-	var minimum: Label = screen.get_node("%LoanMinLabel")
+	var info: Label = screen.get_node("%InfoLabel")
+	var loan: Control = screen.get_node("%LoanButton")
+	var ready_button: Control = screen.get_node("%ReadyButton")
+	var height_before: float = bar.size.y
 
-	assert_eq(minimum.text, "", "no loan, so nothing under the button")
-	assert_false(minimum.visible, "and it takes no room either")
-
-	var button_middle: float = button.global_position.y + button.size.y * 0.5
-	var bar_middle: float = bar.global_position.y + bar.size.y * 0.5
-	assert_almost_eq(button_middle, bar_middle, 1.0, "centred in the bar")
+	for owed: bool in [false, true]:
+		if owed:
+			# Year 0 is closed to trading and borrowing.
+			session.set_ready(&"p0", true)
+			session.set_ready(&"p1", true)
+			session.request_loan(&"p0", LoanRules.max_loan_for(session.state().player_by_id(&"p0")))
+			screen.refresh()
+			await wait_process_frames(2)
+			assert_ne((screen.get_node("%LoanMinLabel") as Label).text, "", "the Min line shows")
+		var middle: float = bar.global_position.y + bar.size.y * 0.5
+		assert_eq(info.vertical_alignment, VERTICAL_ALIGNMENT_CENTER, "text centred in its lines")
+		assert_almost_eq(info.global_position.y + info.size.y * 0.5, middle, 1.0,
+			"message centred, owed=%s" % owed)
+		assert_almost_eq(loan.global_position.y + loan.size.y * 0.5, middle, 1.0,
+			"loan button centred, owed=%s" % owed)
+		assert_almost_eq(ready_button.global_position.y + ready_button.size.y * 0.5, middle, 1.0,
+			"ready button centred, owed=%s" % owed)
+	assert_eq(bar.size.y, height_before, "and the bar keeps its height")
 
 
 ## The top bar is the same height whatever the year's event says.
@@ -1092,3 +1108,63 @@ func _tscn_files_under(roots: Array[String]) -> Array[String]:
 			if file.ends_with(".tscn"):
 				found.append(dir_path.path_join(file))
 	return found
+
+
+## Reported from play on 2026-11-22 with the Pillows cruiselines event: the
+## strip crept a line at a time, "... MORE" jumped about on every step, and the
+## words under it were never shown. It still moves a line at a time (the owner
+## preferred that to whole pages), but the marker sits in one column on every
+## step, and every word reaches the screen uncovered. D175.
+func test_the_strip_shows_every_word_with_the_marker_held_still() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+	var flavour: ScrollingLabel = screen.get_node("%EventFlavour")
+	var description: String = (
+		"Following the pandemic cruiselines replace all former pillows with 'My "
+		+ "Pillow, Your Pillow, We're All Pillows' after experiments show no living "
+		+ "thing can survive more than five minutes on the pillow's surface."
+	)
+	flavour.set_full_text(description)
+	await wait_process_frames(1)
+	assert_true(flavour.overflows(), "the test needs more than one page")
+
+	var shown: PackedStringArray = []
+	var marker_columns: Array[int] = []
+	var steps: int = 0
+	flavour.start_scrolling()
+	while steps <= 10:
+		var rows: PackedStringArray = flavour.text.split("\n")
+		assert_eq(rows.size(), flavour.max_lines_visible, "every step fills the strip")
+		marker_columns.append(rows[rows.size() - 1].find(flavour.marker_markup()))
+		# The first view shows every row; each step after adds one new line at
+		# the bottom.
+		var first_new: int = 0 if steps == 0 else rows.size() - 1
+		for i: int in range(first_new, rows.size()):
+			shown.append(rows[i].replace(flavour.marker_markup(), "").strip_edges())
+		steps += 1
+		flavour.step()
+		if flavour.lines_skipped() == 0:
+			break
+		assert_eq(flavour.lines_skipped(), steps, "one line per step")
+
+	assert_gt(steps, 1, "it moved at least once")
+	for column: int in marker_columns:
+		assert_eq(column, marker_columns[0], "the marker never moves")
+	assert_eq(" ".join(shown).split(" ", false), description.split(" ", false),
+		"every word is shown, in order, none cut")
+
+
+## Reported from play on 2026-11-22: "Dividends $40 · Bankrupt: strYker!!! ·
+## Loan interest $140" wrapped with a quarter of the bar empty to its right.
+## That space was an empty spacer left from when the buttons had no minimum
+## widths (2026-11-14); they have had them since, so the spacer only stole room
+## from the messages. The message column now runs up to the ready button. D175.
+func test_the_messages_run_up_to_the_ready_button() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+	var bar: HBoxContainer = screen.get_node("Root/BottomBar/Bar")
+	var info: Control = screen.get_node("%InfoLabel")
+	var ready_button: Control = screen.get_node("%ReadyButton")
+	var gap: float = ready_button.global_position.x - (info.global_position.x + info.size.x)
+	assert_almost_eq(gap, float(bar.get_theme_constant("separation")), 1.0,
+		"nothing sits between the messages and the ready button")
