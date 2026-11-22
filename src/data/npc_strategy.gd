@@ -20,7 +20,7 @@ extends RefCounted
 ## | `INDEXER`    | Buys My Mutuals and Me Inc., and nothing else, ever |
 ## | `PANIC`      | Sells everything for the bond in a bear year, buys back in a bull one |
 ## | `GROWTH`     | Buys whatever grew its earnings fastest |
-## | `SHORT`      | Bets against whichever company's earnings grew slowest |
+## | `SHORT`      | Bets against the most expensive company on the board, by P/E |
 
 
 enum Value {

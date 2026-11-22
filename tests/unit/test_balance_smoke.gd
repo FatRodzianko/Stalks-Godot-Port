@@ -177,9 +177,9 @@ func test_a_rebuilt_growth_row_still_sums_to_100() -> void:
 
 func test_the_short_target_lever_at_its_published_rule_changes_nothing() -> void:
 	# The lever desk replaces the real one only off the published rule, and
-	# its seam calls straight through for every other strategy (D168).
+	# its seam calls straight through for every other strategy (D168, D169).
 	var levers: Levers = Levers.new()
-	levers.short_target = &"slowest"
+	levers.short_target = LeverDesk.SHORT_HIGHPE
 	var same: BalanceMatch.Result = BalanceMatch.play(
 		_library, 4, YEARS, BalanceMatch.ALL_STRATEGIES, BalanceMatch.FLOW_ALL, levers
 	)
@@ -187,21 +187,22 @@ func test_the_short_target_lever_at_its_published_rule_changes_nothing() -> void
 	assert_eq(same.final_prices, _runs[4].final_prices)
 
 
-func test_the_highpe_short_target_bets_against_the_dearest_company() -> void:
-	var library_state: GameState = EarningsMarket.new_game_state(_library, GameSettings.new())
-	var company: CompanyState = library_state.market.company_by_id(&"meowly")
-	company.price = 400
-	library_state.stalk_by_id(&"meowly").price = 400
+func test_the_slowest_short_target_bets_against_the_slowest_grower() -> void:
+	var state: GameState = EarningsMarket.new_game_state(_library, GameSettings.new())
+	for company: CompanyState in state.market.companies:
+		company.profit_before_season = 1000.0
+		company.profit = 1000.0
+	state.market.company_by_id(&"monorail").profit = 600.0
 	var desk: LeverDesk = LeverDesk.new()
-	desk.short_target = LeverDesk.SHORT_HIGHPE
-	assert_eq(desk.choose_target(NpcStrategy.Value.SHORT, library_state, 0), &"meowly")
+	desk.short_target = LeverDesk.SHORT_SLOWEST
+	assert_eq(desk.choose_target(NpcStrategy.Value.SHORT, state, 0), &"monorail")
 	assert_eq(
-		desk.choose_target(NpcStrategy.Value.VALUE, library_state, 0),
-		NpcDesk.target_for(NpcStrategy.Value.VALUE, library_state, 0),
+		desk.choose_target(NpcStrategy.Value.VALUE, state, 0),
+		NpcDesk.target_for(NpcStrategy.Value.VALUE, state, 0),
 		"every other strategy is the real one",
 	)
 	var levers: Levers = Levers.new()
-	levers.short_target = LeverDesk.SHORT_HIGHPE
+	levers.short_target = LeverDesk.SHORT_SLOWEST
 	var moved: BalanceMatch.Result = BalanceMatch.play(
 		_library, 0, YEARS, BalanceMatch.ALL_STRATEGIES, BalanceMatch.FLOW_ALL, levers
 	)

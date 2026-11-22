@@ -111,7 +111,7 @@ static func play(
 	view.state = EarningsMarket.new_game_state(library, settings)
 	if levers == null:
 		levers = Levers.new()
-	if levers.short_target != LeverDesk.SHORT_SLOWEST:
+	if levers.short_target != LeverDesk.SHORT_HIGHPE:
 		# The same traders at year 0, through the lever desk's one seam.
 		var desk: LeverDesk = LeverDesk.new()
 		desk.traders = view.state.market.desk.traders

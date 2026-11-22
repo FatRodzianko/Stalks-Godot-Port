@@ -39,9 +39,9 @@ var squeeze_chance: int = -1
 ## The squeeze's price change. -1 = the authored template's (+25).
 var squeeze_size: int = -1
 
-## What the desk's SHORT traders bet against: `slowest` (the published rule,
-## D164) or `highpe` (tools/balance/lever_desk.gd, D168).
-var short_target: StringName = &"slowest"
+## What the desk's SHORT traders bet against: `highpe` (the published rule,
+## D169) or `slowest` (S4's first rule, D164; tools/balance/lever_desk.gd, D168).
+var short_target: StringName = &"highpe"
 
 var _transition: Dictionary[EarningsRegime.Value, Array] = {}
 
@@ -54,7 +54,7 @@ func changes_regimes() -> bool:
 func changes_anything() -> bool:
 	if changes_regimes() or not premium.is_empty() or not squeeze:
 		return true
-	return squeeze_chance >= 0 or squeeze_size >= 0 or short_target != &"slowest"
+	return squeeze_chance >= 0 or squeeze_size >= 0 or short_target != &"highpe"
 
 
 ## The published premium spread scaled by `factor` (1.0 = today's, 2.5 = the
@@ -157,7 +157,7 @@ func describe() -> String:
 		parts.append("squeeze chance %d%%" % squeeze_chance)
 	if squeeze_size >= 0:
 		parts.append("squeeze size %+d" % squeeze_size)
-	if short_target != &"slowest":
+	if short_target != &"highpe":
 		parts.append("SHORT target %s" % short_target)
 	return ", ".join(parts)
 

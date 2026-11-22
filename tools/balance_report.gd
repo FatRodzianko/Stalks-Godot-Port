@@ -25,8 +25,8 @@ extends SceneTree
 ##   --no-squeeze          no short squeeze can fire (§5.3)
 ##   --squeeze-chance=N    squeeze chance in a flagged year, percent (published 25)
 ##   --squeeze-size=N      squeeze price change (published +25, the template's)
-##   --short-target=T      what the SHORT traders bet against: slowest (published)
-##                         or highpe (decisions.md D168)
+##   --short-target=T      what the SHORT traders bet against: highpe (published)
+##                         or slowest (decisions.md D168, D169)
 ##
 ## The year is the game's own, `EarningsYearResolver`, since S3 (through
 ## tools/balance/lever_year.gd, which only adds the levers), and so is the NPC
@@ -59,7 +59,7 @@ const USAGE: String = """Usage: <godot> --headless --script res://tools/balance_
   --no-squeeze          no short squeeze can fire
   --squeeze-chance=N    squeeze chance in a flagged year, 0-100 (published 25)
   --squeeze-size=N      squeeze price change, 0 or more (published 25)
-  --short-target=T      slowest (published) or highpe"""
+  --short-target=T      highpe (published) or slowest"""
 
 
 func _init() -> void:
@@ -102,7 +102,7 @@ func _init() -> void:
 			"--short-target":
 				levers.short_target = StringName(value.to_lower())
 				if levers.short_target not in LeverDesk.SHORT_TARGETS:
-					_fail("--short-target must be slowest or highpe.")
+					_fail("--short-target must be highpe or slowest.")
 					return
 			"--premium":
 				var values: PackedStringArray = value.split(",", false)

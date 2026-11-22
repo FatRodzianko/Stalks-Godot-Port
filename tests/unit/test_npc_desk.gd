@@ -247,7 +247,7 @@ func test_panic_flees_to_the_bond_in_a_bear_year_and_buys_back_in_a_bull_one() -
 	assert_eq(NpcDesk.target_for(NpcStrategy.Value.PANIC, state, companies.size() + 1), companies[1].id)
 
 
-func test_growth_and_short_read_profit_growth() -> void:
+func test_growth_reads_profit_growth() -> void:
 	var state: GameState = _new_state()
 	for company: CompanyState in state.market.companies:
 		company.profit_before_season = 1000.0
@@ -255,7 +255,21 @@ func test_growth_and_short_read_profit_growth() -> void:
 	state.market.company_by_id(&"videochrome").profit = 1500.0
 	state.market.company_by_id(&"monorail").profit = 600.0
 	assert_eq(NpcDesk.target_for(NpcStrategy.Value.GROWTH, state, 0), &"videochrome")
-	assert_eq(NpcDesk.target_for(NpcStrategy.Value.SHORT, state, 0), &"monorail", "the weakest")
+
+
+func test_short_bets_against_the_highest_p_e() -> void:
+	# decisions.md D169: the most expensive company, not the weakest.
+	var state: GameState = _new_state()
+	_set_company(state, &"meowly", 100, 2000.0)   # eps 2, P/E 50
+	_set_company(state, &"mafia", 50, 2000.0)     # eps 2, P/E 25
+	assert_eq(NpcDesk.target_for(NpcStrategy.Value.SHORT, state, 0), &"meowly")
+
+
+func test_short_ignores_a_company_losing_money() -> void:
+	# A loss has no P/E, however high the price.
+	var state: GameState = _new_state()
+	_set_company(state, &"meowly", 1000, -5000.0)
+	assert_ne(NpcDesk.target_for(NpcStrategy.Value.SHORT, state, 0), &"meowly")
 
 
 func test_growth_needs_a_positive_base() -> void:

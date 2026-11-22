@@ -17,7 +17,8 @@ extends RefCounted
 ## A company is flagged when its short interest is at least this percent of its
 ## shares outstanding. Three SHORT traders committing about 45% of 8,000 each are
 ## short about 11% of a 1,000-share company priced at 100, and more of a cheaper
-## one, so a weak, cheap company is flagged and a weak, expensive one may not be.
+## one, so the same bet flags a cheap target and may not flag a dear one. They bet
+## against the highest P/E (decisions.md D169).
 const FLAG_AT_PERCENT: float = 10.0
 
 ## The chance, in percent, that a flagged company's squeeze is the year's event
