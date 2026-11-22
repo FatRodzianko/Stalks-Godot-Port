@@ -5246,6 +5246,8 @@ probe:
   1 and the roll gets +10. So the stay chance in GROWTH runs 58, 48, 38, 28 - the
   fourth straight year is below even odds, which is §3.3's "four straight growth
   years and the odds have turned over". Recovery counts the same way at 12 points.
+  (Since D151 GROWTH's row starts at 42, so the run is 42, 32, 22, 12; the counting
+  is unchanged.)
 - **The roll uses the regime the company is leaving**, and the growth band uses the
   regime it lands in.
 
@@ -5391,6 +5393,8 @@ turnip market: named patterns and a published table of which follows which
 (Appendix B). **D2:** the regime premiums are 40% of the first draft's spread
 (+0.6 / 0 / +0.24 / -0.6 / -1.4); at the wider spread a low-P/E rule took 63.7% of
 25-year matches, at this one 27.0% (§2.2). D131 records the roll's details.
+**Amended by D151:** GROWTH's row and GROWTH's premium changed; the other four rows
+and premiums are as written here.
 
 ### D140 - A split needs no new rule, and splits above 300 (§15 E, E2)
 **2026-11-21 · Accepted**
@@ -5543,7 +5547,7 @@ where it had one:
   flow term, as §3.10 says it will count once the desk exists.
 
 ### D149 - P4 does not hold at ten years once TREND is measured correctly
-**2026-11-21 · Open — for the owner**
+**2026-11-21 · Resolved by D151 on 2026-11-22**
 
 The tool's first job was to reproduce the probe. It does, once the probe is given the
 same corrections (D132, D146, D147, and FOLLOW removed): the two implementations then
@@ -5572,3 +5576,122 @@ measurement; S9 should confirm it before acting on it.
 stay chance, ageing, the growth premium, the band widths) are balance decisions for S9
 and the owner. Recorded so nobody quotes §2.6's 22% again; §1, §2.6 and Appendix A of
 the design carry a note pointing here.
+
+**Swept, 2026-11-22 (still open).** At the owner's request two levers were swept with
+the tool's overrides (D150): pricing expected growth into the multiple (a wider
+regime premium) and making GROWTH runs less predictable (a lower stay chance, and
+stronger ageing as a variant). The full table is in the design's Appendix A, "The
+sweep of candidate fixes". In short:
+
+- **No single lever passes P4 over 4,000 seeds.** Widening the whole premium spread
+  brings the LOWPE exploit back: 71% of 25-year matches at twice today's spread, and
+  LOWPE leads even at ten years at the first draft's spread. Stay 34 alone measured
+  30.8%.
+- **Three combinations pass at ten years**, with no other strategy over 30%: stay 34
+  with GROWTH premium 0.9 (27.3%), stay 42 with GROWTH premium 1.2 (27.9%), and stay 26
+  (LOWPE 27.1%). Each passes by two to three points.
+- **Every one is partly a design change.** A lower stay chance edits §3.3's matrix and
+  its stated stationary mix, which `test_regime_rules.gd` asserts. A higher GROWTH
+  premium partly reverses D2. Stay 26 changes what GROWTH is.
+
+**Recommendation: GROWTH row `[42, 19, 28, 8, 3]` and GROWTH premium 1.2, other
+premiums unchanged.** It is the passing setting closest to the design's other
+figures: bull rate 54.4%, 1.63 splits per match, ten-year bankruptcies unchanged, and
+RANDOM ending above its starting cash. It must be re-measured with the desk and flow
+(S4) before it is called settled, because its margin is about two points. The owner
+decides. Nothing in `src/` has changed.
+
+### D150 - Balance levers are overridden in the tool, never in `src/`, for a sweep
+**2026-11-22 · Accepted**
+
+The owner asked for D149 to be answered by measurement first: sweep candidate fixes,
+then decide. A sweep needs to change numbers that are constants in `src/sim/`
+(`RegimeRules.PREMIUM`, `TRANSITION`, `AGEING_POINTS`), and the owner has not chosen
+one yet, so the constants must not move.
+
+**Decided:** `tools/balance/levers.gd` holds the overrides, set from the tool's
+arguments (`--premium`, `--premium-scale`, `--growth-stay`, `--ageing`). They reach
+the real code in two ways:
+
+- **The premium** goes in through `CompanyState.reprice`'s industry-performance
+  argument, shifted by `(override - published) / STANDING_GAIN`. Standing is
+  performance times that gain, so the multiple comes out exactly as if the premium
+  table held the override, and its clamp sees the same sum. Only the company's
+  `industry_standing` readout is wrong, and the tool never reads it.
+- **The regime roll** is done in the tool with the overridden matrix and ageing,
+  using `RegimeRules.quality_bias` and `age_shift` for everything not overridden;
+  the accounts then move by the real `CompanyState.move_accounts`. The draws are the
+  real ones in the real order.
+
+The roll is the one piece re-implemented, which is the risk a parallel
+implementation always carries (Appendix A). So with every lever **set** to its
+published value the override path runs, and `test_balance_smoke.gd` asserts it gives
+exactly the same matches as the real path.
+
+**How a new GROWTH stay chance is spread.** The weight removed from (or added to)
+the stay column goes to the other four in proportion to the published row's
+14 : 20 : 6 : 2 (the row at the time of the sweep; since D151 the published row is
+`[42, 19, 28, 8, 3]` and the override respreads in its proportions), in whole points
+by largest remainder, ties to the better regime.
+So 50 gives `[50, 17, 24, 7, 2]`, 42 `[42, 19, 28, 8, 3]`, 34 `[34, 22, 32, 9, 3]`:
+the row keeps the published lean toward SLOWING and STEADY. Ageing overrides apply
+to GROWTH and SLOWING together, as §3.3's ageing does.
+
+**When the owner picks a fix**, it is made in `src/sim/` as an ordinary change with
+its tests, and these overrides stay for the next sweep.
+
+**Rules out:** mutable statics or a tuning object threaded through `src/sim/` for a
+measurement the game itself never needs.
+
+### D151 - GROWTH stays GROWTH 42% of the time, and its premium is 1.2
+**2026-11-22 · Accepted (decided by the owner)**
+
+The fix for D149, chosen from the balance sweep in Appendix A of
+[stalkleheads-design.md](stalkleheads-design.md) and adopted by the owner.
+
+- **`RegimeRules.TRANSITION`, GROWTH's row:** `[58, 14, 20, 6, 2]` becomes
+  `[42, 19, 28, 8, 3]`. The 16 points taken off the stay column are respread across
+  the other four in the published row's proportions (D150). With ageing, GROWTH's stay
+  chance over a four-year run is 42, 32, 22, 12. The stationary mix moves from
+  19.8 / 27.3 / 21.5 / 21.7 / 9.8 to 15.1 / 28.8 / 22.8 / 22.9 / 10.4.
+- **`RegimeRules.PREMIUM`, GROWTH:** 0.6 becomes 1.2. The other four premiums are D2's,
+  unchanged.
+
+**Why.** A GROWTH run that sticky let a player who buys last year's fastest earnings
+growers win 47% of ten-year matches. Shortening the runs makes "it grew last year"
+a weaker promise about next year. Paying more for a growth year then prices in the
+growth that does persist, so a TREND buyer is not getting it for free. Neither lever
+passed alone. Widening the whole premium spread instead brought back the LOWPE
+exploit D2 was made to remove.
+
+**Measured with the published values, 4,000 seeds, no flow:**
+
+| | 10 years | 25 years |
+|---|---|---|
+| Leader | TREND 27.9% (was 47.3%) | LOWPE 49.0% (was TREND 58.2%) |
+| TREND / LOWPE | 27.9% / 25.4% | 33.5% / 49.0% |
+| Strategies winning at least 4% | 6 | 4 |
+| Bull-year rate | 54.4% (was 56.1%) | 59.6% |
+| Splits / bankruptcies per match | 1.63 / 0.64 (was 2.10 / 0.61) | 3.95 / 2.01 |
+| RANDOM's median over the leader's (P3) | 0.62 (was 0.46) | 0.23 |
+
+These are the sweep's `stay 42 + G1.2` figures exactly. Run through the real code,
+the tool reproduced them to the last digit, which also confirms the sweep's override
+path (D150).
+
+**What it costs.** It is a design change, not only a parameter: §3.3's matrix and
+its stationary mix change, and GROWTH's stay chance is now below STEADY's 50, so a
+growth year is more often a spell than a state. It partly reverses D2, for GROWTH
+only. The market is a little flatter: fewer splits and a slightly lower bull rate.
+
+**Still to confirm.** The margin under P4's 30% ceiling is about two points, and the
+measurement has no NPC desk and no flow. §2.6 measured flow as costing about a point.
+**S4 must re-run the tool with the desk before this is called settled.** At 25 years
+LOWPE leads at 49%, which §1 records rather than asserts.
+
+**Code:** `src/sim/regime_rules.gd`. Tests updated to the new values:
+`test_regime_rules.gd` (the row, the stationary mix, the ageing run, the premium),
+`test_company_fundamentals.gd` (the multiple's four terms), `test_price_ledger.gd`
+(the regime-premium line). The base game is untouched; `test_golden_history.gd` passes
+unchanged.
+

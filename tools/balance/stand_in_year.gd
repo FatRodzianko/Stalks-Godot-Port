@@ -33,6 +33,9 @@ extends RefCounted
 ## `src/` on purpose (decisions.md D144): nothing in the game may call it.
 
 
+## Balance overrides for a sweep; see levers.gd.
+const Levers := preload("res://tools/balance/levers.gd")
+
 ## The stand-in event's magnitudes (Appendix A's probe).
 const BULL_EVENT: Vector2i = Vector2i(5, 20)
 const BEAR_EVENT: Vector2i = Vector2i(5, 25)
@@ -76,11 +79,17 @@ var sentiment: float = 0.0
 ## bag (§10.2).
 var mood: MarketMood.Value = MarketMood.Value.BULL
 
+## Overrides for a sweep (levers.gd). All at the published values by default.
+var levers: Levers
+
 var _industry_by_id: Dictionary[StringName, IndustryState] = {}
 
 
-func _init(library: ContentLibrary, years: int) -> void:
+func _init(library: ContentLibrary, years: int, overrides: Levers = null) -> void:
 	match_years = years
+	levers = overrides
+	if levers == null:
+		levers = Levers.new()
 	for definition: IndustryDefinition in library.industries:
 		var industry: IndustryState = IndustryState.new(definition)
 		industries.append(industry)
@@ -114,7 +123,10 @@ func resolve_year(net_shares: Dictionary[StringName, int], rng: RandomNumberGene
 	# 2. Earnings season.
 	for company: CompanyState in alive:
 		previous_profit[company.id] = company.profit
-		company.advance_earnings(_performance_of(company), match_years, rng)
+		if levers.changes_regimes():
+			_advance_earnings_with_levers(company, rng)
+		else:
+			company.advance_earnings(_performance_of(company), match_years, rng)
 
 	# 4. The event (stand-in shape), drawn before prices so it is a cause.
 	var target_id: StringName = &""
@@ -134,7 +146,8 @@ func resolve_year(net_shares: Dictionary[StringName, int], rng: RandomNumberGene
 		if company.id == target_id:
 			delta = event_delta
 		var traded: int = net_shares.get(company.id, 0)
-		company.reprice(sentiment, _performance_of(company), delta, traded)
+		var valued_at: float = levers.valuation_performance(company.regime, _performance_of(company))
+		company.reprice(sentiment, valued_at, delta, traded)
 		last_delta[company.id] = company.price - before[company.id]
 
 	# 6. The index from pre-split moves; the mood is what it did. Nothing above
@@ -194,3 +207,18 @@ func company_by_id(company_id: StringName) -> CompanyState:
 
 func _performance_of(company: CompanyState) -> float:
 	return _industry_by_id[company.profile.industry].performance
+
+
+## `CompanyState.advance_earnings` with the regime roll taken from `levers`.
+## Same draws in the same order: the regime roll, then the growth roll. The
+## accounts move by the real `move_accounts`.
+func _advance_earnings_with_levers(company: CompanyState, rng: RandomNumberGenerator) -> void:
+	var was: EarningsRegime.Value = company.regime
+	var roll: int = rng.randi_range(1, 100)
+	company.regime = levers.regime_for_roll(was, roll, company.profile.quality, company.years_in_regime)
+	if company.regime == was:
+		company.years_in_regime += 1
+	else:
+		company.years_in_regime = 0
+	var band: Vector2i = RegimeRules.GROWTH_BAND[company.regime]
+	company.move_accounts(rng.randi_range(band.x, band.y), _performance_of(company), match_years)

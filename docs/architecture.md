@@ -983,6 +983,7 @@ strategy did (design §2.6, §12.1). It is a tool, not game code: everything is 
 |---|---|---|
 | `tools/balance_report.gd` | The command-line entry point: reads arguments, runs the matches, prints the table | Stays |
 | `tools/balance/balance_match.gd` | One match: the nine strategy players, their trading, dividends paid into their books, net worth at the end | Stays, pointed at the real pipeline |
+| `tools/balance/levers.gd` | Balance overrides for a sweep (premium, GROWTH stay chance, ageing), applied without touching `src/sim/` (D150) | Stays, re-wired to the real pipeline |
 | `tools/balance/stand_in_year.gd` | **Stand-in.** A StalkleHeads market and one year of it, calling the S1 classes in §4's order | **Deleted**, replaced by `EarningsYearResolver` |
 | `tests/unit/test_balance_smoke.gd` | 30 fixed-seed matches with loose bands, in the GUT suite | Stays |
 

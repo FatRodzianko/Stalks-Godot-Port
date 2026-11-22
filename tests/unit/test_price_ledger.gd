@@ -110,12 +110,12 @@ func test_the_ledger_separates_earnings_sentiment_standing_and_regime() -> void:
 	company.regime = EarningsRegime.Value.GROWTH
 	company.reprice(10.0, 20.0, 0, 0)
 	var ledger: PriceLedger = PriceLedger.between(before, company)
-	# (8.8 - 8.0) * 12.5 = 10; 8.8 * 10 * 0.02 = 1.76; 8.8 * 1.2 = 10.56; 8.8 * 0.6 = 5.28
+	# (8.8 - 8.0) * 12.5 = 10; 8.8 * 10 * 0.02 = 1.76; 8.8 * 1.2 = 10.56 for standing; 8.8 * 1.2 = 10.56 for GROWTH's premium (D151)
 	assert_eq(ledger.price_before, 100)
 	assert_eq(ledger.earnings, 10)
 	assert_eq(ledger.sentiment, 1)
 	assert_eq(ledger.industry_standing, 11)
-	assert_eq(ledger.regime_premium, 5)
+	assert_eq(ledger.regime_premium, 10)
 	assert_eq(ledger.valuation_limits, 0)
 	assert_eq(ledger.total(), company.price - 100)
 

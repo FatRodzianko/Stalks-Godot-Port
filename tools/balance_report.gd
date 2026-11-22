@@ -14,6 +14,14 @@ extends SceneTree
 ##   --strategies=A,B   which strategies play (default all nine)
 ##   --player-flow      the players' own net buying feeds the flow term
 ##
+## Balance levers, for a sweep. Each overrides a published number for this run
+## only; the defaults in src/sim/ never change (tools/balance/levers.gd):
+##
+##   --premium=G,S,L,D,X   regime premiums, GROWTH to DISTRESS, turns of multiple
+##   --premium-scale=F     the published premium spread times F (2.5 = first draft)
+##   --growth-stay=N       GROWTH's stay chance in percent (published 42)
+##   --ageing=N            ageing points a year in GROWTH and SLOWING (published 10)
+##
 ## The year is a stand-in (tools/balance/stand_in_year.gd) until S3 builds the
 ## real pipeline, and there is no NPC desk until S4, so there is no FOLLOW
 ## strategy and, by default, no flow. See docs/development.md and
@@ -21,6 +29,10 @@ extends SceneTree
 
 
 const BalanceMatch := preload("res://tools/balance/balance_match.gd")
+const Levers := preload("res://tools/balance/levers.gd")
+
+## A strategy "is a contender" when it wins at least this share of matches.
+const CONTENDER_PERCENT: float = 4.0
 
 ## P4: the leading strategy's win share at the default length must be under
 ## this (§1). Recorded, not asserted, at any other length.
@@ -32,7 +44,11 @@ const USAGE: String = """Usage: <godot> --headless --script res://tools/balance_
   --seeds=N          how many matches (default 400)
   --first-seed=N     first seed (default 0)
   --strategies=A,B   subset of HOLD,LOWPE,HIGHPE,TREND,MOMENTUM,CONTRARIAN,INCOME,RANDOM,BOND
-  --player-flow      players' net buying feeds the flow term (default off)"""
+  --player-flow      players' net buying feeds the flow term (default off)
+  --premium=G,S,L,D,X   regime premiums, GROWTH..DISTRESS (published 1.2,0,0.24,-0.6,-1.4)
+  --premium-scale=F     published premium spread times F
+  --growth-stay=N       GROWTH's stay chance, 0-100 (published 42)
+  --ageing=N            ageing points a year in GROWTH and SLOWING (published 10)"""
 
 
 func _init() -> void:
@@ -41,6 +57,7 @@ func _init() -> void:
 	var first_seed: int = 0
 	var player_flow: bool = false
 	var strategies: Array[StringName] = BalanceMatch.ALL_STRATEGIES.duplicate()
+	var levers: Levers = Levers.new()
 
 	for argument: String in OS.get_cmdline_user_args():
 		var parts: PackedStringArray = argument.split("=", true, 1)
@@ -56,6 +73,26 @@ func _init() -> void:
 				first_seed = value.to_int()
 			"--player-flow":
 				player_flow = true
+			"--premium":
+				var values: PackedStringArray = value.split(",", false)
+				if values.size() != EarningsRegime.ALL.size():
+					_fail("--premium needs five numbers, GROWTH to DISTRESS.")
+					return
+				levers.premium = []
+				for number: String in values:
+					levers.premium.append(number.to_float())
+			"--premium-scale":
+				levers.premium = Levers.scaled_premium(value.to_float())
+			"--growth-stay":
+				levers.growth_stay = value.to_int()
+				if levers.growth_stay < 0 or levers.growth_stay > 100:
+					_fail("--growth-stay must be 0 to 100.")
+					return
+			"--ageing":
+				levers.ageing = value.to_float()
+				if levers.ageing < 0.0:
+					_fail("--ageing must be 0 or more.")
+					return
 			"--strategies":
 				strategies = []
 				for name: String in value.to_upper().split(",", false):
@@ -86,10 +123,10 @@ func _init() -> void:
 	var started: int = Time.get_ticks_msec()
 	var runs: Array[BalanceMatch.Result] = []
 	for match_seed: int in range(first_seed, first_seed + seeds):
-		runs.append(BalanceMatch.play(library, match_seed, years, strategies, player_flow))
+		runs.append(BalanceMatch.play(library, match_seed, years, strategies, player_flow, levers))
 	var seconds: float = float(Time.get_ticks_msec() - started) / 1000.0
 
-	_print_report(runs, strategies, years, seeds, first_seed, player_flow)
+	_print_report(runs, strategies, years, seeds, first_seed, player_flow, levers)
 	print("ran in %.1f s" % seconds)
 	quit()
 
@@ -101,6 +138,7 @@ func _print_report(
 	seeds: int,
 	first_seed: int,
 	player_flow: bool,
+	levers: Levers,
 ) -> void:
 	var flow_note: String = "no flow (no desk until S4)"
 	if player_flow:
@@ -109,6 +147,7 @@ func _print_report(
 		years, seeds, first_seed, flow_note,
 	])
 	print("market: stand-in year over src/sim (S3 replaces it); event as Appendix A's probe")
+	print("levers: %s" % levers.describe())
 
 	var splits: float = 0.0
 	var bankruptcies: float = 0.0
@@ -146,6 +185,8 @@ func _print_report(
 
 	print("  strategy        median net   mean net    win share")
 	var leader: StringName = strategies[0]
+	var medians: Dictionary[StringName, int] = {}
+	var contenders: int = 0
 	for strategy: StringName in strategies:
 		var values: Array[int] = []
 		var total: float = 0.0
@@ -153,6 +194,9 @@ func _print_report(
 			values.append(run.net_worth[strategy])
 			total += run.net_worth[strategy]
 		values.sort()
+		medians[strategy] = values[values.size() / 2]
+		if 100.0 * float(wins[strategy]) / count >= CONTENDER_PERCENT:
+			contenders += 1
 		print("  %-14s %10d %10d   %5.1f%%" % [
 			strategy, values[values.size() / 2], int(total / count),
 			100.0 * float(wins[strategy]) / count,
@@ -168,6 +212,24 @@ func _print_report(
 			verdict = "P4 FAILS"
 	print("  leading strategy win share: %.1f%% (%s)   ceiling %.0f%%: %s" % [
 		top, leader, P4_CEILING_PERCENT, verdict,
+	])
+	print("  strategies winning at least %.0f%%: %d of %d" % [
+		CONTENDER_PERCENT, contenders, strategies.size(),
+	])
+	var random_vs_leader: String = "n/a"
+	if medians.has(&"RANDOM") and medians[leader] != 0:
+		random_vs_leader = "%.2f" % (float(medians[&"RANDOM"]) / float(medians[leader]))
+		print("  RANDOM median / leader median (P3): %s" % random_vs_leader)
+
+	# One line with every figure a sweep compares, for grep.
+	var share: Dictionary[StringName, String] = {}
+	for strategy: StringName in [&"TREND", &"LOWPE"]:
+		share[strategy] = "-"
+		if wins.has(strategy):
+			share[strategy] = "%.1f" % (100.0 * float(wins[strategy]) / count)
+	print("summary: years=%d leader=%s %.1f trend=%s lowpe=%s contenders=%d bull=%.3f splits=%.2f bankruptcies=%.2f random/leader=%s" % [
+		years, leader, top, share[&"TREND"], share[&"LOWPE"], contenders,
+		bull_rate / count, splits / count, bankruptcies / count, random_vs_leader,
 	])
 
 

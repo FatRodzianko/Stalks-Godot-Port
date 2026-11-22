@@ -294,6 +294,20 @@ Godot that what follows is for the script, not for the engine:
 | `--strategies=A,B,...` | Which strategies play, from `HOLD`, `LOWPE`, `HIGHPE`, `TREND`, `MOMENTUM`, `CONTRARIAN`, `INCOME`, `RANDOM`, `BOND` | all nine |
 | `--player-flow` | The players' own buying and selling feeds the price's flow term | off |
 
+**Balance levers, for a sweep.** These change a published balance number for one run
+only. The real values in `src/sim/` never change; when the owner adopts a setting,
+it is changed there as an ordinary code change (decisions.md D150).
+
+| Option | Meaning | Published value |
+|---|---|---|
+| `--premium=G,S,L,D,X` | The regime premiums in turns of multiple, GROWTH, STEADY, SLOWING, DECLINE, DISTRESS | `1.2,0,0.24,-0.6,-1.4` |
+| `--premium-scale=F` | The published premiums all multiplied by F. 2.5 is the first draft's wider spread | 1 |
+| `--growth-stay=N` | GROWTH's chance of staying GROWTH, in percent. The rest of its row is respread in proportion (D150) | 42 |
+| `--ageing=N` | Points a year added to the regime roll in GROWTH and SLOWING | 10 |
+
+The output's `levers:` line says what was overridden, and its last line, starting
+`summary:`, has every figure a sweep compares on one line, for searching.
+
 An unknown option prints the list above and exits with code 1.
 
 **How long it takes**, measured on the original author's machine: about 4 seconds for

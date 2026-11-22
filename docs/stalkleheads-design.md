@@ -92,9 +92,11 @@ On the approved eighteen-company roster (§2.6); the thirteen-company draft meas
 
 > **Superseded by the balance tool, 2026-11-21.** These figures came from a probe whose
 > `TREND` strategy compared earnings with two years earlier and was distorted by splits.
-> Measured correctly, over the real simulation, the leading strategy wins **48.5%** of
-> ten-year matches and 58.8% of 25-year ones, so **P4 does not currently hold**. See
-> [Appendix A](#appendix-a--the-balance-probe) and [D149](decisions.md).
+> Measured correctly, over the real simulation, the leading strategy won **48.5%** of
+> ten-year matches, so P4 failed. **Fixed on 2026-11-22** ([D151](decisions.md)): with
+> `GROWTH`'s stay chance at 42 and its premium at 1.2, the leader wins about 28% of
+> ten-year matches and 49% of 25-year ones, with no flow and no desk yet. See
+> [Appendix A](#appendix-a--the-balance-probe).
 
 The base game escapes this only by having no edge to compound — which is why parking
 everything in BERRY BONDS wins 38% of its 10-year matches and 41% of its 25-year ones
@@ -483,7 +485,8 @@ adjacent numbers. That is the design target for how hard the analysis should be.
 > **Read with care: the `TREND` row below is wrong.** The probe that produced this
 > section measured `TREND` over two years, not one, and split-distorted. With that
 > corrected `TREND` wins 40-51% of ten-year matches depending on configuration, so
-> "P4 still holds" below is no longer true. The balance tool reproduces the probe's
+> "P4 still holds" below was not true as measured. P4 was restored by a matrix and
+> premium change on 2026-11-22 ([D151](decisions.md)), and every figure below predates it. The balance tool reproduces the probe's
 > no-flow run once the probe is corrected; the flow and `FOLLOW` figures wait for the
 > desk (S4). See [Appendix A](#appendix-a--the-balance-probe) and
 > [D149](decisions.md).
@@ -843,15 +846,21 @@ the order above. Percentages, each row summing to 100:
 
 | from \ to | `GROWTH` | `STEADY` | `SLOWING` | `DECLINE` | `DISTRESS` |
 |---|---|---|---|---|---|
-| `GROWTH` | **58** | 14 | 20 | 6 | 2 |
+| `GROWTH` | **42** | 19 | 28 | 8 | 3 |
 | `STEADY` | 16 | **50** | 18 | 13 | 3 |
 | `SLOWING` | 10 | 28 | **38** | 21 | 3 |
 | `DECLINE` | 6 | 18 | 16 | **46** | 14 |
 | `DISTRESS` | 5 | 10 | 10 | 25 | **50** |
 
-Left to itself this settles at `GROWTH` 19.8%, `STEADY` 27.3%, `SLOWING` 21.5%,
-`DECLINE` 21.7%, `DISTRESS` 9.8% — computed, not guessed, and worth asserting in a
+Left to itself this settles at `GROWTH` 15.1%, `STEADY` 28.8%, `SLOWING` 22.8%,
+`DECLINE` 22.9%, `DISTRESS` 10.4% — computed, not guessed, and worth asserting in a
 test so that editing a row cannot quietly make the mode miserable.
+
+**The `GROWTH` row was changed on 2026-11-22** ([D151](decisions.md)). It was
+`58 | 14 | 20 | 6 | 2`, which settled at `GROWTH` 19.8%. The balance tool showed that a
+run that sticky let one strategy, buying last year's fastest earnings growers, win 47%
+of ten-year matches. Its stay chance is now 42, with the other columns respread in the
+same proportions; Appendix A has the sweep.
 
 **Two modifiers on the roll**, and between them they are what turns a memoryless
 chain into something a player has to actually think about:
@@ -861,8 +870,9 @@ chain into something a player has to actually think about:
   company like strYker!!! is five points likelier to fall out of `GROWTH` than a
   quality-60 one like Springfield.
 - **Ageing — a good run cannot last forever.** Each consecutive year in `GROWTH` or
-  `SLOWING` adds **10 points** to the roll, pushing it right. Four straight growth
-  years and the odds have turned over. This is the brief's "a fast grower slows, then
+  `SLOWING` adds **10 points** to the roll, pushing it right. So `GROWTH`'s stay chance
+  runs 42, 32, 22, 12 over a four-year run: a second year of growth is already less
+  likely than not, and a fourth is rare. This is the brief's "a fast grower slows, then
   stagnates", and it is the reason the player must count years rather than just read
   the current regime.
 - **Recovery — a rock-bottom run also ends.** Each consecutive year in `DISTRESS`
@@ -928,13 +938,17 @@ how a market actually prices things.
 
 | Regime | Premium | First draft had |
 |---|---|---|
-| `GROWTH` | **+0.6** | +1.5 |
+| `GROWTH` | **+1.2** (was +0.6 until D151) | +1.5 |
 | `STEADY` | 0 | 0 |
 | `SLOWING` | **+0.24** | +0.6 |
 | `DECLINE` | **−0.6** | −1.5 |
 | `DISTRESS` | **−1.4** | −3.5 |
 
-**The premium spread is 40% of the first draft's, and that number is measured.** It is
+**The premium spread is 40% of the first draft's, and that number is measured** —
+except `GROWTH`'s, raised to 1.2 on 2026-11-22 with its shorter runs
+([D151](decisions.md)). With growth less persistent, the market pays more for a growth
+year; widening the other four as well brought the cheap-P/E exploit back, which is why
+only `GROWTH` moved. It is
 the third and last of the mean-reverting quantities that made this design a lookup
 table; §2.2 has the figures. The spread is narrow enough that a discounted multiple is
 not a free lunch and wide enough that P/E still says something about what the market
@@ -2231,7 +2245,7 @@ is now an input to every price through `flow`, so it cannot come last.
 |---|---|---|---|---|
 | **S0 — Guard the base game** ✅ **Done 2026-11-21** | The P5 golden-history test, written and passing **before any other change**: a seeded 99-year base match, hashed. **Delivered:** `tests/unit/test_golden_history.gd` — shipped content, three scripted players (a rotating trader, a borrower who defaults in year 5, a borrower who misses once and overpays), every year's prices, deltas, splits, bankruptcies, mood, event, dividends, loan assessments, cash, holdings, net worth, standings and game end written as sorted text and compared by sha256. Shown to fail on two deliberate perturbations. See [D127](decisions.md) | Small | No | — |
 | **S1 — Fundamentals** ✅ **Done 2026-11-21** | Regimes and the matrix, ageing, recovery, the long-match damping ladder; revenue, margin and earnings per share; `IndustryDefinition` and the validator check; sentiment and the multiple; the price identity with `event_carry` and `flow`; the ledger; payout-ratio dividends; the split at 300. Pure `sim`, headless. **Delivered:** `EarningsRegime`, `CompanyProfile` and `IndustryDefinition` in `src/data/`; `RegimeRules`, `CompanyState`, `IndustryState`, `ValuationRules`, `PriceIdentity`, `PriceLedger` and `DividendRules` in `src/sim/`; `ContentLibrary.load_fundamentals()` with the industry, ticker and range checks and a new `warnings` list; 18 company profiles and 6 industries as placeholder `.tres`; 75 tests in four new files. **Scope:** no year pipeline - the pieces are called in §4's order by a stand-in loop in `test_price_ledger.gd`, and S3 builds the real one; flow takes net shares as a plain input until S4. Decisions D128-D135 (including where this document contradicts itself), the §15 decisions recorded as D136-D143 | Largest single phase | No | 3 |
-| **S2 — Balance tooling** ✅ **Done 2026-11-21** | The probe of Appendix A rebuilt as a `tools/` script over the **real** `sim` code, reporting the strategy table of §2.1. Its first job is to reproduce Appendix A's numbers; if it cannot, either the probe or the implementation is wrong, and that must be settled before tuning anything. **Delivered:** `tools/balance_report.gd` (arguments for years, seeds, first seed, strategies, player flow; 400 ten-year matches in about 4 s); `tools/balance/balance_match.gd`, the nine strategies and the trading loop; `tools/balance/stand_in_year.gd`, a §4-order year over the S1 classes that **S3 replaces**; `tests/unit/test_balance_smoke.gd`, 30 fixed-seed matches with loose bands, about 1 s. Nothing added to `src/`. **Finding: the probe's TREND strategy was mis-measured, and P4 fails at ten years** (TREND 48.5%) — see Appendix A and [D149](decisions.md). No FOLLOW and no desk flow until S4. Decisions D144-D149 | Small to build, open-ended to use | No | — |
+| **S2 — Balance tooling** ✅ **Done 2026-11-21** | The probe of Appendix A rebuilt as a `tools/` script over the **real** `sim` code, reporting the strategy table of §2.1. Its first job is to reproduce Appendix A's numbers; if it cannot, either the probe or the implementation is wrong, and that must be settled before tuning anything. **Delivered:** `tools/balance_report.gd` (arguments for years, seeds, first seed, strategies, player flow; 400 ten-year matches in about 4 s); `tools/balance/balance_match.gd`, the nine strategies and the trading loop; `tools/balance/stand_in_year.gd`, a §4-order year over the S1 classes that **S3 replaces**; `tests/unit/test_balance_smoke.gd`, 30 fixed-seed matches with loose bands, about 1 s. Nothing added to `src/`. **Finding: the probe's TREND strategy was mis-measured, and P4 failed at ten years** (TREND 48.5%) — see Appendix A and [D149](decisions.md). **Then swept and fixed** (2026-11-22): GROWTH's stay chance 58 → 42 and premium 0.6 → 1.2, leader about 28% ([D150](decisions.md), [D151](decisions.md)); the sweep's levers are tool arguments. No FOLLOW and no desk flow until S4. Decisions D144-D149 | Small to build, open-ended to use | No | — |
 | **S3 — The pipeline** | `YearSettlement` extracted from `YearResolver` (P5 must stay green); `EarningsYearResolver` running §4 steps 1–10; the derived mood; the event drawn from last year's mood; Mutuals as an index; the bond as the yardstick | Medium | No | 2, 4, 7, 14 |
 | **S4 — The NPC desk** | About twenty-four traders, the eight strategies, the per-trader appetite draw, sorted order and fixed draw count; recording net shares traded into `flow`; short interest and its event weighting. **Then re-run S2**: `flow` is clamped and measured as free only at 5%, so this is where that is confirmed or not | Medium | No | 10, 11 |
 | **S5 — Mode and lobby** | `GameSettings.mode`, picking the resolver at match start, mode selection on the title screen, the lobby key, the browser row | Small | Yes, for the browser row | — |
@@ -2687,6 +2701,98 @@ correctly:
 
 **Nothing was tuned to close this.** It is [D149](decisions.md), open for the owner
 and S9. The tool is what to re-run after any change.
+
+### The sweep of candidate fixes (2026-11-22)
+
+The owner asked for D149 to be answered by measurement before anything changed. Two
+levers were swept with the balance tool's overrides ([D150](decisions.md)), which
+change a number for one run and leave `src/sim/` alone:
+
+1. **Price expected growth into the multiple.** The GROWTH premium alone raised from
+   0.6 toward the first draft's 1.5 (`G0.9` to `G1.5`), and the whole published spread
+   scaled by 1.5, 2.0 and 2.5 (`x1.5` to `x2.5`; 2.5 is the first draft).
+2. **Make GROWTH runs less predictable.** GROWTH's stay chance lowered from 58 to 50,
+   42, 34 and 26, the removed weight spread over the other columns in proportion to the
+   published row (D150): 42 is `[42, 19, 28, 8, 3]`, 34 is `[34, 22, 32, 9, 3]`. As a
+   variant, ageing raised from 10 to 15, 20 and 25 points a year.
+
+Then combinations around the best single setting. No flow, as everywhere in S2.
+"Contenders" is how many of the nine strategies win at least 4%. P3 is RANDOM's
+median net worth over the leader's.
+
+| Setting | Seeds | 10y leader | TREND | LOWPE | Contenders | Bull rate | Splits | Bankruptcies | P3 | 25y leader |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **Published** | 4,000 | TREND 47.3 | 47.3 | 17.5 | 6 | 0.561 | 2.10 | 0.61 | 0.46 | TREND 58.2 |
+| G0.9 | 400 | TREND 45.0 | 45.0 | 17.8 | 6 | 0.563 | 2.08 | 0.65 | 0.49 | TREND 53.5 |
+| G1.2 | 400 | TREND 42.0 | 42.0 | 18.8 | 6 | 0.573 | 2.19 | 0.63 | 0.51 | TREND 46.3 |
+| G1.5 | 400 | TREND 37.3 | 37.3 | 18.0 | 7 | 0.580 | 2.28 | 0.63 | 0.54 | TREND 43.8 |
+| x1.5 | 400 | TREND 39.3 | 39.3 | 22.0 | 6 | 0.577 | 2.10 | 0.64 | 0.53 | LOWPE 48.3 |
+| x2.0 | 400 | TREND 33.3 | 33.3 | 31.0 | 6 | 0.602 | 2.27 | 0.64 | 0.59 | LOWPE 71.3 |
+| x2.5 | 400 | LOWPE 43.0 | 22.3 | 43.0 | 6 | 0.620 | 2.38 | 0.65 | 0.55 | LOWPE 84.5 |
+| stay 50 | 400 | TREND 43.5 | 43.5 | 19.3 | 6 | 0.544 | 1.77 | 0.69 | 0.51 | TREND 51.3 |
+| stay 42 | 400 | TREND 35.8 | 35.8 | 21.5 | 6 | 0.524 | 1.45 | 0.73 | 0.53 | LOWPE 42.0 |
+| stay 34 | 4,000 | TREND 30.8 | 30.8 | 25.4 | 6 | 0.519 | 1.28 | 0.68 | 0.58 | LOWPE 47.5 |
+| stay 26 | 4,000 | LOWPE 27.1 | 25.6 | 27.1 | 6 | 0.508 | 1.10 | 0.70 | 0.79 | LOWPE 51.8 |
+| ageing 15 | 400 | TREND 43.3 | 43.3 | 19.8 | 6 | 0.531 | 1.66 | 0.72 | 0.51 | TREND 52.5 |
+| ageing 20 | 400 | TREND 39.0 | 39.0 | 24.3 | 6 | 0.518 | 1.46 | 0.81 | 0.50 | LOWPE 49.8 |
+| ageing 25 | 400 | TREND 36.0 | 36.0 | 24.3 | 6 | 0.512 | 1.27 | 0.84 | 0.53 | LOWPE 49.8 |
+| stay 42 + ageing 15 | 400 | TREND 34.0 | 34.0 | 24.0 | 6 | 0.507 | 1.22 | 0.80 | 0.57 | LOWPE 45.3 |
+| stay 42 + ageing 20 | 400 | TREND 32.3 | 32.3 | 25.8 | 6 | 0.496 | 1.10 | 0.86 | 0.57 | LOWPE 56.3 |
+| stay 34 + ageing 15 | 400 | TREND 30.0 | 30.0 | 27.3 | 6 | 0.498 | 1.06 | 0.79 | 0.60 | LOWPE 53.5 |
+| stay 42 + G0.9 | 400 | TREND 31.8 | 31.8 | 23.8 | 6 | 0.530 | 1.50 | 0.71 | 0.57 | LOWPE 47.3 |
+| stay 42 + x1.25 | 400 | TREND 34.0 | 34.0 | 22.8 | 6 | 0.539 | 1.49 | 0.71 | 0.58 | LOWPE 49.3 |
+| ageing 20 + G1.2 | 400 | TREND 32.5 | 32.5 | 24.5 | 6 | 0.534 | 1.62 | 0.78 | 0.57 | LOWPE 52.3 |
+| stay 34 + G1.2 | 400 | LOWPE 26.8 | 22.8 | 26.8 | 6 | 0.526 | 1.33 | 0.74 | 0.69 | LOWPE 54.0 |
+| **stay 34 + G0.9** | 4,000 | TREND 27.3 | 27.3 | 26.6 | 6 | 0.526 | 1.33 | 0.66 | 0.63 | LOWPE 52.1 |
+| **stay 42 + G1.2** | 4,000 | TREND 27.9 | 27.9 | 25.4 | 6 | 0.544 | 1.63 | 0.64 | 0.62 | LOWPE 49.0 |
+
+Sampling noise is about ±2.3 points of win share at 400 seeds and ±0.7 at 4,000.
+That is why `stay 34`, at 28.3% over 400 seeds, failed at 30.8% over 4,000.
+
+**What the sweep says.**
+
+- **Three settings pass P4 at ten years over 4,000 seeds**, with no other strategy over
+  30%: `stay 34 + G0.9` (27.3%), `stay 42 + G1.2` (27.9%) and `stay 26` (LOWPE 27.1%).
+  None passes by much, so P4 is now a close thing rather than a comfortable one.
+- **No single lever passes.** Widening the premium helps TREND only until LOWPE takes
+  over. `x2.0` already puts LOWPE at 71% of 25-year matches, which is D2's original
+  finding reproduced, and `x2.5` lets LOWPE lead even at ten years. Widening GROWTH's
+  premium alone is safer for LOWPE but does not get TREND under 37%. Stronger ageing on
+  its own bottoms out near 36%.
+- **Every passing setting hands the lead to LOWPE at 25 years**, at 49-52%, against
+  TREND's 58% today. That is lower than today, not higher, and §1 scopes P4 to ten years.
+- **The market gets flatter.** Fewer GROWTH years mean fewer splits (1.1-1.6 against
+  2.1), a bull rate of 51-54% (against 56%) and more bankruptcies at 25 years. BOND wins
+  8-12% of ten-year matches, against 4.7% today.
+- **P3 gets better everywhere.** RANDOM's median goes from 46% of the leader's to
+  62-79%. But at `stay 26` it falls just below the starting 10,000 (9,825), so the
+  player who reads nothing ends slightly down, and at `stay 34` it barely clears it
+  (10,073).
+
+**Which of these are design changes rather than tuning.**
+
+- **Lowering GROWTH's stay chance changes §3.3's published matrix**, and with it the
+  stationary mix that §3.3 states and `test_regime_rules.gd` asserts. GROWTH falls from
+  19.8% of company-years to 15.1% at 42, 13.6% at 34 and 12.3% at 26. It agrees with
+  §3.3's stated intent ("a good run cannot last forever"). At 34 or below, though,
+  GROWTH would be the *least* sticky regime but one, and the matrix's bold diagonal
+  would stop saying "growth persists".
+- **Raising the GROWTH premium partly reverses decision D2** (§15), which narrowed
+  the spread because of LOWPE. Raising GROWTH alone to 1.2, with the other four
+  unchanged, kept LOWPE at 25% over ten years. That makes it a narrow reversal, but it
+  is still the owner's decision, not a tuning step.
+- **`stay 26` is a design change, not tuning.** It makes GROWTH a regime a company
+  passes through rather than one it settles in, and its splits fall to about half
+  today's.
+
+**Recommendation, adopted by the owner on 2026-11-22 ([D151](decisions.md)):
+`stay 42 + G1.2`.** GROWTH's row becomes `[42, 19, 28, 8, 3]` and its
+premium 1.2, with the other premiums unchanged. Of the three that pass, it moves the
+market least from the design's other figures: a bull rate of 54.4%, 1.63 splits per
+match and bankruptcies unchanged at ten years. RANDOM still ends above its starting
+cash, and six strategies contend. Its margin under the ceiling is about two points, so
+**the flow term and the desk (S4) must be re-measured with it before it is called
+settled**. §2.6 measured flow as costing about a point of P4.
 
 ---
 

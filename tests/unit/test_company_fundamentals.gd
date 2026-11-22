@@ -185,8 +185,8 @@ func test_standing_is_six_hundredths_of_performance() -> void:
 # ---------------------------------------------------------------- valuation
 
 func test_the_multiple_composes_from_its_four_terms() -> void:
-	# 12.5 + 10 * 0.02 + 1.2 + 0.6
-	assert_almost_eq(ValuationRules.multiple(10.0, 1.2, G), 14.5, 0.000001)
+	# 12.5 + 10 * 0.02 + 1.2 + 1.2 (GROWTH's premium, D151)
+	assert_almost_eq(ValuationRules.multiple(10.0, 1.2, G), 15.1, 0.000001)
 	assert_almost_eq(ValuationRules.multiple(0.0, 0.0, ST), 12.5, 0.000001)
 	assert_almost_eq(ValuationRules.multiple(-5.0, -0.6, DI), 12.5 - 0.1 - 0.6 - 1.4, 0.000001)
 	assert_almost_eq(ValuationRules.multiple(0.0, 0.0, SL), 12.74, 0.000001)
