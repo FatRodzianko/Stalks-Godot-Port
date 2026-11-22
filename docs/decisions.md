@@ -611,6 +611,9 @@ scrollbar the list reserves — producing an 8px offset whenever a scrollbar was
 present, and none when it was not. Both scrolls therefore show their vertical bar
 permanently and each header is inset by exactly that width.
 
+*Amended by D174:* the bar now shows only when the list overflows; its width is
+still reserved, so the inset is unchanged.
+
 **Lives in.** `src/ui/widgets/stalk_row.gd`, `holding_row.gd`,
 `gameplay_screen.gd::_inset_header_for_scrollbar()`. A scene test asserts the
 alignment so neither cause can regress.
@@ -6479,3 +6482,27 @@ still passes. `test_gameplay_screen.gd` checks the width and the contrast.
 label that one tab hides.
 
 **Not checked by a test.** How either looks on screen. manual-testing.md C1a and C2a.
+
+### D174 - A scroll bar shows only when its list overflows
+**2026-11-22 · Accepted**
+
+After D173 made the bar visible, the owner asked for it to appear only when there is
+something to scroll. A bar on a list that fits reads as "there is more", which is
+false.
+
+Every list's `ScrollContainer` now uses `vertical_scroll_mode = 4`
+(`SCROLL_MODE_RESERVE`, Godot 4.3 and later) instead of `2` (show always): the bar
+shows only when the rows overflow, but its width is held either way. That is what
+keeps the column headers exact. They sit outside the scroll and are inset by the
+bar's width (D36), so a mode that gave the width back when the bar hid would knock
+every column 4px out of line. Applies to the stalk list, owned stalks, player
+rankings, the lobby list, the lobby's players list and the game-over history.
+
+`test_gameplay_screen.gd` checks the base board shows no bar at full size and does
+when squashed, that the header alignment test still passes with the bar hidden, and
+that every `vertical_scroll_mode` in a UI scene is `4`.
+
+**Rules out.** `SCROLL_MODE_AUTO` (1), which hides the bar but returns its width;
+measuring the bar on every layout and re-insetting headers to chase it.
+
+**Not checked by a test.** How it looks. manual-testing.md C2b.

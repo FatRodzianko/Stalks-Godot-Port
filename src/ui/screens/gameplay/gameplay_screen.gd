@@ -264,8 +264,8 @@ func _build_headers() -> void:
 
 	# Headers sit outside their scroll containers so they stay put while the list
 	# scrolls, which also means they are not narrowed by the scrollbar the list
-	# reserves. Both scrolls show their bar permanently and each header is inset
-	# by exactly that width.
+	# reserves. Every scroll reserves its bar's width even while the bar is hidden
+	# (SCROLL_MODE_RESERVE, D174) and each header is inset by exactly that width.
 	_inset_header_for_scrollbar(_board_header_slot, _stalk_scroll)
 	_inset_header_for_scrollbar(_holdings_header_slot, _holding_scroll)
 	_inset_header_for_scrollbar(_ranking_header_slot, _ranking_scroll)

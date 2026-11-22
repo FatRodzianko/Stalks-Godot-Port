@@ -11,7 +11,7 @@ custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-vertical_scroll_mode = 2
+vertical_scroll_mode = 4
 
 [node name="Inner" type="VBoxContainer" parent="ListScroll"]
 layout_mode = 2

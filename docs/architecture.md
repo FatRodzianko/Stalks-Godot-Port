@@ -850,8 +850,9 @@ A list's column header has to sit **outside** its `ScrollContainer` to stay put 
 the list scrolls — which also means it is not narrowed by the scrollbar the list
 reserves. The result is a header that lines up only when no scrollbar is showing.
 
-Two things fix it together: both scrolls show their vertical bar permanently
-(`vertical_scroll_mode = 2`), and each header is inset on the right by exactly that
+Two things fix it together: every list reserves its vertical bar's width whether or
+not the bar is showing (`vertical_scroll_mode = 4`, `SCROLL_MODE_RESERVE`: the bar
+appears only when the rows overflow, D174), and each header is inset on the right by exactly that
 bar's width, read from `scroll.get_v_scroll_bar()` at runtime rather than guessed.
 
 Related, and the reason this was worth solving properly: a hand-built header will

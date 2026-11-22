@@ -1045,3 +1045,50 @@ func test_a_scroll_bar_is_wide_enough_and_stands_out_from_its_track() -> void:
 	assert_gte(grabber.get_minimum_size().x, 4.0, "thin, but wider than a hairline")
 	assert_gt(grabber.bg_color.get_luminance() - track.bg_color.get_luminance(), 0.25,
 		"the grabber is clearly lighter than the track it runs in")
+
+
+## Asked for on 2026-11-22: a bar on a list with nothing below the fold reads as
+## "there is more", which is the opposite of the fault D173 fixed. Each list
+## uses `SCROLL_MODE_RESERVE`: the bar shows only when the rows overflow, but
+## its width is held either way, so the header inset (D36) stays exact. See
+## decisions.md D174.
+func test_a_scroll_bar_shows_only_when_its_list_overflows() -> void:
+	var scroll: ScrollContainer = _screen.get_node("%StalkScroll")
+	_screen.size = Vector2(1280, 720)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_false(scroll.get_v_scroll_bar().visible, "the base board fits: no bar")
+
+	_screen.size = Vector2(1280, 240)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_true(scroll.get_v_scroll_bar().visible, "a squashed board overflows: bar")
+
+
+func test_every_list_reserves_its_scroll_bar_width() -> void:
+	# Show-always (2) puts a bar on a list that cannot scroll; auto (1) hides
+	# the bar and gives its width back, which knocks the headers out by 4px.
+	# Reserve (4) is the only mode that does neither.
+	var dir_paths: Array[String] = ["res://src/ui/screens/", "res://src/ui/widgets/"]
+	var checked: int = 0
+	for path: String in _tscn_files_under(dir_paths):
+		var lines: PackedStringArray = FileAccess.get_file_as_string(path).split("\n")
+		for i: int in lines.size():
+			if lines[i].begins_with("vertical_scroll_mode = "):
+				checked += 1
+				assert_eq(lines[i], "vertical_scroll_mode = %d" % ScrollContainer.SCROLL_MODE_RESERVE,
+					"%s:%d" % [path, i + 1])
+	assert_gte(checked, 6, "found the lists")
+
+
+func _tscn_files_under(roots: Array[String]) -> Array[String]:
+	var found: Array[String] = []
+	var pending: Array[String] = roots.duplicate()
+	while not pending.is_empty():
+		var dir_path: String = pending.pop_back()
+		for sub: String in DirAccess.get_directories_at(dir_path):
+			pending.append(dir_path.path_join(sub))
+		for file: String in DirAccess.get_files_at(dir_path):
+			if file.ends_with(".tscn"):
+				found.append(dir_path.path_join(file))
+	return found

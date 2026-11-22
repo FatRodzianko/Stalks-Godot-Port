@@ -1446,7 +1446,20 @@ read differently.
 4. Check the bar's lighter part moves down as the list scrolls.
 5. Check the column headings still sit above their columns.
 6. Quit to the title screen, set **Game** to **Stalks Stalks Stalks**, and click **START**.
-7. Check the ten-stalk board's headings still sit above their columns, with the bar showing.
+7. Check the ten-stalk board's headings still sit above their columns.
+
+#### C2b. Re-check after D174: a list that fits has no bar
+
+1. On **SINGLE PLAYER**, set **Game** to **Stalks Stalks Stalks** and click **START**.
+2. Check the stalk list has no scroll bar.
+3. Check the headings still sit above their columns.
+4. Buy shares in one stalk.
+5. Check the owned stalks list has no scroll bar.
+6. Check the player rankings list has no scroll bar.
+7. Quit to the title screen, set **Game** to **StalkleHeads**, and click **START**.
+8. Check the stalk list shows its scroll bar.
+9. Quit to the title screen and click **HOST ONLINE**, then host.
+10. Check the lobby's players list has no scroll bar with one player in it.
 
 #### C3. The lobby row says which game it is, two Steam accounts
 
