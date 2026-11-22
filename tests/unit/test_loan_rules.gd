@@ -107,6 +107,38 @@ func test_only_one_loan_per_game_even_after_paying_it_off() -> void:
 		"cannot take another loan even after the first is paid off")
 
 
+func test_multiple_loans_are_off_by_default() -> void:
+	# The base game's rule is the default; StalkleHeads turns it on (D159).
+	assert_false(GameSettings.new().multiple_loans_enabled)
+
+
+func test_with_multiple_loans_a_settled_loan_frees_the_slot() -> void:
+	_state.settings.multiple_loans_enabled = true
+	var loan: LoanState = _solvent_borrower(1000)
+	LoanRules.apply_payment(_player, loan.balance)
+	assert_true(loan.is_paid_off)
+	assert_eq(LoanRules.validate_take_loan(_player, 500, _state), "",
+		"a paid-off loan no longer blocks a new one")
+
+	var second: LoanState = LoanRules.take_loan(_player, 500)
+	assert_eq(_player.loan, second, "the new loan replaces the settled one")
+	assert_eq(second.balance, 500)
+	assert_eq(second.years_remaining, LoanRules.TERM_YEARS + 1, "a fresh term")
+
+
+func test_with_multiple_loans_it_is_still_one_at_a_time() -> void:
+	_state.settings.multiple_loans_enabled = true
+	_solvent_borrower(1000)
+	assert_eq(LoanRules.validate_take_loan(_player, 500, _state),
+		"You must pay off your loan before taking another.")
+
+
+func test_multiple_loans_change_nothing_while_loans_are_disabled() -> void:
+	_state.settings.multiple_loans_enabled = true
+	_state.settings.loans_enabled = false
+	assert_eq(LoanRules.validate_take_loan(_player, 500, _state), "Loans are disabled in this game.")
+
+
 # ---------------------------------------------------------------- taking a loan
 
 func test_taking_a_loan_pays_cash_out_immediately() -> void:

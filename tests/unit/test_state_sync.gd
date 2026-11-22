@@ -223,6 +223,13 @@ func test_settings_arrive_with_the_snapshot() -> void:
 	assert_true(replica.settings.loans_enabled)
 
 
+func test_the_multiple_loans_toggle_arrives_with_the_snapshot() -> void:
+	# A client's instant loan pre-check runs the host's rule, so it must know it.
+	var state: GameState = _state_with_two_players()
+	state.settings.multiple_loans_enabled = true
+	assert_true(_replica_of(state).settings.multiple_loans_enabled)
+
+
 func test_sold_out_positions_disappear_from_the_replica() -> void:
 	# Holdings are replaced wholesale, not merged, or a sold position would
 	# linger on the client's board for the rest of the match.

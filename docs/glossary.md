@@ -173,7 +173,21 @@ stock rather than a better one (§3.10a).
 
 **Balance tool** — `tools/balance_report.gd`, a script that plays hundreds of seeded StalkleHeads matches with scripted player strategies and prints how often each finished first (its **win share**). How the design's balance properties P2-P4 are measured. See [development.md](development.md).
 
-**Stand-in year** — the balance tool's own minimal StalkleHeads year (`tools/balance/stand_in_year.gd`), which calls the real simulation pieces in order until phase S3 builds the real pipeline and replaces it.
+**Stand-in year** — the balance tool's own minimal StalkleHeads year (`tools/balance/stand_in_year.gd`) in phase S2, which called the real simulation pieces in order. **Deleted in S3**, when the tool moved onto the real pipeline (decisions.md D161).
+
+**Derived mood** — in StalkleHeads the year's bull or bear label is not rolled. It is a report of what the index did: BULL when the index rose, BEAR otherwise, set after every price is final. It still chooses which bag next year's event comes from (§3.1, decisions.md D153).
+
+**Index move** — the mean percentage price move, before splits, of the companies alive at the start of the year; a company that went bankrupt that year counts -100. It is what moves My Mutuals and Me Inc., what decides the mood, and, clamped, next year's sentiment.
+
+**The index** — in StalkleHeads, My Mutuals and Me Inc.: a row whose price is the market's, moved each year by the index move from a level kept unrounded. It carries no events of its own, splits above 300 like a company, and pays the average of its constituents' dividends (decisions.md D157).
+
+**Constituent** — a company counted in the index. Every company alive at the start of the year is one; a bankrupt company stops being one the year after it fails.
+
+**Yardstick** — BERRY BONDS' role in StalkleHeads. Its 3% yield is the risk-free rate, and the 12.5x base multiple is an 8% earnings yield, five points over it (decisions.md D156).
+
+**Earnings pipeline** — `EarningsYearResolver`, the StalkleHeads year: industries, earnings, the event, prices, the index, the mood, bankruptcy, splits and dividends, then the shared settlement. The base game's year is `YearResolver`; the two share only `YearSettlement`.
+
+**Settlement** — `YearSettlement`, the back half of a year that both pipelines share: loans, net worth and standings, the game-end check, and closing the year (decisions.md D152).
 
 **Strategy (balance tool)** — a fixed rule a scripted player follows, such as `LOWPE` (hold the three cheapest by P/E) or `TREND` (hold the three whose earnings grew fastest). The list is in [stalkleheads-design.md](stalkleheads-design.md) §2.1.
 

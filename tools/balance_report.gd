@@ -1,6 +1,6 @@
 extends SceneTree
-## The StalkleHeads balance tool (phase S2): plays many seeded matches over the
-## real `src/sim/` classes and prints the strategy table of
+## The StalkleHeads balance tool (phase S2, pointed at the real year in S3):
+## plays many seeded matches over the real `src/sim/` pipeline and prints the strategy table of
 ## docs/stalkleheads-design.md §2.6.
 ##
 ##     <godot> --headless --script res://tools/balance_report.gd
@@ -22,9 +22,9 @@ extends SceneTree
 ##   --growth-stay=N       GROWTH's stay chance in percent (published 42)
 ##   --ageing=N            ageing points a year in GROWTH and SLOWING (published 10)
 ##
-## The year is a stand-in (tools/balance/stand_in_year.gd) until S3 builds the
-## real pipeline, and there is no NPC desk until S4, so there is no FOLLOW
-## strategy and, by default, no flow. See docs/development.md and
+## The year is the game's own, `EarningsYearResolver`, since S3 (through
+## tools/balance/lever_year.gd, which only adds the levers). There is no NPC desk
+## until S4, so there is no FOLLOW strategy and, by default, no flow. See docs/development.md and
 ## docs/testing.md for what the numbers mean and what they cannot tell you.
 
 
@@ -146,7 +146,7 @@ func _print_report(
 	print("=== StalkleHeads balance: %d years, %d seeds from %d, %s ===" % [
 		years, seeds, first_seed, flow_note,
 	])
-	print("market: stand-in year over src/sim (S3 replaces it); event as Appendix A's probe")
+	print("market: EarningsYearResolver (src/sim), events from the shipped EventPool")
 	print("levers: %s" % levers.describe())
 
 	var splits: float = 0.0

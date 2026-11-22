@@ -2246,7 +2246,7 @@ is now an input to every price through `flow`, so it cannot come last.
 | **S0 — Guard the base game** ✅ **Done 2026-11-21** | The P5 golden-history test, written and passing **before any other change**: a seeded 99-year base match, hashed. **Delivered:** `tests/unit/test_golden_history.gd` — shipped content, three scripted players (a rotating trader, a borrower who defaults in year 5, a borrower who misses once and overpays), every year's prices, deltas, splits, bankruptcies, mood, event, dividends, loan assessments, cash, holdings, net worth, standings and game end written as sorted text and compared by sha256. Shown to fail on two deliberate perturbations. See [D127](decisions.md) | Small | No | — |
 | **S1 — Fundamentals** ✅ **Done 2026-11-21** | Regimes and the matrix, ageing, recovery, the long-match damping ladder; revenue, margin and earnings per share; `IndustryDefinition` and the validator check; sentiment and the multiple; the price identity with `event_carry` and `flow`; the ledger; payout-ratio dividends; the split at 300. Pure `sim`, headless. **Delivered:** `EarningsRegime`, `CompanyProfile` and `IndustryDefinition` in `src/data/`; `RegimeRules`, `CompanyState`, `IndustryState`, `ValuationRules`, `PriceIdentity`, `PriceLedger` and `DividendRules` in `src/sim/`; `ContentLibrary.load_fundamentals()` with the industry, ticker and range checks and a new `warnings` list; 18 company profiles and 6 industries as placeholder `.tres`; 75 tests in four new files. **Scope:** no year pipeline - the pieces are called in §4's order by a stand-in loop in `test_price_ledger.gd`, and S3 builds the real one; flow takes net shares as a plain input until S4. Decisions D128-D135 (including where this document contradicts itself), the §15 decisions recorded as D136-D143 | Largest single phase | No | 3 |
 | **S2 — Balance tooling** ✅ **Done 2026-11-21** | The probe of Appendix A rebuilt as a `tools/` script over the **real** `sim` code, reporting the strategy table of §2.1. Its first job is to reproduce Appendix A's numbers; if it cannot, either the probe or the implementation is wrong, and that must be settled before tuning anything. **Delivered:** `tools/balance_report.gd` (arguments for years, seeds, first seed, strategies, player flow; 400 ten-year matches in about 4 s); `tools/balance/balance_match.gd`, the nine strategies and the trading loop; `tools/balance/stand_in_year.gd`, a §4-order year over the S1 classes that **S3 replaces**; `tests/unit/test_balance_smoke.gd`, 30 fixed-seed matches with loose bands, about 1 s. Nothing added to `src/`. **Finding: the probe's TREND strategy was mis-measured, and P4 failed at ten years** (TREND 48.5%) — see Appendix A and [D149](decisions.md). **Then swept and fixed** (2026-11-22): GROWTH's stay chance 58 → 42 and premium 0.6 → 1.2, leader about 28% ([D150](decisions.md), [D151](decisions.md)); the sweep's levers are tool arguments. No FOLLOW and no desk flow until S4. Decisions D144-D149 | Small to build, open-ended to use | No | — |
-| **S3 — The pipeline** | `YearSettlement` extracted from `YearResolver` (P5 must stay green); `EarningsYearResolver` running §4 steps 1–10; the derived mood; the event drawn from last year's mood; Mutuals as an index; the bond as the yardstick | Medium | No | 2, 4, 7, 14 |
+| **S3 — The pipeline** ✅ **Done 2026-11-22** | `YearSettlement` extracted from `YearResolver` (P5 must stay green); `EarningsYearResolver` running §4 steps 1–10; the derived mood; the event drawn from last year's mood; Mutuals as an index; the bond as the yardstick. **Delivered:** `YearSettlement` (loans, net worth, standings, game end, closing the year) moved out of `YearResolver` by a pure move, `GOLDEN_HASH` unchanged ([D152](decisions.md)); `EarningsMarket` on `GameState.market`, building a twenty-row board (eighteen companies, the bond, the index) and an event pool without the index's events ([D160](decisions.md), [D154](decisions.md)); `EarningsYearResult`; `EarningsYearResolver`, §4 steps 1–10 then the settlement, with the mood derived from the index move and last year's move as sentiment ([D153](decisions.md)), the event from last year's bag and the bull bag in year 1, one bankruptcy pass ([D155](decisions.md)), the bond paying its coupon in every year with its yardstick readouts ([D156](decisions.md)), Mutuals as an index of all eighteen companies' pre-split moves paying their average dividend ([D157](decisions.md)), and Yearly Change including the event ([D158](decisions.md)); `GameSettings.multiple_loans_enabled`, off by default, one loan at a time, sent in the snapshot ([D159](decisions.md)); the balance tool moved onto the real pipeline and `stand_in_year.gd` deleted ([D161](decisions.md)); `test_earnings_year_resolver.gd`, 45 tests, plus loan and snapshot tests. **Measured:** TREND 29.6%, LOWPE 23.9% over 4,000 ten-year seeds, so P4 holds by 0.4 points. **Scope:** flow is still a plain input; nothing selects the mode or turns the loans toggle on (S5); nothing on screen (S7). Decisions D152-D161 | Medium | No | 2, 4, 7, 14 |
 | **S4 — The NPC desk** | About twenty-four traders, the eight strategies, the per-trader appetite draw, sorted order and fixed draw count; recording net shares traded into `flow`; short interest and its event weighting. **Then re-run S2**: `flow` is clamped and measured as free only at 5%, so this is where that is confirmed or not | Medium | No | 10, 11 |
 | **S5 — Mode and lobby** | `GameSettings.mode`, picking the resolver at match start, mode selection on the title screen, the lobby key, the browser row | Small | Yes, for the browser row | — |
 | **S6 — The wire** | Inputs-travel encoding, packed history rows, the desk in the snapshot, derive-on-client; migration and rejoin in a StalkleHeads match; the payload measured rather than estimated | Medium | Yes | — |
@@ -2647,9 +2647,10 @@ parallel implementation of it.
 **The probe has been replaced (phase S2, 2026-11-21).** `tools/balance_report.gd` plays
 seeded matches over the real `src/sim/` classes and prints the §2.6 table; how to run
 it is in [development.md](development.md), what it covers in [testing.md](testing.md).
-Until S3 it drives the year with a stand-in, `tools/balance/stand_in_year.gd`, and
-until S4 there is no desk, so no `FOLLOW` and no flow by default. Its comparison target
-is therefore the probe's **no-flow** ten-year run.
+In S2 it drove the year with a stand-in, `tools/balance/stand_in_year.gd`; since S3
+it plays the real `EarningsYearResolver` (see the end of this appendix). Until S4 there
+is no desk, so no `FOLLOW` and no flow by default. Its comparison target is therefore
+the probe's **no-flow** ten-year run.
 
 **The raw comparison.** Ten years, 400 seeds each, no flow:
 
@@ -2793,6 +2794,28 @@ match and bankruptcies unchanged at ten years. RANDOM still ends above its start
 cash, and six strategies contend. Its margin under the ceiling is about two points, so
 **the flow term and the desk (S4) must be re-measured with it before it is called
 settled**. §2.6 measured flow as costing about a point of P4.
+
+### On the real pipeline (S3, 2026-11-22)
+
+S3 deleted the stand-in and pointed the tool at `EarningsYearResolver`
+([D161](decisions.md)). The one difference in the market is the event: the stand-in's
+was the probe's shape on any living company, and the pipeline's is a real authored
+event from `EventPool`, which only lands on the eight companies the base game ships.
+Ten years, 4,000 seeds, no flow, published values:
+
+| | Stand-in | Pipeline |
+|---|---|---|
+| Leader | `TREND` 27.9% | `TREND` 29.6% |
+| `LOWPE` | 25.4% | 23.9% |
+| Strategies winning at least 4% | 6 | 6 |
+| Bull-year rate | 54.4% | 54.5% |
+| Splits / bankruptcies per match | 1.63 / 0.64 | 1.69 / 0.69 |
+| RANDOM's median over the leader's | 0.62 | 0.63 |
+
+**P4 holds, by 0.4 points. Nothing was retuned.** The stand-in column is a re-run on
+the same seeds just before it was deleted, and matches D151 exactly. S4's desk and flow
+are the next re-measurement, and the margin is now too thin to absorb the point that
+§2.6 measured flow as costing.
 
 ---
 

@@ -124,7 +124,8 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_company_fundamentals.gd` | **StalkleHeads earnings, industries, valuation, price, split and dividends** (§3.3-§3.6, §3.10a, D129-D135): year 0 at EPS x 12.5; margin a third of the way; revenue from own growth plus industry through beta; damping and retention reaching own growth and never the industry's share; earnings season drawing exactly twice; years-in-regime counting; the industry roll's carry, tilt, clamp, one draw and id order; standing; the multiple's four terms and its clamps; sentiment clamped to 20; fair value and its clamp; the one truncation; carry halving; flow's persistence, gain and **5% clamp asserted as a constant**; a desk buying everything held at the clamp; player and NPC shares counting the same; the split value-neutral with the identity holding, the §3.6 worked example, odd prices rounding up, and 300 versus 301; policy 0 never paying, DISTRESS never paying, policy 35 against the old table, the published scales, the dividend truncation, and the retention factor | 37 |
 | `test_price_ledger.gd` | **The StalkleHeads ledger (P1) and determinism**: over forty seeds of thirty years on all eighteen companies, every company's ledger sums exactly to its price move and every price equals `int(fair + carry + flow)`; the event and fade lines; earnings, sentiment, standing and regime separated; a clamp reported on its own line; balancing across a split; the same seed giving the same market and a different one not | 6 |
 | `test_company_content.gd` | **StalkleHeads content and its validator** (D128): the 18 profiles and 6 industries load clean with no warnings; six industries of three; the owner's industry names; the approved roster; the placeholder tickers; shipped companies agreeing with their stalk's name and ticker; all 18 opening prices; neutral placeholder values; the base game never loading any of it; and the validator refusing an unresolvable industry, an industry of one or none, a missing or duplicated ticker, out-of-range fundamentals and duplicate ids, and reporting but allowing an industry of two | 16 |
-| `test_balance_smoke.gd` | **StalkleHeads balance, smoke only** (§12.1, D144-D150): 30 fixed-seed ten-year matches of the balance tool's nine strategies; the same seed replaying the same match; a strategy subset leaving the market unchanged; the bond player ending on 13,426 every time; splits, bankruptcies and bull-year rate in wide bands; no strategy winning three in four; RANDOM keeping half its cash; the best reader beating RANDOM; the sweep's lever overrides, set to the published values, reproducing the real path exactly, a moved lever moving the market, and a rebuilt GROWTH row summing to 100. Does **not** assert P4 | 11 |
+| `test_earnings_year_resolver.gd` | **The StalkleHeads year (S3)**, D152-D160: the twenty-row board, companies at their own prices, shared and built definitions, the index at its authored price; `YearSettlement` computing net worth and standings, ending the game and skipping loans when off; the earnings pipeline running the same loans and game end; same seed same match; **every ledger balancing and being the Yearly Change** over 20 seeds of 15 years; the event inside Yearly Change; the mood BULL exactly when the index rose; sentiment as last year's move clamped; **no circularity** (prices valued on the sentiment carried in, and the mood label moving no price but through the event bag); **the derived bull rate between 45% and 65%** over 200 seeds; the bull bag in year 1, last year's bag after, over a whole match; the event drawn before prices; a bankrupt target skipped; no event on the index; the index as the mean pre-split move, a bankrupt constituent at -100 once then dropped, alive while one constituent is, failing only when all do, paying the average dividend; the bond fixed at 100 and paying 3 in both moods, and its 3% / 8% / 5-point yardstick; one bankruptcy pass wiping out holders; a dead company frozen; a split doubling holders and value-neutral; dividends from earnings on post-split shares; policy 0 never paying; the flow input consumed once; scans for mode checks in the shared files and for `pow`/`exp`/`log`/`sqrt` in the price path | 45 |
+| `test_balance_smoke.gd` | **StalkleHeads balance, smoke only** (§12.1, D144-D150, on the real pipeline since D161): 30 fixed-seed ten-year matches of the balance tool's nine strategies; the same seed replaying the same match; a strategy subset leaving the market unchanged; the bond player ending on 13,426 every time; splits, bankruptcies and bull-year rate in wide bands; no strategy winning three in four; RANDOM keeping half its cash; the best reader beating RANDOM; the sweep's lever overrides, set to the published values, reproducing the real path exactly, a moved lever moving the market, and a rebuilt GROWTH row summing to 100. Does **not** assert P4 | 11 |
 | `test_loan_rules.gd` | Annuity arithmetic, eligibility, the full ten-payment schedule, penalties and default, overpayment, one-loan-per-game, pipeline integration | 40 |
 | `test_marquee_label.gd` | The scrolling name label: overflow detection against the real font, hover and click-to-pin, character-by-character stepping, reset on leave | 14 |
 | `test_content_library.gd` | The shipped content loads and validates clean, stat blocks match the documented table, 45/45 pools, deterministic order, a full match played from real content, and every validator rule rejecting bad content | 29 |
@@ -222,17 +223,36 @@ runs the code under test on one and makes the documented calls by hand on the
 other, then compares their `state`. It compares calls rather than counting state
 steps because one `randi_range` call can take more than one step (D131).
 
-**The ledger test uses a stand-in year.** There is no StalkleHeads year pipeline
-until S3, so `test_price_ledger.gd` calls the pieces in §4's order itself, with a
-random event and random net shares in place of the event pool and the desk.
+**The ledger test uses its own loop.** `test_price_ledger.gd` was written in S1,
+before the pipeline existed, and calls the pieces in §4's order itself with a random
+event and random net shares. It still does: random net shares exercise flow, which
+the real pipeline cannot until S4's desk. The real pipeline's ledgers are checked in
+`test_earnings_year_resolver.gd`.
 
-**Not covered yet, because the code does not exist yet:** the derived mood and the
-bull-rate band, the no-circularity test, the index, the event drawn from last year's
-bag, bankruptcy, holders' shares doubling on a split, dividends actually paid, the
-desk and short interest (S3, S4), and P2-P4, which belong to the balance tool (S2).
-The "every money figure that leaves the sim is an `int`" check and a scan for
-transcendental functions in the price path (§3.7) are also S3's, once there is a
-pipeline whose outputs can be walked.
+### StalkleHeads year: what S3 covers and what it does not
+
+`test_earnings_year_resolver.gd` covers the pipeline item by item (the table above).
+Three things about it are worth knowing.
+
+- **Tests that need one event build their own `EventPool`**, and tests that must not
+  be disturbed by an event use an empty one. A pool of one event, like an empty pool,
+  draws nothing from the RNG, so a run with and without it sees the same market.
+- **A company is sent bankrupt by wiping out its earnings** (`_doom`), not by setting
+  its price, because the pipeline recomputes the price from earnings.
+- **The no-circularity test is two tests.** One checks that every company was valued
+  on the sentiment carried in. The other flips last year's mood label in a run with
+  no events and checks that no price changes.
+
+**Not covered yet:** the desk, short interest and flow from real trading (S4); the
+mode flag and picking the resolver (S5); the wire, migration and rejoin in a
+StalkleHeads match (S6); anything on screen, including a second loan being offered
+(S7); events with industry or market effects (S8). The "every money figure that
+leaves the sim is an `int`" check is answered by static typing: every money field on
+`EarningsYearResult`, `StalkYearChange` and `StalkState` is declared `int`.
+
+**The multiple-loans toggle** (D159) is covered in `test_loan_rules.gd` (off by
+default; a settled loan frees the slot; still one at a time; nothing changes with
+loans off) and `test_state_sync.gd` (it travels in the snapshot).
 
 ### StalkleHeads balance: the tool and its smoke test
 
@@ -250,8 +270,8 @@ the real `src/sim/` classes, which is the difference from the Python probe it re
 
 **How it differs from the GUT suite.** The suite asserts exact behaviour and has to
 stay fast; the tool measures distributions and takes seconds to minutes. Nothing the
-tool prints can fail a build. The year it plays is a stand-in until S3, so the tool
-tests S1's pieces in combination, not the real pipeline.
+tool prints can fail a build. Since S3 it plays the real pipeline,
+`EarningsYearResolver`, through `tools/balance/lever_year.gd` (D161).
 
 **The smoke test.** `test_balance_smoke.gd` runs the tool's own code over 30 fixed seeds
 of ten years, in about a second, and asserts only what a badly broken market would
@@ -259,12 +279,12 @@ violate: the same seed gives the same match; running fewer strategies leaves the
 market unchanged (D145); the bond player ends on exactly 13,426 every time; splits,
 bankruptcies and the bull-year rate stay in wide bands; no strategy wins three matches
 in four; RANDOM's median keeps half its starting cash; the best reader's median beats
-RANDOM's. **It does not assert P4**, which currently fails (D149), and thirty matches
-could not measure it anyway.
+RANDOM's. **It does not assert P4**: thirty matches could not measure it. The tool
+measured it at 29.6% over 4,000 ten-year seeds on the real pipeline (D161).
 
-**Not covered yet:** `FOLLOW` and the desk's flow (S4); the real event pool and news
-(S3, S8); loans and leverage; Mutuals as a holding; anything about how a real person
-plays. Re-run the tool when each arrives.
+**Not covered yet:** `FOLLOW` and the desk's flow (S4); news (S8); loans and
+leverage; Mutuals as a holding; anything about how a real person plays. Re-run the
+tool when each arrives.
 
 ### Scene tests
 
