@@ -33,8 +33,8 @@ var margin_percent: float = 0.0
 var profit: float = 0.0
 
 ## Profit before the latest earnings season: what `profit` was when
-## `move_accounts` last ran. Equal to `profit` at year 0. What the GROWTH and
-## SHORT traders read growth from (`profit_growth_percent`). Profit does not change
+## `move_accounts` last ran. Equal to `profit` at year 0. What the GROWTH
+## traders read growth from (`profit_growth_percent`). Profit does not change
 ## on a split, so its growth is the split-adjusted growth of earnings per share
 ## (decisions.md D146).
 var profit_before_season: float = 0.0

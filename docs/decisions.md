@@ -5962,13 +5962,14 @@ breaks ties to the lowest id:
 | INDEXER | My Mutuals and Me Inc. while it is not bankrupt, else nothing |
 | PANIC | BERRY BONDS in a bear year; in a bull year a living company chosen by its pick draw |
 | GROWTH | Highest profit growth over the latest earnings season, from a positive base |
-| SHORT | Lowest profit growth over the latest season, from a positive base (D164) |
+| SHORT | Highest P/E, positive earnings only (D169; first built as lowest profit growth, D164) |
 
 **Two changes from the probe.** The probe's PANIC chose its bull-year company with an
 extra RNG call made only in bull years; here it uses the pick that every trader
-draws every year (D163). The probe's SHORT bet against the highest P/E; here it bets
-against the slowest earnings growth (D164). `CompanyState` gained
-`profit_before_season`, so GROWTH and SHORT read growth from the company itself.
+draws every year (D163). The probe's SHORT bet against the highest P/E; S4 first bet
+against the slowest earnings growth (D164), and D169 returned it to the highest P/E.
+`CompanyState` gained `profit_before_season`, so GROWTH reads growth from the
+company itself.
 Profit does not change on a split, so this is split-adjusted, as D146 requires.
 
 **Rules out.** Traders as players with a flag; a trader whose rule is not published;
@@ -6014,7 +6015,7 @@ builds the resolver. The balance tool records its own players' trades.
 set; recomputing the desk on a client (S6 sends it, as D105 sends everything else).
 
 ### D164 - The SHORT trader keeps real short accounting; players cannot short
-**2026-11-22 · Accepted**
+**2026-11-22 · Accepted; its target superseded by D169**
 
 Design §5.3 says the SHORT trader "holds a notional short position" and that the
 position is the short interest. The probe's version added 60 shares of short interest
@@ -6034,6 +6035,9 @@ a player anything that changes. Here a short is a real position:
   doubles the shares short, as it doubles shares held.
 - **Its cash can go below zero** if a shorted price soars. A trader is not a player,
   cannot go bankrupt, and is not ranked, so nothing needs to stop it.
+
+**Superseded by D169:** the target is now the highest P/E. Kept as the reasoning
+that was measured and overturned.
 
 **Its target is the slowest earnings growth**, not the probe's highest P/E. Design
 §5.1 publishes the rule as "bets against the weakest company on the board", and the
@@ -6178,9 +6182,8 @@ and §3.10 already records long-match compounding as unsolved.
 - whether the squeeze ships at all in the first build;
 - if it does, its chance and size, of which the sweep's passing settings are the
   candidates;
-- whether the SHORT trader's target should move away from what LOWPE holds (the
-  probe's highest P/E would put the squeeze on what HIGHPE holds instead; measured
-  below, and it passes P4 even at the published squeeze);
+- ~~whether the SHORT trader's target should move away from what LOWPE holds~~
+  **Decided: D169**, the highest P/E;
 - whether 5.2 points of flow cost, leaving P4 1.1 points of margin with no squeeze,
   is acceptable, or the flow clamp or the desk's VALUE cohort should change.
 
@@ -6195,7 +6198,7 @@ years, 4,000 seeds, flow on, levers only, `src/` untouched:
 
 | SHORT target | Chance | Size | Leader | TREND | LOWPE | HIGHPE | FOLLOW | Contenders | P3 | Squeezes / match |
 |---|---|---|---|---|---|---|---|---|---|---|
-| slowest (published) | 25 | +25 | LOWPE 41.8 | 16.1 | 41.8 | 0.6 | 16.3 | 5 | 0.44 | 1.60 |
+| slowest (published then) | 25 | +25 | LOWPE 41.8 | 16.1 | 41.8 | 0.6 | 16.3 | 5 | 0.44 | 1.60 |
 | slowest | 10 | +5 | LOWPE 29.6 | 23.4 | 29.6 | 1.6 | 15.7 | 6 | 0.64 | 0.77 |
 | slowest | 5 | +5 | LOWPE 29.5 | 23.5 | 29.5 | 1.5 | 15.8 | 6 | 0.63 | 0.38 |
 | slowest | off | — | LOWPE 28.9 | 24.1 | 28.9 | 1.2 | 15.5 | 6 | 0.63 | 0 |
@@ -6221,11 +6224,8 @@ the lever's default path is the game's.
 - **At 25 years** (1,000 seeds, published squeeze), highpe has LOWPE at 50.8%
   against 64.8% with slowest, and 54.9% with slowest and no squeeze. P3 is 0.12.
 
-**Still open.** Nothing in `src/` changed. The published rule is still slowest (D164),
-which matches the design's "weakest company" wording and its squeeze foreshadowed
-for a *failing* company. highpe reads as "overvalued" rather than "weakest", so
-choosing it changes §5.1's published rule and the story §5.3 tells, not only a
-number. Decision for the owner, with the other bullets above.
+**Decided: D169.** The owner chose highpe, and it is now the published rule in
+`src/`. The other bullets above stay open.
 
 ### D168 - A balance-tool lever for the SHORT traders' target
 **2026-11-22 · Accepted**
@@ -6243,8 +6243,50 @@ a lever in the sense of D150.
   other way; at P/E measured in floats a tie is rare.
 - **How it is applied.** At year 0, `balance_match.gd` replaces `market.desk` with a
   lever desk holding the same traders, only when the lever is off its published value.
-- Two smoke tests: the lever at `slowest` reproduces a match exactly; `highpe` picks
-  the dearest company, leaves every other strategy's pick alone, and moves the market.
+- Two smoke tests: the lever at its published value reproduces a match exactly; the
+  other value picks its own company, leaves every other strategy's pick alone, and
+  moves the market.
+- **Since D169** the published value is `highpe` and `slowest` is the lever. The
+  lever desk now carries slowest's code, and the game's desk carries highpe's.
 
 **Rules out.** A strategy parameter in `NpcTraderDefinition` for a rule the owner has
 not chosen.
+
+### D169 - The SHORT traders bet against the highest P/E
+**2026-11-22 · Accepted**
+
+The owner's decision on D167's third bullet, on the figures D168's lever measured.
+`NpcDesk.target_for` now gives SHORT the highest P/E among living companies with
+positive earnings, ties to the lowest id: the mirror of VALUE, and the probe's rule.
+It replaces the slowest grower of D164.
+
+**Why.** Ten years, 4,000 seeds, the published squeeze (10% flag, 25% chance, +25):
+
+| SHORT target | Leader | TREND | LOWPE | HIGHPE | FOLLOW | Contenders | P3 | Squeezes / match |
+|---|---|---|---|---|---|---|---|---|
+| slowest (D164) | LOWPE 41.8 | 16.1 | 41.8 | 0.6 | 16.3 | 5 | 0.44 | 1.60 |
+| **highest P/E** | **LOWPE 27.7** | 23.9 | 27.7 | 2.0 | 17.2 | 6 | 0.64 | 1.16 |
+
+- **P4 holds as shipped**, by 2.3 points, with no squeeze number changed. The slowest
+  grower was usually cheap and on a low multiple, which is what LOWPE and the VALUE
+  traders hold, so every squeeze paid the leader. The dearest company is what LOWPE
+  never holds.
+- **The squeeze stops favouring anyone**: with this target, the published squeeze
+  measures 1.7 points better for P4 than no squeeze at all.
+- **At 25 years**, LOWPE leads at 50.8% against 64.8%. Still above P4, which is scoped
+  to ten years (§1).
+
+**What changes for the player, not only the number.** The rule published in design
+§5.1 is now "bets against the most expensive company on the board, by P/E", and the
+squeeze in §5.3 is foreshadowed for an *overvalued* company rather than a *failing*
+one. The brief's phrase was "a squeeze likelier on a failing company"; what is built
+is a squeeze on the company the market has priced highest against its earnings. A
+loss-making company has no P/E and is never the target, as with VALUE.
+
+**What stayed.** The flag (10%), the chance (25%) and the size (+25) are D165's.
+Whether the squeeze ships, and the cost of flow, remain open in D167. The balance tool
+keeps `--short-target=slowest` as a lever (D168), so the old rule can still be
+measured. A default run reproduces the bold row to the digit.
+
+**Rules out.** A SHORT trader that bets against the weakest company; a squeeze whose
+target is chosen by the same reading as LOWPE's.

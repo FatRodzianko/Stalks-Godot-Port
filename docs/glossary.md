@@ -195,7 +195,7 @@ stock rather than a better one (§3.10a).
 
 **NPC trader** — one member of the desk, authored as an `NpcTraderDefinition` with a name, a strategy, starting cash and conviction. Names and chatter are placeholders until the owner writes them.
 
-**NPC strategy** — the published rule a trader follows: VALUE (lowest P/E), MOMENTUM (rose most last year), CONTRARIAN (fell most), INCOME (highest dividend yield), INDEXER (only My Mutuals and Me Inc.), PANIC (the bond in a bear year, a company in a bull one), GROWTH (earnings grew fastest), SHORT (sells short whichever company's earnings grew slowest). Three traders follow each. Not the same thing as a balance-tool strategy, though several share a rule.
+**NPC strategy** — the published rule a trader follows: VALUE (lowest P/E), MOMENTUM (rose most last year), CONTRARIAN (fell most), INCOME (highest dividend yield), INDEXER (only My Mutuals and Me Inc.), PANIC (the bond in a bear year, a company in a bull one), GROWTH (earnings grew fastest), SHORT (sells short whichever company has the highest P/E). Three traders follow each. Not the same thing as a balance-tool strategy, though several share a rule.
 
 **Conviction** — the share of its cash, 0-100, a trader commits to a decision. Authored; 45 for every shipped trader.
 

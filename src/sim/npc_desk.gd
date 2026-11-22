@@ -165,14 +165,16 @@ func choose_target(strategy: NpcStrategy.Value, state: GameState, pick: int) -> 
 ## when nothing qualifies. Ties break to the lowest id. `pick` is the trader's
 ## pick draw; only PANIC uses it. Pure.
 ##
-## - VALUE: lowest P/E (price over earnings per share), positive earnings only.
+## - VALUE / SHORT: lowest / highest P/E (price over earnings per share),
+##   positive earnings only. SHORT bets against the most expensive company on
+##   the board (decisions.md D169).
 ## - MOMENTUM / CONTRARIAN: highest / lowest Yearly Change.
 ## - INCOME: highest dividend yield, from this year's dividend per share.
 ## - INDEXER: My Mutuals and Me Inc., while it is not bankrupt.
 ## - PANIC: the bond in a bear year; in a bull year a living company chosen by
 ##   `pick`, so the three PANIC traders do not move as one block.
-## - GROWTH / SHORT: highest / lowest profit growth over the latest season,
-##   where there was a positive profit to grow from.
+## - GROWTH: highest profit growth over the latest season, where there was a
+##   positive profit to grow from.
 static func target_for(strategy: NpcStrategy.Value, state: GameState, pick: int) -> StringName:
 	var market: EarningsMarket = state.market
 	var alive: Array[CompanyState] = []
@@ -196,11 +198,15 @@ static func target_for(strategy: NpcStrategy.Value, state: GameState, pick: int)
 			if alive.is_empty():
 				return &""
 			return alive[pick % alive.size()].id
-		NpcStrategy.Value.VALUE:
+		NpcStrategy.Value.VALUE, NpcStrategy.Value.SHORT:
 			for company: CompanyState in alive:
 				var eps: float = company.earnings_per_share()
-				if eps > 0.0:
-					scored.append([float(company.price) / eps, company.id])
+				if eps <= 0.0:
+					continue
+				var pe: float = float(company.price) / eps
+				if strategy == NpcStrategy.Value.SHORT:
+					pe = -pe
+				scored.append([pe, company.id])
 		NpcStrategy.Value.MOMENTUM, NpcStrategy.Value.CONTRARIAN:
 			for company: CompanyState in alive:
 				var change: float = float(state.stalk_by_id(company.id).last_yearly_change)
@@ -211,14 +217,11 @@ static func target_for(strategy: NpcStrategy.Value, state: GameState, pick: int)
 			for company: CompanyState in alive:
 				var paid: float = float(company.dividend_per_share())
 				scored.append([-paid / float(company.price), company.id])
-		NpcStrategy.Value.GROWTH, NpcStrategy.Value.SHORT:
+		NpcStrategy.Value.GROWTH:
 			for company: CompanyState in alive:
 				var growth: float = company.profit_growth_percent()
-				if is_nan(growth):
-					continue
-				if strategy == NpcStrategy.Value.GROWTH:
-					growth = -growth
-				scored.append([growth, company.id])
+				if not is_nan(growth):
+					scored.append([-growth, company.id])
 	if scored.is_empty():
 		return &""
 	scored.sort_custom(_score_then_id)

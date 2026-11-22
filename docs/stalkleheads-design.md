@@ -1418,7 +1418,7 @@ whose logic is secret is just more randomness wearing a hat:
 | `INDEXER` | Buys My Mutuals and Me Inc., and nothing else, ever |
 | `PANIC` | Sells everything in a bear year, buys back in a bull one |
 | `GROWTH` | Buys whatever grew its earnings fastest |
-| `SHORT` | Bets against the weakest company on the board — as built, the one whose earnings grew slowest last season ([D164](decisions.md)) |
+| `SHORT` | Bets against the most expensive company on the board, by P/E ([D169](decisions.md)) |
 
 ### 5.2 What they are for
 
@@ -1466,8 +1466,15 @@ the honest way because the state variable has to exist anyway.
 amount is 25%: in a year with a company flagged, a roll drawn every year makes the
 squeeze the year's event, in place of the bag draw, one time in four; with nothing
 flagged it never happens. The squeeze is +25 on the most shorted flagged company
-([D165](decisions.md)). **As set, these numbers break P4**, and they are open for the
-owner ([D167](decisions.md), Appendix A).
+([D165](decisions.md)).
+
+**What the squeeze foreshadows is an overvalued company, not a failing one.** The
+SHORT traders bet against the highest P/E ([D169](decisions.md)), so the squeeze lands
+on the company the market has priced highest against its earnings. S4 first built
+SHORT against the slowest grower, the closer reading of "failing"; that put every
+squeeze on what `LOWPE` holds and broke P4 at 41.8%. With the highest P/E, P4 holds
+at the numbers above (`LOWPE` 27.7%). Whether the squeeze ships at all, and the cost
+of flow, are still open for the owner ([D167](decisions.md), Appendix A).
 
 ### 5.4 Determinism
 
@@ -2254,7 +2261,7 @@ is now an input to every price through `flow`, so it cannot come last.
 | **S1 — Fundamentals** ✅ **Done 2026-11-21** | Regimes and the matrix, ageing, recovery, the long-match damping ladder; revenue, margin and earnings per share; `IndustryDefinition` and the validator check; sentiment and the multiple; the price identity with `event_carry` and `flow`; the ledger; payout-ratio dividends; the split at 300. Pure `sim`, headless. **Delivered:** `EarningsRegime`, `CompanyProfile` and `IndustryDefinition` in `src/data/`; `RegimeRules`, `CompanyState`, `IndustryState`, `ValuationRules`, `PriceIdentity`, `PriceLedger` and `DividendRules` in `src/sim/`; `ContentLibrary.load_fundamentals()` with the industry, ticker and range checks and a new `warnings` list; 18 company profiles and 6 industries as placeholder `.tres`; 75 tests in four new files. **Scope:** no year pipeline - the pieces are called in §4's order by a stand-in loop in `test_price_ledger.gd`, and S3 builds the real one; flow takes net shares as a plain input until S4. Decisions D128-D135 (including where this document contradicts itself), the §15 decisions recorded as D136-D143 | Largest single phase | No | 3 |
 | **S2 — Balance tooling** ✅ **Done 2026-11-21** | The probe of Appendix A rebuilt as a `tools/` script over the **real** `sim` code, reporting the strategy table of §2.1. Its first job is to reproduce Appendix A's numbers; if it cannot, either the probe or the implementation is wrong, and that must be settled before tuning anything. **Delivered:** `tools/balance_report.gd` (arguments for years, seeds, first seed, strategies, player flow; 400 ten-year matches in about 4 s); `tools/balance/balance_match.gd`, the nine strategies and the trading loop; `tools/balance/stand_in_year.gd`, a §4-order year over the S1 classes that **S3 replaces**; `tests/unit/test_balance_smoke.gd`, 30 fixed-seed matches with loose bands, about 1 s. Nothing added to `src/`. **Finding: the probe's TREND strategy was mis-measured, and P4 failed at ten years** (TREND 48.5%) — see Appendix A and [D149](decisions.md). **Then swept and fixed** (2026-11-22): GROWTH's stay chance 58 → 42 and premium 0.6 → 1.2, leader about 28% ([D150](decisions.md), [D151](decisions.md)); the sweep's levers are tool arguments. No FOLLOW and no desk flow until S4. Decisions D144-D149 | Small to build, open-ended to use | No | — |
 | **S3 — The pipeline** ✅ **Done 2026-11-22** | `YearSettlement` extracted from `YearResolver` (P5 must stay green); `EarningsYearResolver` running §4 steps 1–10; the derived mood; the event drawn from last year's mood; Mutuals as an index; the bond as the yardstick. **Delivered:** `YearSettlement` (loans, net worth, standings, game end, closing the year) moved out of `YearResolver` by a pure move, `GOLDEN_HASH` unchanged ([D152](decisions.md)); `EarningsMarket` on `GameState.market`, building a twenty-row board (eighteen companies, the bond, the index) and an event pool without the index's events ([D160](decisions.md), [D154](decisions.md)); `EarningsYearResult`; `EarningsYearResolver`, §4 steps 1–10 then the settlement, with the mood derived from the index move and last year's move as sentiment ([D153](decisions.md)), the event from last year's bag and the bull bag in year 1, one bankruptcy pass ([D155](decisions.md)), the bond paying its coupon in every year with its yardstick readouts ([D156](decisions.md)), Mutuals as an index of all eighteen companies' pre-split moves paying their average dividend ([D157](decisions.md)), and Yearly Change including the event ([D158](decisions.md)); `GameSettings.multiple_loans_enabled`, off by default, one loan at a time, sent in the snapshot ([D159](decisions.md)); the balance tool moved onto the real pipeline and `stand_in_year.gd` deleted ([D161](decisions.md)); `test_earnings_year_resolver.gd`, 45 tests, plus loan and snapshot tests. **Measured:** TREND 29.6%, LOWPE 23.9% over 4,000 ten-year seeds, so P4 holds by 0.4 points. **Scope:** flow is still a plain input; nothing selects the mode or turns the loans toggle on (S5); nothing on screen (S7). Decisions D152-D161 | Medium | No | 2, 4, 7, 14 |
-| **S4 — The NPC desk** ✅ **Done 2026-11-22** | About twenty-four traders, the eight strategies, the per-trader appetite draw, sorted order and fixed draw count; recording net shares traded into `flow`; short interest and its event weighting. **Then re-run S2**: `flow` is clamped and measured as free only at 5%, so this is where that is confirmed or not. **Delivered:** `NpcStrategy` and `NpcTraderDefinition` in `src/data/`, with 24 trader files in `src/data/traders/` (three per strategy, 8,000 cash and conviction 45 as the probe had, names and chatter placeholders) and the squeeze template `src/data/squeeze/short_squeeze.tres`; `ContentLibrary.load_fundamentals()` loads and validates both ([D162](decisions.md)); `NpcDesk`, `NpcTraderState`, `NpcDeskYear` and `ShortInterestRules` in `src/sim/`; the desk on `EarningsMarket.desk`, acting at §4 step 13 after the settlement, in id order, two draws per trader, its net shares recorded through `EarningsMarket.record_trade` as next year's flow ([D163](decisions.md)); the SHORT trader with real short accounting and players unable to short ([D164](decisions.md)); short interest flagged at 10% of shares outstanding, and a squeeze in place of the bag draw one flagged year in four, the roll drawn every year ([D165](decisions.md)); the balance tool's FOLLOW, `--flow` modes and squeeze levers ([D166](decisions.md)); `test_npc_desk.gd`, 41 tests. **Measured: P4 fails as shipped, LOWPE 41.8%** over 4,000 ten-year seeds; it holds at 28.9% with the squeeze off. The squeeze's numbers are open for the owner, and nothing in `src/` was retuned ([D167](decisions.md), Appendix A). **Scope:** players' trades are not yet recorded into flow in the game, because `MatchAuthority` cannot run this mode until S5, which must call `record_trade` and pass the squeeze template; nothing sends the desk (S6) or shows it (S7); chatter is not chosen (S8). Decisions D162-D167 | Medium | No | 10, 11 |
+| **S4 — The NPC desk** ✅ **Done 2026-11-22** | About twenty-four traders, the eight strategies, the per-trader appetite draw, sorted order and fixed draw count; recording net shares traded into `flow`; short interest and its event weighting. **Then re-run S2**: `flow` is clamped and measured as free only at 5%, so this is where that is confirmed or not. **Delivered:** `NpcStrategy` and `NpcTraderDefinition` in `src/data/`, with 24 trader files in `src/data/traders/` (three per strategy, 8,000 cash and conviction 45 as the probe had, names and chatter placeholders) and the squeeze template `src/data/squeeze/short_squeeze.tres`; `ContentLibrary.load_fundamentals()` loads and validates both ([D162](decisions.md)); `NpcDesk`, `NpcTraderState`, `NpcDeskYear` and `ShortInterestRules` in `src/sim/`; the desk on `EarningsMarket.desk`, acting at §4 step 13 after the settlement, in id order, two draws per trader, its net shares recorded through `EarningsMarket.record_trade` as next year's flow ([D163](decisions.md)); the SHORT trader with real short accounting and players unable to short ([D164](decisions.md)); short interest flagged at 10% of shares outstanding, and a squeeze in place of the bag draw one flagged year in four, the roll drawn every year ([D165](decisions.md)); the balance tool's FOLLOW, `--flow` modes and squeeze levers ([D166](decisions.md)); `test_npc_desk.gd`, 41 tests. **Measured: P4 fails as shipped, LOWPE 41.8%** over 4,000 ten-year seeds; it holds at 28.9% with the squeeze off. The squeeze's numbers are open for the owner, and nothing in `src/` was retuned ([D167](decisions.md), Appendix A). **Then** the owner moved SHORT's target to the highest P/E: P4 holds as shipped, `LOWPE` 27.7% ([D168](decisions.md), [D169](decisions.md)). **Scope:** players' trades are not yet recorded into flow in the game, because `MatchAuthority` cannot run this mode until S5, which must call `record_trade` and pass the squeeze template; nothing sends the desk (S6) or shows it (S7); chatter is not chosen (S8). Decisions D162-D169 | Medium | No | 10, 11 |
 | **S5 — Mode and lobby** | `GameSettings.mode`, picking the resolver at match start, mode selection on the title screen, the lobby key, the browser row | Small | Yes, for the browser row | — |
 | **S6 — The wire** | Inputs-travel encoding, packed history rows, the desk in the snapshot, derive-on-client; migration and rejoin in a StalkleHeads match; the payload measured rather than estimated | Medium | Yes | — |
 | **S7 — Interface** | Tab host; the Exchange board with tickers, collapsible industry groups, in-group sorting and the HELD column; the Market, Industries and Company tabs; the chart widget; the ledger widget; the year digest | Largest UI phase | Partly | 1, 8, 9, 12 |
@@ -2547,10 +2554,11 @@ rather than left open:
 
 ### Still open
 
-**One, from S4's measurement** ([D167](decisions.md)): the short squeeze as first set
-breaks P4, and whether it ships, at what chance and size, and against which company
-the SHORT traders bet, is the owner's to decide. Betting against the highest P/E
-passes P4 even at the published squeeze. Appendix A has the sweep.
+**One, from S4's measurement** ([D167](decisions.md)): whether the short squeeze
+ships, at what chance and size, and whether flow's cost to P4 is acceptable, are the
+owner's to decide. The SHORT target is decided, the highest P/E
+([D169](decisions.md)), and with it P4 holds at the published squeeze. Appendix A has
+the sweep.
 
 Otherwise every question raised by this document has an answer. What remains is
 content the owner will write over time — the five placeholder companies, the trader
@@ -2891,7 +2899,7 @@ what LOWPE holds. Ten years, 4,000 seeds, flow on:
 
 | SHORT target | Chance | Size | Leader | TREND | `LOWPE` | HIGHPE | FOLLOW | Contenders | P3 | Squeezes / match |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `slowest` (published) | 25 | +25 | `LOWPE` 41.8 | 16.1 | 41.8 | 0.6 | 16.3 | 5 | 0.44 | 1.60 |
+| `slowest` (published then) | 25 | +25 | `LOWPE` 41.8 | 16.1 | 41.8 | 0.6 | 16.3 | 5 | 0.44 | 1.60 |
 | `slowest` | 10 | +5 | `LOWPE` 29.6 | 23.4 | 29.6 | 1.6 | 15.7 | 6 | 0.64 | 0.77 |
 | `slowest` | 5 | +5 | `LOWPE` 29.5 | 23.5 | 29.5 | 1.5 | 15.8 | 6 | 0.63 | 0.38 |
 | `slowest` | off | — | `LOWPE` 28.9 | 24.1 | 28.9 | 1.2 | 15.5 | 6 | 0.63 | 0 |
@@ -2901,7 +2909,9 @@ what LOWPE holds. Ten years, 4,000 seeds, flow on:
 | `highpe` | off | — | `LOWPE` 29.4 | 21.8 | 29.4 | 1.0 | 17.7 | 6 | 0.62 | 0 |
 
 **With `highpe`, P4 holds at every setting, the published squeeze included (27.7%).**
-At 25 years `LOWPE` leads at 50.8% with it, against 64.8%. Still open for the owner.
+At 25 years `LOWPE` leads at 50.8% with it, against 64.8%. **The owner chose
+`highpe`** ([D169](decisions.md)); it is the published rule, and a default run
+reproduces the bold row. The measurements above it were taken with `slowest`.
 
 ---
 

@@ -943,7 +943,7 @@ flow, and short interest, which makes a short squeeze possible.
 | sim | `earnings_year_resolver.gd` | **S3.** The StalkleHeads year, §4 steps 1-10, ending in `YearSettlement` |
 | sim | `year_settlement.gd` | **S3.** The back half both pipelines share: loans, net worth and standings, game end, closing the year (D152) |
 | sim | `npc_trader_state.gd` | **S4.** One trader during a match: cash, shares held, shares short, and its worth at the posted prices |
-| sim | `npc_desk.gd` | **S4.** `EarningsMarket.desk`: every trader in id order; `act()` (§4 step 13), each strategy's pick, short interest, the flagged companies, and what bankruptcy, splits and dividends do to traders (D162-D164) |
+| sim | `npc_desk.gd` | **S4.** `EarningsMarket.desk`: every trader in id order; `act()` (§4 step 13), each strategy's pick, short interest, the flagged companies, and what bankruptcy, splits and dividends do to traders (D162-D164, D169) |
 | sim | `npc_desk_year.gd` | **S4.** What the desk did in a year: each trader's appetite, target and action, and the net shares traded |
 | sim | `short_interest_rules.gd` | **S4.** The flag threshold, the squeeze chance and building a squeeze event from the template (D165) |
 
@@ -1052,7 +1052,7 @@ strategy did (design §2.6, §12.1). It is a tool, not game code: everything is 
 | `tools/balance/balance_match.gd` | One match: a real `GameState` from `EarningsMarket.new_game_state`, the ten strategies as real `PlayerState`s (FOLLOW copies the desk's richest trader since S4), their trading, the flow mode, net worth at the end |
 | `tools/balance/lever_year.gd` | `EarningsYearResolver` with the sweep's levers applied through its two seams (D161) |
 | `tools/balance/levers.gd` | Balance overrides for a sweep (premium, GROWTH stay chance, ageing; since S4 the squeeze on or off, its chance and its size, and the SHORT traders' target), applied without touching `src/sim/` (D150, D166, D168) |
-| `tools/balance/lever_desk.gd` | `NpcDesk` with the SHORT-target lever applied through its one seam, `choose_target` (D168) |
+| `tools/balance/lever_desk.gd` | `NpcDesk` with the SHORT-target lever applied through its one seam, `choose_target`: the old slowest-grower rule, since the game's desk bets against the highest P/E (D168, D169) |
 | `tests/unit/test_balance_smoke.gd` | 30 fixed-seed matches with loose bands, in the GUT suite |
 
 S2 drove the year with a stand-in, `tools/balance/stand_in_year.gd` (D144). S3 deleted
