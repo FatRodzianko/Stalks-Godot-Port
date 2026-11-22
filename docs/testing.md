@@ -310,7 +310,7 @@ measured it at 29.6% over 4,000 ten-year seeds on the real pipeline (D161).
 **Not covered yet:** news (S8); loans and leverage; Mutuals as a player's holding;
 anything about how a real person plays. Re-run the tool when each arrives. The S4
 measurement, with the desk, is decisions.md D167; the SHORT target that made P4 pass
-is D169.
+is D169. S5 re-runs it once players' trades reach flow (D170).
 
 ### Scene tests
 
