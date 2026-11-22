@@ -142,7 +142,7 @@ nudges every multiple this year and leans slightly into every industry's roll. I
 
 **Multiple** — how many years of earnings the market pays for a share:
 `12.5 + sentiment x 0.02 + standing + regime premium`, clamped to 4-30. The
-**regime premium** is a small adjustment per regime, from +0.6 for GROWTH to -1.4 for
+**regime premium** is a small adjustment per regime, from +1.2 for GROWTH to -1.4 for
 DISTRESS. The base of 12.5 comes from BERRY BONDS' 3% yield (§3.4).
 
 **Fair value** — earnings per share times the multiple. What a company's earnings are

@@ -13,8 +13,11 @@ extends RefCounted
 
 ## The published transition matrix. Row = this year's regime, column = next
 ## year's, both in `EarningsRegime.ALL` order. Percentages; each row sums to 100.
+## GROWTH's row was [58, 14, 20, 6, 2] until the owner adopted the balance sweep's
+## fix for P4 (decisions.md D151): its stay chance is 42, the other columns
+## respread in the same proportions.
 const TRANSITION: Dictionary[EarningsRegime.Value, Array] = {
-	EarningsRegime.Value.GROWTH: [58, 14, 20, 6, 2],
+	EarningsRegime.Value.GROWTH: [42, 19, 28, 8, 3],
 	EarningsRegime.Value.STEADY: [16, 50, 18, 13, 3],
 	EarningsRegime.Value.SLOWING: [10, 28, 38, 21, 3],
 	EarningsRegime.Value.DECLINE: [6, 18, 16, 46, 14],
@@ -57,9 +60,10 @@ const MARGIN_TARGET: Dictionary[EarningsRegime.Value, float] = {
 const MARGIN_DIVISOR: float = 3.0
 
 ## Turns added to the multiple, per regime. 40% of the first draft's spread,
-## and that narrowing is measured (§3.4, proposed decision D2).
+## and that narrowing is measured (§3.4, decision D2) - except GROWTH, raised
+## from 0.6 to 1.2 with the stay chance above (D151). The other four are D2's.
 const PREMIUM: Dictionary[EarningsRegime.Value, float] = {
-	EarningsRegime.Value.GROWTH: 0.6,
+	EarningsRegime.Value.GROWTH: 1.2,
 	EarningsRegime.Value.STEADY: 0.0,
 	EarningsRegime.Value.SLOWING: 0.24,
 	EarningsRegime.Value.DECLINE: -0.6,

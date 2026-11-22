@@ -24,7 +24,8 @@ func test_every_matrix_row_sums_to_one_hundred() -> void:
 
 
 func test_the_matrix_is_the_published_one() -> void:
-	assert_eq(RegimeRules.TRANSITION[G], [58, 14, 20, 6, 2])
+	# GROWTH's row is the one adopted from the balance sweep (D151).
+	assert_eq(RegimeRules.TRANSITION[G], [42, 19, 28, 8, 3])
 	assert_eq(RegimeRules.TRANSITION[ST], [16, 50, 18, 13, 3])
 	assert_eq(RegimeRules.TRANSITION[SL], [10, 28, 38, 21, 3])
 	assert_eq(RegimeRules.TRANSITION[DE], [6, 18, 16, 46, 14])
@@ -39,8 +40,8 @@ func test_a_neutral_unaged_company_rolls_exactly_its_matrix_row() -> void:
 
 
 func test_the_stationary_distribution_sits_in_its_band() -> void:
-	# §3.3: GROWTH 19.8%, STEADY 27.3%, SLOWING 21.5%, DECLINE 21.7%,
-	# DISTRESS 9.8%. Editing a row must not quietly make the mode miserable.
+	# §3.3: GROWTH 15.1%, STEADY 28.8%, SLOWING 22.8%, DECLINE 22.9%,
+	# DISTRESS 10.4% (19.8 / 27.3 / 21.5 / 21.7 / 9.8 before D151). Editing a row must not quietly make the mode miserable.
 	var share: Array[float] = [20.0, 20.0, 20.0, 20.0, 20.0]
 	for step: int in 500:
 		var next: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]
@@ -50,7 +51,7 @@ func test_the_stationary_distribution_sits_in_its_band() -> void:
 				next[to] += share[from] * float(row[to]) / 100.0
 		share = next
 
-	var published: Array[float] = [19.8, 27.3, 21.5, 21.7, 9.8]
+	var published: Array[float] = [15.1, 28.8, 22.8, 22.9, 10.4]
 	for index: int in 5:
 		assert_almost_eq(share[index], published[index], 0.5,
 			"%s stationary share" % EarningsRegime.name_of(EarningsRegime.ALL[index]))
@@ -60,8 +61,8 @@ func test_ageing_makes_a_long_growth_run_likelier_to_end() -> void:
 	var stay: Array[int] = []
 	for years: int in 5:
 		stay.append(RegimeRules.odds(G, 50, years)[0])
-	# 10 points a year off the 58-point GROWTH column.
-	assert_eq(stay, [58, 48, 38, 28, 18] as Array[int])
+	# 10 points a year off the 42-point GROWTH column.
+	assert_eq(stay, [42, 32, 22, 12, 2] as Array[int])
 
 
 func test_after_four_straight_growth_years_the_odds_have_turned_over() -> void:
@@ -157,7 +158,7 @@ func test_the_regime_tables_are_the_published_ones() -> void:
 	assert_eq(RegimeRules.MARGIN_TARGET[SL], 11.0)
 	assert_eq(RegimeRules.MARGIN_TARGET[DE], 7.0)
 	assert_eq(RegimeRules.MARGIN_TARGET[DI], 1.0)
-	assert_eq(RegimeRules.PREMIUM[G], 0.6)
+	assert_eq(RegimeRules.PREMIUM[G], 1.2)
 	assert_eq(RegimeRules.PREMIUM[ST], 0.0)
 	assert_eq(RegimeRules.PREMIUM[SL], 0.24)
 	assert_eq(RegimeRules.PREMIUM[DE], -0.6)

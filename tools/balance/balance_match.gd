@@ -15,6 +15,7 @@ extends RefCounted
 
 
 const StandInYear := preload("res://tools/balance/stand_in_year.gd")
+const Levers := preload("res://tools/balance/levers.gd")
 
 ## Every strategy, in the order the report prints them. §2.1 also has FOLLOW
 ## (copy the best NPC trader), which needs the desk and arrives with S4.
@@ -51,13 +52,15 @@ class Book:
 ## Plays one match. `strategies` is a subset of ALL_STRATEGIES. With
 ## `player_flow` the players' own net buying feeds the flow term, as §3.10 says
 ## it should once a desk exists; off by default, because the comparison target
-## is the probe's no-flow run.
+## is the probe's no-flow run. `levers` overrides balance numbers for a sweep
+## (levers.gd); null means the published values.
 static func play(
 	library: ContentLibrary,
 	match_seed: int,
 	years: int,
 	strategies: Array[StringName],
 	player_flow: bool = false,
+	levers: Levers = null,
 ) -> Result:
 	var market_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	market_rng.seed = match_seed
@@ -69,7 +72,7 @@ static func play(
 	var bond_coupon: int = bond.bull_dividend
 	var starting_cash: int = GameSettings.new().starting_cash
 
-	var market: StandInYear = StandInYear.new(library, years)
+	var market: StandInYear = StandInYear.new(library, years, levers)
 	var books: Dictionary[StringName, Book] = {}
 	for strategy: StringName in strategies:
 		var book: Book = Book.new()

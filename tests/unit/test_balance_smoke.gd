@@ -14,6 +14,7 @@ extends GutTest
 
 
 const BalanceMatch := preload("res://tools/balance/balance_match.gd")
+const Levers := preload("res://tools/balance/levers.gd")
 
 const SEEDS: int = 30
 const YEARS: int = 10
@@ -101,3 +102,40 @@ func _median(strategy: StringName) -> int:
 		values.append(run.net_worth[strategy])
 	values.sort()
 	return values[values.size() / 2]
+
+
+func test_a_lever_set_to_its_published_value_changes_nothing() -> void:
+	# The sweep's override path (levers.gd) re-implements the regime roll and
+	# reaches the premium through reprice's performance argument. Set to the
+	# published values it must reproduce the real path exactly (D150).
+	var levers: Levers = Levers.new()
+	levers.growth_stay = int(RegimeRules.TRANSITION[EarningsRegime.Value.GROWTH][0])
+	levers.ageing = RegimeRules.AGEING_POINTS
+	levers.premium = Levers.scaled_premium(1.0)
+	for match_seed: int in [0, 7, 19]:
+		var forced: BalanceMatch.Result = BalanceMatch.play(
+			_library, match_seed, YEARS, BalanceMatch.ALL_STRATEGIES, false, levers
+		)
+		assert_eq(forced.net_worth, _runs[match_seed].net_worth, "seed %d" % match_seed)
+		assert_eq(forced.final_prices, _runs[match_seed].final_prices, "seed %d" % match_seed)
+
+
+func test_a_lever_that_moves_does_move_the_market() -> void:
+	var levers: Levers = Levers.new()
+	levers.growth_stay = 26
+	var moved: BalanceMatch.Result = BalanceMatch.play(
+		_library, 0, YEARS, BalanceMatch.ALL_STRATEGIES, false, levers
+	)
+	assert_ne(moved.final_prices, _runs[0].final_prices)
+
+
+func test_a_rebuilt_growth_row_still_sums_to_100() -> void:
+	for stay: int in [0, 26, 34, 42, 50, 58, 70, 100]:
+		var row: Array[int] = Levers.growth_row(stay)
+		var total: int = 0
+		for weight: int in row:
+			total += weight
+		assert_eq(total, 100, "stay %d: %s" % [stay, row])
+		assert_eq(row[0], stay)
+	var published: Array = RegimeRules.TRANSITION[EarningsRegime.Value.GROWTH]
+	assert_eq(Levers.growth_row(int(published[0])), published, "the published row comes back unchanged")
