@@ -6227,6 +6227,31 @@ the lever's default path is the game's.
 **Decided: D169.** The owner chose highpe, and it is now the published rule in
 `src/`. The other bullets above stay open.
 
+**Flow's cost with the highpe target, measured (2026-11-22).** Ten years, 4,000 seeds,
+published values with `--flow` and `--no-squeeze`:
+
+| Flow | Squeeze | Leader | TREND | LOWPE | HIGHPE | FOLLOW | Contenders | P3 | Squeezes / match |
+|---|---|---|---|---|---|---|---|---|---|
+| **desk and players (the game)** | **on** | **LOWPE 27.7** | 23.9 | 27.7 | 2.0 | 17.2 | 6 | 0.64 | 1.16 |
+| desk and players | off | LOWPE 29.4 | 21.8 | 29.4 | 1.0 | 17.7 | 6 | 0.62 | 0 |
+| none | on | TREND 25.3 | 25.3 | 17.7 | 4.2 | 13.7 | 8 | 0.63 | 1.13 |
+| none | off | TREND 23.1 | 23.1 | 19.7 | 2.6 | 14.5 | 7 | 0.64 | 0 |
+
+- **Flow costs 2.4 points as shipped** (27.7 against 25.3), against 9.5 with the old
+  target and §2.6's estimate of about one. With no squeeze it costs 6.3 (29.4
+  against 23.1).
+- **Flow still changes who leads**: TREND without it, LOWPE with it. That is Q2 (§15):
+  flow amplifies the largest cohort, and the VALUE traders buy what LOWPE buys.
+- **The squeeze works in opposite directions with and without flow.** Without flow it
+  adds 2.2 points to the leader, TREND: a dear company is often a fast grower, which
+  TREND holds. With flow it takes 1.7 points from LOWPE.
+- **The tool overstates flow.** Its players sell everything and rebuy each year at no
+  cost, and the game does not yet record players' trades into flow (S5). Re-measure
+  when S5 does.
+
+Whether the squeeze ships and whether this flow cost is acceptable stay open for the
+owner.
+
 ### D168 - A balance-tool lever for the SHORT traders' target
 **2026-11-22 · Accepted**
 
