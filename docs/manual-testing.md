@@ -1539,6 +1539,16 @@ fails cleanly rather than inventing a market.
 
 ### D - A StalkleHeads match over the wire (phase S6) — **not yet run**
 
+**The build must contain S6.** A build made before S6 is on `main` fails at step 23
+with "A StalkleHeads match cannot change hosts yet." That is the old build, not a
+fault. To check a checkout before exporting it: open `src/sim/match_setup.gd` and
+search for `cannot change hosts yet`. If it is there, the checkout is older than S6.
+
+**First attempt, 2026-11-22, on a build from before S6:** D1 steps 12-14 and 19
+matched, and D2 step 23 gave the old refusal. Those D1 results do not count for S6:
+before S6 a rejoin already copied the twenty board rows, which is all D1 can see.
+Run D again on a build that contains S6.
+
 **Needs two Steam accounts on two machines**, A and B, both on the same build.
 Built on 2026-11-22 (decisions.md D176-D178). The suite proves, without Steam, that
 a client's copy of the market is the host's to the bit after a snapshot, a year, a
@@ -1570,9 +1580,9 @@ Before starting, on each machine:
 12. Check B lands on the playing screen on the same year as A.
 13. Check every price on B's board is the price on A's board.
 14. Check B's cash matches what A's rankings show for B.
-15. On B, open the year-by-year page.
-16. On A, open the year-by-year page.
-17. Check the two pages show the same figures for every year, including the two years B was away.
+15. Write down the two years B was away (step 10). The year-by-year page is only on the result screen at the end of the match, so they are checked in step 41.
+16. (No step: there is no year-by-year page during the match.)
+17. (No step: see step 41.)
 18. On both machines, press Ready.
 19. Check both boards show the same prices for the new year.
 
@@ -1596,8 +1606,8 @@ Before starting, on each machine:
 32. Check A lands on the playing screen, on B's year.
 33. Check every price on A's board is the price on B's board.
 34. Check A's cash is the figure A had before quitting in step 22.
-35. On both machines, open the year-by-year page.
-36. Check both pages show the same figures for every year, before and after the handover.
+35. Write down the year of the handover (step 21), for step 41.
+36. (No step: the year-by-year page is checked at the end, in step 41.)
 
 #### D4. Playing on to the end after the handover
 
@@ -1605,7 +1615,7 @@ Before starting, on each machine:
 38. Check both boards show the same prices.
 39. Repeat steps 37-38 until the match ends.
 40. Check both machines show the same final standings.
-41. Check both machines show the same year-by-year page.
+41. On both machines, open **YEAR BY YEAR** on the result screen and check they show the same figures for every year, including the years from step 15 and the handover year from step 35.
 
 #### What a failure here means
 
@@ -1622,7 +1632,7 @@ Before starting, on each machine:
 - **Step 25 showing different prices** means the year was not carried over at the
   moment of the handover; step 28 going wrong after a correct step 25 means the new
   host is not dealing from the market it was handed.
-- **Step 17 or 36 differing** is the year-by-year page, which is replayed from the
+- **Step 41 differing** is the year-by-year page, which is replayed from the
   host's draws (D178). Send a screenshot of both pages.
 
 ### Known gaps, so they are not surprises
