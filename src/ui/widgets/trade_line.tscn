@@ -1,0 +1,20 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/ui/widgets/trade_line.gd" id="1_line"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/cell_row.tscn" id="2_row"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/trade_box.tscn" id="3_trade"]
+
+[node name="TradeLine" type="HBoxContainer"]
+theme_type_variation = &"TightHBox"
+script = ExtResource("1_line")
+
+[node name="Cells" parent="." instance=ExtResource("2_row")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="Trade" parent="." instance=ExtResource("3_trade")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4

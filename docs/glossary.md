@@ -245,6 +245,12 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **HELD** — the EXCHANGE board's column for how many shares of that row you own. StalkleHeads only; the base board keeps its separate "Your Stalks" list (design §14 q1).
 
+**Side panel (HOLDINGS / RANKINGS / DESK)** — the StalkleHeads panel to the right of the tabs. HOLDINGS lists cash, net worth and every company you hold by ticker, with a trade box on each; RANKINGS the players; DESK the desk's strategies and short interest. Always open on EXCHANGE, opened by its buttons elsewhere. Code: `SidePanel` (decisions.md D183).
+
+**Trade box** — a quantity box with **B** (buy) and **S** (sell), on every company shown on its own in StalkleHeads. S is greyed when you hold none. Code: `TradeBox`, checked through `TradeContext` (D183).
+
+**YoY (year on year)** — a change measured against the same figure a year earlier, as a percentage of the earlier one. The Company tab's ledger shows the price's.
+
 **Why the price moved** — the Company tab's ledger widget: last year's price, this year's, and every point between them attributed to earnings, multiple, industry, this event, last event faded and flow. Its total is the board's CHG. Code: `LedgerWidget`.
 
 **The year in review** — the extra block at the top of the news panel in a StalkleHeads match: the market's move and mood, each industry's year, and the year's outliers (biggest earnings surprise, biggest disappointment, dividend cut, what the desk piled into). Code: `YearDigest`, `YearDigestPanel` (design §6.3).

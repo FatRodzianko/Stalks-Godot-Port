@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/ui/screens/stalkleheads/company_tab.gd" id="1_tab"]
 [ext_resource type="PackedScene" path="res://src/ui/widgets/cell_row.tscn" id="2_row"]
 [ext_resource type="PackedScene" path="res://src/ui/widgets/ledger_widget.tscn" id="3_ledger"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/trade_box.tscn" id="4_trade"]
 
 [node name="CompanyTab" type="ScrollContainer"]
 size_flags_horizontal = 3
@@ -42,9 +43,26 @@ layout_mode = 2
 tooltip_text = "The row below on the board"
 text = ">"
 
-[node name="Identity" parent="Body" instance=ExtResource("2_row")]
+[node name="IdentityLine" type="HBoxContainer" parent="Body"]
+layout_mode = 2
+
+[node name="Identity" parent="Body/IdentityLine" instance=ExtResource("2_row")]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="HeldLabel" type="Label" parent="Body/IdentityLine"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"Faint"
+text = ""
+
+[node name="Trade" parent="Body/IdentityLine" instance=ExtResource("4_trade")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
 
 [node name="Description" type="Label" parent="Body"]
 unique_name_in_owner = true

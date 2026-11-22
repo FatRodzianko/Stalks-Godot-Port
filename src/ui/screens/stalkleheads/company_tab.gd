@@ -3,7 +3,8 @@ extends ScrollContainer
 ## Tab 4 of a StalkleHeads match: one company in depth
 ## (docs/stalkleheads-design.md §7.5). Opened by clicking its row on the
 ## Exchange, the gesture the base game's details panel already uses
-## (decisions.md D103); `<` and `>` step through the board.
+## (decisions.md D103); `<` and `>` step through the board in its order as it
+## stands, sorted or not (decisions.md D183).
 ##
 ## What it shows:
 ##
@@ -16,12 +17,17 @@ extends ScrollContainer
 ## - **who holds it**: the players, by name only (D103), and the NPC traders who
 ##   traded it last year, **each by name** (§14 q11), with short interest.
 ##
+## Beside the name line: how many shares you hold, and a trade box.
+##
 ## The bond and the index are on the board but are not companies: for them this
 ## shows the name, description and investors only.
 
 
 ## `<` or `>` was pressed. The host holds the state, so it redraws.
 signal company_changed(stalk_id: StringName)
+
+signal buy_requested(stalk_id: StringName, shares: int)
+signal sell_requested(stalk_id: StringName, shares: int)
 
 
 const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
@@ -47,6 +53,20 @@ const LINE_CAPTIONS: Dictionary[Line, String] = {
 
 const TRADER_NAME_CHARS: int = 18
 
+## The line under the name: ticker, industry, then the regime phrase.
+const IDENTITY_WIDTHS: Array[int] = [6, 20, 0]
+
+## What each line of the earnings table means (`TermTips`).
+const LINE_TIPS: Dictionary[Line, String] = {
+	Line.REVENUE: TermTips.REVENUE,
+	Line.EXPENSES: TermTips.EXPENSES,
+	Line.PROFIT: TermTips.PROFIT,
+	Line.MARGIN: TermTips.MARGIN,
+	Line.EPS: TermTips.EPS,
+	Line.PRICE: TermTips.PRICE,
+	Line.PE: TermTips.PE,
+}
+
 
 ## The board row on show. Presentation only.
 var _stalk_id: StringName = &""
@@ -55,11 +75,14 @@ var _board_ids: Array[StringName] = []
 var _year_row: CellRow
 var _lines: Dictionary[Line, CellRow] = {}
 var _split_row: CellRow
+var _context: TradeContext
 
 @onready var _previous: Button = %PreviousButton
 @onready var _next: Button = %NextButton
 @onready var _name: Label = %CompanyName
 @onready var _identity: CellRow = %Identity
+@onready var _held_label: Label = %HeldLabel
+@onready var _trade: TradeBox = %Trade
 @onready var _description: Label = %Description
 @onready var _earnings: VBoxContainer = %Earnings
 @onready var _ledger: LedgerWidget = %Ledger
@@ -72,8 +95,15 @@ var _split_row: CellRow
 func _ready() -> void:
 	_previous.pressed.connect(_on_previous_pressed)
 	_next.pressed.connect(_on_next_pressed)
-	_identity.configure([22, 0])
+	_identity.configure(IDENTITY_WIDTHS)
 	_identity.set_cell_variation(0, &"Faint")
+	_identity.set_cell_variation(1, &"Faint")
+	_identity.set_cell_tooltip(2, TermTips.REGIME)
+	_yield.mouse_filter = Control.MOUSE_FILTER_PASS
+	_yield.tooltip_text = TermTips.EARNINGS_YIELD
+	_trade.buy_requested.connect(_on_trade_buy_requested)
+	_trade.sell_requested.connect(_on_trade_sell_requested)
+	_trade.amount_changed.connect(_on_trade_amount_changed)
 	ReservedLines.reserve(_description)
 
 	var widths: Array[int] = [CAPTION_CHARS]
@@ -89,21 +119,32 @@ func _ready() -> void:
 		var row: CellRow = _add_earnings_row(widths, aligns)
 		row.set_cell(0, " " + LINE_CAPTIONS[line])
 		row.set_cell_variation(0, &"Faint")
+		row.set_cell_tooltip(0, LINE_TIPS[line])
 		_lines[line] = row
 	_split_row = _add_earnings_row(widths, aligns)
 	_split_row.set_row_variation(&"Faint")
 
 
-## The company to show. The board's order is what `<` and `>` walk.
-func show_company(stalk_id: StringName, state: GameState) -> void:
+## The company to show, drawn at the next refresh.
+func show_company(stalk_id: StringName) -> void:
 	_stalk_id = stalk_id
-	refresh(state)
 
 
-func refresh(state: GameState) -> void:
-	_board_ids.clear()
-	for row: StalkState in state.stalks:
-		_board_ids.append(row.id)
+## What `<` and `>` walk: the Exchange board's order as it stands.
+func set_board_order(order: Array[StringName]) -> void:
+	_board_ids = order.duplicate()
+
+
+func clear_amount() -> void:
+	_trade.clear_amount()
+
+
+func refresh(context: TradeContext) -> void:
+	_context = context
+	var state: GameState = context.state
+	if _board_ids.is_empty():
+		for row: StalkState in state.stalks:
+			_board_ids.append(row.id)
 	if _stalk_id.is_empty() or not _board_ids.has(_stalk_id):
 		if _board_ids.is_empty():
 			return
@@ -114,9 +155,11 @@ func refresh(state: GameState) -> void:
 	_name.text = stalk.definition.display_name
 	_name.tooltip_text = stalk.definition.display_name
 	_description.text = stalk.definition.description
+	_held_label.text = "you hold %d " % context.held(_stalk_id)
+	context.prepare(_trade, _stalk_id)
 
 	if company == null:
-		_identity.set_texts([String(stalk.definition.ticker), ""])
+		_identity.set_texts([String(stalk.definition.ticker), "", ""])
 		_show_no_earnings()
 		_ledger.show_nothing()
 		_yield.text = ""
@@ -126,7 +169,8 @@ func refresh(state: GameState) -> void:
 		if industry != null:
 			industry_name = industry.definition.display_name
 		_identity.set_texts([
-			"%s  %s" % [String(stalk.definition.ticker), industry_name],
+			String(stalk.definition.ticker),
+			industry_name,
 			MarketReadouts.regime_caption(state, company),
 		])
 		_show_earnings(state, company)
@@ -233,6 +277,14 @@ func shown_id() -> StringName:
 	return _stalk_id
 
 
+func trade_box() -> TradeBox:
+	return _trade
+
+
+func held_text() -> String:
+	return _held_label.text.strip_edges()
+
+
 func identity_text() -> String:
 	return _identity.line_text()
 
@@ -283,3 +335,15 @@ func _step(by: int) -> void:
 	_stalk_id = _board_ids[posmod(at + by, _board_ids.size())]
 	company_changed.emit(_stalk_id)
 
+
+func _on_trade_buy_requested(shares: int) -> void:
+	buy_requested.emit(_stalk_id, shares)
+
+
+func _on_trade_sell_requested(shares: int) -> void:
+	sell_requested.emit(_stalk_id, shares)
+
+
+func _on_trade_amount_changed(_shares: int) -> void:
+	if _context != null:
+		_context.check(_trade, _stalk_id)

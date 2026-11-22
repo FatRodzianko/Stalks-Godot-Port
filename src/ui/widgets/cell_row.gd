@@ -96,6 +96,15 @@ func set_cell_colour(index: int, colour: Color) -> void:
 		_labels[index].add_theme_color_override("font_color", colour)
 
 
+## A cell's tooltip: what a term means (`TermTips`), or a name a short code
+## stands for. The cell then takes the mouse so the tooltip can show, passing
+## clicks on to the row.
+func set_cell_tooltip(index: int, text: String) -> void:
+	if index >= 0 and index < _labels.size():
+		_labels[index].tooltip_text = text
+		_labels[index].mouse_filter = Control.MOUSE_FILTER_PASS
+
+
 ## Every cell in the row the same variation: a heading row, say.
 func set_row_variation(variation: StringName) -> void:
 	for label: Label in _labels:

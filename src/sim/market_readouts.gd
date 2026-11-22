@@ -209,6 +209,14 @@ static func industry_average_pe(state: GameState, industry_id: StringName) -> fl
 
 
 ## The mean P/E of every living company with earnings: the market P/E.
+## A move from `before` to `after` as a percentage of `before`: a price's
+## year-on-year change. `NONE` from nothing.
+static func percent_change(before: int, after: int) -> float:
+	if before <= 0:
+		return NONE
+	return (after - before) * 100.0 / float(before)
+
+
 static func market_pe(state: GameState) -> float:
 	var alive: Array[CompanyState] = []
 	for company: CompanyState in state.market.companies:

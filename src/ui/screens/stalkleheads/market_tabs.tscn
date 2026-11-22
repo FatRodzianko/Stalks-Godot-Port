@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/ui/screens/stalkleheads/market_tabs.gd" id="1_tabs"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/exchange_tab.tscn" id="2_exchange"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/market_tab.tscn" id="3_market"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/industries_tab.tscn" id="4_industries"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/company_tab.tscn" id="5_company"]
+[ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/side_panel.tscn" id="6_side"]
 
 [node name="MarketTabs" type="VBoxContainer"]
 size_flags_horizontal = 3
@@ -12,25 +13,47 @@ size_flags_vertical = 3
 theme_type_variation = &"TightVBox"
 script = ExtResource("1_tabs")
 
-[node name="TabStrip" type="HBoxContainer" parent="."]
+[node name="TopRow" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="TabStrip" type="HBoxContainer" parent="TopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SideButtons" type="HBoxContainer" parent="TopRow"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="ExchangeTab" parent="." instance=ExtResource("2_exchange")]
+[node name="Body" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Pages" type="VBoxContainer" parent="Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"TightVBox"
+
+[node name="ExchangeTab" parent="Body/Pages" instance=ExtResource("2_exchange")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="MarketTab" parent="." instance=ExtResource("3_market")]
+[node name="MarketTab" parent="Body/Pages" instance=ExtResource("3_market")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 
-[node name="IndustriesTab" parent="." instance=ExtResource("4_industries")]
+[node name="IndustriesTab" parent="Body/Pages" instance=ExtResource("4_industries")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 
-[node name="CompanyTab" parent="." instance=ExtResource("5_company")]
+[node name="CompanyTab" parent="Body/Pages" instance=ExtResource("5_company")]
 unique_name_in_owner = true
 visible = false
+layout_mode = 2
+
+[node name="SidePanel" parent="Body" instance=ExtResource("6_side")]
+unique_name_in_owner = true
 layout_mode = 2

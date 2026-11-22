@@ -9,14 +9,28 @@ extends ScrollContainer
 ## its industry's. `MarketReadouts.market_share_percent` computes it.
 ##
 ## Click an industry's line to select it. The selection is presentation only,
-## like the Exchange tab's collapse and sort.
+## like the Exchange tab's collapse and sort. Each member has a trade box, and
+## clicking its name opens it on the Company tab (decisions.md D183).
 
 
 ## A line was clicked. The host holds the state, so it redraws.
 signal selection_changed(industry_id: StringName)
 
+signal buy_requested(stalk_id: StringName, shares: int)
+signal sell_requested(stalk_id: StringName, shares: int)
+
+## A member's name was clicked.
+signal company_requested(stalk_id: StringName)
+
 
 const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
+const TradeLineScene: PackedScene = preload("res://src/ui/widgets/trade_line.tscn")
+
+## What each heading means, by column (`TermTips`).
+const HEADING_TIPS: Array[String] = [
+	"", TermTips.INDUSTRY_MOVE, TermTips.THREE_YEARS, TermTips.STANDING,
+	TermTips.INDUSTRY_PE, TermTips.INDUSTRY_SHARE, "", TermTips.COMPANIES,
+]
 
 ## The table's columns, in characters, and how each lines up.
 const WIDTHS: Array[int] = [19, 8, 7, 9, 8, 6, 11, 9]
@@ -41,6 +55,8 @@ const MEMBER_WIDTHS: Array[int] = [22, 6, 6]
 
 var _selected: StringName = &""
 var _rows: Dictionary[StringName, CellRow] = {}
+var _member_lines: Dictionary[StringName, TradeLine] = {}
+var _context: TradeContext
 
 @onready var _header: CellRow = %Header
 @onready var _list: VBoxContainer = %IndustryList
@@ -55,12 +71,19 @@ func _ready() -> void:
 	_header.set_texts(HEADINGS)
 	_header.set_row_variation(&"Faint")
 	_header.set_framed(&"HeaderCard")
+	for index: int in HEADING_TIPS.size():
+		if not HEADING_TIPS[index].is_empty():
+			_header.set_cell_tooltip(index, HEADING_TIPS[index])
 	_members_header.configure(MEMBER_WIDTHS, [CellRow.LEFT, CellRow.RIGHT, CellRow.RIGHT])
 	_members_header.set_texts(["COMPANY", "SHARE", "CHG"])
 	_members_header.set_row_variation(&"Faint")
+	_members_header.set_cell_tooltip(1, TermTips.MARKET_SHARE)
+	_members_header.set_cell_tooltip(2, TermTips.MARKET_SHARE_CHANGE)
 
 
-func refresh(state: GameState) -> void:
+func refresh(context: TradeContext) -> void:
+	_context = context
+	var state: GameState = context.state
 	if _selected.is_empty() and not state.market.industries.is_empty():
 		_selected = state.market.industries[0].id
 	for industry: IndustryState in state.market.industries:
@@ -69,9 +92,14 @@ func refresh(state: GameState) -> void:
 
 
 ## Makes `industry_id` the one charted and broken down.
-func select(industry_id: StringName, state: GameState) -> void:
+func select(industry_id: StringName, context: TradeContext) -> void:
 	_selected = industry_id
-	refresh(state)
+	refresh(context)
+
+
+func clear_amounts() -> void:
+	for line: TradeLine in _member_lines.values():
+		line.trade_box().clear_amount()
 
 
 func _refresh_industry(state: GameState, industry: IndustryState) -> void:
@@ -123,19 +151,27 @@ func _refresh_selected(state: GameState) -> void:
 	for child: Node in _members.get_children():
 		_members.remove_child(child)
 		child.queue_free()
+	_member_lines.clear()
 	for company: CompanyState in MarketReadouts.industry_members(state, _selected):
-		var row: CellRow = CellRowScene.instantiate()
-		_members.add_child(row)
-		row.configure(MEMBER_WIDTHS, [CellRow.LEFT, CellRow.RIGHT, CellRow.RIGHT])
+		var line: TradeLine = TradeLineScene.instantiate()
+		_members.add_child(line)
+		line.configure(MEMBER_WIDTHS, [CellRow.LEFT, CellRow.RIGHT, CellRow.RIGHT])
+		line.stalk_id = company.id
+		line.buy_requested.connect(_on_member_buy_requested)
+		line.sell_requested.connect(_on_member_sell_requested)
+		line.amount_changed.connect(_on_member_amount_changed)
+		line.info_requested.connect(_on_member_info_requested)
+		_member_lines[company.id] = line
 		var share: float = MarketReadouts.market_share_percent(state, company)
 		var change: float = MarketReadouts.market_share_change(state, company)
 		var stalk: StalkState = state.stalk_by_id(company.id)
-		row.set_texts([
+		line.cells().set_texts([
 			stalk.definition.display_name,
 			Palette.format_percent(share),
 			Palette.format_percent_change(change),
 		])
-		row.set_cell_colour(2, Palette.for_percent(change))
+		line.cells().set_cell_colour(2, Palette.for_percent(change))
+		_context.prepare(line.trade_box(), company.id)
 
 
 func selected() -> StringName:
@@ -150,8 +186,12 @@ func line_for(industry_id: StringName) -> String:
 func member_lines() -> PackedStringArray:
 	var lines: PackedStringArray = []
 	for child: Node in _members.get_children():
-		lines.append((child as CellRow).line_text())
+		lines.append((child as TradeLine).line_text())
 	return lines
+
+
+func member_line(stalk_id: StringName) -> TradeLine:
+	return _member_lines.get(stalk_id)
 
 
 func industry_chart() -> ChartWidget:
@@ -162,3 +202,20 @@ func _on_industry_pressed(industry_id: StringName) -> void:
 	_selected = industry_id
 	selection_changed.emit(industry_id)
 
+
+func _on_member_buy_requested(stalk_id: StringName, shares: int) -> void:
+	buy_requested.emit(stalk_id, shares)
+
+
+func _on_member_sell_requested(stalk_id: StringName, shares: int) -> void:
+	sell_requested.emit(stalk_id, shares)
+
+
+func _on_member_amount_changed(stalk_id: StringName, _shares: int) -> void:
+	var line: TradeLine = _member_lines.get(stalk_id)
+	if line != null and _context != null:
+		_context.check(line.trade_box(), stalk_id)
+
+
+func _on_member_info_requested(stalk_id: StringName) -> void:
+	company_requested.emit(stalk_id)

@@ -1136,10 +1136,13 @@ number it worked out: every figure comes from `src/sim/` (D179).
 GameplayScreen (base game's, unchanged around the boards)
   %Boards          hidden in StalkleHeads
   %MarketSlot      MarketTabs, built the first time state.market exists
-    ExchangeTab      CompanyRow per board row, under group CompanyRows; the strip
+    TopRow           tab strip, then HOLDINGS / RANKINGS / DESK buttons
+    ExchangeTab      CompanyRow per board row, under group CompanyRows
     MarketTab        CellRow lines, TextChart index chart, mood row
-    IndustriesTab    CellRow table, signed TextChart, members
-    CompanyTab       CellRow earnings table, LedgerWidget, investors, desk activity
+    IndustriesTab    CellRow table, signed TextChart, members as TradeLines
+    CompanyTab       identity line with a TradeBox, CellRow earnings table,
+                     LedgerWidget, investors, desk activity
+    SidePanel        HOLDINGS (TradeLines), RANKINGS, DESK - beside the page
   NewsPanel        + YearDigestPanel in its %DigestSlot
 
 src/sim/ MarketReadouts   every derived figure: P/E, shares, averages, breadth...
@@ -1159,8 +1162,19 @@ string, `LedgerWidget` the price ledger, `YearDigestPanel` the year in review. E
 emits signals with ids and knows nothing of the tab holding it.
 
 **Trading** goes through the base game's handlers: `MarketTabs.buy_requested` is
-connected to the same `_on_buy_requested` as a base `StalkRow`, and the buy and sell
-checks are the session's `why_not_buy`/`why_not_sell`.
+connected to the same `_on_buy_requested` as a base `StalkRow`. Every company shown
+on its own has a `TradeBox` (quantity, B, S): a board row, a holding, an industry's
+member line (`TradeLine`, a `CellRow` and a box) and the Company tab. Each refresh
+`MarketTabs` builds one `TradeContext` from the screen's two checks
+(`set_trade_checks`, the session's `why_not_buy`/`why_not_sell`), and every box is
+prepared and checked through it (D183).
+
+**The side panel** is open on EXCHANGE always and on the other tabs only when one
+of its buttons is pressed; changing tab closes it (D183). Holdings follow
+`ExchangeTab.board_order()`, which is also the order the Company tab's arrows walk.
+
+**Definitions** of financial terms, used as tooltips, are constants in
+`src/ui/term_tips.gd`, so a definition is written once.
 
 **Collapse and sort** are held in `ExchangeTab` only (D182): the viewer's, not the
 match's.

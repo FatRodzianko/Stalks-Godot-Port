@@ -10,7 +10,7 @@ extends PanelContainer
 ##
 ## | Marker | SYM | NAME | PRICE | CHG | EPS | P/E | DIV | HELD | QTY + B + S |
 ## |---|---|---|---|---|---|---|---|---|---|
-## | 2 | 6 | 18 | 6 | 6 | 7 | 6 | 6 | 5 | 13 |
+## | 2 | 6 | 18 | 6 | 6 | 7 | 6 | 6 | 5 | 14 |
 ##
 ## An industry header puts its name across SYM and NAME together (24 wide, the
 ## same total), its year's move under CHG and its average P/E under P/E, so a
@@ -49,6 +49,18 @@ const SORT_HELD: StringName = &"held"
 const MARKER_OPEN: String = "-"
 const MARKER_CLOSED: String = "+"
 
+## The sorted column's heading carries one of these: ascending, descending.
+## Every heading has a spare character for it (decisions.md D183).
+const SORT_UP: String = "^"
+const SORT_DOWN: String = "v"
+
+## Each heading's caption and what it means (`TermTips`).
+const HEADINGS: Dictionary[StringName, String] = {
+	SORT_TICKER: "SYM", SORT_NAME: "NAME", SORT_PRICE: "PRICE",
+	SORT_CHANGE: "CHG", SORT_EPS: "EPS", SORT_PE: "P/E",
+	SORT_DIVIDEND: "DIV", SORT_HELD: "HELD",
+}
+
 ## The width of SYM and NAME together, which an industry's name takes.
 const GROUP_NAME_CHARS: int = 24
 
@@ -76,17 +88,13 @@ var _held: int = 0
 @onready var _pe: Label = %Pe
 @onready var _dividend: Label = %Dividend
 @onready var _held_label: Label = %Held
-@onready var _trade: HBoxContainer = %Trade
-@onready var _amount: LineEdit = %Amount
-@onready var _buy: Button = %BuyButton
-@onready var _sell: Button = %SellButton
+@onready var _trade: TradeBox = %Trade
 
 
 func _ready() -> void:
-	_buy.pressed.connect(_on_buy_pressed)
-	_sell.pressed.connect(_on_sell_pressed)
-	_amount.text_changed.connect(_on_amount_changed)
-	_amount.text_submitted.connect(_on_amount_submitted)
+	_trade.buy_requested.connect(_on_trade_buy_requested)
+	_trade.sell_requested.connect(_on_trade_sell_requested)
+	_trade.amount_changed.connect(_on_trade_amount_changed)
 
 
 # ------------------------------------------------------------- configuration
@@ -96,32 +104,63 @@ func configure_as_header() -> void:
 	_kind = Kind.HEADER
 	theme_type_variation = &"HeaderCard"
 	_marker.text = ""
-	_ticker.text = "SYM"
-	_name.set_full_text("NAME")
-	_price.text = "PRICE"
-	_change.text = "CHG"
-	_eps.text = "EPS"
-	_pe.text = "P/E"
-	_dividend.text = "DIV"
-	_held_label.text = "HELD"
-	_trade.modulate.a = 0.0
-	_amount.editable = false
-	_amount.focus_mode = Control.FOCUS_NONE
-	_buy.disabled = true
-	_sell.disabled = true
-
-	var columns: Dictionary[StringName, Label] = {
-		SORT_TICKER: _ticker, SORT_NAME: _name, SORT_PRICE: _price,
-		SORT_CHANGE: _change, SORT_EPS: _eps, SORT_PE: _pe,
-		SORT_DIVIDEND: _dividend, SORT_HELD: _held_label,
+	_hide_trade()
+	var meanings: Dictionary[StringName, String] = {
+		SORT_TICKER: TermTips.SYM, SORT_NAME: "The company's name.",
+		SORT_PRICE: TermTips.PRICE, SORT_CHANGE: TermTips.CHANGE,
+		SORT_EPS: TermTips.EPS, SORT_PE: TermTips.PE,
+		SORT_DIVIDEND: TermTips.DIVIDEND, SORT_HELD: TermTips.HELD,
 	}
-	for column: StringName in columns:
-		var label: Label = columns[column]
+	for column: StringName in HEADINGS:
+		var label: Label = _heading_label(column)
 		label.theme_type_variation = &"Faint"
 		label.mouse_filter = Control.MOUSE_FILTER_STOP
 		label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		label.tooltip_text = "Sort by %s, within each industry" % label.text
+		label.tooltip_text = "%s
+Click to sort, within each industry." % meanings[column]
 		label.gui_input.connect(_on_header_cell_input.bind(column))
+	show_sort(&"", false)
+
+
+## Marks the sorted column's heading with ^ or v and brightens it; the others
+## read plainly. `column` empty means board order.
+func show_sort(column: StringName, descending: bool) -> void:
+	for each: StringName in HEADINGS:
+		var label: Label = _heading_label(each)
+		var caption: String = HEADINGS[each]
+		label.theme_type_variation = &"Faint"
+		if each == column:
+			var mark: String = SORT_DOWN if descending else SORT_UP
+			# The mark goes on the side away from the column's edge, into the
+			# spare character: before a right-aligned number, after a name.
+			if label.horizontal_alignment == HORIZONTAL_ALIGNMENT_RIGHT:
+				caption = mark + caption
+			else:
+				caption = caption + mark
+			label.theme_type_variation = &""
+		if label == _name:
+			_name.set_full_text(caption)
+		else:
+			label.text = caption
+
+
+func _heading_label(column: StringName) -> Label:
+	match column:
+		SORT_TICKER:
+			return _ticker
+		SORT_NAME:
+			return _name
+		SORT_PRICE:
+			return _price
+		SORT_CHANGE:
+			return _change
+		SORT_EPS:
+			return _eps
+		SORT_PE:
+			return _pe
+		SORT_DIVIDEND:
+			return _dividend
+	return _held_label
 
 
 ## An industry's header: its name across SYM and NAME, its year's move, and
@@ -133,11 +172,7 @@ func configure_as_group(group_id: StringName) -> void:
 	_ticker.visible = false
 	_name.custom_minimum_size.x = GROUP_NAME_CHARS * CellRow.CELL_WIDTH
 	_name.theme_type_variation = &"SubHeading"
-	_trade.modulate.a = 0.0
-	_amount.editable = false
-	_amount.focus_mode = Control.FOCUS_NONE
-	_buy.disabled = true
-	_sell.disabled = true
+	_hide_trade()
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 
@@ -154,6 +189,11 @@ func display_group(title: String, collapsed: bool, performance: float, average_p
 	_pe.text = ""
 	if not is_nan(average_pe):
 		_pe.text = Palette.format_decimal(average_pe, 1)
+		_pe.tooltip_text = TermTips.INDUSTRY_PE
+		_pe.mouse_filter = Control.MOUSE_FILTER_PASS
+	if not is_nan(performance):
+		_change.tooltip_text = TermTips.INDUSTRY_MOVE
+		_change.mouse_filter = Control.MOUSE_FILTER_PASS
 	_price.text = ""
 	_eps.text = ""
 	_dividend.text = ""
@@ -196,11 +236,7 @@ func display_row(
 		_eps.text = ""
 		_pe.text = ""
 		_dividend.text = ""
-		_amount.text = ""
-		_amount.placeholder_text = ""
-		_amount.editable = false
-		_buy.visible = false
-		_sell.visible = false
+		_trade.set_dead()
 		return
 
 	_price.text = str(row.price)
@@ -212,57 +248,26 @@ func display_row(
 	if is_company:
 		_pe.text = Palette.format_decimal(pe, 1)
 	_dividend.text = str(dividend)
-	_buy.visible = true
-	# Nothing to sell, so no sell button (§7.2). Hidden rather than removed:
-	# the trade box keeps its width, so the columns do not move.
-	_sell.visible = held > 0
-
-
-func set_trading_open(is_open: bool) -> void:
-	if _kind != Kind.COMPANY:
-		return
-	var open: bool = is_open and not _is_bankrupt
-	_amount.editable = open
-	_buy.disabled = not open
-	_sell.disabled = not open
-
-
-## Why a buy of what is typed would be refused, or empty. Greys the button with
-## the reason as its tooltip, as the base board does.
-func set_buy_blocked(reason: String) -> void:
-	if _kind != Kind.COMPANY or _is_bankrupt:
-		return
-	var blocked: bool = not reason.is_empty()
-	_buy.disabled = blocked
-	_buy.tooltip_text = reason if blocked else "Buy"
-	_amount.theme_type_variation = &""
-	if blocked and not _amount.text.is_empty():
-		_amount.theme_type_variation = &"InvalidLineEdit"
-
-
-func set_sell_blocked(reason: String) -> void:
-	if _kind != Kind.COMPANY or _is_bankrupt:
-		return
-	_sell.disabled = not reason.is_empty()
-	_sell.tooltip_text = "Sell" if reason.is_empty() else reason
-
-
-## The affordable maximum, as the quantity field's placeholder.
-func set_affordable_hint(maximum: int) -> void:
-	if _kind != Kind.COMPANY or _is_bankrupt:
-		return
-	_amount.placeholder_text = str(maximum)
-	_amount.tooltip_text = "Most you can afford: %d" % maximum
 
 
 func shares_entered() -> int:
-	return _amount.text.strip_edges().to_int()
+	return _trade.shares_entered()
 
 
 func clear_amount() -> void:
 	if _kind == Kind.COMPANY:
-		_amount.text = ""
-		_amount.theme_type_variation = &""
+		_trade.clear_amount()
+
+
+## The column header and an industry header keep the trade box's width, so the
+## columns line up, but show nothing in it.
+func _hide_trade() -> void:
+	_trade.modulate.a = 0.0
+	_trade.set_open(false)
+	_trade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child: Node in _trade.get_children():
+		(child as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+		(child as Control).focus_mode = Control.FOCUS_NONE
 
 
 # ---------------------------------------------------------------- for tests
@@ -280,11 +285,15 @@ func is_group() -> bool:
 
 
 func buy_is_blocked() -> bool:
-	return _buy.disabled
+	return _trade.buy_is_blocked()
 
 
-func sell_is_shown() -> bool:
-	return _sell.visible
+func sell_is_blocked() -> bool:
+	return _trade.sell_is_blocked()
+
+
+func trade_box() -> TradeBox:
+	return _trade
 
 
 ## Every visible column's text, in order, joined by single spaces.
@@ -321,16 +330,15 @@ func column_text(column: StringName) -> String:
 
 ## Types into the quantity field as a player would.
 func type_amount(text: String) -> void:
-	_amount.text = text
-	_amount.text_changed.emit(text)
+	_trade.type_amount(text)
 
 
 func press_buy() -> void:
-	_buy.pressed.emit()
+	_trade.press_buy()
 
 
 func press_sell() -> void:
-	_sell.pressed.emit()
+	_trade.press_sell()
 
 
 # --------------------------------------------------------------- handlers
@@ -357,21 +365,16 @@ func _on_header_cell_input(event: InputEvent, column: StringName) -> void:
 	sort_requested.emit(column)
 
 
-func _on_buy_pressed() -> void:
+func _on_trade_buy_requested(shares: int) -> void:
 	if _kind == Kind.COMPANY:
-		buy_requested.emit(_stalk_id, shares_entered())
+		buy_requested.emit(_stalk_id, shares)
 
 
-func _on_sell_pressed() -> void:
+func _on_trade_sell_requested(shares: int) -> void:
 	if _kind == Kind.COMPANY:
-		sell_requested.emit(_stalk_id, shares_entered())
+		sell_requested.emit(_stalk_id, shares)
 
 
-func _on_amount_changed(_text: String) -> void:
+func _on_trade_amount_changed(shares: int) -> void:
 	if _kind == Kind.COMPANY:
-		amount_changed.emit(_stalk_id, shares_entered())
-
-
-func _on_amount_submitted(_text: String) -> void:
-	if _kind == Kind.COMPANY and not _buy.disabled:
-		buy_requested.emit(_stalk_id, shares_entered())
+		amount_changed.emit(_stalk_id, shares)

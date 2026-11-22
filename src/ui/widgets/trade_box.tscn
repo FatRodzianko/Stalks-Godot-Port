@@ -1,0 +1,30 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/widgets/trade_box.gd" id="1_trade"]
+
+[node name="TradeBox" type="HBoxContainer"]
+theme_type_variation = &"TightHBox"
+script = ExtResource("1_trade")
+
+[node name="Amount" type="LineEdit" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+size_flags_vertical = 4
+alignment = 2
+
+[node name="BuyButton" type="Button" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(24, 0)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Buy"
+text = "B"
+
+[node name="SellButton" type="Button" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(24, 0)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Sell"
+text = "S"

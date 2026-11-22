@@ -22,6 +22,10 @@ var index_move_percent: float = 0.0
 var mood: MarketMood.Value = MarketMood.Value.BULL
 var market_pe: float = MarketReadouts.NONE
 
+## The sentiment next year's prices will be valued on: this year's index move,
+## clamped (glossary "Sentiment"). `EarningsMarket.sentiment` after the year.
+var next_sentiment: float = 0.0
+
 ## Each industry's performance this year: `[industry_id, display_name,
 ## percent]`, in board order.
 var industries: Array[Array] = []
@@ -63,6 +67,7 @@ static func for_latest_year(state: GameState) -> YearDigest:
 	digest.index_move_percent = result.index_move_percent
 	digest.mood = result.mood
 	digest.market_pe = MarketReadouts.market_pe(state)
+	digest.next_sentiment = state.market.sentiment
 	for industry: IndustryState in state.market.industries:
 		digest.industries.append([
 			industry.id, industry.definition.display_name,

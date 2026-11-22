@@ -1,0 +1,267 @@
+class_name SidePanel
+extends ScrollContainer
+## The StalkleHeads tabs' right-hand panel: **HOLDINGS** (cash, net worth, any
+## loan, and every company you hold, with a trade box to sell or buy more),
+## **RANKINGS**, and **THE DESK** (each NPC strategy's return, and short
+## interest). One page at a time; `MarketTabs` owns the three buttons that
+## choose it and whether the panel shows at all (decisions.md D183).
+##
+## Asked for after the first play test: HELD on the board alone made a player
+## hunt for what they owned. The base game lists your stalks beside the board,
+## and this does the same.
+
+
+signal buy_requested(stalk_id: StringName, shares: int)
+signal sell_requested(stalk_id: StringName, shares: int)
+
+## A holding was clicked: open that company on the Company tab.
+signal company_requested(stalk_id: StringName)
+
+
+enum Page { HOLDINGS, RANKINGS, DESK }
+
+## The buttons' captions, in their order on screen.
+const CAPTIONS: Dictionary[Page, String] = {
+	Page.HOLDINGS: "HOLDINGS",
+	Page.RANKINGS: "RANKINGS",
+	Page.DESK: "DESK",
+}
+
+## The panel's width in characters: a holding's SYM and HELD and a trade box.
+const WIDTH_CHARS: int = 26
+const HOLDING_SYM_CHARS: int = 6
+const HOLDING_HELD_CHARS: int = 5
+
+## The two-column lines (cash, the desk, short interest), in characters.
+const CAPTION_CHARS: int = 12
+const VALUE_CHARS: int = 12
+
+const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
+const TradeLineScene: PackedScene = preload("res://src/ui/widgets/trade_line.tscn")
+const RankingRowScene: PackedScene = preload("res://src/ui/widgets/ranking_row.tscn")
+
+
+var _page: Page = Page.HOLDINGS
+var _pages: Dictionary[Page, Control] = {}
+var _holding_lines: Dictionary[StringName, TradeLine] = {}
+var _desk_rows: Array[CellRow] = []
+var _context: TradeContext
+
+@onready var _holdings_page: VBoxContainer = %HoldingsPage
+@onready var _rankings_page: VBoxContainer = %RankingsPage
+@onready var _desk_page: VBoxContainer = %DeskPage
+@onready var _cash_row: CellRow = %CashRow
+@onready var _net_row: CellRow = %NetRow
+@onready var _loan_row: CellRow = %LoanRow
+@onready var _holdings_header: CellRow = %HoldingsHeader
+@onready var _holdings_list: VBoxContainer = %HoldingsList
+@onready var _holdings_none: Label = %HoldingsNone
+@onready var _ranking_list: VBoxContainer = %RankingList
+@onready var _desk_title: Label = %DeskTitle
+@onready var _desk_list: VBoxContainer = %DeskList
+@onready var _short_title: Label = %ShortTitle
+@onready var _short_none: Label = %ShortNone
+@onready var _short_list: VBoxContainer = %ShortList
+
+
+func _ready() -> void:
+	custom_minimum_size.x = WIDTH_CHARS * CellRow.CELL_WIDTH
+	_pages = {
+		Page.HOLDINGS: _holdings_page,
+		Page.RANKINGS: _rankings_page,
+		Page.DESK: _desk_page,
+	}
+	for row: CellRow in [_cash_row, _net_row, _loan_row]:
+		row.configure([CAPTION_CHARS, VALUE_CHARS], [CellRow.LEFT, CellRow.RIGHT])
+		row.set_cell_variation(0, &"Faint")
+	_cash_row.set_cell(0, "CASH")
+	_net_row.set_cell(0, "NET")
+	_net_row.set_cell_tooltip(0, TermTips.NET_WORTH)
+	_loan_row.set_cell(0, "LOAN")
+	_loan_row.set_cell_variation(1, &"Bear")
+	_holdings_header.configure([HOLDING_SYM_CHARS, HOLDING_HELD_CHARS], [CellRow.LEFT, CellRow.RIGHT])
+	_holdings_header.set_texts(["SYM", "HELD"])
+	_holdings_header.set_row_variation(&"Faint")
+	_desk_title.tooltip_text = TermTips.DESK
+	_short_title.tooltip_text = TermTips.short_interest()
+	show_page(Page.HOLDINGS)
+
+
+func show_page(page: Page) -> void:
+	_page = page
+	for each: Page in _pages:
+		_pages[each].visible = each == page
+
+
+func current_page() -> Page:
+	return _page
+
+
+## Redraws all three pages. `board_order` is the Exchange's row order, which
+## the holdings follow.
+func refresh(
+	context: TradeContext,
+	board_order: Array[StringName],
+	ranking_order: Array[StringName],
+	local_id: StringName,
+	host_id: StringName,
+) -> void:
+	_context = context
+	var state: GameState = context.state
+	var player: PlayerState = context.player
+	if player != null:
+		_cash_row.set_cell(1, Palette.format_money(player.cash))
+		_net_row.set_cell(1, Palette.format_money(player.net_worth))
+		_loan_row.visible = player.owes() > 0
+		_loan_row.set_cell(1, Palette.format_money(player.owes()))
+	_refresh_holdings(state, board_order)
+	_refresh_rankings(state, ranking_order, local_id, host_id)
+	_refresh_desk(state)
+	_refresh_short_interest(state)
+
+
+func clear_amounts() -> void:
+	for line: TradeLine in _holding_lines.values():
+		line.trade_box().clear_amount()
+
+
+# ------------------------------------------------------------- holdings
+
+func _refresh_holdings(state: GameState, board_order: Array[StringName]) -> void:
+	var held_ids: Array[StringName] = []
+	for stalk_id: StringName in board_order:
+		if _context.held(stalk_id) > 0:
+			held_ids.append(stalk_id)
+	for stalk_id: StringName in _holding_lines.keys():
+		if not held_ids.has(stalk_id):
+			var gone: TradeLine = _holding_lines[stalk_id]
+			_holding_lines.erase(stalk_id)
+			_holdings_list.remove_child(gone)
+			gone.queue_free()
+	for index: int in held_ids.size():
+		var stalk_id: StringName = held_ids[index]
+		var line: TradeLine = _holding_lines.get(stalk_id)
+		if line == null:
+			line = TradeLineScene.instantiate()
+			_holdings_list.add_child(line)
+			line.configure([HOLDING_SYM_CHARS, HOLDING_HELD_CHARS], [CellRow.LEFT, CellRow.RIGHT])
+			line.stalk_id = stalk_id
+			line.buy_requested.connect(_on_line_buy_requested)
+			line.sell_requested.connect(_on_line_sell_requested)
+			line.amount_changed.connect(_on_line_amount_changed)
+			line.info_requested.connect(_on_line_info_requested)
+			_holding_lines[stalk_id] = line
+		_holdings_list.move_child(line, index)
+		var stalk: StalkState = state.stalk_by_id(stalk_id)
+		line.cells().set_texts([String(stalk.definition.ticker), str(_context.held(stalk_id))])
+		line.cells().set_cell_tooltip(0, stalk.definition.display_name)
+		_context.prepare(line.trade_box(), stalk_id)
+	_holdings_none.visible = held_ids.is_empty()
+
+
+# ------------------------------------------------------------- rankings
+
+func _refresh_rankings(
+	state: GameState,
+	ranking_order: Array[StringName],
+	local_id: StringName,
+	host_id: StringName,
+) -> void:
+	for child: Node in _ranking_list.get_children():
+		_ranking_list.remove_child(child)
+		child.queue_free()
+	for player_id: StringName in ranking_order:
+		var ranked: PlayerState = state.player_by_id(player_id)
+		if ranked == null:
+			continue
+		var row: RankingRow = RankingRowScene.instantiate()
+		_ranking_list.add_child(row)
+		row.display(ranked, ranked.id == local_id, ranked.is_ready, ranked.id == host_id)
+
+
+# ----------------------------------------------------------------- desk
+
+func _refresh_desk(state: GameState) -> void:
+	var returns: Dictionary[NpcStrategy.Value, float] = MarketReadouts.desk_returns(state)
+	var order: Array[NpcStrategy.Value] = MarketReadouts.strategies_by_return(state)
+	while _desk_rows.size() < order.size():
+		var row: CellRow = CellRowScene.instantiate()
+		_desk_list.add_child(row)
+		row.configure([CAPTION_CHARS, VALUE_CHARS], [CellRow.LEFT, CellRow.RIGHT])
+		_desk_rows.append(row)
+	for index: int in order.size():
+		var strategy: NpcStrategy.Value = order[index]
+		var row: CellRow = _desk_rows[index]
+		row.set_texts([NpcStrategy.name_of(strategy).to_lower(), Palette.format_percent_change(returns[strategy])])
+		row.set_cell_colour(1, Palette.for_percent(returns[strategy]))
+		row.set_cell_tooltip(0, TermTips.strategy(strategy))
+
+
+func _refresh_short_interest(state: GameState) -> void:
+	for child: Node in _short_list.get_children():
+		_short_list.remove_child(child)
+		child.queue_free()
+	var shorted: Array[Array] = MarketReadouts.short_interest(state)
+	_short_none.visible = shorted.is_empty()
+	for entry: Array in shorted:
+		var stalk: StalkState = state.stalk_by_id(entry[0])
+		var row: CellRow = CellRowScene.instantiate()
+		_short_list.add_child(row)
+		row.configure([CAPTION_CHARS, VALUE_CHARS], [CellRow.LEFT, CellRow.RIGHT])
+		row.set_texts([String(stalk.definition.ticker), "%d shares" % entry[1]])
+		row.set_cell_tooltip(0, stalk.definition.display_name)
+
+
+# ------------------------------------------------------------ for tests
+
+func holding_line(stalk_id: StringName) -> TradeLine:
+	return _holding_lines.get(stalk_id)
+
+
+func holding_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for child: Node in _holdings_list.get_children():
+		ids.append((child as TradeLine).stalk_id)
+	return ids
+
+
+func ranking_row_count() -> int:
+	return _ranking_list.get_child_count()
+
+
+func desk_lines() -> PackedStringArray:
+	var lines: PackedStringArray = []
+	for row: CellRow in _desk_rows:
+		lines.append(row.line_text())
+	return lines
+
+
+func short_interest_lines() -> PackedStringArray:
+	var lines: PackedStringArray = []
+	for child: Node in _short_list.get_children():
+		lines.append((child as CellRow).line_text())
+	return lines
+
+
+func cash_text() -> String:
+	return _cash_row.cell_text(1)
+
+
+# ------------------------------------------------------------- handlers
+
+func _on_line_buy_requested(stalk_id: StringName, shares: int) -> void:
+	buy_requested.emit(stalk_id, shares)
+
+
+func _on_line_sell_requested(stalk_id: StringName, shares: int) -> void:
+	sell_requested.emit(stalk_id, shares)
+
+
+func _on_line_amount_changed(stalk_id: StringName, _shares: int) -> void:
+	var line: TradeLine = _holding_lines.get(stalk_id)
+	if line != null and _context != null:
+		_context.check(line.trade_box(), stalk_id)
+
+
+func _on_line_info_requested(stalk_id: StringName) -> void:
+	company_requested.emit(stalk_id)

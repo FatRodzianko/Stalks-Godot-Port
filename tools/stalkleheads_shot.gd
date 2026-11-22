@@ -1,7 +1,8 @@
 extends Control
 ## Renders the StalkleHeads tabs, one after another, so the layout can be looked
-## at rather than only asserted about: the Exchange, Market, Industries and
-## Company tabs, then the year digest. A seeded solo match, six years in.
+## at rather than only asserted about: the Exchange (with two holdings), Market,
+## Industries and Company tabs (the last with the side panel opened), then the
+## year digest. A seeded solo match, six years in.
 ##
 ## Runs the real game with Movie Maker, as tools/loan_shot.gd explains. From
 ## the project root, in PowerShell:
@@ -45,6 +46,7 @@ func _process(_delta: float) -> void:
 		for _year: int in 6:
 			session.set_ready(session.local_player_id(), true)
 		session.request_buy(session.local_player_id(), session.state().market.companies[0].id, 5)
+		session.request_buy(session.local_player_id(), session.state().market.companies[7].id, 12)
 		screen.news_panel().close()
 	var tabs: MarketTabs = screen.market_tabs()
 	if tabs == null:
@@ -56,5 +58,6 @@ func _process(_delta: float) -> void:
 			tabs.select_tab(MarketTabs.Tab.INDUSTRIES)
 		18:
 			tabs.show_company(_stage.game().session().state().market.companies[0].id)
+			tabs.side_button(SidePanel.Page.HOLDINGS).pressed.emit()
 		23:
 			screen.get_node("%EventFlavour").more_requested.emit()

@@ -28,7 +28,7 @@ const DIVIDEND_CUT: String = "dividend cut"
 const DESK_PICK: String = "the desk piled into"
 
 const CAPTION_CHARS: int = 27
-const COMPANY_CHARS: int = 22
+const COMPANY_CHARS: int = 26
 const INDUSTRY_NAME_CHARS: int = 19
 const INDUSTRY_MOVE_CHARS: int = 6
 
@@ -48,8 +48,9 @@ var _outlier_rows: Array[CellRow] = []
 func _ready() -> void:
 	_title.configure([0, 8], [CellRow.LEFT, CellRow.RIGHT])
 	_title.set_cell_variation(0, &"SubHeading")
-	_market.configure([12, 6, 14, 10, 0])
-	_market.set_cell_variation(4, &"Faint")
+	_market.configure([12, 6, 14, 17, 0])
+	_market.set_cell_tooltip(3, TermTips.MARKET_PE)
+	_market.set_cell_tooltip(4, TermTips.SENTIMENT)
 	for caption: String in [SURPRISE, DISAPPOINTMENT, DIVIDEND_CUT, DESK_PICK]:
 		var row: CellRow = CellRowScene.instantiate()
 		_outliers.add_child(row)
@@ -66,9 +67,10 @@ func show_digest(digest: YearDigest, state: GameState) -> void:
 		"the market",
 		Palette.format_percent_change(digest.index_move_percent),
 		"-> %s" % MarketMood.label(digest.mood),
-		"P/E %s" % Palette.format_decimal(digest.market_pe, 1),
-		"carried into year %d as sentiment" % (digest.year + 1),
+		"market P/E %s" % Palette.format_decimal(digest.market_pe, 1),
+		"year %d sentiment %s" % [digest.year + 1, Palette.format_percent_change(digest.next_sentiment)],
 	])
+	_market.set_cell_colour(4, Palette.for_percent(digest.next_sentiment))
 	_market.set_cell_colour(1, Palette.for_percent(digest.index_move_percent))
 	_market.set_cell_colour(2, Palette.for_mood(digest.mood))
 

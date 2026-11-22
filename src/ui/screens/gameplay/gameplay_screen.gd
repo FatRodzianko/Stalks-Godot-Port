@@ -40,6 +40,7 @@ signal connection_ended(reason: String)
 @onready var _year_label: Label = %YearLabel
 @onready var _mood_label: Label = %MoodLabel
 @onready var _event_flavour: ScrollingLabel = %EventFlavour
+@onready var _event_panel: PanelContainer = %EventPanel
 @onready var _event_effect: Label = %EventEffect
 @onready var _yeehaw_button: Button = %YeehawButton
 @onready var _yeehaw_note: Label = %YeehawNote
@@ -404,9 +405,15 @@ func _ensure_market_tabs() -> void:
 	_market_tabs = MarketTabsScene.instantiate()
 	_market_slot.add_child(_market_tabs)
 	_market_tabs.build(game)
+	_market_tabs.set_trade_checks(_why_not_buy_mine, _why_not_sell_mine)
 	_market_tabs.buy_requested.connect(_on_buy_requested)
 	_market_tabs.sell_requested.connect(_on_sell_requested)
-	_market_tabs.amount_changed.connect(_on_market_amount_changed)
+	# In StalkleHeads the year in review is in the news panel, so clicking the
+	# year's event always opens it, ... MORE or not (decisions.md D183).
+	_event_panel.gui_input.connect(_on_event_strip_input)
+	_event_flavour.gui_input.connect(_on_event_strip_input)
+	_event_panel.tooltip_text = "Click for the year in review"
+	_event_panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 	if _news_panel != null and _year_digest == null:
 		_year_digest = YearDigestScene.instantiate()
@@ -605,9 +612,16 @@ func _refresh_market(game: GameState, player: PlayerState) -> void:
 		game, player, trading, _ranking_order(game),
 		_session.local_player_id(), game.host_player_id(),
 	)
-	if trading:
-		for stalk: StalkState in game.stalks:
-			_validate_market_row(stalk.id)
+
+
+## The StalkleHeads trade boxes' two checks (TradeContext): why this player's
+## buy or sell would be refused, from the same rules the authority enforces.
+func _why_not_buy_mine(stalk_id: StringName, shares: int) -> String:
+	return _session.why_not_buy(_session.local_player_id(), stalk_id, shares)
+
+
+func _why_not_sell_mine(stalk_id: StringName, shares: int) -> String:
+	return _session.why_not_sell(_session.local_player_id(), stalk_id, shares)
 
 
 func _refresh_rankings(game: GameState) -> void:
@@ -795,27 +809,18 @@ func _validate_buy_row(row: StalkRow, shares: int) -> void:
 	)
 
 
-## A board row's buy and sell checks for the quantity typed in it, from the
-## same rules the authority enforces (docs/architecture.md 5.1).
-func _validate_market_row(stalk_id: StringName) -> void:
-	var row: CompanyRow = _market_tabs.exchange().row_for(stalk_id)
-	if row == null:
-		return
-	var shares: int = row.shares_entered()
-	var me: StringName = _session.local_player_id()
-	if shares <= 0:
-		row.set_buy_blocked("")
-		row.set_sell_blocked("")
-		return
-	row.set_buy_blocked(_session.why_not_buy(me, stalk_id, shares))
-	row.set_sell_blocked(_session.why_not_sell(me, stalk_id, shares))
-
-
 # ------------------------------------------------------------------- UI handlers
 
-func _on_market_amount_changed(stalk_id: StringName, _shares: int) -> void:
-	if _market_tabs != null:
-		_validate_market_row(stalk_id)
+## A click on the year's event in a StalkleHeads match opens the news panel,
+## with the year in review, whether or not the event is long enough for
+## ... MORE.
+func _on_event_strip_input(event: InputEvent) -> void:
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
+		return
+	# Year 0 has no year to review.
+	if _session.state().year > 0:
+		_on_more_requested()
 
 
 func _on_buy_amount_changed(stalk_id: StringName, shares: int) -> void:
@@ -1045,7 +1050,7 @@ func _on_player_changed(player_id: StringName) -> void:
 		for row: StalkRow in _stalk_rows.values():
 			row.clear_amount()
 		if _market_tabs != null:
-			_market_tabs.exchange().clear_amounts()
+			_market_tabs.clear_amounts()
 	refresh()
 	if is_me and not _pending_loan_action.is_empty():
 		_finish_loan_action()

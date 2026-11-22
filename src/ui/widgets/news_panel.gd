@@ -79,10 +79,11 @@ func show_news(description: String, effect: String) -> void:
 	_effect.text = effect
 	_effect.visible = not effect.strip_edges().is_empty()
 
-	# Always unticked when it opens. The box is a statement about the future,
-	# not a thing that stays pressed - and seeing it already ticked on a panel
-	# that is nevertheless showing would read as broken.
-	_dont_show_again.set_pressed_no_signal(false)
+	# Shows the setting as it is. It used to open unticked every time (D101),
+	# but a player who had turned the panel off and opened it by hand then saw
+	# the box clear, and had to tick and untick it to keep their choice
+	# (play test, 2026-11-22, decisions.md D183).
+	_dont_show_again.set_pressed_no_signal(not is_wanted())
 
 	show()
 	# The close button takes focus, so Enter or Space gets rid of it without

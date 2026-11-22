@@ -74,6 +74,15 @@ func _first_living_company() -> CompanyState:
 	return null
 
 
+## A click on a label that listens through its `gui_input` signal (a column
+## heading), as the engine would deliver it.
+func _click_label(label: Control) -> void:
+	var press: InputEventMouseButton = InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	label.gui_input.emit(press)
+
+
 func _click(control: Control) -> void:
 	var press: InputEventMouseButton = InputEventMouseButton.new()
 	press.button_index = MOUSE_BUTTON_LEFT
@@ -171,19 +180,19 @@ func test_a_company_row_shows_its_derived_figures() -> void:
 		assert_eq(_exchange().row_for(other_id).column_text(CompanyRow.SORT_PE), "", "%s has no P/E" % other_id)
 
 
-## Buying through the board's own row: HELD goes up, the sell button appears.
+## Buying through the board's own row: HELD goes up, S comes alive.
 func test_buying_through_a_row_fills_its_held_column() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 1)
 	var company: CompanyState = _first_living_company()
 	var row: CompanyRow = _exchange().row_for(company.id)
-	assert_false(row.sell_is_shown(), "nothing to sell yet")
+	assert_true(row.sell_is_blocked(), "nothing to sell yet")
 
 	row.type_amount("3")
 	row.press_buy()
 
 	assert_eq(_player().shares_of(company.id), 3)
 	assert_eq(row.column_text(CompanyRow.SORT_HELD), "3")
-	assert_true(row.sell_is_shown())
+	assert_false(row.sell_is_blocked())
 
 
 func test_selling_through_a_row_empties_its_held_column() -> void:
@@ -196,7 +205,7 @@ func test_selling_through_a_row_empties_its_held_column() -> void:
 	row.press_sell()
 	assert_eq(_player().shares_of(company.id), 0)
 	assert_eq(row.column_text(CompanyRow.SORT_HELD), "0")
-	assert_false(row.sell_is_shown())
+	assert_true(row.sell_is_blocked())
 
 
 ## The quantity is checked as it is typed, from the authority's own rule.
@@ -308,14 +317,15 @@ func _assert_each_group_ordered_by_pe(order: Array[StringName], descending: bool
 			group_pes.append(MarketReadouts.company_pe(_state(), company))
 
 
-# --------------------------------------------------------- the right strip
+# --------------------------------------------------------- the side panel
 
-func test_the_strip_shows_cash_rankings_and_the_desk() -> void:
+func test_the_side_panel_shows_cash_rankings_and_the_desk() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 3)
-	assert_eq(_exchange().cash_text(), Palette.format_money(_player().cash))
-	assert_eq(_exchange().ranking_row_count(), _state().players.size())
+	var side: SidePanel = _tabs().side_panel()
+	assert_eq(side.cash_text(), Palette.format_money(_player().cash))
+	assert_eq(side.ranking_row_count(), _state().players.size())
 	var returns: Dictionary[NpcStrategy.Value, float] = MarketReadouts.desk_returns(_state())
-	var lines: PackedStringArray = _exchange().desk_lines()
+	var lines: PackedStringArray = side.desk_lines()
 	assert_eq(lines.size(), returns.size())
 	var best: NpcStrategy.Value = MarketReadouts.strategies_by_return(_state())[0]
 	assert_eq(lines[0], "%s %s" % [
@@ -323,12 +333,92 @@ func test_the_strip_shows_cash_rankings_and_the_desk() -> void:
 	])
 
 
-func test_the_strip_lists_short_interest() -> void:
+func test_the_side_panel_lists_short_interest() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 8)
 	var expected: PackedStringArray = []
 	for entry: Array in MarketReadouts.short_interest(_state()):
 		expected.append("%s %d shares" % [_state().stalk_by_id(entry[0]).definition.ticker, entry[1]])
-	assert_eq(_exchange().short_interest_lines(), expected)
+	assert_eq(_tabs().side_panel().short_interest_lines(), expected)
+
+
+## D183: on the board the panel is always open; elsewhere it starts closed, a
+## button opens it on its page, the same button closes it, a tab change closes it.
+func test_the_side_panel_opens_and_closes_as_asked() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 1)
+	var tabs: MarketTabs = _tabs()
+	assert_true(tabs.is_side_open(), "open on the board")
+	tabs.side_button(SidePanel.Page.DESK).pressed.emit()
+	assert_eq(tabs.side_panel().current_page(), SidePanel.Page.DESK)
+	tabs.side_button(SidePanel.Page.DESK).pressed.emit()
+	assert_true(tabs.is_side_open(), "the board's panel does not close")
+
+	tabs.select_tab(MarketTabs.Tab.COMPANY)
+	assert_false(tabs.is_side_open(), "closed on another tab")
+	tabs.side_button(SidePanel.Page.HOLDINGS).pressed.emit()
+	assert_true(tabs.is_side_open())
+	assert_eq(tabs.side_panel().current_page(), SidePanel.Page.HOLDINGS)
+	assert_true(tabs.side_button(SidePanel.Page.HOLDINGS).button_pressed)
+	tabs.side_button(SidePanel.Page.HOLDINGS).pressed.emit()
+	assert_false(tabs.is_side_open(), "the same button closes it")
+
+	tabs.side_button(SidePanel.Page.RANKINGS).pressed.emit()
+	tabs.select_tab(MarketTabs.Tab.INDUSTRIES)
+	assert_false(tabs.is_side_open(), "a tab change closes it")
+	tabs.select_tab(MarketTabs.Tab.EXCHANGE)
+	assert_true(tabs.is_side_open())
+
+
+## Your holdings, in board order, each with a trade box that sells.
+func test_holdings_list_what_you_own_and_sell_from_there() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 1)
+	var side: SidePanel = _tabs().side_panel()
+	assert_eq(side.holding_ids(), [] as Array[StringName])
+	var first: StringName = _exchange().board_order()[0]
+	var later: StringName = _exchange().board_order()[4]
+	_session.request_buy(&"p0", later, 2)
+	_session.request_buy(&"p0", first, 3)
+	assert_eq(side.holding_ids(), [first, later] as Array[StringName], "board order")
+	var line: TradeLine = side.holding_line(first)
+	assert_string_contains(line.line_text(), String(_state().stalk_by_id(first).definition.ticker))
+	assert_string_contains(line.line_text(), "3")
+
+	line.trade_box().type_amount("3")
+	line.trade_box().press_sell()
+	assert_eq(_player().shares_of(first), 0)
+	assert_eq(side.holding_ids(), [later] as Array[StringName], "sold out, gone from the list")
+
+
+## The trade box never moves: S is greyed, not hidden, and every box is the
+## same width on every row (manual-testing.md E, D183).
+func test_the_trade_box_keeps_its_place() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 1)
+	_screen.size = Vector2(640, 360)
+	await wait_physics_frames(2)
+	var company: CompanyState = _first_living_company()
+	var box: TradeBox = _exchange().row_for(company.id).trade_box()
+	var buy: Button = box.get_node("%BuyButton")
+	var sell: Button = box.get_node("%SellButton")
+	var before: float = buy.global_position.x
+	assert_true(sell.visible)
+	assert_true(sell.disabled)
+	_session.request_buy(&"p0", company.id, 1)
+	await wait_physics_frames(2)
+	assert_eq(buy.global_position.x, before, "B did not move")
+	assert_false(sell.disabled)
+	assert_eq(box.size.x, float(TradeBox.WIDTH_CHARS * CellRow.CELL_WIDTH))
+
+
+## Clicking a column heading marks it ^, again v.
+func test_the_sorted_heading_shows_its_direction() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 1)
+	var header: CompanyRow = _exchange().get_node("%HeaderSlot").get_child(0)
+	_click_label(header.get_node("%Pe"))
+	assert_eq(header.column_text(CompanyRow.SORT_PE), "^P/E")
+	_click_label(header.get_node("%Pe"))
+	assert_eq(header.column_text(CompanyRow.SORT_PE), "vP/E")
+	_click_label(header.get_node("%Name"))
+	assert_eq(header.column_text(CompanyRow.SORT_NAME), "NAME^")
+	assert_eq(header.column_text(CompanyRow.SORT_PE), "P/E")
 
 
 # ---------------------------------------------------------- the company tab
@@ -377,15 +467,69 @@ func test_the_ledgers_total_is_the_boards_change() -> void:
 		assert_eq(lines[4], "this event %s" % Palette.format_change(ledger.this_years_event))
 
 
+## Step 49 of manual test E: the arrows walk the board as it is shown, its
+## groups and any sort, not the order the companies are stored in.
 func test_the_arrows_walk_the_board_and_wrap() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 1)
-	var first: StringName = _state().stalks[0].id
-	var last: StringName = _state().stalks[_state().stalks.size() - 1].id
-	_tabs().show_company(first)
-	_tabs().company_tab().get_node("%PreviousButton").pressed.emit()
-	assert_eq(_tabs().company_tab().shown_id(), last)
-	_tabs().company_tab().get_node("%NextButton").pressed.emit()
-	assert_eq(_tabs().company_tab().shown_id(), first)
+	_click_label(_exchange().get_node("%HeaderSlot").get_child(0).get_node("%Pe"))
+	var order: Array[StringName] = _exchange().board_order()
+	_tabs().show_company(order[0])
+	var tab: CompanyTab = _tabs().company_tab()
+	tab.get_node("%NextButton").pressed.emit()
+	assert_eq(tab.shown_id(), order[1])
+	tab.get_node("%NextButton").pressed.emit()
+	assert_eq(tab.shown_id(), order[2])
+	tab.get_node("%PreviousButton").pressed.emit()
+	tab.get_node("%PreviousButton").pressed.emit()
+	tab.get_node("%PreviousButton").pressed.emit()
+	assert_eq(tab.shown_id(), order[order.size() - 1], "wraps")
+
+
+## Opening a company from a click lights COMPANY alone, not COMPANY and the
+## tab the click came from.
+func test_opening_a_company_lights_one_tab() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 1)
+	_tabs().show_company(_first_living_company().id)
+	for tab: MarketTabs.Tab in MarketTabs.CAPTIONS:
+		assert_eq(_tabs().tab_button(tab).button_pressed, tab == MarketTabs.Tab.COMPANY, MarketTabs.CAPTIONS[tab])
+
+
+## The Company tab says what you hold and trades from there.
+func test_the_company_tab_trades_and_shows_what_you_hold() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 1)
+	var company: CompanyState = _first_living_company()
+	_tabs().show_company(company.id)
+	var tab: CompanyTab = _tabs().company_tab()
+	assert_eq(tab.held_text(), "you hold 0")
+	tab.trade_box().type_amount("2")
+	tab.trade_box().press_buy()
+	assert_eq(_player().shares_of(company.id), 2)
+	assert_eq(tab.held_text(), "you hold 2")
+
+
+## E6 step 62: the industry has a column of its own, so the regime phrase
+## never runs into it.
+func test_the_identity_line_keeps_the_industry_whole() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 2)
+	for company: CompanyState in _state().market.companies:
+		_tabs().show_company(company.id)
+		var cells: CellRow = _tabs().company_tab().get_node("%Identity")
+		var name: String = _state().market.industry_by_id(company.profile.industry).definition.display_name
+		assert_eq(cells.cell_text(1), name)
+		assert_true(name.length() <= CompanyTab.IDENTITY_WIDTHS[1] - 1, "%s fits with a space" % name)
+
+
+## The ledger's first line carries the year-on-year percentage.
+func test_the_ledger_shows_the_year_on_year_move() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 3)
+	var company: CompanyState = _first_living_company()
+	_tabs().show_company(company.id)
+	var ledger: PriceLedger = (_state().latest_result() as EarningsYearResult).ledger_for(company.id)
+	var expected: String = "%d -> %d %s" % [
+		ledger.price_before, ledger.price_after,
+		Palette.format_percent_change(MarketReadouts.percent_change(ledger.price_before, ledger.price_after)),
+	]
+	assert_eq(_tabs().company_tab().ledger().lines_text()[0], expected)
 
 
 ## §14 q11: the Company tab names each trader.
@@ -455,6 +599,23 @@ func test_clicking_an_industry_selects_it_for_the_chart_and_the_breakdown() -> v
 	assert_eq(tab.member_lines().size(), MarketReadouts.industry_members(_state(), industry.id).size())
 
 
+## D183: a company shown on its own can be bought where it is shown.
+func test_an_industrys_members_can_be_bought_from_the_breakdown() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 2)
+	_tabs().select_tab(MarketTabs.Tab.INDUSTRIES)
+	var tab: IndustriesTab = _tabs().industries_tab()
+	var company: CompanyState = _first_living_company()
+	var row: CellRow = null
+	for child: Node in tab.get_node("%IndustryList").get_children():
+		if (child as CellRow).key == company.profile.industry:
+			row = child
+	_click(row)
+	var line: TradeLine = tab.member_line(company.id)
+	line.trade_box().type_amount("4")
+	line.trade_box().press_buy()
+	assert_eq(_player().shares_of(company.id), 4)
+
+
 # ---------------------------------------------------------------- the digest
 
 ## §6.3: the year's fundamentals in one panel, at the year turn.
@@ -468,6 +629,33 @@ func test_the_year_digest_opens_with_the_years_news() -> void:
 	assert_string_contains(lines[1], Palette.format_percent_change(digest.index_move_percent))
 	assert_string_contains(lines[1], MarketMood.label(digest.mood))
 	assert_true(_screen.year_digest().is_visible_in_tree())
+
+
+## D183: with the news panel turned off, clicking the year's event still
+## opens it, with the year in review, long event or short.
+func test_clicking_the_event_opens_the_year_in_review() -> void:
+	var stored: UserSettings = UserSettings.load_from()
+	stored.show_news = false
+	stored.save_to()
+	_start(GameMode.Value.STALKLEHEADS, 2)
+	assert_false(_screen.news_panel().is_open(), "turned off, so it did not open by itself")
+	_click_label(_screen.get_node("%EventPanel"))
+	assert_true(_screen.news_panel().is_open())
+	assert_eq(_screen.year_digest().lines_text()[0], "THE YEAR IN REVIEW year 2")
+	assert_true(_screen.news_panel().dont_show_again_box().button_pressed, "shows the setting")
+
+
+## The sentiment line says what it is: next year's sentiment, as a move.
+func test_the_digest_names_next_years_sentiment() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 3)
+	var digest: YearDigest = YearDigest.for_latest_year(_state())
+	_screen.news_panel().close()
+	_click_label(_screen.get_node("%EventPanel"))
+	assert_string_contains(
+		_screen.year_digest().lines_text()[1],
+		"year 4 sentiment %s" % Palette.format_percent_change(digest.next_sentiment),
+	)
+	assert_eq(digest.next_sentiment, _state().market.sentiment)
 
 
 func test_the_mood_line_carries_the_index_move() -> void:
@@ -508,8 +696,8 @@ func _everything_shown(state: GameState) -> PackedStringArray:
 		lines.append(tabs.exchange().row_for(stalk.id).line_text())
 	for industry: IndustryState in state.market.industries:
 		lines.append(tabs.exchange().group_row_for(industry.id).line_text())
-	lines.append_array(tabs.exchange().desk_lines())
-	lines.append_array(tabs.exchange().short_interest_lines())
+	lines.append_array(tabs.side_panel().desk_lines())
+	lines.append_array(tabs.side_panel().short_interest_lines())
 	tabs.select_tab(MarketTabs.Tab.MARKET)
 	lines.append(tabs.market_tab().index_chart().chart_text())
 	for line: MarketTab.Line in MarketTab.Line.values():
@@ -547,6 +735,12 @@ func test_every_tab_fits_the_picture() -> void:
 		var needed: Vector2 = _screen.get_combined_minimum_size()
 		assert_true(needed.x <= 640.0, "%s needs %d px across" % [MarketTabs.CAPTIONS[tab], needed.x])
 		assert_true(needed.y <= 360.0, "%s needs %d px down" % [MarketTabs.CAPTIONS[tab], needed.y])
+		# And with the side panel opened beside it (D183).
+		if tab != MarketTabs.Tab.EXCHANGE:
+			_tabs().side_button(SidePanel.Page.HOLDINGS).pressed.emit()
+			await wait_physics_frames(2)
+			needed = _screen.get_combined_minimum_size()
+			assert_true(needed.x <= 640.0, "%s with the panel needs %d px across" % [MarketTabs.CAPTIONS[tab], needed.x])
 
 
 ## The board's columns are the design's widths (§7.2), so a header and a row

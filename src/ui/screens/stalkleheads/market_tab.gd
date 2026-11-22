@@ -50,11 +50,19 @@ func _ready() -> void:
 		Line.BREADTH: "breadth",
 		Line.RISK_FREE: "risk-free",
 	}
+	var tips: Dictionary[Line, String] = {
+		Line.INDEX: TermTips.INDEX_LEVEL,
+		Line.PE: TermTips.MARKET_PE,
+		Line.MOOD: TermTips.MOOD,
+		Line.BREADTH: TermTips.BREADTH,
+		Line.RISK_FREE: TermTips.RISK_FREE,
+	}
 	for line: Line in captions:
 		var row: CellRow = CellRowScene.instantiate()
 		_stats.add_child(row)
 		row.configure([14, 8, 6, 0], [CellRow.LEFT, CellRow.RIGHT, CellRow.RIGHT, CellRow.LEFT])
 		row.set_cell(0, captions[line])
+		row.set_cell_tooltip(0, tips[line])
 		row.set_cell_variation(0, &"Faint")
 		row.set_cell_variation(3, &"Faint")
 		_lines[line] = row

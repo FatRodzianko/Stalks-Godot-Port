@@ -6836,9 +6836,11 @@ Choices made while building S7 that the design left open:
   the rankings, THE DESK (each strategy's return, best first) and SHORT INTEREST
   (or "none"). Cash and net worth had been on the base board's stats panel, which
   this mode hides.
+  *Replaced by the side panel, D183.*
 - **One quantity box per row with B and S**, the base game's holdings list folded
   into the board. S is hidden, not removed, when nothing is held, so columns do not
   move. A bankrupt row hides its CHG column and gives the width to "BANKRUPT".
+  *S is greyed instead of hidden since D183.*
 - **The ledger has six lines and a total**: earnings, multiple (sentiment, regime
   premium and valuation limits summed), industry, this event, last event faded, flow,
   total. Flow is shown because order flow is published (design §15 Q). Every line is
@@ -6854,3 +6856,71 @@ Choices made while building S7 that the design left open:
 
 **Rules out.** Collapse or sort state in the snapshot; a separate holdings list in
 this mode; a second dialog for the digest.
+
+### D183 - After the first play of S7: the side panel, a fixed trade box, and trading from every company
+**2026-11-22 · Accepted** (manual steps E, findings)
+
+The owner played E1-E6. Two bugs and a list of requests came back. Each answer below,
+and why.
+
+**Bugs.**
+
+- **`<` and `>` on the Company tab walked by id.** They now walk
+  `ExchangeTab.board_order()`, every company in group order and, inside a group,
+  in the board's current sort. That order is handed to the Company tab on each
+  refresh, so the Company tab never learns how the board sorts.
+- **A long industry name ran into the regime phrase.** The line under the name
+  is three cells - ticker (6), industry (20), regime (the rest) - so each part
+  has its own room and a clip can only ever cut the regime's end.
+- **Two tabs lit at once.** `select_tab` set the new tab's button with
+  `set_pressed_no_signal`, which does not make a `ButtonGroup` release the
+  others, so opening a company by clicking it left EXCHANGE lit too. Every
+  button is now set, on or off.
+
+**The side panel** (`SidePanel`, 26 characters wide): three pages behind
+**HOLDINGS**, **RANKINGS** and **DESK** buttons at the right of the tab strip.
+HOLDINGS has CASH, NET (and LOAN), then every company you hold by ticker with its
+count and a trade box, in board order. RANKINGS is the rankings; DESK is the desk's
+strategies and short interest. This replaces D182's fixed right-hand strip.
+
+- **Always open on EXCHANGE**, showing the page last chosen.
+- **On the other tabs it starts closed** with the buttons still showing. A button
+  opens it on its page; the same button again closes it; changing tab closes it.
+  **Why:** the analysis tabs need their width, and the owner asked for exactly
+  this.
+- **It sits beside the page, not over it**, so it never hides what it is next to.
+  Every tab is measured to fit 640 px with it open; the Market tab's right column
+  went from 240 to 180 px for that.
+
+**Trading from every company shown on its own**: a board row, a holding, an
+industry's member line and the Company tab (which also says "you hold N"). One
+`TradeContext`, built by `MarketTabs` each refresh from the screen's two checks,
+prepares and checks every box, so all four ask the same questions the host will.
+**Why one object:** four places deciding separately whether S is allowed is four
+chances to disagree.
+
+**The trade box is fixed**: `TradeBox` is a quantity box six characters wide, then
+**B** and **S**, four each. **S is greyed, never hidden**, when nothing is held, so
+the box and B never move. **Why not BUY and SELL in full:** with the side panel,
+the board row is 18 px short for the longer captions.
+
+**Smaller choices.**
+
+- **The sorted column heading shows `^` or `v`** and is no longer faint.
+- **Tooltips on the financial terms** (`src/ui/term_tips.gd`, one place for every
+  definition): column headings, the Market tab's figures, the Company tab's lines,
+  the ledger, the side panel. Explanations only, no voice.
+- **YoY on the Company tab**: the ledger's first line shows the price move as a
+  percentage of the starting price (`MarketReadouts.percent_change`).
+- **The year in review** has a line between its sections, and the sentiment is
+  written "year N sentiment +X%" with a tooltip. It is next year's sentiment
+  (`YearDigest.next_sentiment`).
+- **Clicking the year's event in the top strip opens the news panel**, StalkleHeads
+  only, long event or short. Before this, with the panel turned off, a short event
+  left no way to reach the year in review.
+- **"Don't show again" shows the setting.** This reverses D102's "the box is clear
+  every time the panel opens". With the panel turned off, the only way to see it
+  is to ask for it, and a clear box then reads as though the setting were off.
+
+**Rules out.** A right-hand strip fixed to the board; S appearing and disappearing;
+a trade check written inside one tab; tooltip text scattered through the scenes.

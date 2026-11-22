@@ -23,6 +23,12 @@ const CAPTIONS: Array[String] = [
 	"earnings", "multiple", "industry", "this event", "last, faded", "flow",
 ]
 
+## What each line means, in the same order (`TermTips`).
+const TIPS: Array[String] = [
+	TermTips.LEDGER_EARNINGS, TermTips.LEDGER_MULTIPLE, TermTips.LEDGER_INDUSTRY,
+	TermTips.LEDGER_EVENT, TermTips.LEDGER_FADED, TermTips.LEDGER_FLOW,
+]
+
 const CAPTION_CHARS: int = 13
 const VALUE_CHARS: int = 6
 
@@ -38,12 +44,14 @@ func _ready() -> void:
 	_move.configure([CAPTION_CHARS, VALUE_CHARS], [CellRow.LEFT, CellRow.RIGHT])
 	_total.configure([CAPTION_CHARS, VALUE_CHARS], [CellRow.LEFT, CellRow.RIGHT])
 	_total.set_framed(&"HeaderCard")
-	for caption: String in CAPTIONS:
+	_move.set_cell_tooltip(1, TermTips.YEAR_ON_YEAR)
+	for index: int in CAPTIONS.size():
 		var row: CellRow = CellRowScene.instantiate()
 		_lines.add_child(row)
 		row.configure([CAPTION_CHARS, VALUE_CHARS], [CellRow.LEFT, CellRow.RIGHT])
-		row.set_cell(0, "  " + caption)
+		row.set_cell(0, "  " + CAPTIONS[index])
 		row.set_cell_variation(0, &"Faint")
+		row.set_cell_tooltip(0, TIPS[index])
 		_rows.append(row)
 	show_nothing()
 
@@ -60,7 +68,13 @@ func show_ledger(ledger: PriceLedger) -> void:
 	if ledger == null:
 		show_nothing()
 		return
-	_move.set_texts(["%d -> %d" % [ledger.price_before, ledger.price_after], ""])
+	# The year-on-year move as a percentage beside the two prices.
+	var percent: float = MarketReadouts.percent_change(ledger.price_before, ledger.price_after)
+	_move.set_texts([
+		"%d -> %d" % [ledger.price_before, ledger.price_after],
+		Palette.format_percent_change(percent),
+	])
+	_move.set_cell_colour(1, Palette.for_percent(percent))
 	var values: Array[int] = [
 		ledger.earnings,
 		ledger.multiple_total(),

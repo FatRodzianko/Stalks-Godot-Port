@@ -368,6 +368,13 @@ func test_a_share_bar_is_at_least_one_cell_and_at_most_its_length() -> void:
 	assert_eq(TextChart.share_bar(100.0, 10), "▄▄▄▄▄▄▄▄▄▄")
 
 
+func test_a_percent_change_is_of_the_starting_figure() -> void:
+	assert_almost_eq(MarketReadouts.percent_change(80, 100), 25.0, 0.0001)
+	assert_almost_eq(MarketReadouts.percent_change(100, 80), -20.0, 0.0001)
+	assert_eq(MarketReadouts.percent_change(50, 50), 0.0)
+	assert_true(is_nan(MarketReadouts.percent_change(0, 10)), "nothing to start from")
+
+
 # ------------------------------------------------------------- formatting
 
 func test_the_shared_formatter_prints_ratios_and_missing_figures() -> void:

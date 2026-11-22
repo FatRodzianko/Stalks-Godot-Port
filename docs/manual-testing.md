@@ -1650,7 +1650,27 @@ Before starting, on each machine:
 - **Step 41 differing** is the year-by-year page, which is replayed from the
   host's draws (D178). Send a screenshot of both pages.
 
-### E - Playing StalkleHeads on screen (phase S7) — **not yet run**
+### E - Playing StalkleHeads on screen (phase S7) — **passed 2026-11-22, with findings**
+
+**Run on 2026-11-22**, E1-E6, E6 on two Steam accounts on two machines. Every check
+passed except step 49. E6 also passed a second leave-and-rejoin with the host two
+years ahead. What came back, and what was done about it (decisions.md D183):
+
+- **Step 49 failed:** `<` and `>` walked the companies in id order, not board order.
+- **E6 step 62:** a long industry name ran into the regime phrase on the Company tab.
+- **Step 52:** with the news panel turned off, the year in review could only be
+  reached through ... MORE, which only a long event has; and the panel opened from
+  ... MORE showed "Don't show again" unticked when it was on.
+- **Asked for:** your holdings listed in a panel beside the board, with selling
+  from it, alongside RANKINGS and the desk; buying from every place a single company
+  is shown; the trade box fixed in place with S greyed rather than hidden; a sort
+  direction marker; lines between the year in review's sections; tooltips on the
+  financial terms; a year-on-year change on the Company tab.
+- **Asked about:** what the desk is, what breadth is, what "carried into year 9 as
+  sentiment" means; whether the Industries tab has room for industry news (S8).
+
+The steps below are as run. Section F re-checks the changes.
+
 
 Built on 2026-11-22 (decisions.md D179-D182). The suite checks that every tab shows
 the right figures, that a client's tabs match the host's line for line, and that
@@ -1756,6 +1776,112 @@ E1-E5 need one machine and no Steam. E6 needs two Steam accounts on two machines
 - **Step 47 not matching**: the ledger's total is not the board's change. Write down the company, both figures and the year.
 - **Step 63, 65 or 68 differing**: a figure the client cannot rebuild. Send a screenshot of both screens.
 - **Anything cut off**: write down the tab, the step and what was cut.
+
+### F - StalkleHeads after the first play (decisions.md D183) — **not yet run**
+
+Re-checks what section E found and asked for. One machine, no Steam. Run on a
+locally exported build containing D183. To check a checkout before exporting: the
+file `src/ui/screens/stalkleheads/side_panel.tscn` exists.
+
+#### F1. The side panel
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Click **START**.
+5. Check **HOLDINGS**, **RANKINGS** and **DESK** buttons sit at the right end of the tab strip, with **HOLDINGS** lit.
+6. Check the panel on the right shows **CASH**, **NET** and **YOUR STALKS**, with **none** under it.
+7. Click **RANKINGS**.
+8. Check the panel shows the rankings.
+9. Click **DESK**.
+10. Check the panel shows the desk's strategies and **SHORT INTEREST**.
+11. Click **HOLDINGS**.
+12. Press **Ready for New Year**, closing the news panel if it opens.
+13. Click **MARKET**.
+14. Check the side panel is gone and the three buttons are still there, none lit.
+15. Click **HOLDINGS**.
+16. Check the panel opens beside the Market tab, and nothing on the tab is cut off.
+17. Click **HOLDINGS** again.
+18. Check the panel closes.
+19. Click **DESK**.
+20. Check the panel opens on the desk.
+21. Click **INDUSTRIES**.
+22. Check the panel is closed.
+23. Click **EXCHANGE**.
+24. Check the panel is open.
+
+#### F2. The trade box and holdings
+
+25. On the Exchange tab, check every company row ends in a quantity box, **B**, and a greyed **S**.
+26. In the first company row, type **5** in the quantity box.
+27. Click that row's **B**.
+28. Check the box and the **B** did not move, and the row's **S** is no longer greyed.
+29. Check **YOUR STALKS** on the right lists that company's short code with **5**.
+30. In that line on the right, type **2** in the quantity box.
+31. Click its **S**.
+32. Check it now reads **3**, and the board row's HELD reads **3**.
+33. Click the short code in the right-hand line.
+34. Check the **COMPANY** tab opens on that company, with only **COMPANY** lit in the tab strip.
+35. Check the line under the name reads the code, the whole industry name, the regime phrase, then **you hold 3**.
+36. Type **3** in the Company tab's quantity box.
+37. Click its **S**.
+38. Check it reads **you hold 0** and its **S** is greyed.
+
+#### F3. Buying from Industries
+
+39. Click **INDUSTRIES**.
+40. Click **Technology**.
+41. Check each company in the list on the right has a quantity box, **B** and **S**.
+42. Type **1** in the first company's box.
+43. Click its **B**.
+44. Click **HOLDINGS**.
+45. Check that company is in **YOUR STALKS** with **1**.
+
+#### F4. Walking and sorting
+
+46. Click **EXCHANGE**.
+47. Click the **P/E** column heading.
+48. Check the heading now reads **^P/E** or **vP/E** and is brighter than the others.
+49. Click **P/E** again.
+50. Check the marker turns over.
+51. Write down the first three companies of the board, top to bottom, by short code.
+52. Click the first company's name.
+53. Click **>** twice.
+54. Check the codes shown are the second and then the third you wrote down.
+55. Click **<** three times.
+56. Check it shows the last company on the board.
+
+#### F5. Tooltips and the year in review
+
+57. On the Company tab, rest the mouse on **margin**.
+58. Check a short definition appears.
+59. Check **WHY THE PRICE MOVED**'s first line shows a percentage after the two prices.
+60. Click **EXCHANGE** and rest the mouse on the **EPS** heading.
+61. Check a definition appears.
+62. Click **MARKET** and rest the mouse on **breadth**.
+63. Check a definition appears.
+64. Press Escape.
+65. Click **SETTINGS**.
+66. Untick **Show the year's news**.
+67. Click **BACK**.
+68. Click **BACK TO THE GAME**.
+69. Press **Ready for New Year**.
+70. Check the news panel does not open.
+71. Click the event text in the top bar.
+72. Check the news panel opens with **THE YEAR IN REVIEW**.
+73. Check **Don't show again** is ticked.
+74. Check lines separate the market line, the industries and the four lines below.
+75. Check the market line ends **year N sentiment** and a percentage, N being next year.
+76. Untick **Don't show again**.
+77. Click **Close**.
+
+#### What a failure here means
+
+- **Step 14 or 22 showing the panel open**: the panel is not closing on a tab change.
+- **Step 28 moving the box or B**: the trade box is not fixed.
+- **Step 34 lighting two tabs**: the tab strip is not releasing the old tab.
+- **Step 54 or 56 showing another company**: the arrows are not walking the board.
+- **Anything cut off with the panel open**: write down the tab and what was cut.
 
 ### Known gaps, so they are not surprises
 

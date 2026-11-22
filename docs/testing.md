@@ -108,7 +108,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-1241 tests in 52 scripts, about 115 seconds.
+1254 tests in 52 scripts, about 150 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -353,7 +353,15 @@ comparisons in `test_wire.gd` are what guard the two halves from here.
 
 ### StalkleHeads on screen: what S7 covers and what it does not
 
-`test_market_readouts.gd` (30) and `test_stalkleheads_screen.gd` (31), D179-D182.
+`test_market_readouts.gd` (31) and `test_stalkleheads_screen.gd` (42), D179-D183.
+
+**After the first play (D183)**, tests for each finding: the arrows walk the board's
+order; the identity line keeps the industry whole; one tab lit after opening a
+company; the side panel opens and closes as asked; holdings listed and sold from;
+the trade box keeps its place with S greyed; the sorted heading's marker; trading
+from an industry's members and the Company tab; the ledger's YoY; clicking the event
+opens the year in review; the digest's sentiment line; the news panel's tick box
+showing the setting (`test_gameplay_screen.gd`).
 
 **The rule they protect.** No node works out a figure. So the numbers are tested in
 `test_market_readouts.gd` without a window, and the screen test checks that each tab
@@ -365,7 +373,7 @@ per-year record is written in the half of the year a client replays (D179), this
 the test that would catch a figure the client cannot rebuild.
 
 **Layout.** Two tests measure instead of looking: every tab's combined minimum size
-is within 640 x 360, and the header's columns start where a row's do. A third checks
+is within 640 x 360, with the side panel shut and open, and the header's columns start where a row's do. A third checks
 a bankrupt row's word is not clipped.
 
 **Not covered, and why.**
@@ -376,6 +384,7 @@ a bankrupt row's word is not clipped.
   looks. Manual steps E1-E6 in [manual-testing.md](manual-testing.md).
 - **Hover and scrolling.** The name marquee and the board's scroll bar are the base
   game's widgets, tested there.
+- **Tooltips.** That each one appears where the mouse is, over the CRT. Section F.
 - **Over Steam.** The tabs draw only from state the suite already proves identical
   on host and client (S6). E6 checks it once by hand.
 - **News headlines, whispers and chatter.** S8.

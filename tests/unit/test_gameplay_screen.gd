@@ -312,8 +312,9 @@ func test_it_is_saved_without_waiting_for_the_panel_to_close() -> void:
 	assert_false(UserSettings.load_from().show_news, "and already saved")
 
 
-## The box is a statement about the future, not a thing that stays pressed.
-func test_the_box_is_clear_every_time_the_panel_opens() -> void:
+## The box shows the setting as it stands (decisions.md D183): clear while
+## the news is wanted...
+func test_the_box_is_clear_while_the_news_is_wanted() -> void:
 	var screen: Control = _two_player_screen()
 	await wait_process_frames(2)
 	var panel: NewsPanel = screen.news_panel()
@@ -328,6 +329,22 @@ func test_the_box_is_clear_every_time_the_panel_opens() -> void:
 	panel.show_news("Monorail train cars installed with no brakes.", "")
 
 	assert_false(panel.dont_show_again_box().button_pressed)
+
+
+## ...and ticked when the player turned it off and opened it by hand, so
+## closing it again keeps their choice without touching the box.
+func test_the_box_is_ticked_when_the_news_was_turned_off() -> void:
+	var screen: Control = _two_player_screen()
+	await wait_process_frames(2)
+	var panel: NewsPanel = screen.news_panel()
+	var stored: UserSettings = UserSettings.load_from()
+	stored.show_news = false
+	stored.save_to()
+
+	panel.show_news("Monorail train cars installed with no brakes.", "")
+	assert_true(panel.dont_show_again_box().button_pressed)
+	panel.close()
+	assert_false(UserSettings.load_from().show_news, "still off after closing")
 
 
 ## Settings is the way back. Without it the tick box is a one-way door.
