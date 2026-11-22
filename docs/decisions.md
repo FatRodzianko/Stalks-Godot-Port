@@ -6051,7 +6051,7 @@ what they hold, the base game's rule, and a test pins it in a StalkleHeads state
 **Rules out.** The probe's ever-growing notional position; a player short.
 
 ### D165 - Short interest flags a company at 10%; a flagged year squeezes one time in four
-**2026-11-22 · Accepted, numbers open (D167)**
+**2026-11-22 · Accepted; numbers confirmed by D170**
 
 Design §5.3 and §15 M: foreshadowing is a real state variable or it is not
 foreshadowing.
@@ -6085,7 +6085,8 @@ the result and the news all assume one. A squeeze that came on top would be a se
 event.
 
 **Why these numbers.** They were set once, on the reasoning above, before any
-measurement. **They break P4** (D167), and the owner has not chosen replacements.
+measurement. With S4's first SHORT target **they broke P4** (D167). With the highest
+P/E (D169) they pass, and D170 keeps them.
 
 **Rules out.** A squeeze that can fire with no flag; a squeeze in the mood bags;
 a short-interest figure stored separately from the positions.
@@ -6113,8 +6114,8 @@ a short-interest figure stored separately from the positions.
 The smoke test now also checks that the players' trades move the market by default,
 that with no flow and no squeeze the desk moves no price, and that FOLLOW plays.
 
-### D167 - With the desk, P4 fails at 41.8%: the squeeze, then flow. Open for the owner
-**2026-11-22 · Open**
+### D167 - With the desk, P4 fails at 41.8%: the squeeze, then flow
+**2026-11-22 · Closed by D169 and D170**
 
 The re-run of S2 that design §11 asks of S4. Ten-year matches, 4,000 seeds, ten
 strategies, published values. "No squeeze" is `--no-squeeze`.
@@ -6187,6 +6188,9 @@ and §3.10 already records long-match compounding as unsolved.
 - whether 5.2 points of flow cost, leaving P4 1.1 points of margin with no squeeze,
   is acceptable, or the flow clamp or the desk's VALUE cohort should change.
 
+**All decided** (D169, D170): the target moves to the highest P/E, the squeeze ships
+at the numbers above, and flow's cost is accepted until S5 re-measures it.
+
 **The flag is nearly always set**: some company is flagged in 65% of years with the
 squeeze on and 80% with it off. As a foreshadowing signal it says *which* company far
 more than *whether*. Also for the owner, with the above.
@@ -6249,8 +6253,8 @@ published values with `--flow` and `--no-squeeze`:
   cost, and the game does not yet record players' trades into flow (S5). Re-measure
   when S5 does.
 
-Whether the squeeze ships and whether this flow cost is acceptable stay open for the
-owner.
+Both decided by the owner in D170: the squeeze ships, and this flow cost is accepted
+until S5.
 
 ### D168 - A balance-tool lever for the SHORT traders' target
 **2026-11-22 · Accepted**
@@ -6309,9 +6313,42 @@ is a squeeze on the company the market has priced highest against its earnings. 
 loss-making company has no P/E and is never the target, as with VALUE.
 
 **What stayed.** The flag (10%), the chance (25%) and the size (+25) are D165's.
-Whether the squeeze ships, and the cost of flow, remain open in D167. The balance tool
+Whether the squeeze ships, and the cost of flow, are D170. The balance tool
 keeps `--short-target=slowest` as a lever (D168), so the old rule can still be
 measured. A default run reproduces the bold row to the digit.
 
 **Rules out.** A SHORT trader that bets against the weakest company; a squeeze whose
 target is chosen by the same reading as LOWPE's.
+
+### D170 - The squeeze ships at 25% / +25; flow's cost is accepted until S5
+**2026-11-22 · Accepted**
+
+The owner's decision on D167's remaining questions, taking the recommendation made
+with the measurements in D167 (flow's cost with the highpe target).
+
+**The squeeze ships, with D165's numbers unchanged**: flagged at 10% of shares
+outstanding, a squeeze in place of the bag draw one flagged year in four, +25.
+
+- It is the one event the brief asks to be foreshadowed, and the only one that is.
+- With SHORT on the highest P/E (D169) it improves balance: LOWPE 27.7% with it,
+  29.4% without.
+- Smaller settings measured no better: 10% or 5% chance at +5 give 28.2% and 28.8%.
+
+**Flow's cost is accepted: 2.4 points as shipped** (LOWPE 27.7% against TREND 25.3%
+with no flow), leaving P4 2.3 points of margin against sampling noise of about ±0.7.
+
+- Flow is what makes the desk worth reading: FOLLOW wins 17.2%.
+- The tool overstates it. Its players sell everything and rebuy each year at no
+  cost, which no real player does.
+
+**Re-measure at S5.** S5 must record players' trades into flow through
+`MatchAuthority` (D163). Once it does, re-run the balance tool at 4,000 ten-year
+seeds. If the leader passes 30%, tighten the flow clamp (5% of fair value, §3.10)
+first, and the VALUE cohort second.
+
+**Known and left alone.** Some company is flagged in about 48% of years, so the
+signal says *which* company more often than *whether*. A higher flag threshold is
+the lever if that reads badly in play; it is not changed now.
+
+**Rules out.** Shipping the first build without the squeeze; retuning the flow clamp
+before players' trades are in flow.
