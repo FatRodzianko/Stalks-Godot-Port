@@ -108,7 +108,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-1180 tests in 50 scripts, about 105 seconds.
+1241 tests in 52 scripts, about 115 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -127,6 +127,8 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_earnings_year_resolver.gd` | **The StalkleHeads year (S3)**, D152-D160: the twenty-row board, companies at their own prices, shared and built definitions, the index at its authored price; `YearSettlement` computing net worth and standings, ending the game and skipping loans when off; the earnings pipeline running the same loans and game end; same seed same match; **every ledger balancing and being the Yearly Change** over 20 seeds of 15 years; the event inside Yearly Change; the mood BULL exactly when the index rose; sentiment as last year's move clamped; **no circularity** (prices valued on the sentiment carried in, and the mood label moving no price but through the event bag); **the derived bull rate between 45% and 65%** over 200 seeds; the bull bag in year 1, last year's bag after, over a whole match; the event drawn before prices; a bankrupt target skipped; no event on the index; the index as the mean pre-split move, a bankrupt constituent at -100 once then dropped, alive while one constituent is, failing only when all do, paying the average dividend; the bond fixed at 100 and paying 3 in both moods, and its 3% / 8% / 5-point yardstick; one bankruptcy pass wiping out holders; a dead company frozen; a split doubling holders and value-neutral; dividends from earnings on post-split shares; policy 0 never paying; the flow input consumed once; scans for mode checks in the shared files and for `pow`/`exp`/`log`/`sqrt` in the price path | 45 |
 | `test_game_mode.gd` | **StalkleHeads mode and lobby (S5)**, D171: the base game the default; `MatchSetup` choosing board, pipeline, content and loans by mode; players' trades reaching flow; the mode in the snapshot and a base-content client resolving a StalkleHeads board; take-over refused without a market (since S6: a snapshot from an older build that sent none); the lobby row; the title screen's Game row and its card size; `Main` starting either mode; only `MatchSetup` branching on the mode | 33 |
 | `test_wire.gd` | **StalkleHeads over the wire (S6)**, D176-D178: every snapshot of three 60-year matches rebuilding the host's market on a base-content replica to the bit, derived readouts included; year 0 as the profiles' figures; every live year replayed to the host's result, ledgers and all, then the snapshot; a year sent as inputs only; a welcomed history year for year; a rejoiner equal to a player who stayed; **a promoted host making the same thirty years the old host would have**, and parting from them with the event bags forgotten; the same through real sessions over ENet; refusals of other content, short blocks, 32-bit reals, a desk entry off the board, a truncated year and a history with one broken year; the 32/64-bit packing; the layout widths pinned; the base game's snapshot and year keys unchanged; a stale market cleared; a failed company's valuation cleared; the 99-year ten-player welcome under 256 KB | 24 |
+| `test_market_readouts.gd` | **StalkleHeads readouts (S7)**, D179: each year recording every company as it closed, and a year's record not moving with later years; year 0 read from the profile; five years of history oldest first; a P/E without earnings as no figure; an industry's average P/E as its members' mean; market shares and industry revenue shares summing to 100; the three-year move compounding; the regime caption and ordinals; the index by year starting at its opening price; breadth; bull years; the dividend shown as last year's payout; the desk's returns, nothing before it trades; short interest most first; which traders' pick a company was; no digest before year 1, then its market line, industries, surprise, dividend cut and desk pick; `TextChart` bars, the latest values that fit, a flat series, signed bars and share bars as exact strings; the shared formatter's ratios and missing figures | 30 |
+| `test_stalkleheads_screen.gd` | **StalkleHeads on screen (S7)**, D180-D182, on the real `gameplay_screen.tscn`: a base match keeps its three boards and builds no tabs; a StalkleHeads match shows the four tabs in their place; one tab at a time; every row under its industry with its ticker; a header's average P/E and year; a row's figures; buying and selling through a row changing HELD; an unaffordable quantity greying B; year 0 and readying up closing the board; collapsing a group; collapse and sort changing nothing in `GameState`; sorting within groups only, and surviving a refresh; the strip's cash, rankings, desk and short interest; clicking a row opening its company with the regime named; five years of earnings; the ledger's total equal to CHG for every company; the arrows walking and wrapping; traders and investors named; the index chart and mood row; selecting an industry; the digest arriving with the year's news; the mood line carrying the index move; **a client's four tabs, line for line, equal to the host's** after a welcome; every tab fitting 640 x 360; the header lining up with a row; a bankrupt row showing BANKRUPT whole without moving a column | 31 |
 | `test_balance_smoke.gd` | **StalkleHeads balance, smoke only** (§12.1, D144-D150, on the real pipeline since D161): 30 fixed-seed ten-year matches of the balance tool's nine strategies; the same seed replaying the same match; a strategy subset leaving the market unchanged; the bond player ending on 13,426 every time; splits, bankruptcies and bull-year rate in wide bands; no strategy winning three in four; RANDOM keeping half its cash; the best reader beating RANDOM; the sweep's lever overrides, set to the published values, reproducing the real path exactly, a moved lever moving the market, a rebuilt GROWTH row summing to 100, and the SHORT-target lever at its published value changing nothing while `slowest` moves the market. Does **not** assert P4 | 16 |
 | `test_loan_rules.gd` | Annuity arithmetic, eligibility, the full ten-payment schedule, penalties and default, overpayment, one-loan-per-game, pipeline integration | 40 |
 | `test_marquee_label.gd` | The scrolling name label: overflow detection against the real font, hover and click-to-pin, character-by-character stepping, a two-second hold on the end of the name before going back (D175), reset on leave | 14 |
@@ -346,8 +348,37 @@ comparisons in `test_wire.gd` are what guard the two halves from here.
   functions (D130); D2 and D3 are where a difference would show.
 - **The payload over a real socket.** `tools/wire_report.gd` measures the encoded
   size, not what Steam or ENet add to it.
-- **Nothing on screen.** S7.
+- **Nothing on screen.** Covered since S7, below.
 
+
+### StalkleHeads on screen: what S7 covers and what it does not
+
+`test_market_readouts.gd` (30) and `test_stalkleheads_screen.gd` (31), D179-D182.
+
+**The rule they protect.** No node works out a figure. So the numbers are tested in
+`test_market_readouts.gd` without a window, and the screen test checks that each tab
+shows what `MarketReadouts` says, not what the screen thinks.
+
+**The client.** One screen test welcomes a client from the host's snapshot and
+history, refreshes both screens and compares every line of every tab. Because the
+per-year record is written in the half of the year a client replays (D179), this is
+the test that would catch a figure the client cannot rebuild.
+
+**Layout.** Two tests measure instead of looking: every tab's combined minimum size
+is within 640 x 360, and the header's columns start where a row's do. A third checks
+a bankrupt row's word is not clipped.
+
+**Not covered, and why.**
+
+- **How it looks.** Colours, the text charts' shapes, readability on the CRT. A
+  developer tool renders the four tabs and the digest to pictures with Movie Maker
+  (`tools/stalkleheads_shot.tscn`, instructions at the top of its script); a person
+  looks. Manual steps E1-E6 in [manual-testing.md](manual-testing.md).
+- **Hover and scrolling.** The name marquee and the board's scroll bar are the base
+  game's widgets, tested there.
+- **Over Steam.** The tabs draw only from state the suite already proves identical
+  on host and client (S6). E6 checks it once by hand.
+- **News headlines, whispers and chatter.** S8.
 
 ### StalkleHeads balance: the tool and its smoke test
 

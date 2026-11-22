@@ -1,0 +1,285 @@
+class_name CompanyTab
+extends ScrollContainer
+## Tab 4 of a StalkleHeads match: one company in depth
+## (docs/stalkleheads-design.md §7.5). Opened by clicking its row on the
+## Exchange, the gesture the base game's details panel already uses
+## (decisions.md D103); `<` and `>` step through the board.
+##
+## What it shows:
+##
+## - the name, industry and **earnings regime, named** - "SLOWING, 2nd year"
+##   (§14 q8) - and the description;
+## - **five years of earnings**: revenue, expenses, profit, margin, earnings per
+##   share, price and P/E, with a mark under a year it split;
+## - **why the price moved** - the ledger widget, every point attributed;
+## - its earnings yield against the risk-free rate;
+## - **who holds it**: the players, by name only (D103), and the NPC traders who
+##   traded it last year, **each by name** (§14 q11), with short interest.
+##
+## The bond and the index are on the board but are not companies: for them this
+## shows the name, description and investors only.
+
+
+## `<` or `>` was pressed. The host holds the state, so it redraws.
+signal company_changed(stalk_id: StringName)
+
+
+const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
+
+## The earnings table: a caption column, then one column per year.
+const YEARS_SHOWN: int = 5
+const CAPTION_CHARS: int = 16
+const YEAR_CHARS: int = 7
+
+const SPLIT_MARK: String = "^split"
+
+enum Line { REVENUE, EXPENSES, PROFIT, MARGIN, EPS, PRICE, PE }
+
+const LINE_CAPTIONS: Dictionary[Line, String] = {
+	Line.REVENUE: "revenue",
+	Line.EXPENSES: "expenses",
+	Line.PROFIT: "profit",
+	Line.MARGIN: "margin",
+	Line.EPS: "earnings/share",
+	Line.PRICE: "price",
+	Line.PE: "P/E",
+}
+
+const TRADER_NAME_CHARS: int = 18
+
+
+## The board row on show. Presentation only.
+var _stalk_id: StringName = &""
+var _board_ids: Array[StringName] = []
+
+var _year_row: CellRow
+var _lines: Dictionary[Line, CellRow] = {}
+var _split_row: CellRow
+
+@onready var _previous: Button = %PreviousButton
+@onready var _next: Button = %NextButton
+@onready var _name: Label = %CompanyName
+@onready var _identity: CellRow = %Identity
+@onready var _description: Label = %Description
+@onready var _earnings: VBoxContainer = %Earnings
+@onready var _ledger: LedgerWidget = %Ledger
+@onready var _yield: Label = %YieldLine
+@onready var _investors: Label = %Investors
+@onready var _activity: VBoxContainer = %Activity
+@onready var _short_line: Label = %ShortLine
+
+
+func _ready() -> void:
+	_previous.pressed.connect(_on_previous_pressed)
+	_next.pressed.connect(_on_next_pressed)
+	_identity.configure([22, 0])
+	_identity.set_cell_variation(0, &"Faint")
+	ReservedLines.reserve(_description)
+
+	var widths: Array[int] = [CAPTION_CHARS]
+	var aligns: Array[int] = [CellRow.LEFT]
+	for _year: int in YEARS_SHOWN:
+		widths.append(YEAR_CHARS)
+		aligns.append(CellRow.RIGHT)
+	_year_row = _add_earnings_row(widths, aligns)
+	_year_row.set_cell(0, "EARNINGS")
+	_year_row.set_row_variation(&"Faint")
+	_year_row.set_cell_variation(0, &"SubHeading")
+	for line: Line in LINE_CAPTIONS:
+		var row: CellRow = _add_earnings_row(widths, aligns)
+		row.set_cell(0, " " + LINE_CAPTIONS[line])
+		row.set_cell_variation(0, &"Faint")
+		_lines[line] = row
+	_split_row = _add_earnings_row(widths, aligns)
+	_split_row.set_row_variation(&"Faint")
+
+
+## The company to show. The board's order is what `<` and `>` walk.
+func show_company(stalk_id: StringName, state: GameState) -> void:
+	_stalk_id = stalk_id
+	refresh(state)
+
+
+func refresh(state: GameState) -> void:
+	_board_ids.clear()
+	for row: StalkState in state.stalks:
+		_board_ids.append(row.id)
+	if _stalk_id.is_empty() or not _board_ids.has(_stalk_id):
+		if _board_ids.is_empty():
+			return
+		_stalk_id = _board_ids[0]
+
+	var stalk: StalkState = state.stalk_by_id(_stalk_id)
+	var company: CompanyState = state.market.company_by_id(_stalk_id)
+	_name.text = stalk.definition.display_name
+	_name.tooltip_text = stalk.definition.display_name
+	_description.text = stalk.definition.description
+
+	if company == null:
+		_identity.set_texts([String(stalk.definition.ticker), ""])
+		_show_no_earnings()
+		_ledger.show_nothing()
+		_yield.text = ""
+	else:
+		var industry: IndustryState = state.market.industry_by_id(company.profile.industry)
+		var industry_name: String = ""
+		if industry != null:
+			industry_name = industry.definition.display_name
+		_identity.set_texts([
+			"%s  %s" % [String(stalk.definition.ticker), industry_name],
+			MarketReadouts.regime_caption(state, company),
+		])
+		_show_earnings(state, company)
+		var latest: EarningsYearResult = state.latest_result() as EarningsYearResult
+		var ledger: PriceLedger = null
+		if latest != null:
+			ledger = latest.ledger_for(_stalk_id)
+		_ledger.show_ledger(ledger)
+		_yield.text = "earnings yield %s  against risk-free %s" % [
+			Palette.format_percent_decimal(MarketReadouts.earnings_yield_percent(state, company)),
+			Palette.format_percent_decimal(MarketReadouts.risk_free_percent(state)),
+		]
+
+	_show_investors(state, stalk)
+	_show_activity(state, company)
+
+
+# ------------------------------------------------------------- earnings
+
+func _add_earnings_row(widths: Array[int], aligns: Array[int]) -> CellRow:
+	var row: CellRow = CellRowScene.instantiate()
+	_earnings.add_child(row)
+	row.configure(widths, aligns)
+	return row
+
+
+func _show_earnings(state: GameState, company: CompanyState) -> void:
+	var records: Array[CompanyState] = MarketReadouts.company_history(state, company.id, YEARS_SHOWN)
+	var years: Array[int] = MarketReadouts.history_years(state, YEARS_SHOWN)
+	for column: int in YEARS_SHOWN:
+		var cell: int = column + 1
+		if column >= records.size():
+			_year_row.set_cell(cell, "")
+			for line: Line in _lines:
+				_lines[line].set_cell(cell, "")
+			_split_row.set_cell(cell, "")
+			continue
+		var record: CompanyState = records[column]
+		_year_row.set_cell(cell, "yr%d" % years[column])
+		_lines[Line.REVENUE].set_cell(cell, Palette.format_decimal(record.revenue, 0))
+		_lines[Line.EXPENSES].set_cell(cell, Palette.format_decimal(MarketReadouts.expenses(record), 0))
+		_lines[Line.PROFIT].set_cell(cell, Palette.format_decimal(record.profit, 0))
+		_lines[Line.MARGIN].set_cell(cell, Palette.format_percent(record.margin_percent))
+		_lines[Line.EPS].set_cell(cell, Palette.format_decimal(record.earnings_per_share(), 2))
+		_lines[Line.PRICE].set_cell(cell, str(record.price))
+		_lines[Line.PE].set_cell(cell, Palette.format_decimal(
+			MarketReadouts.price_earnings(record.price, record.earnings_per_share()), 1
+		))
+		_split_row.set_cell(cell, SPLIT_MARK if record.did_split else "")
+
+
+func _show_no_earnings() -> void:
+	for column: int in YEARS_SHOWN:
+		_year_row.set_cell(column + 1, "")
+		for line: Line in _lines:
+			_lines[line].set_cell(column + 1, "")
+		_split_row.set_cell(column + 1, "")
+
+
+# ------------------------------------------------------------ who holds it
+
+## Names only, as the base game's details panel shows them (decisions.md D103).
+func _show_investors(state: GameState, stalk: StalkState) -> void:
+	var names: PackedStringArray = []
+	for player: PlayerState in state.players:
+		if player.invests_in(stalk.id):
+			names.append(player.display_name)
+	if stalk.definition.investors_are_anonymous and not names.is_empty():
+		_investors.text = "(anonymous)"
+	elif names.is_empty():
+		_investors.text = "none"
+	else:
+		_investors.text = "\n".join(names)
+
+
+## The traders who picked this company last year, by name (§14 q11).
+func _show_activity(state: GameState, company: CompanyState) -> void:
+	for child: Node in _activity.get_children():
+		_activity.remove_child(child)
+		child.queue_free()
+	_short_line.text = ""
+	if company == null:
+		return
+	for entry: Array in MarketReadouts.desk_activity(state, company.id):
+		var trader: NpcTraderState = state.market.desk.trader_by_id(entry[0])
+		var row: CellRow = CellRowScene.instantiate()
+		_activity.add_child(row)
+		row.configure([TRADER_NAME_CHARS, 0])
+		var detail: String = MarketReadouts.situation_word(entry[1])
+		if entry[3] > 0:
+			detail += ", short %d" % entry[3]
+		elif entry[2] > 0:
+			detail += ", holds %d" % entry[2]
+		row.set_texts([trader.definition.display_name, detail])
+		row.set_cell_variation(1, &"Faint")
+	var shorted: int = state.market.desk.short_interest(company.id)
+	if shorted > 0:
+		_short_line.text = "short interest %d shares" % shorted
+
+
+# ---------------------------------------------------------------- for tests
+
+func shown_id() -> StringName:
+	return _stalk_id
+
+
+func identity_text() -> String:
+	return _identity.line_text()
+
+
+func earnings_line(line: Line) -> String:
+	return _lines[line].line_text()
+
+
+func years_line() -> String:
+	return _year_row.line_text()
+
+
+func split_line() -> String:
+	return _split_row.line_text()
+
+
+func ledger() -> LedgerWidget:
+	return _ledger
+
+
+func investors_text() -> String:
+	return _investors.text
+
+
+func activity_lines() -> PackedStringArray:
+	var lines: PackedStringArray = []
+	for child: Node in _activity.get_children():
+		lines.append((child as CellRow).line_text())
+	return lines
+
+
+# --------------------------------------------------------------- handlers
+
+func _on_previous_pressed() -> void:
+	_step(-1)
+
+
+func _on_next_pressed() -> void:
+	_step(1)
+
+
+## Walks the board, wrapping at either end. Asks the host to redraw, because
+## the state is the host's to hand in.
+func _step(by: int) -> void:
+	if _board_ids.is_empty():
+		return
+	var at: int = maxi(0, _board_ids.find(_stalk_id))
+	_stalk_id = _board_ids[posmod(at + by, _board_ids.size())]
+	company_changed.emit(_stalk_id)
+

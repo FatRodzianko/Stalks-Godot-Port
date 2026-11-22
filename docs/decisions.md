@@ -6749,3 +6749,108 @@ first time, is 300 KB.
 **Rules out.** Sending a StalkleHeads year's outcome; a second, client-side
 implementation of the year; replaying with a client-side RNG (the players' trades
 are not reproducible from the seed alone).
+
+### D179 - Each StalkleHeads year records every company as it left the year; the screens read figures from `MarketReadouts`
+**2026-11-22 · Accepted**
+
+**The problem.** The Company tab shows five years of earnings, the Market tab the
+index year by year, the digest "margin 12% -> 10%". `CompanyState` holds only the
+current year. Nothing kept the past.
+
+**The record.** `EarningsYearResult` gains `companies_after` (a copy of every
+`CompanyState` at the end of `_settle_prices`, after dividends) and
+`index_level_after`. They are written in `_settle_prices`, the half of the year a
+client also runs (D178), so **a client builds the same record by replaying the year**
+and nothing new travels on the wire. Year 0 has no result; its record is a fresh
+`CompanyState` from the profile, which is what year 0 is.
+
+**The readouts.** `src/sim/market_readouts.gd` (`MarketReadouts`, all static) is the
+one place a screen gets a derived number: P/E (and "none" for a loss-maker, the bond
+and the index), the dividend shown, earnings yield, market share and its change,
+expenses, an industry's average P/E, revenue and compound move, the market's P/E,
+breadth, bull years, the risk-free rate, each desk strategy's return, short interest,
+which traders traded a company, the regime caption ("SLOWING, 2nd year", design §14
+q8). `YearDigest` (`src/sim/year_digest.gd`) picks the year in review's outliers.
+`PriceLedger.multiple_total()` sums the three multiple lines the ledger shows as one.
+
+**Why in `sim/`.** CLAUDE.md: a node never computes a game rule. A P/E or a market
+share is a derived number, so it is derived where it can be tested without a window
+(`test_market_readouts.gd`, 30 tests) and where host and client run the same code.
+
+**Cost.** Eighteen `CompanyState` copies per year in memory: about 2 MB for a 99-year
+match. Not sent, not saved. The golden hash did not move.
+
+**Rules out.** A node working out a figure from raw state; sending a year's company
+records; a second history store beside the year results.
+
+### D180 - A StalkleHeads match replaces the three boards with four tabs; the base screen is untouched
+**2026-11-22 · Accepted**
+
+`GameplayScreen` builds `MarketTabs` (`src/ui/screens/stalkleheads/`) **the first time
+its state has a market** (`GameState.market != null`), hides `%Boards` and shows
+`%MarketSlot`. It is asked once and asked of the state, not the settings: the market
+is what the tabs draw from, and a client may draw its first screen before the host's
+first snapshot has given it one, so `refresh` asks again until it has (D171's "read
+the mode once"). Everything around the boards - the year card, the news strip, the
+yeehaw panel, the bottom bar, the loans and the news panel - is the base game's, with
+the same handlers: buying through a tab row calls the same `_on_buy_requested`.
+
+The tabs are **EXCHANGE, MARKET, INDUSTRIES, COMPANY**, toggle buttons in one
+`ButtonGroup` (design §7.1). Clicking a company anywhere opens it on the Company tab.
+
+**Why the base screen is not changed.** Design §14 q1: the base board keeps its
+three panels and no HELD column. A second screen scene was the alternative; it would
+have duplicated the top and bottom bars and every handler, which then drift.
+
+**Rules out.** `if mode ==` inside the base board's code; a StalkleHeads-only copy
+of the playing screen.
+
+### D181 - Charts are text, and text tables are measured in characters
+**2026-11-22 · Accepted** (design §15 N)
+
+`TextChart` (`src/ui/text_chart.gd`) draws bar charts as strings from the font's
+eighth-block ramp, ` ▁▂▃▄▅▆▇█`: one character an eighth of a cell tall at a time.
+Signed charts draw below the axis with `▀`. A chart is a `Label` with the `Chart`
+theme variation (line spacing 0, so the blocks touch). **Why:** the game is a
+106 x 30 grid of 6 x 12 cells, so a chart made of characters sits on that grid
+exactly, takes its colour from the theme, and is tested by comparing strings.
+A drawn chart would need its own scaling, colours and screenshot tests.
+
+`CellRow` is one line of a text table: labels a whole number of characters wide,
+edge to edge (`TightHBox`, separation 0), so two tables built with the same widths
+line up to the pixel. A width of 0 takes the rest of the line.
+
+**Rules out.** `draw_line`/`draw_rect` charts; a chart library; tables whose columns
+are set in pixels.
+
+### D182 - What the StalkleHeads tabs show, and where
+**2026-11-22 · Accepted**
+
+Choices made while building S7 that the design left open:
+
+- **Collapse and sort are the viewer's, not the match's.** They live in
+  `ExchangeTab`, never in `GameState`, so they cannot desync and nothing about
+  them travels. A sort survives a refresh; it never crosses an industry, so a
+  company's P/E is always two lines from its industry's average (design §7.2).
+- **The board's right-hand strip** has CASH, NET (and LOAN when there is one),
+  the rankings, THE DESK (each strategy's return, best first) and SHORT INTEREST
+  (or "none"). Cash and net worth had been on the base board's stats panel, which
+  this mode hides.
+- **One quantity box per row with B and S**, the base game's holdings list folded
+  into the board. S is hidden, not removed, when nothing is held, so columns do not
+  move. A bankrupt row hides its CHG column and gives the width to "BANKRUPT".
+- **The ledger has six lines and a total**: earnings, multiple (sentiment, regime
+  premium and valuation limits summed), industry, this event, last event faded, flow,
+  total. Flow is shown because order flow is published (design §15 Q). Every line is
+  always present (D125). The total is the board's CHG, which includes the event in
+  this mode (D158).
+- **The year in review sits inside the base news panel**, above the event, which
+  widens to 480 px when it has one. Design §6.3. Showing it as a second pop-up would
+  have stacked two dialogs every year.
+- **The Company tab names traders** in NPC ACTIVITY and lists investors by name only
+  (design §14 q11), as the base game's company panel does, with no share counts.
+- **Not built in S7:** the news headlines, whispers and NPC chatter (S8). Captions in
+  the tabs explain, they do not have a voice.
+
+**Rules out.** Collapse or sort state in the snapshot; a separate holdings list in
+this mode; a second dialog for the digest.

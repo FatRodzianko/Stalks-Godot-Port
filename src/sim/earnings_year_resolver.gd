@@ -256,6 +256,12 @@ func _settle_prices(state: GameState, result: EarningsYearResult, year: YearInPr
 	# 10. Dividends, on post-split share counts.
 	_pay_dividends(state, result)
 
+	# The year's record of every company, for the screens (decisions.md D179).
+	# Here, at the end of the half both paths share, so a client's is the host's.
+	for company: CompanyState in market.companies:
+		result.companies_after[company.id] = company.copy()
+	result.index_level_after = market.index_level
+
 
 ## A player's accepted trade, added to next year's flow exactly as an NPC's is
 ## (§3.10). `MatchAuthority` calls this for every buy and sell (decisions.md

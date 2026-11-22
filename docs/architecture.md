@@ -906,7 +906,7 @@ Non-negotiable, and the thing most worth protecting:
 
 ---
 
-## 9. StalkleHeads: fundamentals, its year, the NPC desk, the mode and the wire (phases S1-S6)
+## 9. StalkleHeads: fundamentals, its year, the NPC desk, the mode, the wire and the screen (phases S1-S7)
 
 StalkleHeads is an optional second game mode in which prices come from simulated
 earnings instead of random rolls. Its design is
@@ -1126,6 +1126,44 @@ decodes the year first and applies the snapshot second.
 **Migration** needs nothing new: the promoted host's `GameState` already holds the
 whole market, including the event bags (D177), and `take_over` builds the pipeline
 as before. The first year it advances restores the pool from those bags.
+
+### On screen (phase S7)
+
+The base playing screen, with the boards swapped out (D180). Nothing below draws a
+number it worked out: every figure comes from `src/sim/` (D179).
+
+```
+GameplayScreen (base game's, unchanged around the boards)
+  %Boards          hidden in StalkleHeads
+  %MarketSlot      MarketTabs, built the first time state.market exists
+    ExchangeTab      CompanyRow per board row, under group CompanyRows; the strip
+    MarketTab        CellRow lines, TextChart index chart, mood row
+    IndustriesTab    CellRow table, signed TextChart, members
+    CompanyTab       CellRow earnings table, LedgerWidget, investors, desk activity
+  NewsPanel        + YearDigestPanel in its %DigestSlot
+
+src/sim/ MarketReadouts   every derived figure: P/E, shares, averages, breadth...
+src/sim/ YearDigest       the year in review's picks
+EarningsYearResult.companies_after / index_level_after   the per-year record
+```
+
+**Where the history comes from.** `_settle_prices`, the half of the year a client
+replays (D178), copies every company into `EarningsYearResult.companies_after`. So a
+client's Company tab shows the same five years as the host's without anything new
+on the wire; `test_stalkleheads_screen.gd` compares all four tabs line by line.
+
+**The widgets.** `CellRow` is one line of a text table, its columns a whole number of
+characters wide (D181). `CompanyRow` is a board row, an industry header or the column
+headings, in one scene so the three line up. `ChartWidget` shows a `TextChart`
+string, `LedgerWidget` the price ledger, `YearDigestPanel` the year in review. Each
+emits signals with ids and knows nothing of the tab holding it.
+
+**Trading** goes through the base game's handlers: `MarketTabs.buy_requested` is
+connected to the same `_on_buy_requested` as a base `StalkRow`, and the buy and sell
+checks are the session's `why_not_buy`/`why_not_sell`.
+
+**Collapse and sort** are held in `ExchangeTab` only (D182): the viewer's, not the
+match's.
 
 ### The rules that hold it together
 

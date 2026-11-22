@@ -201,6 +201,10 @@ static func result_lines(result: YearResult) -> PackedStringArray:
 		lines.append("result industry %s %s" % [industry_id, bits(earnings.industry_performance[industry_id])])
 	for company_id: StringName in _keys(earnings.ledgers):
 		lines.append("result ledger %s %s" % [company_id, earnings.ledgers[company_id]])
+	lines.append("result index level %s" % bits(earnings.index_level_after))
+	for company_id: StringName in _keys(earnings.companies_after):
+		for line: String in company_lines(earnings.companies_after[company_id]):
+			lines.append("result after %s" % line)
 	if earnings.desk != null:
 		lines.append("result desk %s appetites %s targets %s actions %s net %s" % [
 			earnings.desk.trader_ids, _sorted(earnings.desk.appetites),

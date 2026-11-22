@@ -1650,6 +1650,113 @@ Before starting, on each machine:
 - **Step 41 differing** is the year-by-year page, which is replayed from the
   host's draws (D178). Send a screenshot of both pages.
 
+### E - Playing StalkleHeads on screen (phase S7) — **not yet run**
+
+Built on 2026-11-22 (decisions.md D179-D182). The suite checks that every tab shows
+the right figures, that a client's tabs match the host's line for line, and that
+every tab fits the 640 x 360 picture. What it cannot judge is whether the screen
+reads well: colours, the text charts, how crowded it feels, whether the year in
+review is useful. **This is the first time StalkleHeads is playable.**
+
+Run on a locally exported build containing S7. To check a checkout before
+exporting: the folder `src/ui/screens/stalkleheads/` exists.
+
+E1-E5 need one machine and no Steam. E6 needs two Steam accounts on two machines.
+
+#### E1. The base game is unchanged
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **Stalks Stalks Stalks**.
+4. Click **START**.
+5. Check the screen has the three panels it always had: the stalk board, **Your Stats** and the rankings.
+6. Check there are no tabs and no HELD column.
+7. Press Escape, then quit to the title screen.
+
+#### E2. The Exchange tab
+
+8. On **SINGLE PLAYER**, set **Game** to **StalkleHeads**.
+9. Click **START**.
+10. Check there are four tabs under the top bar: **EXCHANGE**, **MARKET**, **INDUSTRIES**, **COMPANY**, with **EXCHANGE** lit.
+11. Check the board shows industry headings (for example **CONSUMER GOODS**), each with its companies beneath it.
+12. Check each company row shows a short code (SYM) before its name.
+13. Check the B buttons are greyed (year 0, trading closed).
+14. Press **Ready for New Year**.
+15. Check the year reads **1** and the mood line under it shows BULL!!! or BEAR!!! followed by a percentage.
+16. Click any industry heading.
+17. Check its companies disappear and its marker changes from **-** to **+**.
+18. Click the same heading again.
+19. Check its companies come back.
+20. Click the **P/E** column heading.
+21. Check the companies inside each industry are re-ordered by P/E, and no company moves to a different industry.
+22. In any company row, type **5** in the quantity box.
+23. Click that row's **B**.
+24. Check that row's HELD reads **5** and an **S** button has appeared.
+25. Check **CASH** on the right went down.
+26. Type **5** in the same quantity box and click **S**.
+27. Check HELD reads **0** and the **S** button is gone.
+28. Check the right-hand side shows **RANKINGS**, **THE DESK** (a list of strategies with percentages) and **SHORT INTEREST**.
+
+#### E3. The Market and Industries tabs
+
+29. Press **Ready for New Year** three times, closing the news panel each time it opens.
+30. Click **MARKET**.
+31. Check it shows the index level, market P/E, mood, breadth and risk-free rate.
+32. Check **INDEX, BY YEAR** shows one bar per year, numbered from 0.
+33. Check **THIS YEAR'S NEWS** shows the same event as the top bar.
+34. Check **MOOD, BY YEAR** shows a B or b under each year played and a dot under each year still to come.
+35. Click **INDUSTRIES**.
+36. Check it lists six industries with this year's move, three-year move, average P/E and a share bar.
+37. Click **Food**.
+38. Check the chart heading reads **BY YEAR: FOOD** and the list on the right lists Food's companies with their shares.
+
+#### E4. The Company tab
+
+39. Click **EXCHANGE**.
+40. Click a company's name.
+41. Check the **COMPANY** tab opens on that company.
+42. Check the line under the name shows the code, the industry and a phrase such as **SLOWING, 2nd year**.
+43. Check **EARNINGS** has a column per year played, up to five, with whole numbers for revenue, expenses and profit.
+44. Check **WHY THE PRICE MOVED** shows two prices with an arrow between them, then six lines, then **total**.
+45. Click **EXCHANGE** and write down that company's **CHG**.
+46. Click **COMPANY**.
+47. Check **total** is the figure from step 45.
+48. Click **>** three times.
+49. Check each click shows the next row of the board.
+50. Check **INVESTORS** reads **You** on a company you hold, and **none** on one nobody holds.
+
+#### E5. The year in review
+
+51. Press **Ready for New Year**.
+52. Check the news panel opens with **THE YEAR IN REVIEW** above the event.
+53. Check it shows the market's move and mood, every industry's move, and four lines below: biggest earnings surprise, biggest disappointment, dividend cut, the desk piled into. A line may be blank in a year with nothing to report.
+54. Check nothing in the panel is cut off or overlapping.
+55. Click **Close**.
+56. Play on until the match ends.
+57. Check every year advances, and no tab ever shows text spilling past its edge.
+
+#### E6. A client sees what the host sees (two machines)
+
+58. On A, set **Game** to **StalkleHeads**, then host an online game.
+59. On B, join it from **JOIN GAME**.
+60. On A, press **Start**.
+61. On both machines, press Ready until the year is 3.
+62. On both, click **COMPANY** and pick the same company with **<** and **>**.
+63. Check the **EARNINGS** figures and **WHY THE PRICE MOVED** lines are the same on both machines.
+64. On both, click **INDUSTRIES**.
+65. Check the table is the same on both machines.
+66. On B, press Escape, then **Leave Game**, then confirm.
+67. On B, press **REJOIN GAME**.
+68. Check B's **COMPANY** and **MARKET** tabs show the same as A's.
+
+#### What a failure here means
+
+- **Step 5 or 6 showing tabs** in the base game: the screen is choosing tabs for the wrong match (D180).
+- **Step 21 moving a company out of its industry**: the sort is crossing groups (D182).
+- **Step 47 not matching**: the ledger's total is not the board's change. Write down the company, both figures and the year.
+- **Step 63, 65 or 68 differing**: a figure the client cannot rebuild. Send a screenshot of both screens.
+- **Anything cut off**: write down the tab, the step and what was cut.
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until

@@ -37,6 +37,21 @@ var industry_performance: Dictionary[StringName, float] = {}
 ## the bond's coupon and the index's average. 0 for a bankrupt row.
 var dividend_per_share: Dictionary[StringName, int] = {}
 
+## **Every company as this year left it**, keyed by id: a `copy()` taken once
+## splits and dividends are done, failed companies included. What the screens
+## draw a company's history from - the Company tab's five years of earnings,
+## the digest's "margin 12% -> 8%" (decisions.md D179).
+##
+## A readout, not an input: it is recorded at the end of the shared second half
+## of the year, so a client replaying the year it was sent records exactly the
+## host's, and nothing extra travels.
+var companies_after: Dictionary[StringName, CompanyState] = {}
+
+## My Mutuals and Me Inc.'s unrounded level as this year left it, after any
+## split. What the Market tab's index chart is drawn from. A readout, like
+## `companies_after`.
+var index_level_after: float = 0.0
+
 
 ## What the NPC desk did after the year settled (§4 step 13). Its net shares are
 ## next year's flow input. Null only if the year never reached step 13.

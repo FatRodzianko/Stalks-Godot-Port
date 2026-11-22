@@ -70,6 +70,60 @@ static func format_change(delta: int) -> String:
 	return "—"
 
 
+## What a figure that does not exist is printed as: a P/E with no earnings, an
+## average of nothing (`MarketReadouts.NONE`).
+const NO_FIGURE: String = "--"
+
+
+## A ratio to a fixed number of decimal places: 12.6, 9.40. `--` for NAN.
+static func format_decimal(value: float, places: int) -> String:
+	if is_nan(value):
+		return NO_FIGURE
+	return ("%." + str(places) + "f") % value
+
+
+## A ratio to a fixed number of places, signed: +0.84, -0.24. `--` for NAN.
+static func format_signed_decimal(value: float, places: int) -> String:
+	if is_nan(value):
+		return NO_FIGURE
+	var text: String = format_decimal(value, places)
+	if value > 0.0 and text.to_float() > 0.0:
+		return "+" + text
+	return text
+
+
+## A percentage rounded to a whole number, signed: +6%, -4%, 0%. `--` for NAN.
+static func format_percent_change(value: float) -> String:
+	if is_nan(value):
+		return NO_FIGURE
+	var whole: int = roundi(value)
+	if whole > 0:
+		return "+%d%%" % whole
+	return "%d%%" % whole
+
+
+## A percentage rounded to a whole number, unsigned: 38%. `--` for NAN.
+static func format_percent(value: float) -> String:
+	if is_nan(value):
+		return NO_FIGURE
+	return "%d%%" % roundi(value)
+
+
+## A percentage to one decimal place: 3.0%. `--` for NAN.
+static func format_percent_decimal(value: float) -> String:
+	if is_nan(value):
+		return NO_FIGURE
+	return "%.1f%%" % value
+
+
+## Colour for a percentage move, by the sign of its rounded value, so a move
+## printed as 0% is never coloured as though it went somewhere.
+static func for_percent(value: float) -> Color:
+	if is_nan(value):
+		return TEXT_FAINT
+	return for_change(roundi(value))
+
+
 ## Currency, with thousands separators. Money is always an integer here, so there
 ## is never a decimal part to show.
 static func format_money(amount: int) -> String:

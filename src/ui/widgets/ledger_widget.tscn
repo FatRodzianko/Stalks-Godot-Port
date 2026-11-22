@@ -1,0 +1,26 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/widgets/ledger_widget.gd" id="1_ledger"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/cell_row.tscn" id="2_row"]
+
+[node name="LedgerWidget" type="VBoxContainer"]
+theme_type_variation = &"TightVBox"
+script = ExtResource("1_ledger")
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "WHY THE PRICE MOVED"
+
+[node name="Move" parent="." instance=ExtResource("2_row")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Lines" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="Total" parent="." instance=ExtResource("2_row")]
+unique_name_in_owner = true
+layout_mode = 2

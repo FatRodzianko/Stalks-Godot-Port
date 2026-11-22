@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/widgets/cell_row.gd" id="1_row"]
+
+[node name="CellRow" type="PanelContainer"]
+mouse_filter = 2
+theme_type_variation = &"BareRow"
+script = ExtResource("1_row")
+
+[node name="Cells" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"TightHBox"

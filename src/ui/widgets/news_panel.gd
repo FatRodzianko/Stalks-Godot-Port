@@ -32,6 +32,13 @@ signal dismissed
 const NOTHING_HAPPENED: String = "No special event this year."
 
 
+## How wide the dialog is while it carries a year digest, in pixels: eighty
+## characters, which is what the digest's widest line needs (design §6.3).
+const DIGEST_WIDTH: int = 80 * 6
+
+
+@onready var _dialog: PanelContainer = %Dialog
+@onready var _digest_slot: VBoxContainer = %DigestSlot
 @onready var _description: Label = %Description
 @onready var _effect: Label = %Effect
 @onready var _close_button: Button = %CloseButton
@@ -82,6 +89,20 @@ func show_news(description: String, effect: String) -> void:
 	# the player having to find the mouse. Not the tick box, which Space would
 	# then toggle by accident.
 	_close_button.grab_focus()
+
+
+## Puts a StalkleHeads year digest above the year's event, for every year from
+## now on (design §6.3: "in StalkleHeads it carries more"). The panel keeps
+## owning when it opens and the Don't-show-again choice; the digest is only
+## more to read once it does. A base-game match never calls this, and its
+## panel is unchanged.
+func set_digest(digest: Control) -> void:
+	for child: Node in _digest_slot.get_children():
+		_digest_slot.remove_child(child)
+		child.queue_free()
+	_digest_slot.add_child(digest)
+	_digest_slot.visible = true
+	_dialog.custom_minimum_size.x = DIGEST_WIDTH
 
 
 func close() -> void:

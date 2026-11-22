@@ -1,0 +1,114 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/ui/screens/stalkleheads/company_tab.gd" id="1_tab"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/cell_row.tscn" id="2_row"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/ledger_widget.tscn" id="3_ledger"]
+
+[node name="CompanyTab" type="ScrollContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+script = ExtResource("1_tab")
+
+[node name="Body" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="Title" type="HBoxContainer" parent="Body"]
+layout_mode = 2
+
+[node name="PreviousButton" type="Button" parent="Body/Title"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(24, 0)
+layout_mode = 2
+tooltip_text = "The row above on the board"
+text = "<"
+
+[node name="CompanyName" type="Label" parent="Body/Title"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 0
+theme_type_variation = &"SubHeading"
+text = ""
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="NextButton" type="Button" parent="Body/Title"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(24, 0)
+layout_mode = 2
+tooltip_text = "The row below on the board"
+text = ">"
+
+[node name="Identity" parent="Body" instance=ExtResource("2_row")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Description" type="Label" parent="Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"EventFlavour"
+text = ""
+autowrap_mode = 3
+max_lines_visible = 2
+text_overrun_behavior = 3
+
+[node name="Middle" type="HBoxContainer" parent="Body"]
+layout_mode = 2
+
+[node name="Earnings" type="VBoxContainer" parent="Body/Middle"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="Ledger" parent="Body/Middle" instance=ExtResource("3_ledger")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="YieldLine" type="Label" parent="Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = ""
+
+[node name="Lower" type="HBoxContainer" parent="Body"]
+layout_mode = 2
+
+[node name="InvestorsBox" type="VBoxContainer" parent="Body/Lower"]
+custom_minimum_size = Vector2(132, 0)
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="InvestorsTitle" type="Label" parent="Body/Lower/InvestorsBox"]
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "INVESTORS"
+
+[node name="Investors" type="Label" parent="Body/Lower/InvestorsBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+
+[node name="ActivityBox" type="VBoxContainer" parent="Body/Lower"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="ActivityTitle" type="Label" parent="Body/Lower/ActivityBox"]
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "NPC ACTIVITY, LAST YEAR"
+
+[node name="Activity" type="VBoxContainer" parent="Body/Lower/ActivityBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="ShortLine" type="Label" parent="Body/Lower/ActivityBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = ""

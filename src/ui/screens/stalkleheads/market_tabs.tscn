@@ -1,0 +1,36 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/ui/screens/stalkleheads/market_tabs.gd" id="1_tabs"]
+[ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/exchange_tab.tscn" id="2_exchange"]
+[ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/market_tab.tscn" id="3_market"]
+[ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/industries_tab.tscn" id="4_industries"]
+[ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/company_tab.tscn" id="5_company"]
+
+[node name="MarketTabs" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"TightVBox"
+script = ExtResource("1_tabs")
+
+[node name="TabStrip" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ExchangeTab" parent="." instance=ExtResource("2_exchange")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="MarketTab" parent="." instance=ExtResource("3_market")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="IndustriesTab" parent="." instance=ExtResource("4_industries")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="CompanyTab" parent="." instance=ExtResource("5_company")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2

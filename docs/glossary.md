@@ -236,6 +236,29 @@ stock rather than a better one (§3.10a).
 **Placeholder company** — a company the owner has not written yet, named by industry
 and letter (*Transportation Company A*) with an obviously temporary ticker (`TRNA`).
 
+
+**Ticker** — a company's short code, four or five capitals (`PLLW`, `STRYK`), shown beside its name on the StalkleHeads board (column SYM). Authored on the stalk definition (`StalkDefinition.ticker`); the base game has them too but never shows them.
+
+**The tabs** — in a StalkleHeads match the three boards of the playing screen are replaced by four tabs: **EXCHANGE** (the board), **MARKET** (the whole market), **INDUSTRIES** and **COMPANY** (one company in depth). Code: `MarketTabs` (decisions.md D180).
+
+**Industry group** — on the EXCHANGE board, an industry's header line (its year and average P/E) with its companies beneath. Click the header to collapse or expand it. The bond and the index sit in a group of their own, INDEX & BOND.
+
+**HELD** — the EXCHANGE board's column for how many shares of that row you own. StalkleHeads only; the base board keeps its separate "Your Stalks" list (design §14 q1).
+
+**Why the price moved** — the Company tab's ledger widget: last year's price, this year's, and every point between them attributed to earnings, multiple, industry, this event, last event faded and flow. Its total is the board's CHG. Code: `LedgerWidget`.
+
+**The year in review** — the extra block at the top of the news panel in a StalkleHeads match: the market's move and mood, each industry's year, and the year's outliers (biggest earnings surprise, biggest disappointment, dividend cut, what the desk piled into). Code: `YearDigest`, `YearDigestPanel` (design §6.3).
+
+**Breadth** — how many companies rose this year, out of those still trading ("11/17"). On the Market tab.
+
+**Earnings yield** — earnings per share divided by price, as a percentage: the inverse of P/E. The Company tab puts it beside the bond's risk-free rate, the yardstick (§3.8).
+
+**Market share (within an industry)** — a company's revenue as a share of its industry's revenue. On the Industries tab, with its change on last year.
+
+**Text chart** — a bar chart drawn in characters, using the font's eighth-block characters so a bar can end an eighth of a cell up. Every chart in StalkleHeads is one (decisions.md D181). Code: `TextChart`.
+
+**Readouts (on screen)** — every number the StalkleHeads tabs show that is worked out rather than stored: P/E, market share, averages, breadth. All come from `MarketReadouts` in `src/sim/`, never from a node (decisions.md D179).
+
 ---
 
 ## Code terms

@@ -103,6 +103,14 @@ func total() -> int:
 	)
 
 
+## What the change in the multiple itself was worth, apart from the industry:
+## the sentiment, regime-premium and valuation-limit lines together. The
+## Company tab prints the ledger in the design's six lines (§7.5), and this is
+## its "multiple" line; the industry's standing is a line of its own.
+func multiple_total() -> int:
+	return sentiment + regime_premium + valuation_limits
+
+
 ## P1: the lines account for the whole move.
 func is_balanced() -> bool:
 	return total() == price_after - price_before

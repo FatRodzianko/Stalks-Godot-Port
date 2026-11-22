@@ -1,0 +1,53 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/ui/screens/stalkleheads/industries_tab.gd" id="1_tab"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/cell_row.tscn" id="2_row"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/chart_widget.tscn" id="3_chart"]
+
+[node name="IndustriesTab" type="ScrollContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+script = ExtResource("1_tab")
+
+[node name="Body" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="Header" parent="Body" instance=ExtResource("2_row")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="IndustryList" type="VBoxContainer" parent="Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="Lower" type="HBoxContainer" parent="Body"]
+layout_mode = 2
+
+[node name="IndustryChart" parent="Body/Lower" instance=ExtResource("3_chart")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Within" type="VBoxContainer" parent="Body/Lower"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="MembersTitle" type="Label" parent="Body/Lower/Within"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = ""
+
+[node name="MembersHeader" parent="Body/Lower/Within" instance=ExtResource("2_row")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Members" type="VBoxContainer" parent="Body/Lower/Within"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TightVBox"

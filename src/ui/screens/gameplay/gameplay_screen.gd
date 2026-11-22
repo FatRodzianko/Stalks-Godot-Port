@@ -22,6 +22,8 @@ const LoanPanelScene: PackedScene = preload("res://src/ui/widgets/loan_panel.tsc
 const ConfirmPanelScene: PackedScene = preload("res://src/ui/widgets/confirm_panel.tscn")
 const NewsPanelScene: PackedScene = preload("res://src/ui/widgets/news_panel.tscn")
 const StalkPanelScene: PackedScene = preload("res://src/ui/widgets/stalk_panel.tscn")
+const MarketTabsScene: PackedScene = preload("res://src/ui/screens/stalkleheads/market_tabs.tscn")
+const YearDigestScene: PackedScene = preload("res://src/ui/widgets/year_digest_panel.tscn")
 
 const MESSAGE_SECONDS: float = 5.0
 
@@ -61,6 +63,8 @@ signal connection_ended(reason: String)
 @onready var _loan_button: Button = %LoanButton
 @onready var _loan_min_label: Label = %LoanMinLabel
 @onready var _loan_nag: Label = %LoanNag
+@onready var _boards: HBoxContainer = %Boards
+@onready var _market_slot: VBoxContainer = %MarketSlot
 ## True when this screen is being shown *after* the match, as something to
 ## look over rather than play. See `show_as_final_board`.
 var _viewing_final_board: bool = false
@@ -85,6 +89,16 @@ var _news_panel: NewsPanel
 
 ## A company's details, opened by clicking its row.
 var _stalk_panel: StalkPanel
+
+## **A StalkleHeads match's four tabs, in place of the three boards**, or null in
+## a base-game match. Built the first time the state has a market, and never in
+## a match without one, so the base game's screen is exactly what it was
+## (docs/stalkleheads-design.md section 7, decisions.md D180).
+var _market_tabs: MarketTabs
+
+## The year in review, shown inside the news panel in a StalkleHeads match
+## (design section 6.3). Null in a base-game match.
+var _year_digest: YearDigestPanel
 
 ## Whether the transient message line is currently showing a refusal rather than
 ## a piece of news. Only a refusal is cleared by a state change.
@@ -206,6 +220,7 @@ func _attach(session: GameSession) -> void:
 	_build_confirm_panel()
 	_build_news_panel()
 	_build_stalk_panel()
+	_ensure_market_tabs()
 	_event_flavour.more_requested.connect(_on_more_requested)
 	_reset_event_panel()
 	refresh()
@@ -369,6 +384,46 @@ func news_panel() -> NewsPanel:
 	return _news_panel
 
 
+## Puts the StalkleHeads tabs where the boards were, the first time the match
+## has a market (`GameState.market`).
+##
+## **Asked of the state, not of the settings**, and asked once. The market is
+## what the tabs draw from, so its presence is the precise condition; and once
+## the tabs exist nothing asks again, so nothing during a match keeps asking
+## which game it is (decisions.md D171, D180). A client may build this screen
+## before the host's first snapshot has given it a market, so `refresh` calls
+## this until it has.
+func _ensure_market_tabs() -> void:
+	if _market_tabs != null or _session == null:
+		return
+	var game: GameState = _session.state()
+	if game == null or game.market == null:
+		return
+	_boards.visible = false
+	_market_slot.visible = true
+	_market_tabs = MarketTabsScene.instantiate()
+	_market_slot.add_child(_market_tabs)
+	_market_tabs.build(game)
+	_market_tabs.buy_requested.connect(_on_buy_requested)
+	_market_tabs.sell_requested.connect(_on_sell_requested)
+	_market_tabs.amount_changed.connect(_on_market_amount_changed)
+
+	if _news_panel != null and _year_digest == null:
+		_year_digest = YearDigestScene.instantiate()
+		_news_panel.set_digest(_year_digest)
+	_tell_market_tabs_the_event()
+
+
+## The StalkleHeads tabs, or null in a base-game match. For tests.
+func market_tabs() -> MarketTabs:
+	return _market_tabs
+
+
+## The year in review inside the news panel, or null in a base-game match.
+func year_digest() -> YearDigestPanel:
+	return _year_digest
+
+
 func _build_stalk_panel() -> void:
 	if _stalk_panel != null:
 		return
@@ -449,11 +504,15 @@ func refresh() -> void:
 	if player == null:
 		return
 
+	_ensure_market_tabs()
 	_refresh_year(game)
 	_refresh_stats(player)
-	_refresh_board(game, player)
-	_refresh_holdings(game, player)
-	_refresh_rankings(game)
+	if _market_tabs != null:
+		_refresh_market(game, player)
+	else:
+		_refresh_board(game, player)
+		_refresh_holdings(game, player)
+		_refresh_rankings(game)
 	_refresh_event(game)
 	_refresh_bottom_bar(game, player)
 
@@ -464,6 +523,14 @@ func _refresh_year(game: GameState) -> void:
 	var latest: YearResult = game.latest_result()
 	if latest != null:
 		_mood_label.text = MarketMood.label(latest.mood)
+		# In StalkleHeads the mood is a report of what the index did, so the
+		# move is shown with it, in the order it was decided (design 6.3).
+		var earnings: EarningsYearResult = latest as EarningsYearResult
+		if earnings != null:
+			_mood_label.text = "%s %s" % [
+				MarketMood.label(latest.mood),
+				Palette.format_percent_change(earnings.index_move_percent),
+			]
 		_mood_label.add_theme_color_override("font_color", Palette.for_mood(latest.mood))
 	else:
 		_mood_label.text = ""
@@ -521,13 +588,32 @@ func _refresh_holdings(game: GameState, player: PlayerState) -> void:
 	_holdings_empty.visible = not held_any
 
 
+## The standings, best first: the year's, or the opening order at year 0.
+func _ranking_order(game: GameState) -> Array[StringName]:
+	var latest: YearResult = game.latest_result()
+	if latest != null:
+		return latest.rankings
+	return TradeRules.rank(game.players)
+
+
+## The StalkleHeads tabs' share of `refresh`: the same facts the three boards
+## are given - whether trading is open, the standings, who is host - and the
+## buy and sell checks for any quantity already typed.
+func _refresh_market(game: GameState, player: PlayerState) -> void:
+	var trading: bool = game.is_trading_open() and not _is_waiting(player)
+	_market_tabs.refresh(
+		game, player, trading, _ranking_order(game),
+		_session.local_player_id(), game.host_player_id(),
+	)
+	if trading:
+		for stalk: StalkState in game.stalks:
+			_validate_market_row(stalk.id)
+
+
 func _refresh_rankings(game: GameState) -> void:
 	_clear_children(_ranking_list)
 
-	var latest: YearResult = game.latest_result()
-	var order: Array[StringName] = (
-		latest.rankings if latest != null else TradeRules.rank(game.players)
-	)
+	var order: Array[StringName] = _ranking_order(game)
 
 	var host_id: StringName = game.host_player_id()
 	for player_id: StringName in order:
@@ -709,7 +795,28 @@ func _validate_buy_row(row: StalkRow, shares: int) -> void:
 	)
 
 
+## A board row's buy and sell checks for the quantity typed in it, from the
+## same rules the authority enforces (docs/architecture.md 5.1).
+func _validate_market_row(stalk_id: StringName) -> void:
+	var row: CompanyRow = _market_tabs.exchange().row_for(stalk_id)
+	if row == null:
+		return
+	var shares: int = row.shares_entered()
+	var me: StringName = _session.local_player_id()
+	if shares <= 0:
+		row.set_buy_blocked("")
+		row.set_sell_blocked("")
+		return
+	row.set_buy_blocked(_session.why_not_buy(me, stalk_id, shares))
+	row.set_sell_blocked(_session.why_not_sell(me, stalk_id, shares))
+
+
 # ------------------------------------------------------------------- UI handlers
+
+func _on_market_amount_changed(stalk_id: StringName, _shares: int) -> void:
+	if _market_tabs != null:
+		_validate_market_row(stalk_id)
+
 
 func _on_buy_amount_changed(stalk_id: StringName, shares: int) -> void:
 	var row: StalkRow = _stalk_rows.get(stalk_id)
@@ -937,6 +1044,8 @@ func _on_player_changed(player_id: StringName) -> void:
 	if is_me:
 		for row: StalkRow in _stalk_rows.values():
 			row.clear_amount()
+		if _market_tabs != null:
+			_market_tabs.exchange().clear_amounts()
 	refresh()
 	if is_me and not _pending_loan_action.is_empty():
 		_finish_loan_action()
@@ -1081,6 +1190,7 @@ func _refresh_event(game: GameState) -> void:
 func _on_more_requested() -> void:
 	if _news_panel == null:
 		return
+	_refresh_digest()
 	_news_panel.show_news(_event_flavour.full_text(), _event_effect.text)
 
 
@@ -1093,10 +1203,20 @@ func _announce_the_news(result: YearResult) -> void:
 		return
 	if not NewsPanel.is_wanted():
 		return
+	_refresh_digest()
 	var description: String = ""
 	if result.event != null:
 		description = result.event.flavour_text
 	_news_panel.show_news(description, _event_effect.text)
+
+
+## The year in review, from the state as the year left it (design 6.3).
+func _refresh_digest() -> void:
+	if _year_digest == null:
+		return
+	var digest: YearDigest = YearDigest.for_latest_year(_session.state())
+	if digest != null:
+		_year_digest.show_digest(digest, _session.state())
 
 
 ## Two labels, matching the original: the flavour text, then what it did.
@@ -1106,6 +1226,7 @@ func _show_event(result: YearResult) -> void:
 		_event_flavour.set_full_text("")
 		_event_effect.text = "No special event this year."
 		_event_effect.remove_theme_color_override("font_color")
+		_tell_market_tabs_the_event()
 		return
 
 	var target: StalkState = _session.state().stalk_by_id(result.event.target_stalk_id)
@@ -1125,6 +1246,13 @@ func _show_event(result: YearResult) -> void:
 	_event_effect.add_theme_color_override(
 		"font_color", Palette.for_change(result.event.price_change)
 	)
+	_tell_market_tabs_the_event()
+
+
+## The Market tab shows the year's news too, exactly as the strip says it.
+func _tell_market_tabs_the_event() -> void:
+	if _market_tabs != null:
+		_market_tabs.set_event(_event_flavour.full_text(), _event_effect.text)
 
 
 ## What else happened this year. The original did not show this; splits and

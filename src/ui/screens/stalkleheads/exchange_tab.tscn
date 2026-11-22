@@ -1,0 +1,95 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/screens/stalkleheads/exchange_tab.gd" id="1_tab"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/cell_row.tscn" id="2_row"]
+
+[node name="ExchangeTab" type="HBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_tab")
+
+[node name="Board" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="HeaderSlot" type="MarginContainer" parent="Board"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BoardScroll" type="ScrollContainer" parent="Board"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 4
+
+[node name="BoardList" type="VBoxContainer" parent="Board/BoardScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="StripScroll" type="ScrollContainer" parent="."]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 4
+
+[node name="Strip" type="VBoxContainer" parent="StripScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="CashRow" parent="StripScroll/Strip" instance=ExtResource("2_row")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="NetRow" parent="StripScroll/Strip" instance=ExtResource("2_row")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="LoanRow" parent="StripScroll/Strip" instance=ExtResource("2_row")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="RankingsTitle" type="Label" parent="StripScroll/Strip"]
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "RANKINGS"
+
+[node name="RankingList" type="VBoxContainer" parent="StripScroll/Strip"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="DeskTitle" type="Label" parent="StripScroll/Strip"]
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+tooltip_text = "Each strategy's return on the match so far, all its traders together"
+mouse_filter = 0
+text = "THE DESK"
+
+[node name="DeskList" type="VBoxContainer" parent="StripScroll/Strip"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="ShortTitle" type="Label" parent="StripScroll/Strip"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+mouse_filter = 0
+text = "SHORT INTEREST"
+
+[node name="ShortNone" type="Label" parent="StripScroll/Strip"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "none"
+
+[node name="ShortList" type="VBoxContainer" parent="StripScroll/Strip"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TightVBox"

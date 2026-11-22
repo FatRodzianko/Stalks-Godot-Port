@@ -134,6 +134,49 @@ No price column — the price is on the Available Stalks board.
 | `PlayerRankingsNetworthText` | Net worth |
 | `PlayerReadyStatusImage` | A coloured dot: ready or not |
 
+
+---
+
+## The StalkleHeads playing screen (port only)
+
+**Not in the original.** StalkleHeads is the port's second mode
+([stalkleheads-design.md](stalkleheads-design.md) §7). Its playing screen is the base
+one above with the three panels of `MainGameplayPanel` replaced by four tabs; the top
+and bottom bars are unchanged (decisions.md D180).
+
+```
+┌ top bar, as above ─────────────────────────────────────────────────────────┐
+│ [EXCHANGE] [MARKET] [INDUSTRIES] [COMPANY]                                 │
+│ EXCHANGE:                                                                  │
+│  SYM  NAME        PRICE  CHG   EPS  P/E  DIV HELD  [qty] B S │ CASH  NET   │
+│  - CONSUMER GOODS         +3%       14.2                     │ RANKINGS    │
+│  CONA Consumer Go  136    +7 10.26 13.3    3    0  [   ] B   │ THE DESK    │
+│  ...                                                         │ SHORT INT.  │
+├ bottom bar, as above ──────────────────────────────────────────────────────┤
+```
+
+**Column widths on the EXCHANGE board**, in characters of the 6 x 12 grid: marker 2,
+SYM 6, NAME 18 (scrolls on hover), PRICE 6, CHG 6, EPS 7, P/E 6, DIV 6, HELD 5, then
+the quantity box (5) and B and S (4 each). A header, a group line and a company row
+are one scene (`CompanyRow`), so the columns line up. A bankrupt row hides CHG and
+writes BANKRUPT across PRICE and CHG.
+
+**MARKET**: index level and move, market P/E, mood and bull years, breadth,
+risk-free rate; the index by year (a text chart 38 wide, 7 tall); the year's news;
+the mood of each year as B (bull) or b (bear).
+
+**INDUSTRIES**: one line per industry (this year, three years, standing, average
+P/E, revenue share and a bar, member count); click one for its by-year chart (22
+wide, signed) and its companies' shares.
+
+**COMPANY**: `<` and `>` walk the board in its order; ticker, industry and earnings
+regime ("SLOWING, 1st year"); five years of revenue, expenses, profit, margin,
+earnings per share, price and P/E, with `^split` under a year it split; the ledger
+"why the price moved"; earnings yield against risk-free; investors by name; which
+of the desk's traders traded it last year; its short interest.
+
+**The news panel** gains the year in review above the event, and widens to 480 px.
+
 ---
 
 ## Loans
