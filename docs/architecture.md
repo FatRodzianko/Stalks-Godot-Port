@@ -993,10 +993,11 @@ yet**: the game cannot start a StalkleHeads match until S5, and `MatchAuthority`
 shared with the base game, so S5 is where its buy and sell learn to call
 `record_trade` (D163). The balance tool records its own players' trades.
 
-**Three seams, for the balance tool only.** `advance_company_earnings`,
+**Four seams, for the balance tool only.** `advance_company_earnings`,
 `valuation_performance` and `squeeze_chance_percent` are public methods that
-`tools/balance/lever_year.gd` overrides to apply its levers (D150, D161, D166). The
-game never overrides them.
+`tools/balance/lever_year.gd` overrides to apply its levers (D150, D161, D166), and
+`NpcDesk.choose_target` is one that `tools/balance/lever_desk.gd` overrides (D168).
+The game never overrides them.
 
 **The squeeze template is passed in.** `EarningsYearResolver.new(pool, squeeze)`
 takes `ContentLibrary.short_squeeze` as its second argument; without it no squeeze
@@ -1050,7 +1051,8 @@ strategy did (design §2.6, §12.1). It is a tool, not game code: everything is 
 | `tools/balance_report.gd` | The command-line entry point: reads arguments, runs the matches, prints the table |
 | `tools/balance/balance_match.gd` | One match: a real `GameState` from `EarningsMarket.new_game_state`, the ten strategies as real `PlayerState`s (FOLLOW copies the desk's richest trader since S4), their trading, the flow mode, net worth at the end |
 | `tools/balance/lever_year.gd` | `EarningsYearResolver` with the sweep's levers applied through its two seams (D161) |
-| `tools/balance/levers.gd` | Balance overrides for a sweep (premium, GROWTH stay chance, ageing; since S4 the squeeze on or off, its chance and its size), applied without touching `src/sim/` (D150, D166) |
+| `tools/balance/levers.gd` | Balance overrides for a sweep (premium, GROWTH stay chance, ageing; since S4 the squeeze on or off, its chance and its size, and the SHORT traders' target), applied without touching `src/sim/` (D150, D166, D168) |
+| `tools/balance/lever_desk.gd` | `NpcDesk` with the SHORT-target lever applied through its one seam, `choose_target` (D168) |
 | `tests/unit/test_balance_smoke.gd` | 30 fixed-seed matches with loose bands, in the GUT suite |
 
 S2 drove the year with a stand-in, `tools/balance/stand_in_year.gd` (D144). S3 deleted

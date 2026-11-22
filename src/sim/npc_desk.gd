@@ -71,7 +71,7 @@ func act(state: GameState, rng: RandomNumberGenerator) -> NpcDeskYear:
 		var appetite: int = rng.randi_range(APPETITE_MIN, APPETITE_MAX)
 		var pick: int = rng.randi_range(0, PICK_RANGE - 1)
 
-		var target: StringName = target_for(trader.strategy, state, pick)
+		var target: StringName = choose_target(trader.strategy, state, pick)
 		year.trader_ids.append(trader.id)
 		year.appetites[trader.id] = appetite
 		year.targets[trader.id] = target
@@ -152,6 +152,14 @@ func settle_dividends(dividend_per_share: Dictionary[StringName, int]) -> void:
 
 
 # ------------------------------------------------------------- the strategies
+
+## The target `act` trades on: `target_for`, unchanged. **A seam for the
+## balance tool only**, which overrides it to sweep the SHORT trader's target
+## (tools/balance/lever_desk.gd, decisions.md D168); nothing in the game
+## overrides it.
+func choose_target(strategy: NpcStrategy.Value, state: GameState, pick: int) -> StringName:
+	return target_for(strategy, state, pick)
+
 
 ## What a strategy wants this year, read from the published state, or `&""`
 ## when nothing qualifies. Ties break to the lowest id. `pick` is the trader's

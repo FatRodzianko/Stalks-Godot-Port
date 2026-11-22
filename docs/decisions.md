@@ -6179,11 +6179,72 @@ and §3.10 already records long-match compounding as unsolved.
 - if it does, its chance and size, of which the sweep's passing settings are the
   candidates;
 - whether the SHORT trader's target should move away from what LOWPE holds (the
-  probe's highest P/E would put the squeeze on what HIGHPE holds instead; not
-  measured);
+  probe's highest P/E would put the squeeze on what HIGHPE holds instead; measured
+  below, and it passes P4 even at the published squeeze);
 - whether 5.2 points of flow cost, leaving P4 1.1 points of margin with no squeeze,
   is acceptable, or the flow clamp or the desk's VALUE cohort should change.
 
 **The flag is nearly always set**: some company is flagged in 65% of years with the
 squeeze on and 80% with it off. As a foreshadowing signal it says *which* company far
 more than *whether*. Also for the owner, with the above.
+
+**The SHORT target, measured (2026-11-22).** The owner asked for the third bullet
+above. The tool's `--short-target=highpe` lever (D168) makes the SHORT traders bet
+against the highest P/E, what HIGHPE holds, instead of the slowest grower. Ten
+years, 4,000 seeds, flow on, levers only, `src/` untouched:
+
+| SHORT target | Chance | Size | Leader | TREND | LOWPE | HIGHPE | FOLLOW | Contenders | P3 | Squeezes / match |
+|---|---|---|---|---|---|---|---|---|---|---|
+| slowest (published) | 25 | +25 | LOWPE 41.8 | 16.1 | 41.8 | 0.6 | 16.3 | 5 | 0.44 | 1.60 |
+| slowest | 10 | +5 | LOWPE 29.6 | 23.4 | 29.6 | 1.6 | 15.7 | 6 | 0.64 | 0.77 |
+| slowest | 5 | +5 | LOWPE 29.5 | 23.5 | 29.5 | 1.5 | 15.8 | 6 | 0.63 | 0.38 |
+| slowest | off | — | LOWPE 28.9 | 24.1 | 28.9 | 1.2 | 15.5 | 6 | 0.63 | 0 |
+| **highpe** | **25** | **+25** | **LOWPE 27.7** | 23.9 | 27.7 | 2.0 | 17.2 | 6 | 0.64 | 1.16 |
+| highpe | 10 | +5 | LOWPE 28.2 | 22.4 | 28.2 | 1.1 | 18.2 | 6 | 0.64 | 0.47 |
+| highpe | 5 | +5 | LOWPE 28.8 | 22.3 | 28.8 | 1.1 | 17.9 | 6 | 0.62 | 0.23 |
+| highpe | off | — | LOWPE 29.4 | 21.8 | 29.4 | 1.0 | 17.7 | 6 | 0.62 | 0 |
+
+The four `slowest` rows reproduce the figures above to the digit, which shows that
+the lever's default path is the game's.
+
+- **With the highpe target, P4 holds at every squeeze setting**, the published one
+  included: 27.7%, the best of all eight, and 2.3 points of margin.
+- **The squeeze stops favouring anyone.** On the dearest company, a squeeze lands on
+  stock that LOWPE never holds and that HIGHPE holds only briefly (HIGHPE wins 1-2%
+  in every row). The published squeeze now costs nothing; it is 1.7 points *better*
+  than having no squeeze at all.
+- **It squeezes less often**: 1.16 a match against 1.60. A dear company is flagged
+  less, because the same money is short fewer shares of it.
+- **Even with no squeeze, the target moves the market**, 29.4% against 28.9%,
+  because SHORT's selling is flow and now pushes a different company.
+- **FOLLOW gains about two points** (17.2-18.2% against 15.5-16.3%).
+- **At 25 years** (1,000 seeds, published squeeze), highpe has LOWPE at 50.8%
+  against 64.8% with slowest, and 54.9% with slowest and no squeeze. P3 is 0.12.
+
+**Still open.** Nothing in `src/` changed. The published rule is still slowest (D164),
+which matches the design's "weakest company" wording and its squeeze foreshadowed
+for a *failing* company. highpe reads as "overvalued" rather than "weakest", so
+choosing it changes §5.1's published rule and the story §5.3 tells, not only a
+number. Decision for the owner, with the other bullets above.
+
+### D168 - A balance-tool lever for the SHORT traders' target
+**2026-11-22 · Accepted**
+
+Asked for by the owner, to measure D167's third bullet. `--short-target=slowest|highpe`,
+a lever in the sense of D150.
+
+- **The seam.** `NpcDesk.act` now asks `choose_target`, an instance method, for each
+  trader's target. In the game it calls the static `target_for`, unchanged, so the
+  desk is byte-identical: the suite passes, the golden hash holds, and the published
+  rows of D167 reproduce to the digit.
+- **The lever.** `tools/balance/lever_desk.gd` extends `NpcDesk` and overrides
+  `choose_target` for SHORT only. `highpe` picks the highest P/E among living
+  companies with positive earnings, ties to the lowest id. The probe broke ties the
+  other way; at P/E measured in floats a tie is rare.
+- **How it is applied.** At year 0, `balance_match.gd` replaces `market.desk` with a
+  lever desk holding the same traders, only when the lever is off its published value.
+- Two smoke tests: the lever at `slowest` reproduces a match exactly; `highpe` picks
+  the dearest company, leaves every other strategy's pick alone, and moves the market.
+
+**Rules out.** A strategy parameter in `NpcTraderDefinition` for a rule the owner has
+not chosen.
