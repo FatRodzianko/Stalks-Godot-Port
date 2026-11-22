@@ -11,8 +11,9 @@ extends SceneTree
 ##   --years=N          match length (default 10)
 ##   --seeds=N          how many matches (default 400)
 ##   --first-seed=N     the first seed; seeds run N, N+1, ... (default 0)
-##   --strategies=A,B   which strategies play (default all nine)
-##   --player-flow      the players' own net buying feeds the flow term
+##   --strategies=A,B   which strategies play (default all ten)
+##   --flow=MODE        what feeds the flow term: all (the desk and the players,
+##                      as in the game; default), desk, or none
 ##
 ## Balance levers, for a sweep. Each overrides a published number for this run
 ## only; the defaults in src/sim/ never change (tools/balance/levers.gd):
@@ -21,11 +22,14 @@ extends SceneTree
 ##   --premium-scale=F     the published premium spread times F (2.5 = first draft)
 ##   --growth-stay=N       GROWTH's stay chance in percent (published 42)
 ##   --ageing=N            ageing points a year in GROWTH and SLOWING (published 10)
+##   --no-squeeze          no short squeeze can fire (§5.3)
+##   --squeeze-chance=N    squeeze chance in a flagged year, percent (published 25)
+##   --squeeze-size=N      squeeze price change (published +25, the template's)
 ##
 ## The year is the game's own, `EarningsYearResolver`, since S3 (through
-## tools/balance/lever_year.gd, which only adds the levers). There is no NPC desk
-## until S4, so there is no FOLLOW strategy and, by default, no flow. See docs/development.md and
-## docs/testing.md for what the numbers mean and what they cannot tell you.
+## tools/balance/lever_year.gd, which only adds the levers), and so is the NPC
+## desk, since S4. See docs/development.md and docs/testing.md for what the
+## numbers mean and what they cannot tell you.
 
 
 const BalanceMatch := preload("res://tools/balance/balance_match.gd")
@@ -43,19 +47,22 @@ const USAGE: String = """Usage: <godot> --headless --script res://tools/balance_
   --years=N          match length (default 10)
   --seeds=N          how many matches (default 400)
   --first-seed=N     first seed (default 0)
-  --strategies=A,B   subset of HOLD,LOWPE,HIGHPE,TREND,MOMENTUM,CONTRARIAN,INCOME,RANDOM,BOND
-  --player-flow      players' net buying feeds the flow term (default off)
+  --strategies=A,B   subset of HOLD,LOWPE,HIGHPE,TREND,MOMENTUM,CONTRARIAN,INCOME,FOLLOW,RANDOM,BOND
+  --flow=MODE        all (desk and players, default), desk, or none
   --premium=G,S,L,D,X   regime premiums, GROWTH..DISTRESS (published 1.2,0,0.24,-0.6,-1.4)
   --premium-scale=F     published premium spread times F
   --growth-stay=N       GROWTH's stay chance, 0-100 (published 42)
-  --ageing=N            ageing points a year in GROWTH and SLOWING (published 10)"""
+  --ageing=N            ageing points a year in GROWTH and SLOWING (published 10)
+  --no-squeeze          no short squeeze can fire
+  --squeeze-chance=N    squeeze chance in a flagged year, 0-100 (published 25)
+  --squeeze-size=N      squeeze price change, 0 or more (published 25)"""
 
 
 func _init() -> void:
 	var years: int = P4_LENGTH
 	var seeds: int = 400
 	var first_seed: int = 0
-	var player_flow: bool = false
+	var flow: StringName = BalanceMatch.FLOW_ALL
 	var strategies: Array[StringName] = BalanceMatch.ALL_STRATEGIES.duplicate()
 	var levers: Levers = Levers.new()
 
@@ -71,8 +78,23 @@ func _init() -> void:
 				seeds = value.to_int()
 			"--first-seed":
 				first_seed = value.to_int()
-			"--player-flow":
-				player_flow = true
+			"--flow":
+				flow = StringName(value.to_lower())
+				if flow not in BalanceMatch.FLOW_MODES:
+					_fail("--flow must be all, desk or none.")
+					return
+			"--no-squeeze":
+				levers.squeeze = false
+			"--squeeze-chance":
+				levers.squeeze_chance = value.to_int()
+				if levers.squeeze_chance < 0 or levers.squeeze_chance > 100:
+					_fail("--squeeze-chance must be 0 to 100.")
+					return
+			"--squeeze-size":
+				levers.squeeze_size = value.to_int()
+				if levers.squeeze_size < 0:
+					_fail("--squeeze-size must be 0 or more.")
+					return
 			"--premium":
 				var values: PackedStringArray = value.split(",", false)
 				if values.size() != EarningsRegime.ALL.size():
@@ -123,10 +145,10 @@ func _init() -> void:
 	var started: int = Time.get_ticks_msec()
 	var runs: Array[BalanceMatch.Result] = []
 	for match_seed: int in range(first_seed, first_seed + seeds):
-		runs.append(BalanceMatch.play(library, match_seed, years, strategies, player_flow, levers))
+		runs.append(BalanceMatch.play(library, match_seed, years, strategies, flow, levers))
 	var seconds: float = float(Time.get_ticks_msec() - started) / 1000.0
 
-	_print_report(runs, strategies, years, seeds, first_seed, player_flow, levers)
+	_print_report(runs, strategies, years, seeds, first_seed, flow, levers)
 	print("ran in %.1f s" % seconds)
 	quit()
 
@@ -137,16 +159,18 @@ func _print_report(
 	years: int,
 	seeds: int,
 	first_seed: int,
-	player_flow: bool,
+	flow: StringName,
 	levers: Levers,
 ) -> void:
-	var flow_note: String = "no flow (no desk until S4)"
-	if player_flow:
-		flow_note = "flow from player trades only"
+	var flow_note: String = "flow from the desk and the players"
+	if flow == BalanceMatch.FLOW_DESK:
+		flow_note = "flow from the desk only"
+	elif flow == BalanceMatch.FLOW_NONE:
+		flow_note = "no flow (the desk trades, nothing reaches a price)"
 	print("=== StalkleHeads balance: %d years, %d seeds from %d, %s ===" % [
 		years, seeds, first_seed, flow_note,
 	])
-	print("market: EarningsYearResolver (src/sim), events from the shipped EventPool")
+	print("market: EarningsYearResolver (src/sim), events from the shipped EventPool, the shipped NPC desk")
 	print("levers: %s" % levers.describe())
 
 	var splits: float = 0.0
@@ -154,7 +178,13 @@ func _print_report(
 	var mean_move: float = 0.0
 	var bull_rate: float = 0.0
 	var finals: Array[int] = []
+	var squeezes: float = 0.0
+	var flagged: float = 0.0
+	var best_npc: Dictionary[String, int] = {}
 	for run: BalanceMatch.Result in runs:
+		squeezes += run.squeezes
+		flagged += float(run.flagged_years) / float(run.years)
+		best_npc[run.best_npc_strategy] = best_npc.get(run.best_npc_strategy, 0) + 1
 		splits += run.splits
 		bankruptcies += run.bankruptcies
 		bull_rate += float(run.bull_years) / float(run.years)
@@ -167,6 +197,15 @@ func _print_report(
 	print("mean |yearly change|   %5.2f   bull year rate %5.3f" % [
 		mean_move / count, bull_rate / count,
 	])
+	print("short squeezes per match %5.2f   years with a company flagged %5.3f" % [
+		squeezes / count, flagged / count,
+	])
+	var npc_names: Array[String] = best_npc.keys()
+	npc_names.sort()
+	var npc_parts: PackedStringArray = []
+	for npc_name: String in npc_names:
+		npc_parts.append("%s %.1f%%" % [npc_name, 100.0 * float(best_npc[npc_name]) / count])
+	print("best NPC trader at the end, by strategy: %s" % ", ".join(npc_parts))
 	finals.sort()
 	var zeros: int = finals.count(0)
 	print("final price           p10 %5d  median %5d  p90 %5d  max %5d  zero %d%%" % [
@@ -223,13 +262,13 @@ func _print_report(
 
 	# One line with every figure a sweep compares, for grep.
 	var share: Dictionary[StringName, String] = {}
-	for strategy: StringName in [&"TREND", &"LOWPE"]:
+	for strategy: StringName in [&"TREND", &"LOWPE", &"FOLLOW"]:
 		share[strategy] = "-"
 		if wins.has(strategy):
 			share[strategy] = "%.1f" % (100.0 * float(wins[strategy]) / count)
-	print("summary: years=%d leader=%s %.1f trend=%s lowpe=%s contenders=%d bull=%.3f splits=%.2f bankruptcies=%.2f random/leader=%s" % [
-		years, leader, top, share[&"TREND"], share[&"LOWPE"], contenders,
-		bull_rate / count, splits / count, bankruptcies / count, random_vs_leader,
+	print("summary: years=%d flow=%s leader=%s %.1f trend=%s lowpe=%s follow=%s contenders=%d bull=%.3f splits=%.2f bankruptcies=%.2f squeezes=%.2f random/leader=%s" % [
+		years, flow, leader, top, share[&"TREND"], share[&"LOWPE"], share[&"FOLLOW"], contenders,
+		bull_rate / count, splits / count, bankruptcies / count, squeezes / count, random_vs_leader,
 	])
 
 

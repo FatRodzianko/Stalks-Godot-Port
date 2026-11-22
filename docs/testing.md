@@ -243,8 +243,8 @@ Three things about it are worth knowing.
   on the sentiment carried in. The other flips last year's mood label in a run with
   no events and checks that no price changes.
 
-**Not covered yet:** the desk, short interest and flow from real trading (S4); the
-mode flag and picking the resolver (S5); the wire, migration and rejoin in a
+**Not covered yet:** players' trades reaching flow in a real match (S5, through
+`MatchAuthority`); the mode flag and picking the resolver (S5); the wire, migration and rejoin in a
 StalkleHeads match (S6); anything on screen, including a second loan being offered
 (S7); events with industry or market effects (S8). The "every money figure that
 leaves the sim is an `int`" check is answered by static typing: every money field on
@@ -253,6 +253,29 @@ leaves the sim is an `int`" check is answered by static typing: every money fiel
 **The multiple-loans toggle** (D159) is covered in `test_loan_rules.gd` (off by
 default; a settled loan frees the slot; still one at a time; nothing changes with
 loans off) and `test_state_sync.gd` (it travels in the snapshot).
+
+### StalkleHeads NPC desk: what S4 covers and what it does not
+
+`test_npc_desk.gd` covers phase S4 item by item, every test seeded.
+
+| Item | What is asserted |
+|---|---|
+| The content | 24 traders, three per strategy, sorted by id; every name and chatter line is a placeholder beginning `NPC NAME: ` or `NPC CHATTER: `; a duplicate id, a conviction over 100 and a zero starting cash are refused; the base-game library loads no traders; the squeeze template exists, raises the price and names no target |
+| Sorted order (§5.4) | A desk built from the content reversed still acts in id order |
+| Fixed draw count (§5.4) | A desk on a live market and one on a market where every company is bankrupt leave the RNG in the same state, and that state is exactly two bounded draws per trader |
+| The appetite draw | Stays within 70-130 over twenty years |
+| Same seed, same desk | Two twelve-year matches on one seed end with every trader's cash, holdings and shorts identical: the StalkleHeads sibling of `test_the_same_seed_reproduces_a_whole_match` that design §5.4 asks for |
+| Not players | A year advance adds nobody to `players` or the standings |
+| The eight strategies | Each pick on a hand-set board, including VALUE ignoring a loss-maker, INDEXER never substituting for a bankrupt index, PANIC's bond in a bear year and its pick in a bull one, GROWTH and SHORT needing a positive base, and no strategy picking a bankrupt company |
+| Trading | A long trader's sale and purchase to the coin; a short sale leaves worth unchanged and is the short interest; a short is covered when the target moves; bankruptcy, splits and dividends for holders and short sellers, alone and through the pipeline |
+| Flow | The desk's net shares are exactly the next year's flow input; the next price's flow is the identity's from those shares; flow stays within 5% of fair value every year of a 25-year match |
+| Short interest (§5.3) | The flag (10%) and the chance (25%) as constants; most shorted first; over 400 seeds a squeeze fires about a quarter of the time when flagged and **never** when not; a squeeze fires exactly when the roll is at most the chance; it hits the most shorted company, carries the template's size and is this year's event line in the ledger; without a template nothing squeezes and the stream is the same; the desk's own SHORT traders flag something in a real match |
+| Players cannot short (§14 q10) | Selling shares not held is refused, by the base game's unchanged rule |
+
+**Not covered yet:** players' trades reaching flow in a real match (S5); the desk in
+the snapshot, migration and rejoin (S6); anything on screen, including the published
+short interest and the strategies' help panel (S7); chatter and the short-interest
+news line being chosen (S8).
 
 ### StalkleHeads balance: the tool and its smoke test
 
@@ -276,15 +299,17 @@ tool prints can fail a build. Since S3 it plays the real pipeline,
 **The smoke test.** `test_balance_smoke.gd` runs the tool's own code over 30 fixed seeds
 of ten years, in about a second, and asserts only what a badly broken market would
 violate: the same seed gives the same match; running fewer strategies leaves the
-market unchanged (D145); the bond player ends on exactly 13,426 every time; splits,
+market unchanged when only the desk feeds flow (D145), and changes it when the
+players do (the default since S4); with no flow and no squeeze the desk moves no
+price; FOLLOW plays in every match; the bond player ends on exactly 13,426 every time; splits,
 bankruptcies and the bull-year rate stay in wide bands; no strategy wins three matches
 in four; RANDOM's median keeps half its starting cash; the best reader's median beats
 RANDOM's. **It does not assert P4**: thirty matches could not measure it. The tool
 measured it at 29.6% over 4,000 ten-year seeds on the real pipeline (D161).
 
-**Not covered yet:** `FOLLOW` and the desk's flow (S4); news (S8); loans and
-leverage; Mutuals as a holding; anything about how a real person plays. Re-run the
-tool when each arrives.
+**Not covered yet:** news (S8); loans and leverage; Mutuals as a player's holding;
+anything about how a real person plays. Re-run the tool when each arrives. The S4
+measurement, with the desk, is decisions.md D167.
 
 ### Scene tests
 

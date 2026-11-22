@@ -597,7 +597,10 @@ func test_a_company_with_no_payout_policy_never_pays() -> void:
 # ---------------------------------------------------------------- flow input
 
 func test_net_shares_traded_feed_flow_and_are_then_cleared() -> void:
+	# The desk refills the input at step 13 (test_npc_desk.gd covers that), so an
+	# empty desk here keeps this test about the input alone.
 	var state: GameState = _new_state()
+	state.market.desk = NpcDesk.new()
 	state.market.net_shares_traded = {&"pillows": 400}
 	_quiet_resolver().advance_year(state, StalksFixture.rng(13))
 	var company: CompanyState = state.market.company_by_id(&"pillows")

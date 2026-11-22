@@ -191,6 +191,28 @@ stock rather than a better one (§3.10a).
 
 **Strategy (balance tool)** — a fixed rule a scripted player follows, such as `LOWPE` (hold the three cheapest by P/E) or `TREND` (hold the three whose earnings grew fastest). The list is in [stalkleheads-design.md](stalkleheads-design.md) §2.1.
 
+**The desk (NPC desk)** — the twenty-four simulated traders of a StalkleHeads match. They are not players: not ranked, cannot win, never asked to ready up. They trade once a year after the year settles, and what they bought and sold becomes next year's flow. Code: `NpcDesk` (design §5, decisions.md D162).
+
+**NPC trader** — one member of the desk, authored as an `NpcTraderDefinition` with a name, a strategy, starting cash and conviction. Names and chatter are placeholders until the owner writes them.
+
+**NPC strategy** — the published rule a trader follows: VALUE (lowest P/E), MOMENTUM (rose most last year), CONTRARIAN (fell most), INCOME (highest dividend yield), INDEXER (only My Mutuals and Me Inc.), PANIC (the bond in a bear year, a company in a bull one), GROWTH (earnings grew fastest), SHORT (sells short whichever company's earnings grew slowest). Three traders follow each. Not the same thing as a balance-tool strategy, though several share a rule.
+
+**Conviction** — the share of its cash, 0-100, a trader commits to a decision. Authored; 45 for every shipped trader.
+
+**Appetite** — a trader's yearly draw, 70-130, that scales its conviction for that year, so three traders with one strategy buy the same company in different amounts. Drawn every year before the trader decides anything (decisions.md D163).
+
+**Selling short / a short** — selling shares you do not own, to buy them back later, which profits when the price falls. Only the desk's SHORT traders can; **players cannot** (design §14 q10).
+
+**Short interest** — the number of shares the desk is short in a company, summed over its traders. A real figure, not a hint, published on the Company tab (S7). Code: `NpcDesk.short_interest`.
+
+**Flagged** — a company whose short interest is at least 10% of its shares outstanding. Only while some company is flagged can a short squeeze happen (decisions.md D165).
+
+**Short squeeze** — in StalkleHeads, a special event aimed at the most shorted flagged company: its price jumps (+25 as shipped), and the short sellers lose. In a year with a company flagged it replaces the year's ordinary event 25% of the time; with none flagged it never happens.
+
+**Chatter** — a one-line remark a trader makes about what it did this year (bought, sold, shorted, covered, held). Content for the news in S8; placeholders until then.
+
+**FOLLOW** — the balance-tool strategy that copies whichever NPC trader is worth most, holding what it holds. It reads nothing about companies, only the desk.
+
 **Placeholder company** — a company the owner has not written yet, named by industry
 and letter (*Transportation Company A*) with an obviously temporary ticker (`TRNA`).
 

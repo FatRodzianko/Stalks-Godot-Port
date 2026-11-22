@@ -266,7 +266,7 @@ what the interface is for (decisions.md D6).
 
 ### Measure StalkleHeads balance
 
-The balance tool plays hundreds of seeded StalkleHeads matches with nine scripted
+The balance tool plays hundreds of seeded StalkleHeads matches with ten scripted
 player strategies and prints how each did. Run it after any change to a StalkleHeads
 number: a regime, a band, a multiple term, a company profile. What it measures, and
 what it cannot, is in [testing.md](testing.md); how it is built is
@@ -278,9 +278,10 @@ From the project root:
 <godot> --headless --path . --script res://tools/balance_report.gd
 ```
 
-That is the default: 10-year matches, 400 seeds, every strategy, no flow. It plays
-the game's own StalkleHeads year (`EarningsYearResolver`), and takes about 13 seconds
-for 400 matches. To change
+That is the default: 10-year matches, 400 seeds, every strategy, flow from the NPC
+desk and the players, the short squeeze on. It plays the game's own StalkleHeads
+year (`EarningsYearResolver`) and the game's own NPC desk, and takes about 15
+seconds for 400 matches. To change
 any of it, put a lone `--` after the script and the options after that. The `--` tells
 Godot that what follows is for the script, not for the engine:
 
@@ -293,8 +294,8 @@ Godot that what follows is for the script, not for the engine:
 | `--years=N` | Match length in years | 10 |
 | `--seeds=N` | How many matches to play | 400 |
 | `--first-seed=N` | The first seed; the rest follow on from it | 0 |
-| `--strategies=A,B,...` | Which strategies play, from `HOLD`, `LOWPE`, `HIGHPE`, `TREND`, `MOMENTUM`, `CONTRARIAN`, `INCOME`, `RANDOM`, `BOND` | all nine |
-| `--player-flow` | The players' own buying and selling feeds the price's flow term | off |
+| `--strategies=A,B,...` | Which strategies play, from `HOLD`, `LOWPE`, `HIGHPE`, `TREND`, `MOMENTUM`, `CONTRARIAN`, `INCOME`, `FOLLOW`, `RANDOM`, `BOND` | all ten |
+| `--flow=MODE` | What feeds the price's flow term. `all`: the NPC desk's trades and the players', as in the game. `desk`: the desk's only, so the players never move the market. `none`: nothing; the desk still trades and `FOLLOW` still copies it, but no price moves because of its trading | `all` |
 
 **Balance levers, for a sweep.** These change a published balance number for one run
 only. The real values in `src/sim/` never change; when the owner adopts a setting,
@@ -306,14 +307,18 @@ it is changed there as an ordinary code change (decisions.md D150).
 | `--premium-scale=F` | The published premiums all multiplied by F. 2.5 is the first draft's wider spread | 1 |
 | `--growth-stay=N` | GROWTH's chance of staying GROWTH, in percent. The rest of its row is respread in proportion (D150) | 42 |
 | `--ageing=N` | Points a year added to the regime roll in GROWTH and SLOWING | 10 |
+| `--no-squeeze` | No short squeeze can fire (design §5.3) | squeeze on |
+| `--squeeze-chance=N` | The chance of a squeeze in a year when a company's short interest is flagged, in percent. Still 0 when nothing is flagged | 25 |
+| `--squeeze-size=N` | The squeeze's price change, in coins | 25 |
 
 The output's `levers:` line says what was overridden, and its last line, starting
 `summary:`, has every figure a sweep compares on one line, for searching.
 
 An unknown option prints the list above and exits with code 1.
 
-**How long it takes**, measured on the original author's machine: about 4 seconds for
-the default, 11 seconds at 25 years, 42 seconds for 4,000 ten-year seeds. Time grows
+**How long it takes**, measured on the original author's machine: about 15 seconds
+for the default and six to ten minutes for 4,000 ten-year seeds. Several runs at
+once share the processor, so four 4,000-seed runs side by side take longer each. Time grows
 in step with years × seeds. The last line of the output says how long the run took.
 
 **Reading the output.** The top lines are about the market: splits and bankruptcies
@@ -321,7 +326,9 @@ per match, the average yearly price move, how often a year was a bull year, and 
 spread of closing prices. Then one row per strategy: its median and mean final net
 worth, and its **win share**, the fraction of matches where it finished first (a tie
 counts as a win for each). The last line names the leading strategy and compares its
-win share with the 30% ceiling of property P4 (design §1). The verdict only says
+win share with the 30% ceiling of property P4 (design §1). Two lines above the table
+are about the NPC desk: how many short squeezes a match had and how often a company
+was flagged, and which strategy the desk's richest trader followed at the end. The verdict only says
 HOLDS or FAILS at 10 years, because P4 is defined for the default length only.
 
 **The same seed always gives the same numbers.** If a change moves a figure, the

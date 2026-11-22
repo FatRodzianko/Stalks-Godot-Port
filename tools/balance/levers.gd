@@ -28,6 +28,17 @@ var premium: Array[float] = []
 var growth_stay: int = -1
 var ageing: float = -1.0
 
+## False turns the short squeeze off (§5.3), to measure what it does. Not a
+## number in src/sim/: the tool builds the resolver without the template.
+var squeeze: bool = true
+
+## The squeeze's chance in a flagged year, in percent. -1 = the published 25
+## (`ShortInterestRules.SQUEEZE_CHANCE_PERCENT`).
+var squeeze_chance: int = -1
+
+## The squeeze's price change. -1 = the authored template's (+25).
+var squeeze_size: int = -1
+
 var _transition: Dictionary[EarningsRegime.Value, Array] = {}
 
 
@@ -37,7 +48,7 @@ func changes_regimes() -> bool:
 
 
 func changes_anything() -> bool:
-	return changes_regimes() or not premium.is_empty()
+	return changes_regimes() or not premium.is_empty() or not squeeze 		or squeeze_chance >= 0 or squeeze_size >= 0
 
 
 ## The published premium spread scaled by `factor` (1.0 = today's, 2.5 = the
@@ -134,6 +145,12 @@ func describe() -> String:
 		parts.append("GROWTH row %s" % [growth_row(growth_stay)])
 	if ageing >= 0.0:
 		parts.append("ageing %.0f" % ageing)
+	if not squeeze:
+		parts.append("no short squeeze")
+	if squeeze_chance >= 0:
+		parts.append("squeeze chance %d%%" % squeeze_chance)
+	if squeeze_size >= 0:
+		parts.append("squeeze size %+d" % squeeze_size)
 	return ", ".join(parts)
 
 

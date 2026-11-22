@@ -38,5 +38,21 @@ var industry_performance: Dictionary[StringName, float] = {}
 var dividend_per_share: Dictionary[StringName, int] = {}
 
 
+## What the NPC desk did after the year settled (§4 step 13). Its net shares are
+## next year's flow input. Null only if the year never reached step 13.
+var desk: NpcDeskYear = null
+
+## The companies whose short interest was flagged when this year's event was
+## chosen, most shorted first (§5.3). Read from the desk as last year left it.
+var short_interest_flagged: Array[StringName] = []
+
+## This year's squeeze roll, 1-100, drawn every year whether or not anything was
+## flagged. A squeeze fires when it is at most the squeeze chance.
+var squeeze_roll: int = 0
+
+## True when `event` is a short squeeze rather than a draw from the mood bag.
+var squeezed: bool = false
+
+
 func ledger_for(company_id: StringName) -> PriceLedger:
 	return ledgers.get(company_id, null)

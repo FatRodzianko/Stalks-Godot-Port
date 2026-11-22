@@ -17,18 +17,32 @@ extends RefCounted
 ##
 ## Two random streams (decisions.md D145): the market draws from one seeded with
 ## the match seed, and only RANDOM draws from the other, so choosing which
-## strategies to run never changes the market they are measured on.
+## strategies to run never changes the market they are measured on - unless the
+## players' own trades feed the flow term (`FLOW_ALL`), when the players are part
+## of the market, as they are in the game.
+##
+## **The NPC desk is the game's own** (since S4): `EarningsMarket.desk`, acting at
+## the end of every year advance. FOLLOW reads it.
 
 
 const LeverYear := preload("res://tools/balance/lever_year.gd")
 const Levers := preload("res://tools/balance/levers.gd")
 
-## Every strategy, in the order the report prints them. §2.1 also has FOLLOW
-## (copy the best NPC trader), which needs the desk and arrives with S4.
+## Every strategy, in the order the report prints them, which is the probe's.
 const ALL_STRATEGIES: Array[StringName] = [
 	&"HOLD", &"LOWPE", &"HIGHPE", &"TREND", &"MOMENTUM",
-	&"CONTRARIAN", &"INCOME", &"RANDOM", &"BOND",
+	&"CONTRARIAN", &"INCOME", &"FOLLOW", &"RANDOM", &"BOND",
 ]
+
+## What feeds the flow term (§3.10):
+## - FLOW_ALL: the desk's trades and the players', as in the game. The default.
+## - FLOW_DESK: the desk's only, so the players do not move the market.
+## - FLOW_NONE: nothing. The desk still trades and FOLLOW still reads it, but no
+##   price moves because of its trading. S2 and S3 measured with no desk at all.
+const FLOW_ALL: StringName = &"all"
+const FLOW_DESK: StringName = &"desk"
+const FLOW_NONE: StringName = &"none"
+const FLOW_MODES: Array[StringName] = [FLOW_ALL, FLOW_DESK, FLOW_NONE]
 
 ## How many companies a picking strategy holds.
 const PICKS: int = 3
@@ -46,6 +60,11 @@ class Result:
 	var years: int = 0
 	var moves: Array[int] = []
 	var final_prices: Array[int] = []
+	## Years whose event was a short squeeze, and years with a company flagged.
+	var squeezes: int = 0
+	var flagged_years: int = 0
+	## The strategy of the desk's best trader at the end of the match.
+	var best_npc_strategy: String = ""
 
 
 ## What the strategies read: the published state, plus the two figures a report
@@ -68,17 +87,15 @@ class View:
 		return alive
 
 
-## Plays one match. `strategies` is a subset of ALL_STRATEGIES. With
-## `player_flow` the players' own net buying feeds the flow term, as §3.10 says
-## it should once a desk exists; off by default, because the comparison target
-## is the probe's no-flow run. `levers` overrides balance numbers for a sweep
-## (levers.gd); null means the published values.
+## Plays one match. `strategies` is a subset of ALL_STRATEGIES. `flow` is one
+## of FLOW_MODES. `levers` overrides balance numbers for a sweep (levers.gd);
+## null means the published values.
 static func play(
 	library: ContentLibrary,
 	match_seed: int,
 	years: int,
 	strategies: Array[StringName],
-	player_flow: bool = false,
+	flow: StringName = FLOW_ALL,
 	levers: Levers = null,
 ) -> Result:
 	var market_rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -91,7 +108,15 @@ static func play(
 	settings.rng_seed = match_seed
 	var view: View = View.new()
 	view.state = EarningsMarket.new_game_state(library, settings)
-	var resolver: LeverYear = LeverYear.new(EarningsMarket.build_event_pool(library), levers)
+	if levers == null:
+		levers = Levers.new()
+	var squeeze: SpecialEventDefinition = library.short_squeeze
+	if not levers.squeeze:
+		squeeze = null
+	elif squeeze != null and levers.squeeze_size >= 0:
+		squeeze = squeeze.duplicate() as SpecialEventDefinition
+		squeeze.price_change = levers.squeeze_size
+	var resolver: LeverYear = LeverYear.new(EarningsMarket.build_event_pool(library), levers, squeeze)
 	for strategy: StringName in strategies:
 		view.state.players.append(PlayerState.new(strategy, String(strategy), settings.starting_cash))
 
@@ -107,8 +132,12 @@ static func play(
 				continue
 			_rebalance(player, targets, view.state, net_shares)
 
-		if player_flow:
-			view.state.market.net_shares_traded = net_shares
+		# The desk recorded its own trades at the end of last year's advance.
+		if flow == FLOW_NONE:
+			view.state.market.net_shares_traded = {}
+		elif flow == FLOW_ALL:
+			for asset_id: StringName in net_shares:
+				view.state.market.record_trade(asset_id, net_shares[asset_id])
 		var alive: Array[CompanyState] = view.living()
 		for company: CompanyState in alive:
 			view.previous_profit[company.id] = company.profit
@@ -124,11 +153,18 @@ static func play(
 				result.bankruptcies += 1
 		if outcome.mood == MarketMood.Value.BULL:
 			result.bull_years += 1
+		if outcome.squeezed:
+			result.squeezes += 1
+		if not outcome.short_interest_flagged.is_empty():
+			result.flagged_years += 1
 
 	for player: PlayerState in view.state.players:
 		result.net_worth[player.id] = TradeRules.net_worth(player, view.state)
 	for company: CompanyState in view.state.market.companies:
 		result.final_prices.append(company.price)
+	var best: NpcTraderState = view.state.market.desk.best_trader(view.state)
+	if best != null:
+		result.best_npc_strategy = NpcStrategy.name_of(best.strategy)
 	return result
 
 
@@ -225,6 +261,20 @@ static func _targets(
 					delta = -delta
 				scored.append([delta, company.id])
 			return _lowest(scored)
+		&"FOLLOW":
+			# §5.2: copy whichever NPC trader is worth most, by holding what it
+			# holds, equally. If it holds nothing (a SHORT trader only ever sells
+			# short, which players cannot), the first PICKS, as the probe did.
+			var best: NpcTraderState = market.state.market.desk.best_trader(market.state)
+			if best == null:
+				return first
+			var held: Array[StringName] = []
+			for asset_id: StringName in best.held_ids():
+				if market.state.stalk_by_id(asset_id).price > 0:
+					held.append(asset_id)
+			if held.is_empty():
+				return first
+			return held
 		&"INCOME":
 			var scored: Array[Array] = []
 			for company: CompanyState in alive:

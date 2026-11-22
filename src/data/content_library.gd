@@ -19,6 +19,12 @@ const STALKS_DIR: String = "res://src/data/stalks"
 ## `load_from`, so the base game never reads it; `load_fundamentals` adds it.
 const COMPANIES_DIR: String = "res://src/data/companies"
 const INDUSTRIES_DIR: String = "res://src/data/industries"
+const TRADERS_DIR: String = "res://src/data/traders"
+
+## The short-squeeze template (docs/stalkleheads-design.md §5.3): one event whose
+## target is filled in at the moment a squeeze fires. Not in `STALKS_DIR`, so the
+## base game's event pool never sees it.
+const SHORT_SQUEEZE_PATH: String = "res://src/data/squeeze/short_squeeze.tres"
 
 ## An industry with fewer members than this is refused: an industry of one is
 ## indistinguishable from the company in it (§3.2.3).
@@ -40,6 +46,13 @@ var companies: Array[CompanyProfile] = []
 
 ## StalkleHeads industries, sorted by id. Empty unless `load_fundamentals` ran.
 var industries: Array[IndustryDefinition] = []
+
+## StalkleHeads NPC traders, sorted by id. Empty unless `load_fundamentals` ran.
+var traders: Array[NpcTraderDefinition] = []
+
+## The StalkleHeads short-squeeze template, or null unless `load_fundamentals`
+## ran. Its `target_stalk_id` is empty: the squeeze names its own target.
+var short_squeeze: SpecialEventDefinition = null
 
 ## Problems found by `validate()`. Empty means the content is usable.
 var errors: Array[String] = []
@@ -90,11 +103,14 @@ static func load_from(dir_path: String = STALKS_DIR) -> ContentLibrary:
 	return library
 
 
-## Adds the StalkleHeads company profiles and industries, then re-validates
-## everything. Problems loading a file land in `errors`, as in `load_from`.
+## Adds the StalkleHeads company profiles, industries, NPC traders and the
+## short-squeeze template, then re-validates everything. Problems loading a file
+## land in `errors`, as in `load_from`.
 func load_fundamentals(
 	companies_dir: String = COMPANIES_DIR,
 	industries_dir: String = INDUSTRIES_DIR,
+	traders_dir: String = TRADERS_DIR,
+	short_squeeze_path: String = SHORT_SQUEEZE_PATH,
 ) -> void:
 	var load_errors: Array[String] = []
 	companies = []
@@ -111,9 +127,22 @@ func load_fundamentals(
 			load_errors.append("%s is not an IndustryDefinition" % resource.resource_path)
 			continue
 		industries.append(industry)
+	traders = []
+	for resource: Resource in _load_all(traders_dir, load_errors):
+		var trader: NpcTraderDefinition = resource as NpcTraderDefinition
+		if trader == null:
+			load_errors.append("%s is not an NpcTraderDefinition" % resource.resource_path)
+			continue
+		traders.append(trader)
+	short_squeeze = null
+	if ResourceLoader.exists(short_squeeze_path):
+		short_squeeze = load(short_squeeze_path) as SpecialEventDefinition
+	if short_squeeze == null:
+		load_errors.append("No short-squeeze event at %s" % short_squeeze_path)
 
 	companies.sort_custom(_company_by_id)
 	industries.sort_custom(_industry_by_id)
+	traders.sort_custom(_trader_by_id)
 	validate()
 	errors.append_array(load_errors)
 
@@ -259,6 +288,38 @@ func _validate_fundamentals() -> void:
 		elif count < TARGET_INDUSTRY_MEMBERS:
 			warnings.append("Industry %s has %d members; the target is %d, so one bankruptcy cannot leave it with one."
 				% [industry_id, count, TARGET_INDUSTRY_MEMBERS])
+
+	_validate_traders()
+	if short_squeeze != null:
+		if short_squeeze.price_change <= 0:
+			errors.append("The short squeeze must raise the price; its price_change is %d."
+				% short_squeeze.price_change)
+		if short_squeeze.target_stalk_id != &"":
+			errors.append("The short squeeze names a target (%s); it must leave it empty."
+				% short_squeeze.target_stalk_id)
+
+
+## The NPC desk's content (docs/stalkleheads-design.md §5.1). Duplicate ids
+## matter more here than usual: traders act in id order, so two with one id
+## would make that order depend on load order.
+func _validate_traders() -> void:
+	var seen: Dictionary[StringName, bool] = {}
+	for trader: NpcTraderDefinition in traders:
+		var label: String = str(trader.id) if trader.id != &"" else "<missing id>"
+		if trader.id == &"":
+			errors.append("A trader has no id (display name %s)." % trader.display_name)
+		elif seen.has(trader.id):
+			errors.append("Duplicate trader id: %s" % label)
+		else:
+			seen[trader.id] = true
+		if trader.display_name.is_empty():
+			errors.append("Trader %s has no display name." % label)
+		if trader.strategy not in NpcStrategy.ALL:
+			errors.append("Trader %s has an unknown strategy (%d)." % [label, trader.strategy])
+		if trader.starting_cash <= 0:
+			errors.append("Trader %s starts with %d cash." % [label, trader.starting_cash])
+		if trader.conviction < 0 or trader.conviction > 100:
+			errors.append("Trader %s has conviction %d; it must be 0-100." % [label, trader.conviction])
 
 
 func _validate_company(
@@ -407,6 +468,10 @@ static func _company_by_id(a: CompanyProfile, b: CompanyProfile) -> bool:
 
 
 static func _industry_by_id(a: IndustryDefinition, b: IndustryDefinition) -> bool:
+	return String(a.id) < String(b.id)
+
+
+static func _trader_by_id(a: NpcTraderDefinition, b: NpcTraderDefinition) -> bool:
 	return String(a.id) < String(b.id)
 
 
