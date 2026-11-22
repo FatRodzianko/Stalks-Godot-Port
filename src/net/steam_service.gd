@@ -115,6 +115,11 @@ const KEY_YEARS: StringName = &"years"
 const KEY_LOANS: StringName = &"loans"
 const KEY_CASH: StringName = &"cash"
 
+## Which game the lobby is: `GameMode.lobby_value`, a word rather than a
+## number, so that a lobby from a build that never wrote it reads as empty
+## rather than as `GameMode.Value.BASE` (docs/stalkleheads-design.md §9.4).
+const KEY_MODE: StringName = &"mode"
+
 ## `KEY_LOANS` is a string like everything else in lobby data.
 const LOANS_ON: String = "1"
 const LOANS_OFF: String = "0"
@@ -539,6 +544,7 @@ func _publish_settings(lobby_id: int) -> void:
 	_pending_settings = null
 	if settings == null:
 		return
+	Steam.setLobbyData(lobby_id, String(KEY_MODE), GameMode.lobby_value(settings.mode))
 	Steam.setLobbyData(lobby_id, String(KEY_YEARS), str(settings.max_years))
 	Steam.setLobbyData(lobby_id, String(KEY_CASH), str(settings.starting_cash))
 	var loans: String = LOANS_OFF
@@ -637,6 +643,7 @@ func _on_lobby_match_list(lobbies: Array) -> void:
 			"capacity": Steam.getLobbyMemberLimit(id),
 			# 0 and "" both mean "this lobby did not say", which an older
 			# build's lobby will not have.
+			"mode": Steam.getLobbyData(id, String(KEY_MODE)),
 			"years": Steam.getLobbyData(id, String(KEY_YEARS)).to_int(),
 			"cash": Steam.getLobbyData(id, String(KEY_CASH)).to_int(),
 			"loans": Steam.getLobbyData(id, String(KEY_LOANS)),

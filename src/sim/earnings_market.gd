@@ -44,9 +44,9 @@ var index_level: float = 0.0
 ##
 ## Filled in two places, both through `record_trade`: the NPC desk at the end of
 ## each year advance (§4 step 13), and players' trades during the trading phase
-## that follows. Nothing records players' trades yet: the game cannot start a
-## StalkleHeads match until S5, and S5's match authority is where that call
-## goes (decisions.md D163). The balance tool records its players' trades.
+## that follows, which `MatchAuthority` passes on through
+## `EarningsYearResolver.record_trade` (decisions.md D163, D171). The balance
+## tool records its players' trades the same way.
 var net_shares_traded: Dictionary[StringName, int] = {}
 
 ## The NPC desk (§5). Never null; empty if the content has no traders.

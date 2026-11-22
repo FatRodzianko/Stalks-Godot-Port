@@ -1,5 +1,5 @@
 class_name YearResolver
-extends RefCounted
+extends YearPipeline
 ## Runs one year advance: the ordered end-of-year sequence that is the heart of
 ## the game.
 ##

@@ -16,7 +16,8 @@ var _authority: MatchAuthority
 var _local_player_id: StringName = &"p0"
 
 
-## Builds a ready-to-play match from authored content.
+## Builds a ready-to-play match from authored content. `library` must hold
+## what `settings.mode` needs: see `MatchSetup.load_library`.
 ##
 ## `settings.rng_seed` of 0 means "pick one and record it", so that a match is
 ## always reproducible afterwards even when the player did not choose a seed.
@@ -49,8 +50,10 @@ static func build_authority(
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = settings.rng_seed
 
-	var state: GameState = GameState.new(settings)
-	state.stalks = library.build_stalk_states()
+	# The board, the year and the mode's own settings all come from
+	# `MatchSetup`, the one place the game mode is read (decisions.md D171).
+	MatchSetup.apply_mode_rules(settings)
+	var state: GameState = MatchSetup.new_game_state(settings, library)
 	for index: int in player_names.size():
 		state.players.append(PlayerState.new(
 			StringName("p%d" % index),
@@ -58,11 +61,7 @@ static func build_authority(
 			settings.starting_cash,
 		))
 
-	var resolver: YearResolver = YearResolver.new(
-		RandomRangePriceModel.new(),
-		library.build_event_pool(),
-	)
-	return MatchAuthority.new(state, resolver, rng)
+	return MatchAuthority.new(state, MatchSetup.new_pipeline(settings, library), rng)
 
 
 func state() -> GameState:

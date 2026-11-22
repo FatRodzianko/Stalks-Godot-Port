@@ -36,10 +36,11 @@ func display(lobby: Dictionary) -> void:
 	# A lobby reporting itself full should not offer a button that will fail.
 	_join_button.disabled = capacity > 0 and players >= capacity
 
-	_detail_label.text = _describe(lobby)
+	_detail_label.text = describe(lobby)
 
 
-## The second line: what kind of match this is.
+## The second line: what kind of match this is. Public so a test can read
+## what a row would say without a Steam lobby behind it.
 ##
 ## The original's row showed `Years: N` and `Loans: Y/N`, published as lobby
 ## data for exactly this reason (audit 17.5). Starting cash is added because it
@@ -50,8 +51,17 @@ func display(lobby: Dictionary) -> void:
 ## lobby made by an older build has none of these, and a row claiming ten years
 ## because that is the usual answer would be worse than a row that says
 ## nothing.
-func _describe(lobby: Dictionary) -> String:
+##
+## **The game mode comes first**, because it is the biggest difference between
+## two lobbies: a StalkleHeads match is a different game, not a different
+## setting. Shown by its name for either mode, and left out for a lobby that
+## published none (docs/stalkleheads-design.md §9.4).
+static func describe(lobby: Dictionary) -> String:
 	var parts: Array[String] = []
+
+	var mode: String = GameMode.label_for_lobby_value(String(lobby.get("mode", "")))
+	if not mode.is_empty():
+		parts.append(mode)
 
 	var years: int = int(lobby.get("years", 0))
 	if years > 0:
