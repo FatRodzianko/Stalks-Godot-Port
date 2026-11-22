@@ -15,6 +15,7 @@ extends GutTest
 
 const BalanceMatch := preload("res://tools/balance/balance_match.gd")
 const Levers := preload("res://tools/balance/levers.gd")
+const LeverDesk := preload("res://tools/balance/lever_desk.gd")
 
 const SEEDS: int = 30
 const YEARS: int = 10
@@ -172,3 +173,36 @@ func test_a_rebuilt_growth_row_still_sums_to_100() -> void:
 		assert_eq(row[0], stay)
 	var published: Array = RegimeRules.TRANSITION[EarningsRegime.Value.GROWTH]
 	assert_eq(Levers.growth_row(int(published[0])), published, "the published row comes back unchanged")
+
+
+func test_the_short_target_lever_at_its_published_rule_changes_nothing() -> void:
+	# The lever desk replaces the real one only off the published rule, and
+	# its seam calls straight through for every other strategy (D168).
+	var levers: Levers = Levers.new()
+	levers.short_target = &"slowest"
+	var same: BalanceMatch.Result = BalanceMatch.play(
+		_library, 4, YEARS, BalanceMatch.ALL_STRATEGIES, BalanceMatch.FLOW_ALL, levers
+	)
+	assert_eq(same.net_worth, _runs[4].net_worth)
+	assert_eq(same.final_prices, _runs[4].final_prices)
+
+
+func test_the_highpe_short_target_bets_against_the_dearest_company() -> void:
+	var library_state: GameState = EarningsMarket.new_game_state(_library, GameSettings.new())
+	var company: CompanyState = library_state.market.company_by_id(&"meowly")
+	company.price = 400
+	library_state.stalk_by_id(&"meowly").price = 400
+	var desk: LeverDesk = LeverDesk.new()
+	desk.short_target = LeverDesk.SHORT_HIGHPE
+	assert_eq(desk.choose_target(NpcStrategy.Value.SHORT, library_state, 0), &"meowly")
+	assert_eq(
+		desk.choose_target(NpcStrategy.Value.VALUE, library_state, 0),
+		NpcDesk.target_for(NpcStrategy.Value.VALUE, library_state, 0),
+		"every other strategy is the real one",
+	)
+	var levers: Levers = Levers.new()
+	levers.short_target = LeverDesk.SHORT_HIGHPE
+	var moved: BalanceMatch.Result = BalanceMatch.play(
+		_library, 0, YEARS, BalanceMatch.ALL_STRATEGIES, BalanceMatch.FLOW_ALL, levers
+	)
+	assert_ne(moved.final_prices, _runs[0].final_prices)

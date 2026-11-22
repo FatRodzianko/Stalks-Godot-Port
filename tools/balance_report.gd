@@ -25,6 +25,8 @@ extends SceneTree
 ##   --no-squeeze          no short squeeze can fire (§5.3)
 ##   --squeeze-chance=N    squeeze chance in a flagged year, percent (published 25)
 ##   --squeeze-size=N      squeeze price change (published +25, the template's)
+##   --short-target=T      what the SHORT traders bet against: slowest (published)
+##                         or highpe (decisions.md D168)
 ##
 ## The year is the game's own, `EarningsYearResolver`, since S3 (through
 ## tools/balance/lever_year.gd, which only adds the levers), and so is the NPC
@@ -34,6 +36,7 @@ extends SceneTree
 
 const BalanceMatch := preload("res://tools/balance/balance_match.gd")
 const Levers := preload("res://tools/balance/levers.gd")
+const LeverDesk := preload("res://tools/balance/lever_desk.gd")
 
 ## A strategy "is a contender" when it wins at least this share of matches.
 const CONTENDER_PERCENT: float = 4.0
@@ -55,7 +58,8 @@ const USAGE: String = """Usage: <godot> --headless --script res://tools/balance_
   --ageing=N            ageing points a year in GROWTH and SLOWING (published 10)
   --no-squeeze          no short squeeze can fire
   --squeeze-chance=N    squeeze chance in a flagged year, 0-100 (published 25)
-  --squeeze-size=N      squeeze price change, 0 or more (published 25)"""
+  --squeeze-size=N      squeeze price change, 0 or more (published 25)
+  --short-target=T      slowest (published) or highpe"""
 
 
 func _init() -> void:
@@ -94,6 +98,11 @@ func _init() -> void:
 				levers.squeeze_size = value.to_int()
 				if levers.squeeze_size < 0:
 					_fail("--squeeze-size must be 0 or more.")
+					return
+			"--short-target":
+				levers.short_target = StringName(value.to_lower())
+				if levers.short_target not in LeverDesk.SHORT_TARGETS:
+					_fail("--short-target must be slowest or highpe.")
 					return
 			"--premium":
 				var values: PackedStringArray = value.split(",", false)
@@ -262,12 +271,12 @@ func _print_report(
 
 	# One line with every figure a sweep compares, for grep.
 	var share: Dictionary[StringName, String] = {}
-	for strategy: StringName in [&"TREND", &"LOWPE", &"FOLLOW"]:
+	for strategy: StringName in [&"TREND", &"LOWPE", &"HIGHPE", &"FOLLOW"]:
 		share[strategy] = "-"
 		if wins.has(strategy):
 			share[strategy] = "%.1f" % (100.0 * float(wins[strategy]) / count)
-	print("summary: years=%d flow=%s leader=%s %.1f trend=%s lowpe=%s follow=%s contenders=%d bull=%.3f splits=%.2f bankruptcies=%.2f squeezes=%.2f random/leader=%s" % [
-		years, flow, leader, top, share[&"TREND"], share[&"LOWPE"], share[&"FOLLOW"], contenders,
+	print("summary: years=%d flow=%s leader=%s %.1f trend=%s lowpe=%s highpe=%s follow=%s contenders=%d bull=%.3f splits=%.2f bankruptcies=%.2f squeezes=%.2f random/leader=%s" % [
+		years, flow, leader, top, share[&"TREND"], share[&"LOWPE"], share[&"HIGHPE"], share[&"FOLLOW"], contenders,
 		bull_rate / count, splits / count, bankruptcies / count, squeezes / count, random_vs_leader,
 	])
 

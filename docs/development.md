@@ -310,6 +310,7 @@ it is changed there as an ordinary code change (decisions.md D150).
 | `--no-squeeze` | No short squeeze can fire (design §5.3) | squeeze on |
 | `--squeeze-chance=N` | The chance of a squeeze in a year when a company's short interest is flagged, in percent. Still 0 when nothing is flagged | 25 |
 | `--squeeze-size=N` | The squeeze's price change, in coins | 25 |
+| `--short-target=T` | What the NPC desk's SHORT traders bet against: `slowest` (the company whose earnings grew slowest, the published rule) or `highpe` (the highest P/E). The squeeze lands on that company | `slowest` |
 
 The output's `levers:` line says what was overridden, and its last line, starting
 `summary:`, has every figure a sweep compares on one line, for searching.

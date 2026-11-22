@@ -25,6 +25,7 @@ extends RefCounted
 ## the end of every year advance. FOLLOW reads it.
 
 
+const LeverDesk := preload("res://tools/balance/lever_desk.gd")
 const LeverYear := preload("res://tools/balance/lever_year.gd")
 const Levers := preload("res://tools/balance/levers.gd")
 
@@ -110,6 +111,12 @@ static func play(
 	view.state = EarningsMarket.new_game_state(library, settings)
 	if levers == null:
 		levers = Levers.new()
+	if levers.short_target != LeverDesk.SHORT_SLOWEST:
+		# The same traders at year 0, through the lever desk's one seam.
+		var desk: LeverDesk = LeverDesk.new()
+		desk.traders = view.state.market.desk.traders
+		desk.short_target = levers.short_target
+		view.state.market.desk = desk
 	var squeeze: SpecialEventDefinition = library.short_squeeze
 	if not levers.squeeze:
 		squeeze = null

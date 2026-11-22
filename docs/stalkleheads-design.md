@@ -2548,8 +2548,9 @@ rather than left open:
 ### Still open
 
 **One, from S4's measurement** ([D167](decisions.md)): the short squeeze as first set
-breaks P4, and whether it ships, and at what chance and size, is the owner's to
-decide. Appendix A has the sweep.
+breaks P4, and whether it ships, at what chance and size, and against which company
+the SHORT traders bet, is the owner's to decide. Betting against the highest P/E
+passes P4 even at the published squeeze. Appendix A has the sweep.
 
 Otherwise every question raised by this document has an answer. What remains is
 content the owner will write over time — the five placeholder companies, the trader
@@ -2883,6 +2884,24 @@ still unsolved; P4 is scoped to ten years (§1).
 
 **Nothing in `src/` was retuned.** Whether the squeeze ships, and at what chance and
 size, is open for the owner: [D167](decisions.md).
+
+**The SHORT traders' target** (2026-11-22, [D167](decisions.md), [D168](decisions.md)).
+Betting against the highest P/E instead of the slowest grower moves the squeeze off
+what LOWPE holds. Ten years, 4,000 seeds, flow on:
+
+| SHORT target | Chance | Size | Leader | TREND | `LOWPE` | HIGHPE | FOLLOW | Contenders | P3 | Squeezes / match |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `slowest` (published) | 25 | +25 | `LOWPE` 41.8 | 16.1 | 41.8 | 0.6 | 16.3 | 5 | 0.44 | 1.60 |
+| `slowest` | 10 | +5 | `LOWPE` 29.6 | 23.4 | 29.6 | 1.6 | 15.7 | 6 | 0.64 | 0.77 |
+| `slowest` | 5 | +5 | `LOWPE` 29.5 | 23.5 | 29.5 | 1.5 | 15.8 | 6 | 0.63 | 0.38 |
+| `slowest` | off | — | `LOWPE` 28.9 | 24.1 | 28.9 | 1.2 | 15.5 | 6 | 0.63 | 0 |
+| **`highpe`** | **25** | **+25** | **`LOWPE` 27.7** | 23.9 | 27.7 | 2.0 | 17.2 | 6 | 0.64 | 1.16 |
+| `highpe` | 10 | +5 | `LOWPE` 28.2 | 22.4 | 28.2 | 1.1 | 18.2 | 6 | 0.64 | 0.47 |
+| `highpe` | 5 | +5 | `LOWPE` 28.8 | 22.3 | 28.8 | 1.1 | 17.9 | 6 | 0.62 | 0.23 |
+| `highpe` | off | — | `LOWPE` 29.4 | 21.8 | 29.4 | 1.0 | 17.7 | 6 | 0.62 | 0 |
+
+**With `highpe`, P4 holds at every setting, the published squeeze included (27.7%).**
+At 25 years `LOWPE` leads at 50.8% with it, against 64.8%. Still open for the owner.
 
 ---
 
