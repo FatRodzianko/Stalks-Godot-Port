@@ -20,7 +20,14 @@ extends RefCounted
 ##  10. Dividends           from earnings, on post-split share counts
 ##
 ## then `YearSettlement` runs loans, net worth, standings and game end, exactly
-## as the base game does (§4 steps 11, 12, 15).
+## as the base game does (§4 steps 11, 12, 15), and then:
+##
+##  13. The NPC desk     trades on the settled, published state; its net shares
+##                       are recorded as next year's flow input (§5)
+##
+## Step 13 comes after the settlement, so the desk can never move the year it
+## traded in, only the next, and what a player sees of the desk's positions is
+## a record of decisions made on information the player also has (§4).
 ##
 ## Steps 3 and 5 are one call because `reprice` does both. That is still §4's
 ## order: valuation draws nothing, so drawing the event before the call is the
@@ -40,15 +47,21 @@ extends RefCounted
 
 var _event_pool: EventPool
 
+## The short-squeeze template (`ContentLibrary.short_squeeze`), or null for no
+## squeezes at all. The squeeze roll is drawn either way.
+var _short_squeeze: SpecialEventDefinition
 
-func _init(event_pool: EventPool) -> void:
+
+func _init(event_pool: EventPool, short_squeeze: SpecialEventDefinition = null) -> void:
 	_event_pool = event_pool
+	_short_squeeze = short_squeeze
 
 
 ## Advances `state` by one year and returns what happened. `state.market` must
 ## be set (see `EarningsMarket.new_game_state`). All randomness comes from
 ## `rng`, in a fixed order: six industry rolls in id order, two draws per
-## living company in id order, then the event pool's draws.
+## living company in id order, the squeeze roll, the event pool's draws (when no
+## squeeze fired), then two draws per NPC trader in id order.
 func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearResult:
 	var market: EarningsMarket = state.market
 	var result: EarningsYearResult = EarningsYearResult.new()
@@ -85,10 +98,22 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearR
 	for company: CompanyState in alive:
 		advance_company_earnings(market, company, state.settings.max_years, rng)
 
-	# 4. The event, from last year's mood bag, so it is an input to the price
-	#    rather than a correction to it. A target already bankrupt is skipped and
-	#    left in the bag (EventPool, decisions.md D24).
-	result.event = _event_pool.draw(market.last_mood, state, rng)
+	# 4. The event, so it is an input to the price rather than a correction to
+	#    it. A short squeeze when a company's short interest is flagged and the
+	#    roll comes up (§5.3); otherwise from last year's mood bag, where a target
+	#    already bankrupt is skipped and left in the bag (EventPool, D24). The
+	#    squeeze roll is drawn every year, flagged or not.
+	result.squeeze_roll = rng.randi_range(1, 100)
+	result.short_interest_flagged = market.desk.flagged_companies(state)
+	var any_flagged: bool = not result.short_interest_flagged.is_empty()
+	if _short_squeeze != null and result.squeeze_roll <= squeeze_chance_percent(any_flagged):
+		var squeezed_id: StringName = result.short_interest_flagged[0]
+		result.event = ShortInterestRules.squeeze_event(
+			_short_squeeze, squeezed_id, state.stalk_by_id(squeezed_id).definition.display_name
+		)
+		result.squeezed = true
+	else:
+		result.event = _event_pool.draw(market.last_mood, state, rng)
 	var event_target: StringName = &""
 	if result.event != null:
 		event_target = result.event.target_stalk_id
@@ -134,6 +159,11 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearR
 	_pay_dividends(state, result)
 
 	YearSettlement.settle(state, result)
+
+	# 13. The NPC desk, on the settled state. Its net trading is next year's flow.
+	result.desk = market.desk.act(state, rng)
+	for stalk_id: StringName in result.desk.net_shares:
+		market.record_trade(stalk_id, result.desk.net_shares[stalk_id])
 	return result
 
 
@@ -147,6 +177,13 @@ func advance_company_earnings(
 	rng: RandomNumberGenerator,
 ) -> void:
 	company.advance_earnings(market.performance_of(company), match_years, rng)
+
+
+## §5.3: the chance, in percent, of a squeeze this year. **A seam for the
+## balance tool only**, which overrides it to sweep the chance (decisions.md
+## D166); nothing in the game overrides it.
+func squeeze_chance_percent(any_flagged: bool) -> int:
+	return ShortInterestRules.squeeze_chance_percent(any_flagged)
 
 
 ## The industry performance a company is valued on at step 3: its industry's.
@@ -241,6 +278,7 @@ func _apply_bankruptcies(
 		changes[row.id].price_after = 0
 		for player: PlayerState in state.players:
 			player.set_shares(row.id, 0)
+		state.market.desk.wipe_out(row.id)
 
 
 ## Above 300 a company halves its price (rounding up), doubles its shares
@@ -276,6 +314,7 @@ func _apply_splits(
 			var held: int = player.shares_of(row.id)
 			if held > 0:
 				player.set_shares(row.id, held * 2)
+		state.market.desk.split(row.id)
 
 
 ## Every row's dividend per share, then every player paid on what they hold.
@@ -318,3 +357,4 @@ func _pay_dividends(state: GameState, result: EarningsYearResult) -> void:
 				paid += held * result.dividend_per_share[row.id]
 		player.cash += paid
 		result.dividends[player.id] = paid
+	market.desk.settle_dividends(result.dividend_per_share)

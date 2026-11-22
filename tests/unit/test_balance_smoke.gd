@@ -43,11 +43,44 @@ func test_the_same_seed_plays_the_same_match() -> void:
 
 func test_choosing_strategies_does_not_change_the_market() -> void:
 	# RANDOM draws from its own stream (decisions.md D145), so running a subset
-	# leaves the market, and so HOLD's result, exactly as it was.
+	# leaves the market, and so HOLD's result, exactly as it was - as long as
+	# the players' own trades do not feed the flow term.
 	var fewer: Array[StringName] = [&"HOLD", &"BOND"]
-	var subset: BalanceMatch.Result = BalanceMatch.play(_library, 3, YEARS, fewer)
-	assert_eq(subset.final_prices, _runs[3].final_prices)
-	assert_eq(subset.net_worth[&"HOLD"], _runs[3].net_worth[&"HOLD"])
+	var every: BalanceMatch.Result = BalanceMatch.play(
+		_library, 3, YEARS, BalanceMatch.ALL_STRATEGIES, BalanceMatch.FLOW_DESK
+	)
+	var subset: BalanceMatch.Result = BalanceMatch.play(_library, 3, YEARS, fewer, BalanceMatch.FLOW_DESK)
+	assert_eq(subset.final_prices, every.final_prices)
+	assert_eq(subset.net_worth[&"HOLD"], every.net_worth[&"HOLD"])
+
+
+func test_the_players_trades_feed_flow_by_default() -> void:
+	var desk_only: BalanceMatch.Result = BalanceMatch.play(
+		_library, 3, YEARS, BalanceMatch.ALL_STRATEGIES, BalanceMatch.FLOW_DESK
+	)
+	assert_ne(desk_only.final_prices, _runs[3].final_prices)
+
+
+func test_without_flow_or_squeeze_the_desk_moves_no_price() -> void:
+	# FLOW_NONE: the desk trades and FOLLOW reads it, but its trading reaches no
+	# price. With the squeeze off too, nothing the desk does reaches the market,
+	# so who is playing makes no difference to it.
+	var levers: Levers = Levers.new()
+	levers.squeeze = false
+	var every: BalanceMatch.Result = BalanceMatch.play(
+		_library, 5, YEARS, BalanceMatch.ALL_STRATEGIES, BalanceMatch.FLOW_NONE, levers
+	)
+	var alone: BalanceMatch.Result = BalanceMatch.play(
+		_library, 5, YEARS, [&"HOLD"] as Array[StringName], BalanceMatch.FLOW_NONE, levers
+	)
+	assert_eq(every.final_prices, alone.final_prices)
+	assert_eq(every.squeezes, 0)
+
+
+func test_follow_plays_and_the_desk_has_a_best_trader() -> void:
+	for run: BalanceMatch.Result in _runs:
+		assert_true(run.net_worth.has(&"FOLLOW"))
+		assert_ne(run.best_npc_strategy, "")
 
 
 func test_the_bond_player_earns_the_coupon_and_nothing_else() -> void:
@@ -114,7 +147,7 @@ func test_a_lever_set_to_its_published_value_changes_nothing() -> void:
 	levers.premium = Levers.scaled_premium(1.0)
 	for match_seed: int in [0, 7, 19]:
 		var forced: BalanceMatch.Result = BalanceMatch.play(
-			_library, match_seed, YEARS, BalanceMatch.ALL_STRATEGIES, false, levers
+			_library, match_seed, YEARS, BalanceMatch.ALL_STRATEGIES, BalanceMatch.FLOW_ALL, levers
 		)
 		assert_eq(forced.net_worth, _runs[match_seed].net_worth, "seed %d" % match_seed)
 		assert_eq(forced.final_prices, _runs[match_seed].final_prices, "seed %d" % match_seed)
@@ -124,7 +157,7 @@ func test_a_lever_that_moves_does_move_the_market() -> void:
 	var levers: Levers = Levers.new()
 	levers.growth_stay = 26
 	var moved: BalanceMatch.Result = BalanceMatch.play(
-		_library, 0, YEARS, BalanceMatch.ALL_STRATEGIES, false, levers
+		_library, 0, YEARS, BalanceMatch.ALL_STRATEGIES, BalanceMatch.FLOW_ALL, levers
 	)
 	assert_ne(moved.final_prices, _runs[0].final_prices)
 

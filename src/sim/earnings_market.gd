@@ -38,10 +38,19 @@ var last_mood: MarketMood.Value = MarketMood.Value.BULL
 ## (decisions.md D157). Starts at the index row's authored starting price.
 var index_level: float = 0.0
 
-## **The flow input**, per company id: net shares bought (positive) or sold
-## (negative) during the year now being traded, NPC and player alike. Read by the
-## next year advance, then cleared. A plain input until S4's desk fills it.
+## **The flow input**, per stalk id: net shares bought (positive) or sold
+## (negative) since the last price was set, NPC and player alike (§3.10). The
+## next year advance reads the companies' entries into flow, then clears it.
+##
+## Filled in two places, both through `record_trade`: the NPC desk at the end of
+## each year advance (§4 step 13), and players' trades during the trading phase
+## that follows. Nothing records players' trades yet: the game cannot start a
+## StalkleHeads match until S5, and S5's match authority is where that call
+## goes (decisions.md D163). The balance tool records its players' trades.
 var net_shares_traded: Dictionary[StringName, int] = {}
+
+## The NPC desk (§5). Never null; empty if the content has no traders.
+var desk: NpcDesk = NpcDesk.new()
 
 var _industry_by_id: Dictionary[StringName, IndustryState] = {}
 
@@ -57,6 +66,7 @@ static func from_library(library: ContentLibrary) -> EarningsMarket:
 		market._industry_by_id[definition.id] = industry
 	for profile: CompanyProfile in library.companies:
 		market.companies.append(CompanyState.new(profile))
+	market.desk = NpcDesk.from_definitions(library.traders)
 	var index_definition: StalkDefinition = library.stalk_by_id(INDEX_ID)
 	if index_definition != null:
 		market.index_level = float(index_definition.starting_price)
@@ -119,6 +129,14 @@ static func build_event_pool(library: ContentLibrary) -> EventPool:
 		if company_ids.has(event.target_stalk_id):
 			events.append(event)
 	return EventPool.new(events)
+
+
+## Adds a trade to the flow input: positive shares bought, negative sold. A
+## player's trade and an NPC's count identically (§3.10).
+func record_trade(stalk_id: StringName, shares: int) -> void:
+	if shares == 0:
+		return
+	net_shares_traded[stalk_id] = net_shares_traded.get(stalk_id, 0) + shares
 
 
 func company_by_id(company_id: StringName) -> CompanyState:

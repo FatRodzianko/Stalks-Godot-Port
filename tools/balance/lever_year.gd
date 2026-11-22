@@ -12,7 +12,10 @@ extends EarningsYearResolver
 ##   the real `CompanyState.move_accounts`. Same two draws as the real path;
 ## - **the industry performance a company is valued on**, when the premium lever
 ##   is set, shifted so the multiple comes out as if the premium table had the
-##   override (`Levers.valuation_performance`).
+##   override (`Levers.valuation_performance`);
+## - **the squeeze chance**, when that lever is set, still 0 in a year with
+##   nothing flagged. The squeeze's size is a copy of the template, made by
+##   `balance_match.gd`, and its on/off switch is whether a template is passed.
 ##
 ## With every lever at its default both seams call straight through, and
 ## `test_balance_smoke.gd` checks the override path reproduces that exactly.
@@ -23,8 +26,12 @@ const Levers := preload("res://tools/balance/levers.gd")
 var levers: Levers
 
 
-func _init(event_pool: EventPool, overrides: Levers = null) -> void:
-	super(event_pool)
+func _init(
+	event_pool: EventPool,
+	overrides: Levers = null,
+	short_squeeze: SpecialEventDefinition = null,
+) -> void:
+	super(event_pool, short_squeeze)
 	levers = overrides
 	if levers == null:
 		levers = Levers.new()
@@ -48,6 +55,12 @@ func advance_company_earnings(
 		company.years_in_regime = 0
 	var band: Vector2i = RegimeRules.GROWTH_BAND[company.regime]
 	company.move_accounts(rng.randi_range(band.x, band.y), market.performance_of(company), match_years)
+
+
+func squeeze_chance_percent(any_flagged: bool) -> int:
+	if levers.squeeze_chance < 0 or not any_flagged:
+		return super(any_flagged)
+	return levers.squeeze_chance
 
 
 func valuation_performance(market: EarningsMarket, company: CompanyState) -> float:

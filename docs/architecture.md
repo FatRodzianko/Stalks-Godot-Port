@@ -904,7 +904,7 @@ Non-negotiable, and the thing most worth protecting:
 
 ---
 
-## 9. StalkleHeads: fundamentals and its year (phases S1-S3)
+## 9. StalkleHeads: fundamentals, its year and the NPC desk (phases S1-S4)
 
 StalkleHeads is an optional second game mode in which prices come from simulated
 earnings instead of random rolls. Its design is
@@ -916,7 +916,9 @@ code path builds an `EarningsMarket` or an `EarningsYearResolver`,
 phase S5.
 
 Phase S1 built the pieces of a StalkleHeads year. Phase S3 built the year itself,
-`EarningsYearResolver`, and the state it runs on, `EarningsMarket`.
+`EarningsYearResolver`, and the state it runs on, `EarningsMarket`. Phase S4 built
+the NPC desk, which trades after every year settles and whose trading is next year's
+flow, and short interest, which makes a short squeeze possible.
 
 ### The files
 
@@ -925,7 +927,10 @@ Phase S1 built the pieces of a StalkleHeads year. Phase S3 built the year itself
 | data | `earnings_regime.gd` | `EarningsRegime.Value`: GROWTH, STEADY, SLOWING, DECLINE, DISTRESS. An enum because code branches on each |
 | data | `industry_definition.gd` + `industries/*.tres` | An industry as content: `id` and `display_name`. Six of them |
 | data | `company_profile.gd` + `companies/*.tres` | A company's authored fundamentals: industry, opening EPS, margin, shares, quality, beta, payout policy. Eighteen of them, placeholder values from §3.2.4 |
-| data | `content_library.gd` | `load_fundamentals()` loads both directories; `validate()` checks them (D128) |
+| data | `npc_strategy.gd` | **S4.** `NpcStrategy.Value`: the eight published trading rules. An enum because the desk branches on each |
+| data | `npc_trader_definition.gd` + `traders/*.tres` | **S4.** An NPC trader as content: id, name, strategy, starting cash, conviction, and a chatter line per `Situation`. Twenty-four of them, names and chatter placeholders (D162) |
+| data | `squeeze/short_squeeze.tres` | **S4.** The short-squeeze template: a `SpecialEventDefinition` with no target, +25, placeholder text (D165) |
+| data | `content_library.gd` | `load_fundamentals()` loads companies, industries, traders and the squeeze template; `validate()` checks them (D128, D162) |
 | sim | `regime_rules.gd` | The transition matrix and every per-regime table; the regime roll; the damping ladder |
 | sim | `company_state.gd` | One company during a match: accounts, regime, valuation, the three price terms, the posted price |
 | sim | `industry_state.gd` | One industry during a match, and its persistent yearly roll |
@@ -937,6 +942,10 @@ Phase S1 built the pieces of a StalkleHeads year. Phase S3 built the year itself
 | sim | `earnings_year_result.gd` | **S3.** `YearResult` plus the ledgers, the index move, the sentiment used, the event bag, industry figures and every row's dividend per share |
 | sim | `earnings_year_resolver.gd` | **S3.** The StalkleHeads year, §4 steps 1-10, ending in `YearSettlement` |
 | sim | `year_settlement.gd` | **S3.** The back half both pipelines share: loans, net worth and standings, game end, closing the year (D152) |
+| sim | `npc_trader_state.gd` | **S4.** One trader during a match: cash, shares held, shares short, and its worth at the posted prices |
+| sim | `npc_desk.gd` | **S4.** `EarningsMarket.desk`: every trader in id order; `act()` (§4 step 13), each strategy's pick, short interest, the flagged companies, and what bankruptcy, splits and dividends do to traders (D162-D164) |
+| sim | `npc_desk_year.gd` | **S4.** What the desk did in a year: each trader's appetite, target and action, and the net shares traded |
+| sim | `short_interest_rules.gd` | **S4.** The flag threshold, the squeeze chance and building a squeeze event from the template (D165) |
 
 `CompanyState` pairs with `CompanyProfile` the way `StalkState` pairs with
 `StalkDefinition`, and `IndustryState` with `IndustryDefinition`: the resource is
@@ -950,17 +959,23 @@ year += 1; open a StalkYearChange per row; copy() every living company
 
 1   IndustryState.advance_all(industries, market.sentiment, rng)  # one draw each, id order
 2   company.advance_earnings(performance, max_years, rng)         # two draws each, id order
-4   event = EventPool.draw(market.last_mood, state, rng)          # last year's bag; bull in year 1
+4   roll = rng.randi_range(1, 100)                                # the squeeze roll, every year
+    flagged = desk.flagged_companies(state)                       # short interest, as last year left it
+    if template and roll <= squeeze_chance(flagged): event = squeeze on flagged[0]
+    else: event = EventPool.draw(market.last_mood, state, rng)    # last year's bag; bull in year 1
 3,5 company.reprice(market.sentiment, performance, event_delta,  # no draws
                     market.net_shares_traded[id])
     ledger = PriceLedger.between(copy, company); row.price = company.price
 6   index move = mean pre-split % move (bankrupt this year = -100)
     index_level *= (100 + move) / 100
 7   mood = BULL if move > 0 else BEAR; market.sentiment = clamp(move, -20, 20)
-8   bankruptcy, one pass: price <= 0 -> row bankrupt, holders wiped out
+8   bankruptcy, one pass: price <= 0 -> row bankrupt, holders wiped out (traders' too)
 9   splits above 300: company.split_if_above(), holders' shares doubled; the index too
 10  dividends: company from earnings, bond its coupon, index the mean of its constituents'
+    (traders are paid on what they hold and pay on what they are short)
 YearSettlement.settle(state, result)                              # loans, net worth, game end
+13  result.desk = desk.act(state, rng)                            # two draws per trader, id order
+    market.record_trade(id, net) for each of the desk's trades    # next year's flow input
 ```
 
 **How the board and the market stay in step (D160).** The board is still
@@ -970,13 +985,47 @@ YearSettlement.settle(state, result)                              # loans, net w
 that company's row; the bankrupt flag lives on the row. A company the base game does
 not ship gets a row definition built in memory from its profile.
 
-**What is still an input.** `market.net_shares_traded` is the flow input: the caller
-fills it during a year and the next advance consumes and clears it. S4's NPC desk will
-fill it; until then only a test or the balance tool's `--player-flow` does.
+**The flow input.** `market.net_shares_traded` is filled through
+`EarningsMarket.record_trade`, and the next advance reads the companies' entries,
+then clears it. Two things fill it: the NPC desk at step 13 of every advance, and
+the players' trades during the trading phase that follows. **The second is not wired
+yet**: the game cannot start a StalkleHeads match until S5, and `MatchAuthority` is
+shared with the base game, so S5 is where its buy and sell learn to call
+`record_trade` (D163). The balance tool records its own players' trades.
 
-**Two seams, for the balance tool only.** `advance_company_earnings` and
-`valuation_performance` are public methods that `tools/balance/lever_year.gd`
-overrides to apply its levers (D150, D161). The game never overrides them.
+**Three seams, for the balance tool only.** `advance_company_earnings`,
+`valuation_performance` and `squeeze_chance_percent` are public methods that
+`tools/balance/lever_year.gd` overrides to apply its levers (D150, D161, D166). The
+game never overrides them.
+
+**The squeeze template is passed in.** `EarningsYearResolver.new(pool, squeeze)`
+takes `ContentLibrary.short_squeeze` as its second argument; without it no squeeze
+can fire, and the roll is drawn anyway so the stream is the same (D165). Whatever
+builds the resolver in S5 must pass it.
+
+### The NPC desk (phase S4)
+
+The desk is `EarningsMarket.desk`, an `NpcDesk` of twenty-four `NpcTraderState`s
+built from `ContentLibrary.traders`. It acts once a year, at §4 step 13, after the
+settlement, on the published state, so its trading can only move the next year
+(design §4). Traders are not players: they are never in `GameState.players`, never
+ranked, never in the ready gate.
+
+**How a trader decides** (`NpcDesk.target_for`, pure): each strategy reads the board
+and picks one id, ties to the lowest. **How it trades:** every strategy but SHORT
+sells everything except its target at the posted price, then spends
+`cash * conviction * appetite / 10000` on the target, rounding down to whole shares.
+SHORT keeps real short accounting: selling short adds the proceeds to its cash, its
+worth subtracts what buying back would cost, it pays dividends on what it is short,
+and a bankruptcy closes the short at zero in its favour (D164).
+
+**Determinism (§5.4, D163).** Traders act in sorted id order. Each draws exactly
+twice a year, appetite then pick, before deciding anything. A decision reads only
+the state and those two draws.
+
+**Short interest is not stored.** `NpcDesk.short_interest(id)` sums the traders'
+short positions, which are the state. A company is flagged at 10% of its shares
+outstanding (`ShortInterestRules`).
 
 ### The rules that hold it together
 
@@ -999,19 +1048,19 @@ strategy did (design §2.6, §12.1). It is a tool, not game code: everything is 
 | File | What it is |
 |---|---|
 | `tools/balance_report.gd` | The command-line entry point: reads arguments, runs the matches, prints the table |
-| `tools/balance/balance_match.gd` | One match: a real `GameState` from `EarningsMarket.new_game_state`, the nine strategies as real `PlayerState`s, their trading, net worth at the end |
+| `tools/balance/balance_match.gd` | One match: a real `GameState` from `EarningsMarket.new_game_state`, the ten strategies as real `PlayerState`s (FOLLOW copies the desk's richest trader since S4), their trading, the flow mode, net worth at the end |
 | `tools/balance/lever_year.gd` | `EarningsYearResolver` with the sweep's levers applied through its two seams (D161) |
-| `tools/balance/levers.gd` | Balance overrides for a sweep (premium, GROWTH stay chance, ageing), applied without touching `src/sim/` (D150) |
+| `tools/balance/levers.gd` | Balance overrides for a sweep (premium, GROWTH stay chance, ageing; since S4 the squeeze on or off, its chance and its size), applied without touching `src/sim/` (D150, D166) |
 | `tests/unit/test_balance_smoke.gd` | 30 fixed-seed matches with loose bands, in the GUT suite |
 
 S2 drove the year with a stand-in, `tools/balance/stand_in_year.gd` (D144). S3 deleted
 it: the tool now plays the game's own year, so dividends, splits, bankruptcies, the
 index, the derived mood and the event pool are all the pipeline's (D161).
 
-**Two random streams** (D145): the market draws from a generator seeded with the match
-seed, and only the RANDOM strategy draws from a second one. So which strategies run
-never changes the market they run on.
+**Two random streams** (D145): the market, the desk included, draws from a generator
+seeded with the match seed, and only the RANDOM strategy draws from a second one. So
+which strategies run never changes the market they run on, unless their own trades
+feed the flow term (`--flow=all`, the default since S4), which is the game's rule.
 
-**What it leaves out:** the NPC desk, so `net_shares_traded` is zero unless
-`--player-flow` is passed; loans; Mutuals as something a strategy buys. The desk
-arrives in S4, and the tool should be re-run when it does.
+**What it leaves out:** loans, and Mutuals as something a player strategy buys (the
+INDEXER traders do buy it).

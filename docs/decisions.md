@@ -5922,3 +5922,268 @@ re-run is the one that decides whether D151 is enough.**
 stand-in's 47 s. Most of that is `GameState.stalk_by_id`, a linear search, called per
 company per step. Fine for a tool. Worth an index if the game ever runs many years at
 once.
+
+### D162 - The NPC desk is twenty-four traders as content, trading one target each
+**2026-11-22 · Accepted**
+
+Phase S4 builds design §5. The desk is `EarningsMarket.desk`, an `NpcDesk`, built at
+match start from `ContentLibrary.traders`: twenty-four `NpcTraderDefinition` files in
+`src/data/traders/`, three per strategy across the eight strategies of design §5.1
+(§14 q11). A trader is not a player. It is never in `GameState.players`, never
+ranked, never in the ready gate, and cannot win.
+
+**Each file holds** an id, a display name, a strategy (`NpcStrategy.Value`), its
+starting cash, its conviction (0-100), and five chatter lines, one per
+`NpcTraderDefinition.Situation`: BOUGHT, SOLD, SHORTED, COVERED, HELD. Names and
+chatter are the owner's to write. **Until then every one is a placeholder that says
+which slot it fills**, in the style design §8.3 set for the news:
+`NPC NAME: value trader 1`, `NPC CHATTER: value trader 1, bought`. Nothing reads the
+chatter yet; the news selector is S8. Chatter lives on the trader rather than in a
+separate table, following D29's rule that content about one thing is authored in
+that thing's file. The owner can write the same line for all three of a strategy.
+
+**The numbers are the probe's** (design Appendix A, `model_probe_v3.py`): 8,000
+starting cash and conviction 45 for every trader. That is the desk §2.6 measured.
+They are content, so a trader can be given its own.
+
+**How a trader trades.** Every strategy except SHORT holds one target at a time. Each
+year it sells everything that is not its target at the posted price, then spends
+`cash * conviction * appetite / 10000` on the target, rounded down to whole coins
+and then to whole shares. A target it already holds is added to, not traded. This is
+the probe's trading rule. The strategies' picks are in `NpcDesk.target_for`, which
+breaks ties to the lowest id:
+
+| Strategy | Picks |
+|---|---|
+| VALUE | Lowest P/E (price over earnings per share), positive earnings only |
+| MOMENTUM | Highest Yearly Change |
+| CONTRARIAN | Lowest Yearly Change |
+| INCOME | Highest dividend yield, from this year's dividend per share |
+| INDEXER | My Mutuals and Me Inc. while it is not bankrupt, else nothing |
+| PANIC | BERRY BONDS in a bear year; in a bull year a living company chosen by its pick draw |
+| GROWTH | Highest profit growth over the latest earnings season, from a positive base |
+| SHORT | Lowest profit growth over the latest season, from a positive base (D164) |
+
+**Two changes from the probe.** The probe's PANIC chose its bull-year company with an
+extra RNG call made only in bull years; here it uses the pick that every trader
+draws every year (D163). The probe's SHORT bet against the highest P/E; here it bets
+against the slowest earnings growth (D164). `CompanyState` gained
+`profit_before_season`, so GROWTH and SHORT read growth from the company itself.
+Profit does not change on a split, so this is split-adjusted, as D146 requires.
+
+**Rules out.** Traders as players with a flag; a trader whose rule is not published;
+trader names invented to fill the gap.
+
+### D163 - The desk acts after the settlement, in id order, with two draws per trader
+**2026-11-22 · Accepted**
+
+The three conditions of design §5.4, as built:
+
+1. **Traders act in sorted id order.** `NpcDesk.from_definitions` sorts them, and
+   `ContentLibrary` sorts the files. A test builds the desk from the content reversed
+   and checks the order.
+2. **Each trader draws exactly twice a year**, before it decides anything: the
+   appetite (70-130, a percent of its conviction), then a pick (0-9,999). Only PANIC
+   uses the pick. A test checks that a desk on a live market and a desk on a market
+   where every company is bankrupt leave the RNG in the same state.
+3. **A decision reads only the state and those two draws.** `NpcDesk.target_for` is
+   static and pure.
+
+**Where it runs.** §4 step 13, after `YearSettlement.settle`. So the desk trades on
+the settled, published state, its trading cannot move the year it happened in, and
+what a player sees of the desk's positions is a record of decisions made on
+information the player also has (design §4). It runs in the final year too, which
+costs nothing and keeps the draw count the same in every year.
+
+**Recording into flow.** The desk's net shares, short sales included, go into
+`EarningsMarket.net_shares_traded` through `EarningsMarket.record_trade`. That
+replaces S1 and S3's plain input. The next advance reads the companies' entries
+into flow and clears the input. The bond and the index have no flow term, so the
+INDEXER and PANIC trades are recorded and never read.
+
+**Players' trades go through the same call, and that call is S5's to wire.** §3.10
+counts a player's order exactly as an NPC's. The place a player's trade lands is
+`MatchAuthority`, which is shared with the base game and holds a base `YearResolver`.
+It cannot run a StalkleHeads match at all until S5 picks the resolver by mode. Adding
+`if state.market != null` there now would be the branch on the mode that design
+§13.3 forbids in shared code. **S5 must make buying and selling call
+`EarningsMarket.record_trade`**, and must pass the squeeze template (D165) when it
+builds the resolver. The balance tool records its own players' trades.
+
+**Rules out.** A draw only when a trader has cash; the desk acting before prices are
+set; recomputing the desk on a client (S6 sends it, as D105 sends everything else).
+
+### D164 - The SHORT trader keeps real short accounting; players cannot short
+**2026-11-22 · Accepted**
+
+Design §5.3 says the SHORT trader "holds a notional short position" and that the
+position is the short interest. The probe's version added 60 shares of short interest
+a year, forever, with no cash and no cover. That never shrinks, so it could not tell
+a player anything that changes. Here a short is a real position:
+
+- **Selling short** adds the sale to the trader's cash and records the shares in
+  `NpcTraderState.shorts`. Its worth is cash plus holdings minus what buying the
+  shorts back would cost, so opening a short does not change its worth.
+- **Sizing.** Each year it brings its short on the target to
+  `worth * conviction * appetite / 10000` of shares at the posted price, selling more
+  or buying some back. Sizing on worth rather than cash matters: a short sale raises
+  cash, so sizing on cash would grow without limit.
+- **Moving target.** Any short not on this year's target is bought back first.
+- **Dividends.** A short seller pays the dividend on what it is short.
+- **Bankruptcy** closes the short at zero, in the short seller's favour. **A split**
+  doubles the shares short, as it doubles shares held.
+- **Its cash can go below zero** if a shorted price soars. A trader is not a player,
+  cannot go bankrupt, and is not ranked, so nothing needs to stop it.
+
+**Its target is the slowest earnings growth**, not the probe's highest P/E. Design
+§5.1 publishes the rule as "bets against the weakest company on the board", and the
+squeeze is foreshadowed for a *failing* company. The slowest grower, from a positive
+base, is the readable version of "weakest". A company already losing money has no
+positive base and is skipped by both GROWTH and SHORT.
+
+**Players cannot short** (design §14 q10). Nothing was added: a player can sell only
+what they hold, the base game's rule, and a test pins it in a StalkleHeads state.
+
+**Rules out.** The probe's ever-growing notional position; a player short.
+
+### D165 - Short interest flags a company at 10%; a flagged year squeezes one time in four
+**2026-11-22 · Accepted, numbers open (D167)**
+
+Design §5.3 and §15 M: foreshadowing is a real state variable or it is not
+foreshadowing.
+
+- **Short interest** is `NpcDesk.short_interest(id)`: the desk's short shares in a
+  company, summed. It is derived from the traders' positions, which are the state,
+  so it cannot disagree with them.
+- **A company is flagged** when its short interest is at least
+  `ShortInterestRules.FLAG_AT_PERCENT`, 10%, of its shares outstanding. Three SHORT
+  traders committing about 45% of 8,000 each are short about 11% of a 1,000-share
+  company priced at 100, and more of a cheaper one.
+- **The squeeze is eligible only while something is flagged.** At step 4 a roll of
+  1-100 is drawn **every year**. If something is flagged and the roll is at most
+  `SQUEEZE_CHANCE_PERCENT`, 25, the year's event is a short squeeze on the most
+  shorted flagged company, ties by id, **instead of** a draw from the mood bag, and
+  the bag is left untouched. Otherwise the bag is drawn as before. With nothing
+  flagged the chance is 0, so a test can and does assert both halves of §5.3's
+  promise.
+- **The squeeze is content.** `src/data/squeeze/short_squeeze.tres` is a
+  `SpecialEventDefinition` with no target, +25 (the largest shipped bull event), and
+  placeholder text `EVENT: short squeeze, {company}`. When it fires,
+  `ShortInterestRules.squeeze_event` copies it with the target, an id of
+  `short_squeeze_<company>` and the name filled in. It is outside `STALKS_DIR`, so the
+  base game never loads it, and `EventPool` is untouched.
+- **The template is a constructor argument** of `EarningsYearResolver`. Without it no
+  squeeze fires, and because the roll is drawn anyway the stream is the same. Tests
+  that must not see a squeeze pass none.
+
+**Why replace rather than add.** The base game has one event a year, and the ledger,
+the result and the news all assume one. A squeeze that came on top would be a second
+event.
+
+**Why these numbers.** They were set once, on the reasoning above, before any
+measurement. **They break P4** (D167), and the owner has not chosen replacements.
+
+**Rules out.** A squeeze that can fire with no flag; a squeeze in the mood bags;
+a short-interest figure stored separately from the positions.
+
+### D166 - The balance tool gains FOLLOW, three flow modes and the squeeze levers
+**2026-11-22 · Accepted**
+
+- **FOLLOW** is back (design §2.1), as the tenth strategy. It copies whichever trader
+  is worth most at the posted prices, ties to the lowest id
+  (`NpcDesk.best_trader`), by holding what that trader holds, equally. A trader that
+  holds nothing (a SHORT trader) means the first three companies, as in the probe.
+- **`--flow=all|desk|none`** replaces `--player-flow`. `all`, the default, is the
+  game: the desk's trades and the players'. `desk` is the desk's only, so which
+  strategies run cannot change the market (D145). `none` clears the input before
+  every advance: the desk still trades and FOLLOW still reads it, but its trading
+  moves no price.
+- **`--no-squeeze`, `--squeeze-chance=N` and `--squeeze-size=N`** are levers in the
+  sense of D150. Size is a copy of the template; chance reaches the pipeline through a
+  third seam, `EarningsYearResolver.squeeze_chance_percent`, which
+  `lever_year.gd` overrides and the game never does. `--squeeze-chance=0` reproduces
+  `--no-squeeze` to the digit, because the roll is drawn either way.
+- The report adds squeezes per match, the share of years with a company flagged, and
+  which strategy the desk's richest trader followed at the end.
+
+The smoke test now also checks that the players' trades move the market by default,
+that with no flow and no squeeze the desk moves no price, and that FOLLOW plays.
+
+### D167 - With the desk, P4 fails at 41.8%: the squeeze, then flow. Open for the owner
+**2026-11-22 · Open**
+
+The re-run of S2 that design §11 asks of S4. Ten-year matches, 4,000 seeds, ten
+strategies, published values. "No squeeze" is `--no-squeeze`.
+
+| Flow | Squeeze | Leader | TREND | LOWPE | FOLLOW | Contenders | P3 | Bankruptcies |
+|---|---|---|---|---|---|---|---|---|
+| **desk and players (the game)** | **on** | **LOWPE 41.8%** | 16.1 | 41.8 | 16.3 | 5 | 0.44 | 0.52 |
+| desk and players | off | LOWPE 28.9% | 24.1 | 28.9 | 15.5 | 6 | 0.63 | 0.68 |
+| none | on | LOWPE 32.3% | 16.8 | 32.3 | 14.4 | 7 | 0.58 | 0.53 |
+| none | off | TREND 23.7% | 23.7 | 19.7 | 13.6 | 7 | 0.64 | 0.69 |
+| S3 baseline (D161): no desk, no FOLLOW | — | TREND 29.6% | 29.6 | 23.9 | — | 6 | 0.63 | 0.69 |
+
+**P4 fails as shipped, by 11.8 points.** Two causes, measured apart:
+
+1. **The squeeze costs 8.6 points without flow and 12.9 with it.** It lands on the
+   SHORT traders' target, the slowest grower, which is typically cheap and on a low
+   multiple: exactly what LOWPE holds. +25 on a price of 30 to 60 is a very large
+   move. It also displaces the year's bag draw, which in a bear-bag year would have
+   been a negative event. A +5 squeeze still lifts LOWPE (sweep below), so the
+   displacement and the target matter, not only the size.
+2. **Flow costs 5.2 points without the squeeze and 9.5 with it**, against §2.6's
+   estimate of about one. This is design Q2 (§15) measured on the real pipeline: flow
+   amplifies whatever the largest cohort follows, and the VALUE traders, who buy what
+   LOWPE buys, are the desk's richest at the end of half of all matches.
+
+**Without the squeeze, P4 holds, by 1.1 points** (LOWPE 28.9%).
+
+**FOLLOW** wins 16.3% as shipped and 13.6-15.5% otherwise, against the probe's 12.8%
+(§2.6). It is the highest-mean strategy in every run, as §5.2 predicted.
+
+**The comparison with S3.** With no flow and no squeeze the desk cannot reach a price,
+so that market is S3's. The leader falls from TREND 29.6% to 23.7% because FOLLOW, a
+tenth strategy, takes 13.6% of the wins.
+
+**The squeeze sweep**, flow on, levers only (D150), `src/` untouched:
+
+| Chance | Size | Seeds | Leader | TREND | LOWPE | FOLLOW | Squeezes / match |
+|---|---|---|---|---|---|---|---|
+| **25 (published)** | **+25** | 4,000 | LOWPE 41.8 | 16.1 | 41.8 | 16.3 | 1.60 |
+| 25 | +10 | 400 | LOWPE 32.8 | 21.3 | 32.8 | 19.5 | 1.84 |
+| 25 | +5 | 400 | LOWPE 30.5 | 24.0 | 30.5 | 17.0 | 1.94 |
+| 10 | +25 | 400 | LOWPE 32.8 | 21.8 | 32.8 | 20.0 | 0.70 |
+| 5 | +25 | 400 | LOWPE 30.0 | 24.0 | 30.0 | 19.5 | 0.36 |
+| 10 | +10 | 4,000 | LOWPE 31.5 | 22.5 | 31.5 | 15.6 | 0.76 |
+| 5 | +10 | 4,000 | LOWPE 30.8 | 22.8 | 30.8 | 15.9 | 0.38 |
+| **10** | **+5** | 4,000 | LOWPE **29.6** | 23.4 | 29.6 | 15.7 | 0.77 |
+| **5** | **+5** | 4,000 | LOWPE **29.5** | 23.5 | 29.5 | 15.8 | 0.38 |
+| 0 (= no squeeze) | — | 4,000 | LOWPE 28.9 | 24.1 | 28.9 | 15.5 | 0 |
+
+Sampling noise is about ±2.3 points at 400 seeds and ±0.7 at 4,000. --squeeze-chance=0
+reproduced --no-squeeze exactly at 400 seeds, as D166 says it must.
+
+**Two settings pass, both by half a point:** chance 10% or 5% with a +5 squeeze. Every
+setting still makes LOWPE the leader; the squeeze never helps anything else. A +5
+squeeze is the smallest shipped event size, and at 5% a match of ten years sees one
+about every two and a half matches.
+
+**At 25 years** (1,000 seeds, flow on), LOWPE leads at 64.8% with the squeeze and
+54.9% without, against 49.0% on S2's stand-in (D151). P4 is scoped to ten years (§1),
+and §3.10 already records long-match compounding as unsolved.
+
+**Nothing in `src/` was retuned.** The flag at 10%, the chance at 25% and the size of
++25 stay as D165 set them. **For the owner to decide**, with the figures above:
+
+- whether the squeeze ships at all in the first build;
+- if it does, its chance and size, of which the sweep's passing settings are the
+  candidates;
+- whether the SHORT trader's target should move away from what LOWPE holds (the
+  probe's highest P/E would put the squeeze on what HIGHPE holds instead; not
+  measured);
+- whether 5.2 points of flow cost, leaving P4 1.1 points of margin with no squeeze,
+  is acceptable, or the flow clamp or the desk's VALUE cohort should change.
+
+**The flag is nearly always set**: some company is flagged in 65% of years with the
+squeeze on and 80% with it off. As a foreshadowing signal it says *which* company far
+more than *whether*. Also for the owner, with the above.

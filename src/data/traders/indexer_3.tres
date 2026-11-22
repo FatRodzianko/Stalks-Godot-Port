@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="NpcTraderDefinition" format=3]
+
+[ext_resource type="Script" path="res://src/data/npc_trader_definition.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"indexer_3"
+display_name = "NPC NAME: indexer trader 3"
+strategy = 4
+starting_cash = 8000
+conviction = 45
+chatter_bought = "NPC CHATTER: indexer trader 3, bought"
+chatter_sold = "NPC CHATTER: indexer trader 3, sold"
+chatter_shorted = "NPC CHATTER: indexer trader 3, shorted"
+chatter_covered = "NPC CHATTER: indexer trader 3, covered"
+chatter_held = "NPC CHATTER: indexer trader 3, held"

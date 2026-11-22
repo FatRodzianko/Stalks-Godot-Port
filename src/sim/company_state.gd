@@ -32,6 +32,13 @@ var margin_percent: float = 0.0
 
 var profit: float = 0.0
 
+## Profit before the latest earnings season: what `profit` was when
+## `move_accounts` last ran. Equal to `profit` at year 0. What the GROWTH and
+## SHORT traders read growth from (`profit_growth_percent`). Profit does not change
+## on a split, so its growth is the split-adjusted growth of earnings per share
+## (decisions.md D146).
+var profit_before_season: float = 0.0
+
 var shares_outstanding: int = 0
 
 ## This year's total revenue growth, in percent: the regime's own (damped, then
@@ -100,6 +107,7 @@ func _init(company_profile: CompanyProfile) -> void:
 	profit = profile.starting_earnings_per_share * float(shares_outstanding)
 	if margin_percent != 0.0:
 		revenue = profit * 100.0 / margin_percent
+	profit_before_season = profit
 	multiple = ValuationRules.BASE_MULTIPLE
 	fair_value = ValuationRules.fair_value(profile.starting_earnings_per_share, multiple)
 	price = PriceIdentity.price_of(fair_value, event_carry, flow)
@@ -110,6 +118,14 @@ func earnings_per_share() -> float:
 	if shares_outstanding <= 0:
 		return 0.0
 	return profit / float(shares_outstanding)
+
+
+## The latest season's profit growth in percent, or NAN when there is no
+## positive base to measure it from (a company that was already losing money).
+func profit_growth_percent() -> float:
+	if profit_before_season <= 0.0:
+		return NAN
+	return (profit - profit_before_season) * 100.0 / profit_before_season
 
 
 ## §4 step 2, earnings season. The regime rolls, then revenue moves by the new
@@ -143,6 +159,7 @@ func advance_earnings(
 ## applies if it is positive, then the industry's share is added:
 ## `own = roll * damping; own *= retention if own > 0; growth = own + performance * beta / 100`.
 func move_accounts(growth_roll: int, industry_performance: float, match_years: int) -> void:
+	profit_before_season = profit
 	var own: float = float(growth_roll) * RegimeRules.growth_damping(match_years)
 	own = DividendRules.retained_growth(own, profile.payout_policy_percent)
 	var from_industry: float = industry_performance * float(profile.industry_beta_percent) / 100.0
@@ -217,6 +234,7 @@ func copy() -> CompanyState:
 	twin.revenue = revenue
 	twin.margin_percent = margin_percent
 	twin.profit = profit
+	twin.profit_before_season = profit_before_season
 	twin.shares_outstanding = shares_outstanding
 	twin.revenue_growth_percent = revenue_growth_percent
 	twin.regime = regime

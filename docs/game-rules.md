@@ -284,6 +284,15 @@ Each event carries: **target stalk name**, **flavour text**, **price change**.
   > yet, so StalkleHeads keeps this rule unchanged. It also draws from last year's
   > mood's bag, and leaves out events aimed at My Mutuals and Me Inc. (decisions.md
   > D154).
+  >
+  > **StalkleHeads, as built (S4): the short squeeze.** One event is not in either
+  > bag. While some company's short interest (the shares the NPC desk has sold
+  > short) is at least 10% of its shares outstanding, a roll of 1-100 made every
+  > year comes up at most 25 one year in four, and then the year's event is a
+  > short squeeze on the most shorted such company, +25 to its price, **instead
+  > of** a draw from the bag; the bag is left untouched that year. With nothing
+  > flagged it cannot happen. Players cannot sell short. See decisions.md D165
+  > and stalkleheads-design.md §5.3. The base game has no squeeze.
 
 ---
 
@@ -556,6 +565,9 @@ gesture shows as a message line.
 - Bought from the *Available Stalks* board; sold from *Your Stalks*.
 - Proceeds on sale: `shares sold × current price`.
 - **No limit** on total shares a player may hold.
+- **No short selling.** A player can sell only shares they hold. This holds in
+  StalkleHeads too (design §14 q10): only the NPC desk's SHORT traders sell short,
+  and players bet against a company by reading them (decisions.md D164).
 - Purchases are validated against cash on hand server-side
   (`StalkManager.GetPriceOfPurchase` / `PlayerBuyOrSellStalks`).
 
