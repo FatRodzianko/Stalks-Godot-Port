@@ -33,6 +33,11 @@ var definition: IndustryDefinition
 ## This year's performance in percent, -30 to +30. Zero before the first roll.
 var performance: float = 0.0
 
+## This year's own swing, the one draw `advance` makes. 0 before the first roll.
+## **An input**: the year record sends it so a client can replay the industry
+## year (decisions.md D176).
+var roll: int = 0
+
 
 var id: StringName:
 	get:
@@ -52,7 +57,14 @@ func standing() -> float:
 ## Rolls this year's performance from last year's and last year's sentiment.
 ## Exactly one draw from `rng`.
 func advance(sentiment: float, rng: RandomNumberGenerator) -> void:
-	performance = next_performance(performance, sentiment, rng)
+	replay(rng.randi_range(-SWING, SWING), sentiment)
+
+
+## `advance` with its draw already made. Draws nothing; what a client replaying
+## a year it was sent calls with the host's roll.
+func replay(swing: int, sentiment: float) -> void:
+	roll = swing
+	performance = performance_after(swing, performance, sentiment)
 
 
 static func standing_for(industry_performance: float) -> float:
@@ -65,10 +77,14 @@ static func next_performance(
 	sentiment: float,
 	rng: RandomNumberGenerator,
 ) -> float:
-	var roll: int = rng.randi_range(-SWING, SWING)
+	return performance_after(rng.randi_range(-SWING, SWING), last_performance, sentiment)
+
+
+## `next_performance` for a swing already drawn. Pure.
+static func performance_after(swing: int, last_performance: float, sentiment: float) -> float:
 	var carried: float = last_performance * PERSISTENCE
 	var tilt: float = sentiment * SENTIMENT_TILT
-	return clampf(float(roll) + carried + tilt, -LIMIT, LIMIT)
+	return clampf(float(swing) + carried + tilt, -LIMIT, LIMIT)
 
 
 ## Advances every industry, **in id order**, so the draws land in the same order

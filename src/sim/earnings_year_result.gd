@@ -53,6 +53,25 @@ var squeeze_roll: int = 0
 ## True when `event` is a short squeeze rather than a draw from the mood bag.
 var squeezed: bool = false
 
+# ----------------------------------------------------------------- the inputs
+# What the year drew, kept so the year can be sent as its inputs and replayed
+# on a client (`EarningsYearResolver.replay_year`, decisions.md D176). The
+# event, the squeeze roll and the flagged list above are inputs too. Everything
+# else in this result is derived from these and the market before the year.
+
+## Each industry's swing this year, keyed by industry id.
+var industry_rolls: Dictionary[StringName, int] = {}
+
+## The regime each company alive at the start of the year landed in, by id.
+var regimes: Dictionary[StringName, EarningsRegime.Value] = {}
+
+## The growth roll each of those companies' earnings season was drawn with.
+var growth_rolls: Dictionary[StringName, int] = {}
+
+## The net shares traded since the last price was set, NPC and player alike,
+## that this year's flow term read, by company id (§3.10).
+var net_shares_priced: Dictionary[StringName, int] = {}
+
 
 func ledger_for(company_id: StringName) -> PriceLedger:
 	return ledgers.get(company_id, null)

@@ -2103,10 +2103,50 @@ a migration on its own.
 Godot's encoding, and the first job of the phase that builds the wire format is to
 replace them with a measurement.
 
+#### Measured, 2026-11-22 (S6)
+
+Phase S6 built the wire and measured it with `tools/wire_report.gd`: bytes of Godot's
+own Variant encoding of exactly what the host passes the RPC, on seeded 99-year
+matches in which every player carries a loan every year they can (the heaviest case,
+because loans are the largest per-player part of a year). Full table in
+[D178](decisions.md).
+
+| | Estimated above | Measured, 10 players | Measured, 1 player |
+|---|---|---|---|
+| Per-trade snapshot, year 99 | "well under one" + ~2 KB | **11.1 KB** (base game 6.6 KB) | 6.4 KB (base 2.5 KB) |
+| of which the market | ~2 KB | **2.8 KB**, the desk 1.0 KB of it | 2.3 KB, the desk 0.5 KB |
+| The market's part of a year's record | 120 bytes | **about 680 bytes** | about 670 bytes |
+| Welcome history, 99 years | ~12 KB | **153 KB** (base game 300 KB) | 97 KB (base 246 KB) |
+| The same history as dictionaries | ~400 KB | **1.32 MB**, built and measured | 1.27 MB |
+
+What the estimates missed, and why it does not change the design:
+
+- **The market's record is larger than estimated** because the estimate counted
+  thirteen companies and no desk. The companies cost exactly the three numbers a year
+  it predicted (regime, growth roll, net shares priced); there are eighteen of them,
+  and the desk's record of what each trader did is another 72 numbers a year.
+- **The welcome is dominated by the players' part**, which the estimate did not count
+  at all: dividends, loan changes, net worths and standings, sent as the base game
+  sends them. Even so it is half the base game's own welcome for the same match.
+- **The dictionary encoding is three times worse than estimated**, and over the
+  512 KB Steam limit by more than double. The warning above was right; the packed
+  format is what answers it, at an eighth of the size.
+- **The third measure, capping the welcome's history, is not needed** and was not
+  built. At 153 KB the heaviest welcome is under a third of the documented limit.
+  The limit itself is still unconfirmed against the SDK headers.
+- **Worth knowing beside it:** the base game's ten-player 99-year welcome is 300 KB.
+  Not a StalkleHeads problem, and the base game's wire was deliberately left alone.
+
 ### 9.3 Migration, rejoining, and a player who is away
 
 All three already work and all three constrain this design. Nothing below is new
 behaviour; it is the checklist this mode has to satisfy.
+
+**Satisfied in S6** ([D176](decisions.md)-[D178](decisions.md)), each row tested
+in `test_wire.gd` by comparing a client's copy with the host's field by field. One
+row needed more than the table foresaw: the event bags belong to the pipeline, not the
+state, so a promoted host would have dealt from freshly shuffled bags. They now
+travel with the market ([D177](decisions.md)).
 
 | Mechanism | What StalkleHeads must do |
 |---|---|
@@ -2263,7 +2303,7 @@ is now an input to every price through `flow`, so it cannot come last.
 | **S3 — The pipeline** ✅ **Done 2026-11-22** | `YearSettlement` extracted from `YearResolver` (P5 must stay green); `EarningsYearResolver` running §4 steps 1–10; the derived mood; the event drawn from last year's mood; Mutuals as an index; the bond as the yardstick. **Delivered:** `YearSettlement` (loans, net worth, standings, game end, closing the year) moved out of `YearResolver` by a pure move, `GOLDEN_HASH` unchanged ([D152](decisions.md)); `EarningsMarket` on `GameState.market`, building a twenty-row board (eighteen companies, the bond, the index) and an event pool without the index's events ([D160](decisions.md), [D154](decisions.md)); `EarningsYearResult`; `EarningsYearResolver`, §4 steps 1–10 then the settlement, with the mood derived from the index move and last year's move as sentiment ([D153](decisions.md)), the event from last year's bag and the bull bag in year 1, one bankruptcy pass ([D155](decisions.md)), the bond paying its coupon in every year with its yardstick readouts ([D156](decisions.md)), Mutuals as an index of all eighteen companies' pre-split moves paying their average dividend ([D157](decisions.md)), and Yearly Change including the event ([D158](decisions.md)); `GameSettings.multiple_loans_enabled`, off by default, one loan at a time, sent in the snapshot ([D159](decisions.md)); the balance tool moved onto the real pipeline and `stand_in_year.gd` deleted ([D161](decisions.md)); `test_earnings_year_resolver.gd`, 45 tests, plus loan and snapshot tests. **Measured:** TREND 29.6%, LOWPE 23.9% over 4,000 ten-year seeds, so P4 holds by 0.4 points. **Scope:** flow is still a plain input; nothing selects the mode or turns the loans toggle on (S5); nothing on screen (S7). Decisions D152-D161 | Medium | No | 2, 4, 7, 14 |
 | **S4 — The NPC desk** ✅ **Done 2026-11-22** | About twenty-four traders, the eight strategies, the per-trader appetite draw, sorted order and fixed draw count; recording net shares traded into `flow`; short interest and its event weighting. **Then re-run S2**: `flow` is clamped and measured as free only at 5%, so this is where that is confirmed or not. **Delivered:** `NpcStrategy` and `NpcTraderDefinition` in `src/data/`, with 24 trader files in `src/data/traders/` (three per strategy, 8,000 cash and conviction 45 as the probe had, names and chatter placeholders) and the squeeze template `src/data/squeeze/short_squeeze.tres`; `ContentLibrary.load_fundamentals()` loads and validates both ([D162](decisions.md)); `NpcDesk`, `NpcTraderState`, `NpcDeskYear` and `ShortInterestRules` in `src/sim/`; the desk on `EarningsMarket.desk`, acting at §4 step 13 after the settlement, in id order, two draws per trader, its net shares recorded through `EarningsMarket.record_trade` as next year's flow ([D163](decisions.md)); the SHORT trader with real short accounting and players unable to short ([D164](decisions.md)); short interest flagged at 10% of shares outstanding, and a squeeze in place of the bag draw one flagged year in four, the roll drawn every year ([D165](decisions.md)); the balance tool's FOLLOW, `--flow` modes and squeeze levers ([D166](decisions.md)); `test_npc_desk.gd`, 41 tests. **Measured: P4 fails as shipped, LOWPE 41.8%** over 4,000 ten-year seeds; it holds at 28.9% with the squeeze off. Nothing in `src/` was retuned ([D167](decisions.md), Appendix A). **Then** the owner moved SHORT's target to the highest P/E: P4 holds as shipped, `LOWPE` 27.7% ([D168](decisions.md), [D169](decisions.md)), and the squeeze ships with flow's cost accepted until S5 ([D170](decisions.md)). **Scope:** players' trades are not yet recorded into flow in the game, because `MatchAuthority` cannot run this mode until S5, which must call `record_trade` and pass the squeeze template; nothing sends the desk (S6) or shows it (S7); chatter is not chosen (S8). Decisions D162-D170 | Medium | No | 10, 11 |
 | **S5 — Mode and lobby** ✅ **Done 2026-11-22** | `GameSettings.mode`, picking the resolver at match start, mode selection on the title screen, the lobby key, the browser row. **Also:** record players' trades into `flow` through `MatchAuthority`, then re-run the balance tool at 4,000 ten-year seeds; if the leader passes 30%, tighten the flow clamp first ([D170](decisions.md)). **Delivered:** `GameMode` in `src/data/` and `GameSettings.mode`, the base game by default; `MatchSetup` in `src/sim/`, the one place the mode is read: content, board, pipeline, and `multiple_loans_enabled` on for StalkleHeads ([D159](decisions.md)); `YearPipeline`, the base class of both resolvers, which `MatchAuthority` holds and tells about every accepted trade, so a player's trade is next year's flow in this mode and nothing in the base game; the squeeze template passed to `EarningsYearResolver`; a **Game** row on the title screen inside the fixed card; the lobby key `mode` as a word and the browser row naming the mode first, nothing for a lobby that published none; `mode` in the snapshot, and a joining client loading the companies when the host's settings say StalkleHeads; a promoted host refusing a StalkleHeads match, since its market is not on the wire until S6 ([D171](decisions.md)); `test_game_mode.gd`, 33 tests. **Measured:** LOWPE 27.7% over 4,000 ten-year seeds, identical to D170, because the tool already recorded players' trades the same way; the clamp is not tightened ([D172](decisions.md)). **Scope:** the playing screen is the base game's, showing the twenty-row board (S7); no migration or rejoin of a StalkleHeads match (S6); the browser row, a two-account join and the take-over refusal were checked by hand on 2026-11-22, manual steps C1-C5 in [manual-testing.md](manual-testing.md), all passing. Decisions D171-D172 | Small | Yes, for the browser row | — |
-| **S6 — The wire** | Inputs-travel encoding, packed history rows, the desk in the snapshot, derive-on-client; migration and rejoin in a StalkleHeads match; the payload measured rather than estimated | Medium | Yes | — |
+| **S6 — The wire** ✅ **Done 2026-11-22** | Inputs-travel encoding, packed history rows, the desk in the snapshot, derive-on-client; migration and rejoin in a StalkleHeads match; the payload measured rather than estimated. **Delivered:** `src/net/market_sync.gd`, called by `StateSync` only for a match with a market, so the base game's snapshot and year record are unchanged (a test pins their keys; the golden hash did not move). **The snapshot** carries the market's state as packed blocks - per company six reals and seven integers, per industry its performance and roll, the market's scalars, the flow input, the event bags, and every NPC trader's book, sparse - and a client rebuilds every readout with `CompanyState.derive_readouts`; a `content_key` fingerprint refuses a host running different content ([D176](decisions.md)). **The event bags** travel with the market, so a promoted host deals the departed host's next event ([D177](decisions.md)). **A year** travels as its draws - industry rolls, each company's regime, growth roll and net shares priced, the squeeze, the desk's record - and the client replays it through the resolver's own second half, `EarningsYearResolver.replay_year`, so host and client run one implementation; a welcome replays the whole history from year 0 in under 0.2 s ([D178](decisions.md)). `HostSession.take_over` now accepts a StalkleHeads match. Two changes to what the match computes, both proven harmless by a fingerprint of three 99-year matches: a failed company's valuation readouts are cleared, and the resolver records its draws. `test_wire.gd`, 24 tests: every snapshot and every live year of three 60-year matches identical to the host's to the bit, a welcomed history year for year, a rejoiner equal to a player who stayed, **a promoted host making the same thirty years the old host would have**, the same over ENet, the refusals, the payload under a ceiling. `tools/wire_report.gd` measures the payload. **Measured:** snapshot 11.1 KB, welcome 153 KB at ten players and 99 years; see §9.2. **Scope:** nothing on screen (S7); Steam itself not exercised, manual steps D1-D4 in [manual-testing.md](manual-testing.md), not yet run. Decisions D176-D178 | Medium | Yes | — |
 | **S7 — Interface** | Tab host; the Exchange board with tickers, collapsible industry groups, in-group sorting and the HELD column; the Market, Industries and Company tabs; the chart widget; the ledger widget; the year digest | Largest UI phase | Partly | 1, 8, 9, 12 |
 | **S8 — Content** | The roster to three per industry, the industry resources, the trader resources, the six news categories and their selector. **Placeholders until the owner writes them** | Medium, mostly writing | No | 5, 6, 11 |
 | **S9 — Balance, properly** | Play it. Tune. Repeat | Unbounded | Yes | 13 |

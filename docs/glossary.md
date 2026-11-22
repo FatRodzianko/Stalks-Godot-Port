@@ -219,6 +219,20 @@ stock rather than a better one (§3.10a).
 
 **Year pipeline** — the code that advances one year for a game mode: `YearResolver` for the base game, `EarningsYearResolver` for StalkleHeads. Both extend `YearPipeline`, which is what `MatchAuthority` holds.
 
+**Inputs and readouts** — the two kinds of number in a StalkleHeads market (design §9.1). An *input* is drawn or carried and cannot be worked out from anything else: an industry's roll, a company's regime and growth roll, its revenue. A *readout* follows from the inputs: profit, EPS, the multiple, fair value, P/E. Inputs go over the network; a client works the readouts out itself with the same code (`CompanyState.derive_readouts`). Sending a readout would mean a second copy of the rule on the wire (decisions.md D176).
+
+**Replaying a year** — a client's way of getting a StalkleHeads year: it receives the host's draws for that year and runs the second half of the year pipeline on them (`EarningsYearResolver.replay_year`), which gives exactly the host's result. Only the host rolls dice; everyone runs the arithmetic (decisions.md D178).
+
+**Draws (of a year)** — everything random the host decided in a year: the industry rolls, each company's regime and growth roll, the squeeze roll, each NPC trader's appetite. Recorded on the year's result so a client can replay it.
+
+**Content key** — a fingerprint of the companies, industries, traders and events a StalkleHeads match was built from, in order (`EarningsMarket.content_key`). The market travels as numbers in a fixed order, so both ends must hold the same content; a client whose key differs refuses the host's snapshot.
+
+**Packed block** — a list of numbers sent as one typed array (`PackedInt32Array`, `PackedInt64Array`, `PackedFloat64Array`) where each number's position says what it is, instead of a dictionary per company with named keys. An eighth of the size (decisions.md D178).
+
+**Event bags (as match state)** — what is left of each mood's shuffled bag of events this cycle. In StalkleHeads they are kept on the market (`EarningsMarket.event_bags`) and sent to clients, so a host that takes a match over deals from the same bags (decisions.md D177). In the base game they are not, and are reshuffled when the host changes.
+
+**Sentiment used** — the market sentiment a year's prices were valued on (`EarningsMarket.sentiment_used`). By the time a snapshot is sent, `sentiment` has already moved on to next year's, so this is kept to let a client rebuild the valuation.
+
 **Placeholder company** — a company the owner has not written yet, named by industry
 and letter (*Transportation Company A*) with an obviously temporary ticker (`TRNA`).
 

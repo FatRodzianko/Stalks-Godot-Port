@@ -650,7 +650,8 @@ func _advance_if_everybody_is_ready() -> void:
 
 func _advance() -> void:
 	var result: YearResult = _authority.advance_year()
-	var result_data: Dictionary = StateSync.encode_year_result(result)
+	# With the match, so a StalkleHeads year can go as its inputs (D178).
+	var result_data: Dictionary = StateSync.encode_year_result(result, _authority.state)
 
 	# The year's events plus a snapshot, in the same packet, so a client can
 	# never render a result against a stale market.

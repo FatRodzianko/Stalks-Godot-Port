@@ -43,6 +43,16 @@ extends YearPipeline
 ##
 ## This is a separate pipeline rather than hooks in `YearResolver`, so neither
 ## asks which mode it is in (§10.2, decisions.md D152).
+##
+## **Two halves, so a client can replay a year (decisions.md D176).** Every draw
+## a year makes before the desk is made first and written into the result: the
+## industry rolls, each company's regime and growth roll, the squeeze roll and
+## the event. Everything after that is arithmetic on those inputs, in
+## `_settle_prices`. `advance_year` is the host's way in: draw, then settle.
+## `replay_year` is the client's: take the draws the host sent, then settle with
+## the same code. That is how "inputs travel, readouts are derived" (design
+## §9.1) is kept honest - there is one implementation of the year, not two that
+## are supposed to agree.
 
 
 var _event_pool: EventPool
@@ -65,38 +75,22 @@ func _init(event_pool: EventPool, short_squeeze: SpecialEventDefinition = null) 
 func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearResult:
 	var market: EarningsMarket = state.market
 	var result: EarningsYearResult = EarningsYearResult.new()
-
-	state.year += 1
-	result.year = state.year
-	result.sentiment_used = market.sentiment
-	result.event_bag = market.last_mood
-
-	for row: StalkState in state.stalks:
-		row.did_split = false
-		row.last_yearly_change = 0
-
-	var changes: Dictionary[StringName, StalkYearChange] = {}
-	for row: StalkState in state.stalks:
-		var change: StalkYearChange = StalkYearChange.new()
-		change.stalk_id = row.id
-		change.price_before = row.price
-		change.price_after = row.price
-		changes[row.id] = change
-		result.stalk_changes.append(change)
-
-	var alive: Array[CompanyState] = _living(state)
-	var before: Dictionary[StringName, CompanyState] = {}
-	for company: CompanyState in alive:
-		before[company.id] = company.copy()
+	# The bags as the snapshot left them, so a host that took the match over
+	# deals the departed host's next event, not a freshly shuffled one. On a
+	# host that has run every year itself this puts back exactly what is there.
+	if not market.event_bags.is_empty():
+		_event_pool.restore_bags(market.event_bags)
+	var year: YearInProgress = _open_year(state, result)
 
 	# 1. Industry year, leaning on last year's sentiment.
 	IndustryState.advance_all(market.industries, market.sentiment, rng)
-	for industry: IndustryState in market.industries:
-		result.industry_performance[industry.id] = industry.performance
+	_record_industries(market, result)
 
 	# 2. Earnings season.
-	for company: CompanyState in alive:
+	for company: CompanyState in year.alive:
 		advance_company_earnings(market, company, state.settings.max_years, rng)
+		result.regimes[company.id] = company.regime
+		result.growth_rolls[company.id] = company.growth_roll
 
 	# 4. The event, so it is an input to the price rather than a correction to
 	#    it. A short squeeze when a company's short interest is flagged and the
@@ -114,6 +108,110 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearR
 		result.squeezed = true
 	else:
 		result.event = _event_pool.draw(market.last_mood, state, rng)
+	market.event_bags = _event_pool.bag_state()
+
+	# Last year's net buying, as this year's price reads it: the last input.
+	for company: CompanyState in year.alive:
+		result.net_shares_priced[company.id] = market.net_shares_traded.get(company.id, 0)
+
+	_settle_prices(state, result, year)
+
+	YearSettlement.settle(state, result)
+
+	# 13. The NPC desk, on the settled state. Its net trading is next year's flow.
+	result.desk = market.desk.act(state, rng)
+	for stalk_id: StringName in result.desk.net_shares:
+		market.record_trade(stalk_id, result.desk.net_shares[stalk_id])
+	return result
+
+
+## A year the host already resolved, rebuilt from the inputs it sent, on a copy
+## of the market as it stood before that year (decisions.md D176).
+##
+## `result` arrives holding the year's draws - `industry_rolls`, `regimes`,
+## `growth_rolls`, `net_shares_priced`, the `event`, the squeeze fields - and
+## the desk's record; this fills in everything they determine: every row's
+## change, the ledgers, the industry figures, the index move, the mood, the
+## dividends per share. `state` is moved to the end of the year exactly as
+## `advance_year` moved the host's, through the same `_settle_prices`.
+##
+## **Draws nothing and runs neither the settlement nor the desk.** Players'
+## cash, loans and standings arrive with the year as the host settled them, and
+## the desk's trades arrive as its record; neither is the market's to rebuild.
+## `state` is normally a copy with no players (`EarningsMarket.replay_state`).
+func replay_year(state: GameState, result: EarningsYearResult) -> void:
+	var market: EarningsMarket = state.market
+	var year: YearInProgress = _open_year(state, result)
+
+	for industry: IndustryState in market.industries:
+		industry.replay(result.industry_rolls.get(industry.id, 0), market.sentiment)
+	_record_industries(market, result)
+
+	for company: CompanyState in year.alive:
+		company.replay_earnings(
+			result.regimes.get(company.id, company.regime),
+			result.growth_rolls.get(company.id, 0),
+			market.performance_of(company),
+			state.settings.max_years,
+		)
+
+	_settle_prices(state, result, year)
+
+
+## What a year carries from its opening to its prices: every row's change
+## record, the companies alive at the start, and a copy of each as it was.
+class YearInProgress:
+	extends RefCounted
+	var changes: Dictionary[StringName, StalkYearChange] = {}
+	var alive: Array[CompanyState] = []
+	var before: Dictionary[StringName, CompanyState] = {}
+
+
+## The start of a year, the same on both paths: the year number, last year's
+## sentiment and bag on the record, the rows' yearly flags cleared, a change
+## record per row and a copy of every living company.
+func _open_year(state: GameState, result: EarningsYearResult) -> YearInProgress:
+	var market: EarningsMarket = state.market
+	state.year += 1
+	result.year = state.year
+	result.sentiment_used = market.sentiment
+	result.event_bag = market.last_mood
+	# What this year's prices are valued on, kept for a client that has to
+	# rebuild the valuation from the inputs (`CompanyState.derive_readouts`).
+	market.sentiment_used = market.sentiment
+
+	for row: StalkState in state.stalks:
+		row.did_split = false
+		row.last_yearly_change = 0
+
+	var year: YearInProgress = YearInProgress.new()
+	for row: StalkState in state.stalks:
+		var change: StalkYearChange = StalkYearChange.new()
+		change.stalk_id = row.id
+		change.price_before = row.price
+		change.price_after = row.price
+		year.changes[row.id] = change
+		result.stalk_changes.append(change)
+
+	year.alive = _living(state)
+	for company: CompanyState in year.alive:
+		year.before[company.id] = company.copy()
+	return year
+
+
+func _record_industries(market: EarningsMarket, result: EarningsYearResult) -> void:
+	for industry: IndustryState in market.industries:
+		result.industry_performance[industry.id] = industry.performance
+		result.industry_rolls[industry.id] = industry.roll
+
+
+## §4 steps 3 and 5 to 10, from the year's inputs, which are all in `result` by
+## now. Draws nothing. Both `advance_year` and `replay_year` end here.
+func _settle_prices(state: GameState, result: EarningsYearResult, year: YearInProgress) -> void:
+	var market: EarningsMarket = state.market
+	var changes: Dictionary[StringName, StalkYearChange] = year.changes
+	var alive: Array[CompanyState] = year.alive
+	var before: Dictionary[StringName, CompanyState] = year.before
 	var event_target: StringName = &""
 	if result.event != null:
 		event_target = result.event.target_stalk_id
@@ -123,7 +221,7 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearR
 		var event_delta: int = 0
 		if company.id == event_target:
 			event_delta = result.event.price_change
-		var traded: int = market.net_shares_traded.get(company.id, 0)
+		var traded: int = result.net_shares_priced.get(company.id, 0)
 		company.reprice(market.sentiment, valuation_performance(market, company), event_delta, traded)
 
 		var ledger: PriceLedger = PriceLedger.between(before[company.id], company)
@@ -157,14 +255,6 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearR
 
 	# 10. Dividends, on post-split share counts.
 	_pay_dividends(state, result)
-
-	YearSettlement.settle(state, result)
-
-	# 13. The NPC desk, on the settled state. Its net trading is next year's flow.
-	result.desk = market.desk.act(state, rng)
-	for stalk_id: StringName in result.desk.net_shares:
-		market.record_trade(stalk_id, result.desk.net_shares[stalk_id])
-	return result
 
 
 ## A player's accepted trade, added to next year's flow exactly as an NPC's is
@@ -271,7 +361,7 @@ func _apply_bankruptcies(
 	var failing: Array[StalkState] = []
 	for company: CompanyState in alive:
 		if company.price <= TradeRules.BANKRUPT_AT_OR_BELOW:
-			company.price = 0
+			company.fail()
 			failing.append(state.stalk_by_id(company.id))
 	var index_row: StalkState = state.stalk_by_id(EarningsMarket.INDEX_ID)
 	if index_row != null and not index_row.is_bankrupt:

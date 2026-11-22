@@ -6570,3 +6570,182 @@ the bar's middle with and without a loan, the messages run up to the ready
 button, and the Pillows cruiselines event steps one line at a time with the
 marker in one column and every word shown. `test_marquee_label.gd` checks the
 hold on the end of a name. Manual: manual-testing.md C2c.
+
+### D176 - The snapshot carries the market's state; a client derives the readouts
+**2026-11-22 · Accepted**
+
+Phase S6. A StalkleHeads snapshot gains a `market` block (`src/net/market_sync.gd`),
+built by `MarketSync.encode_market` and applied by `apply_market`, which
+`StateSync` calls only when `state.market` is set. **A base-game snapshot has no
+such key** and is byte for byte what it was; a test pins its keys.
+
+**What travels is state, not readouts.** Design §9.1's rule is "inputs travel,
+readouts are derived". For the snapshot that means every number the next year or
+the desk reads that cannot be worked out from the others:
+
+| Travels | Derived on arrival (`CompanyState.derive_readouts`) |
+|---|---|
+| per company: revenue, margin, profit before the season, revenue growth, event carry, flow (reals); shares, regime, years in regime, growth roll, event delta, price, split flag (integers) | profit, EPS, sentiment, industry standing, regime premium, the multiple, fair value, the clamp flag; and from those P/E, earnings yield and the rest |
+| per industry: performance, roll | standing |
+| the market: sentiment, the sentiment the year was valued on, the index level, last mood, the flow input per board row, the event bags (D177) | |
+| every NPC trader: cash, then (row, shares) for each holding and (company, shares) for each short | worth, short interest, the flagged companies |
+
+**Three things the derivation needed, found by trying to make it exact:**
+
+- **`EarningsMarket.sentiment_used`**, new. `sentiment` has already moved on to next
+  year's by the time a snapshot is taken, so the valuation could not be rebuilt
+  without the one it was made on.
+- **Year 0 is not derived.** A company that has had no earnings season is its
+  profile's, as `CompanyState._init` builds it; `revenue x margin / 100` is not
+  bit-identical to the profile's `EPS x shares`. `apply_market` rebuilds year-0
+  companies from their profiles instead.
+- **A failed company has no valuation** (`CompanyState.fail`). It kept the multiple
+  and fair value of the year it failed in, which a client could only rebuild from
+  that year's market, not the current one. Nothing reads them, so the resolver now
+  clears the six valuation readouts at bankruptcy, and a client does the same. This
+  is the one change S6 made to what a StalkleHeads match computes. A fingerprint of
+  three seeded 99-year matches, every field of every company, industry, trader, row
+  and player every year, was unchanged apart from those readouts on failed companies.
+  One existing test, which checked every ledgered company's sentiment after the
+  year, now skips the companies that failed that year.
+
+**Exactness, measured.** `test_wire.gd` applies every snapshot of three 60-year
+matches (with splits and bankruptcies, asserted) to a fresh replica that loaded only
+the base content, as a joining client does, and compares every field, every float
+by its 64 bits. They are identical. The mirror is fragile in one direction: a change
+to `reprice`, `split_if_above` or `fail` is a change to `derive_readouts`, and the
+comments on both say so.
+
+**Packed and positional.** Each block is a packed array in a fixed order (design
+§9.2): `PackedFloat64Array` for reals, because they are `float` in `sim` (D130) and
+64 bits is the only width that arrives as the same number; `PackedInt32Array` for
+integers, or `PackedInt64Array` for a block holding a number past 2^31 (`_pack`).
+That happens: three VALUE traders' cash passed four billion by year 99 of a
+ten-player match. A number's position says what it is, so both ends must hold the
+same content in the same order. **`EarningsMarket.content_key`** is a hash of every
+company, industry, trader and pool event id in order; a client whose own key differs
+refuses the snapshot, as `apply_state` refuses an unknown stalk (design §9.3). Short
+blocks, out-of-range positions and 32-bit reals are refused too.
+
+**Why the snapshot carries state rather than relying on the history.** A client
+could rebuild the whole market by replaying every year (D178), but the snapshot goes
+out on every trade and must be enough on its own for a client to take the match over
+(D105). Carrying the state costs about 2.3 to 2.8 KB a snapshot. The market changes
+only at a year advance, so this is the price of D42's whole snapshots, kept.
+
+**Rules out.** Sending profit, EPS, the multiple, fair value or anything else
+`derive_readouts` rebuilds; floats narrower than 64 bits; a dictionary per company.
+
+### D177 - The event bags travel with the market
+**2026-11-22 · Accepted**
+
+A pipeline's `EventPool` holds the shuffled bags each mood's events are dealt from.
+The pool belongs to the resolver, not the `GameState`, so it never reached a client,
+and a host that took a match over built a fresh pipeline with freshly shuffled bags.
+
+**In StalkleHeads that is now fixed.** `EarningsMarket.event_bags` keeps what is left
+in each bag as positions in its pool (`EventPool.bag_state`). The resolver restores
+the pool from it at the start of every year (`restore_bags`) and writes it back after
+the draw. On a host that has run every year itself the restore puts back exactly what
+is there; on a promoted host it puts back the departed host's bags. It is in the
+snapshot (D176), about 100 bytes.
+
+**Why it matters.** `test_wire.gd` takes a match over at year 10 and plays thirty
+more years on both the old host and the new: identical, year for year. With the bags
+forgotten (the fault put back in a test), the two matches part within those thirty
+years. A promoted host without the bags could deal an event the old host had already
+dealt in the current cycle, which D23 exists to prevent.
+
+**The base game has the same gap, and still has it.** Its migration (D105) rebuilds
+the pool from the library, so after a handover the bags are reshuffled and an event
+can recur before its cycle ends. Fixing it means a new key in the base game's
+snapshot, which this phase was told not to change. Recorded as a follow-up, not
+fixed.
+
+**Rules out.** Re-deriving the bags on a new host by replaying the match's events;
+keeping event ids rather than positions (the ids are already fingerprinted by
+`content_key`, so positions say the same thing in a fraction of the bytes).
+
+### D178 - A StalkleHeads year travels as its draws and is replayed on the client
+**2026-11-22 · Accepted**
+
+**The year record** (the year broadcast, and every year of a welcome's history) of a
+StalkleHeads year drops `stalk_changes` and `mood` and gains `inputs`, one packed
+integer block (`MarketSync.encode_year_into`):
+
+| Block | Integers |
+|---|---|
+| industries | count, each industry's roll |
+| companies | count, then per company: regime, growth roll, the net shares its price read |
+| squeeze | the roll, whether it fired, the flagged companies |
+| desk | count, then per trader: appetite, target row, action |
+| desk flow | count, then (row, net shares) for each row the desk traded |
+
+Kept as the base game sends them: the year, the event id, and the players' part
+(dividends, loan changes, net worths, rankings, winners, game over).
+
+**The client replays the year.** `EarningsYearResolver` is split in two: the draws,
+which only the host makes and which it writes into the result (`industry_rolls`,
+`regimes`, `growth_rolls`, `net_shares_priced`, the squeeze, the event), and
+`_settle_prices`, §4 steps 3 and 5-10, which is arithmetic on those.
+`advance_year` is draw-then-settle; **`replay_year`** takes the host's draws and runs
+the same `_settle_prices` on a players-less copy of the market as it stood before the
+year (`EarningsMarket.replay_state`). Every row change, ledger, industry figure, the
+index move, the mood and the dividends per share come out of that.
+`CompanyState.replay_earnings` and `IndustryState.replay` are the draw-free halves of
+`advance_earnings` and `advance`, which now call them. **One implementation of the
+year, not a host's and a client's that are meant to agree.** The fingerprint in D176
+showed the split changed nothing.
+
+- **Live:** `ClientSession._on_year_pushed` now decodes the year *before* applying
+  its snapshot, because the replay needs the market as it was before the year. An
+  ENet test shows the old order puts every result a year late.
+- **A welcome:** `StateSync.apply_history` replays every year in turn on a fresh
+  year-0 match. A 99-year history replays in under 0.2 s. A broken year refuses the
+  whole history rather than leaving half of one; `apply_history` now returns a
+  reason, and the client treats it as it treats a refused snapshot.
+- **A squeeze** is rebuilt from the template, as the host built it, since it is not
+  authored content to look up by id.
+
+**Measured** (`tools/wire_report.gd`, seed 4242, every player borrowing every year;
+bytes of Godot's own Variant encoding of what the host passes the RPC):
+
+| | 1 player | 4 players | 10 players |
+|---|---|---|---|
+| Base game snapshot, year 99 | 2,456 | 3,848 | 6,632 |
+| StalkleHeads snapshot, year 99 | 6,388 | 7,800 | 11,052 |
+| of which the market block | 2,316 | 2,336 | 2,804 |
+| of which the desk | 472 | 488 | 968 |
+| Largest year packet, base / StalkleHeads | 2,772 / 1,584 | 3,804 / 2,296 | 5,868 / 4,360 |
+| Welcome history at 99 years, base | 246,388 | 264,492 | 300,108 |
+| Welcome history at 99 years, StalkleHeads | 97,368 | 113,892 | 152,736 |
+| of which the market's inputs | 66,388 | 64,780 | 68,020 |
+| The same history as dictionaries, built and measured | 1,273,920 | 1,283,272 | 1,319,296 |
+
+**Against design §9.2's estimates:**
+
+- **Per year, the market's inputs are about 680 bytes, not 120.** The estimate
+  counted thirteen companies and no desk. There are eighteen companies, at the three
+  numbers a year the estimate predicted (216 bytes), and the desk's record is 72
+  numbers (288 bytes), which the estimate left out of history entirely.
+- **The welcome is about 150 KB at the heaviest, not 12 KB**, because most of it is
+  the players' part, which the estimate did not count: 85 KB of the ten-player 153
+  KB. It is half the base game's own welcome for the same match.
+- **The dictionary encoding would have been 1.3 MB, not 400 KB**, past the 512 KB
+  Steam limit more than twice over. The estimate's warning was right and its figure
+  was low. The packed format is an eighth of it.
+- **The snapshot gains 2.3-2.8 KB, as estimated**, but the base payload is 2.5-6.6
+  KB, not "well under one", and a StalkleHeads board's twenty rows add about 1.6 KB
+  more as dictionaries.
+
+**Not done, because the figures do not ask for it:** capping the welcome's history
+(design §9.2's third measure); packing the players' part, which would also change
+the base game's history; packing the desk's three small numbers per trader into one,
+about 190 bytes a year. **The 512 KB limit** is from Steam's documentation and still
+unconfirmed against the SDK headers, which are not in this repository. Worth knowing
+beside it: the base game's own ten-player 99-year welcome, measured here for the
+first time, is 300 KB.
+
+**Rules out.** Sending a StalkleHeads year's outcome; a second, client-side
+implementation of the year; replaying with a client-side RNG (the players' trades
+are not reproducible from the seed alone).

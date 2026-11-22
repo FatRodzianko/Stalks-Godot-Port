@@ -66,7 +66,7 @@ static func encode_state(state: GameState, rng_state: int = 0) -> Dictionary:
 	for stalk: StalkState in state.stalks:
 		stalks.append(encode_stalk(stalk))
 
-	return {
+	var data: Dictionary = {
 		"year": state.year,
 		"is_over": state.is_over,
 		"rng_state": rng_state,
@@ -79,6 +79,12 @@ static func encode_state(state: GameState, rng_state: int = 0) -> Dictionary:
 		"players": players,
 		"settings": encode_settings(state.settings),
 	}
+	# A StalkleHeads match's market: the companies, industries, desk and the
+	# rest. A base-game match has none, so its snapshot has no such key and is
+	# byte for byte what it always was (decisions.md D176).
+	if state.market != null:
+		data["market"] = MarketSync.encode_market(state)
+	return data
 
 
 ## One player, with nothing held back.
@@ -203,6 +209,12 @@ static func apply_state(
 		rebuilt.append(player)
 	state.players = rebuilt
 
+	# After the board, because the market's packed rows are read against it.
+	# No market block means a base-game match, and a replica holding a market
+	# from an earlier StalkleHeads match must not keep it.
+	if data.get("market") is Dictionary:
+		return MarketSync.apply_market(state, data["market"], library)
+	state.market = null
 	return ""
 
 
@@ -299,22 +311,73 @@ static func decode_loan(data: Variant) -> LoanState:
 static func encode_history(state: GameState) -> Array:
 	var years: Array = []
 	for result: YearResult in state.history:
-		years.append(encode_year_result(result))
+		years.append(encode_year_result(result, state))
 	return years
 
 
-## Replaces a replica's history with the host's, wholesale.
+## Replaces a replica's history with the host's, wholesale. Returns a reason if
+## the record could not be used, or an empty string.
 ##
 ## Wholesale rather than appended, because the receiver may hold years it was
 ## present for and the host's record is the one that is right.
-static func apply_history(state: GameState, data: Array, library: ContentLibrary) -> void:
+##
+## **A StalkleHeads record is replayed, year by year, from year 0.** Each year
+## arrives as its inputs (`MarketSync`), and what it did is rebuilt on a fresh
+## year-0 match moved through every year in turn - so the replica's history is
+## the host's, ledgers and all, from a payload a fraction of the size. Call this
+## after `apply_state`, which sets the settings the fresh match is built from.
+static func apply_history(state: GameState, data: Array, library: ContentLibrary) -> String:
 	state.history.clear()
+	var replay: GameState = null
 	for entry: Variant in data:
-		if entry is Dictionary:
-			state.history.append(decode_year_result(entry, library))
+		if not entry is Dictionary:
+			continue
+		var year_data: Dictionary = entry
+		if not year_data.has("inputs"):
+			state.history.append(decode_year_result(year_data, library))
+			continue
+		if replay == null:
+			replay = MatchSetup.new_game_state(state.settings, library)
+		var result: YearResult = decode_year(year_data, library, replay)
+		if result == null:
+			state.history.clear()
+			return MarketSync.MALFORMED
+		state.history.append(result)
+	return ""
 
 
-static func encode_year_result(result: YearResult) -> Dictionary:
+## A year as a client receives it live, decoded **before** its snapshot is
+## applied: a StalkleHeads year is replayed from the market as the replica
+## holds it before the year, and that is gone once the snapshot lands. A base
+## year does not care. Null if a StalkleHeads record could not be used.
+static func decode_live_year(
+	state: GameState,
+	data: Dictionary,
+	library: ContentLibrary,
+) -> YearResult:
+	if not data.has("inputs"):
+		return decode_year_result(data, library)
+	if state.market == null:
+		return null
+	return decode_year(data, library, EarningsMarket.replay_state(state))
+
+
+## A StalkleHeads year from its record, replayed on `replay` (see
+## `MarketSync.decode_year_into`). Null if the record could not be used.
+static func decode_year(data: Dictionary, library: ContentLibrary, replay: GameState) -> YearResult:
+	if replay == null or replay.market == null:
+		return null
+	var result: EarningsYearResult = EarningsYearResult.new()
+	_decode_into(result, data, library)
+	if not MarketSync.decode_year_into(result, data, library, replay).is_empty():
+		return null
+	return result
+
+
+## One year for the wire. `state` is the match the year belongs to; a
+## StalkleHeads year needs it, to know the order its packed rows are in, and a
+## base-game year ignores it and is encoded exactly as it always was.
+static func encode_year_result(result: YearResult, state: GameState = null) -> Dictionary:
 	var stalk_changes: Array[Dictionary] = []
 	for change: StalkYearChange in result.stalk_changes:
 		stalk_changes.append({
@@ -341,7 +404,7 @@ static func encode_year_result(result: YearResult) -> Dictionary:
 			"defaulted": change.defaulted,
 		})
 
-	return {
+	var data: Dictionary = {
 		"year": result.year,
 		"mood": int(result.mood),
 		# Only the id: the client loads the same event content and takes the
@@ -355,10 +418,21 @@ static func encode_year_result(result: YearResult) -> Dictionary:
 		"winners": _ids_to_strings(result.winners),
 		"is_final_year": result.is_final_year,
 	}
+	# A StalkleHeads year goes as its inputs instead of its outcome (D178).
+	if result is EarningsYearResult and state != null and state.market != null:
+		MarketSync.encode_year_into(data, result as EarningsYearResult, state)
+	return data
 
 
 static func decode_year_result(data: Dictionary, library: ContentLibrary) -> YearResult:
 	var result: YearResult = YearResult.new()
+	_decode_into(result, data, library)
+	return result
+
+
+## Everything a year record says about itself and its players, into `result`.
+## A StalkleHeads record has no row changes or mood here; its replay adds them.
+static func _decode_into(result: YearResult, data: Dictionary, library: ContentLibrary) -> void:
 	result.year = int(data.get("year", 0))
 	result.mood = int(data.get("mood", MarketMood.Value.BULL)) as MarketMood.Value
 	result.is_final_year = bool(data.get("is_final_year", false))
@@ -395,7 +469,6 @@ static func decode_year_result(data: Dictionary, library: ContentLibrary) -> Yea
 	result.net_worths = _to_id_int_dictionary(data.get("net_worths", {}))
 	result.rankings = _to_id_array(data.get("rankings", []))
 	result.winners = _to_id_array(data.get("winners", []))
-	return result
 
 
 # ------------------------------------------------------------------------ helpers

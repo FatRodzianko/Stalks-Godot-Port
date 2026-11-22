@@ -62,6 +62,45 @@ func pool_size(mood: MarketMood.Value) -> int:
 	return _pools[mood].size()
 
 
+## Every event this pool can deal, by id: the bull pool then the bear pool,
+## each in its fixed order. What `EarningsMarket.content_key` fingerprints,
+## because `bag_state` numbers events by these positions.
+func event_ids() -> PackedStringArray:
+	var ids: PackedStringArray = []
+	for mood: int in [MarketMood.Value.BULL, MarketMood.Value.BEAR]:
+		for event: SpecialEventDefinition in _pools[mood]:
+			ids.append(String(event.id))
+		ids.append("/")
+	return ids
+
+
+## What is left in each bag, in order, as positions in that mood's pool. Plain
+## integers, so it can be kept with the match and sent with it (decisions.md
+## D177). `restore_bags` is the inverse.
+func bag_state() -> Dictionary[int, PackedInt32Array]:
+	var out: Dictionary[int, PackedInt32Array] = {}
+	for mood: int in [MarketMood.Value.BULL, MarketMood.Value.BEAR]:
+		var positions: PackedInt32Array = []
+		for event: SpecialEventDefinition in _bags[mood]:
+			positions.append(_pools[mood].find(event))
+		out[mood] = positions
+	return out
+
+
+## Puts the bags back as `bag_state` described them. A position outside the
+## pool is dropped rather than trusted; `StateSync` refuses such a snapshot
+## before it gets here.
+func restore_bags(bags: Dictionary[int, PackedInt32Array]) -> void:
+	for mood: int in [MarketMood.Value.BULL, MarketMood.Value.BEAR]:
+		if not bags.has(mood):
+			continue
+		var refilled: Array[SpecialEventDefinition] = []
+		for position: int in bags[mood]:
+			if position >= 0 and position < _pools[mood].size():
+				refilled.append(_pools[mood][position])
+		_bags[mood] = refilled
+
+
 ## Removes and returns the first event in the (already shuffled) bag whose target
 ## stalk still exists and can be affected. Non-viable candidates are left in place.
 func _take_viable(mood: MarketMood.Value, state: GameState) -> SpecialEventDefinition:

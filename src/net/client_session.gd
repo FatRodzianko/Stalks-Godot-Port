@@ -284,8 +284,14 @@ func _on_welcomed(
 		return
 	_rng_state = StateSync.rng_state_of(state_data)
 	# The years this client was not here for. Without it the year-by-year
-	# record starts wherever the player happened to arrive. See D118.
-	StateSync.apply_history(_state, history_data, _library)
+	# record starts wherever the player happened to arrive. See D118. A
+	# StalkleHeads record is replayed from its inputs and can be refused, for
+	# the same reason a snapshot can (D178).
+	problem = StateSync.apply_history(_state, history_data, _library)
+	if not problem.is_empty():
+		connection_lost.emit(problem)
+		close()
+		return
 	_has_joined = true
 	_waiting_for = -1.0
 	joined.emit(player_id)
@@ -302,12 +308,22 @@ func _on_rejection_pushed(reason: String) -> void:
 
 
 ## The year's events and the new market arrive together, and the snapshot is
-## applied *first*: the UI reads current state while presenting the result, so
-## showing a result against last year's prices would be wrong.
+## applied before anybody hears of the year: the UI reads current state while
+## presenting the result, so showing a result against last year's prices would
+## be wrong.
+##
+## **The result is decoded first, though.** A StalkleHeads year arrives as its
+## inputs and is replayed from the market as this replica held it before the
+## year, which the snapshot is about to overwrite (`StateSync.decode_live_year`,
+## D178). A base-game year decodes the same either way round.
 func _on_year_pushed(result_data: Dictionary, state_data: Dictionary) -> void:
+	var result: YearResult = StateSync.decode_live_year(_state, result_data, _library)
+	if result == null:
+		connection_lost.emit(MarketSync.MALFORMED)
+		close()
+		return
 	if not _absorb(state_data):
 		return
-	var result: YearResult = StateSync.decode_year_result(result_data, _library)
 	_state.history.append(result)
 	year_resolved.emit(result)
 	if result.is_final_year:

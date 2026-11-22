@@ -108,7 +108,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-1156 tests in 49 scripts, about 90 seconds.
+1180 tests in 50 scripts, about 105 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -125,7 +125,8 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_price_ledger.gd` | **The StalkleHeads ledger (P1) and determinism**: over forty seeds of thirty years on all eighteen companies, every company's ledger sums exactly to its price move and every price equals `int(fair + carry + flow)`; the event and fade lines; earnings, sentiment, standing and regime separated; a clamp reported on its own line; balancing across a split; the same seed giving the same market and a different one not | 6 |
 | `test_company_content.gd` | **StalkleHeads content and its validator** (D128): the 18 profiles and 6 industries load clean with no warnings; six industries of three; the owner's industry names; the approved roster; the placeholder tickers; shipped companies agreeing with their stalk's name and ticker; all 18 opening prices; neutral placeholder values; the base game never loading any of it; and the validator refusing an unresolvable industry, an industry of one or none, a missing or duplicated ticker, out-of-range fundamentals and duplicate ids, and reporting but allowing an industry of two | 16 |
 | `test_earnings_year_resolver.gd` | **The StalkleHeads year (S3)**, D152-D160: the twenty-row board, companies at their own prices, shared and built definitions, the index at its authored price; `YearSettlement` computing net worth and standings, ending the game and skipping loans when off; the earnings pipeline running the same loans and game end; same seed same match; **every ledger balancing and being the Yearly Change** over 20 seeds of 15 years; the event inside Yearly Change; the mood BULL exactly when the index rose; sentiment as last year's move clamped; **no circularity** (prices valued on the sentiment carried in, and the mood label moving no price but through the event bag); **the derived bull rate between 45% and 65%** over 200 seeds; the bull bag in year 1, last year's bag after, over a whole match; the event drawn before prices; a bankrupt target skipped; no event on the index; the index as the mean pre-split move, a bankrupt constituent at -100 once then dropped, alive while one constituent is, failing only when all do, paying the average dividend; the bond fixed at 100 and paying 3 in both moods, and its 3% / 8% / 5-point yardstick; one bankruptcy pass wiping out holders; a dead company frozen; a split doubling holders and value-neutral; dividends from earnings on post-split shares; policy 0 never paying; the flow input consumed once; scans for mode checks in the shared files and for `pow`/`exp`/`log`/`sqrt` in the price path | 45 |
-| `test_game_mode.gd` | **StalkleHeads mode and lobby (S5)**, D171: the base game the default; `MatchSetup` choosing board, pipeline, content and loans by mode; players' trades reaching flow; the mode in the snapshot and a base-content client resolving a StalkleHeads board; take-over refused without a market; the lobby row; the title screen's Game row and its card size; `Main` starting either mode; only `MatchSetup` branching on the mode | 33 |
+| `test_game_mode.gd` | **StalkleHeads mode and lobby (S5)**, D171: the base game the default; `MatchSetup` choosing board, pipeline, content and loans by mode; players' trades reaching flow; the mode in the snapshot and a base-content client resolving a StalkleHeads board; take-over refused without a market (since S6: a snapshot from an older build that sent none); the lobby row; the title screen's Game row and its card size; `Main` starting either mode; only `MatchSetup` branching on the mode | 33 |
+| `test_wire.gd` | **StalkleHeads over the wire (S6)**, D176-D178: every snapshot of three 60-year matches rebuilding the host's market on a base-content replica to the bit, derived readouts included; year 0 as the profiles' figures; every live year replayed to the host's result, ledgers and all, then the snapshot; a year sent as inputs only; a welcomed history year for year; a rejoiner equal to a player who stayed; **a promoted host making the same thirty years the old host would have**, and parting from them with the event bags forgotten; the same through real sessions over ENet; refusals of other content, short blocks, 32-bit reals, a desk entry off the board, a truncated year and a history with one broken year; the 32/64-bit packing; the layout widths pinned; the base game's snapshot and year keys unchanged; a stale market cleared; a failed company's valuation cleared; the 99-year ten-player welcome under 256 KB | 24 |
 | `test_balance_smoke.gd` | **StalkleHeads balance, smoke only** (§12.1, D144-D150, on the real pipeline since D161): 30 fixed-seed ten-year matches of the balance tool's nine strategies; the same seed replaying the same match; a strategy subset leaving the market unchanged; the bond player ending on 13,426 every time; splits, bankruptcies and bull-year rate in wide bands; no strategy winning three in four; RANDOM keeping half its cash; the best reader beating RANDOM; the sweep's lever overrides, set to the published values, reproducing the real path exactly, a moved lever moving the market, a rebuilt GROWTH row summing to 100, and the SHORT-target lever at its published value changing nothing while `slowest` moves the market. Does **not** assert P4 | 16 |
 | `test_loan_rules.gd` | Annuity arithmetic, eligibility, the full ten-payment schedule, penalties and default, overpayment, one-loan-per-game, pipeline integration | 40 |
 | `test_marquee_label.gd` | The scrolling name label: overflow detection against the real font, hover and click-to-pin, character-by-character stepping, a two-second hold on the end of the name before going back (D175), reset on leave | 14 |
@@ -299,7 +300,54 @@ test may touch Steam), so publishing `mode` and reading it back is checked by ha
 [manual-testing.md](manual-testing.md) C3. A real client joining a StalkleHeads lobby
 over a socket is not in `test_networked_session.gd`; the snapshot test above covers
 what it depends on, and C4 covers the rest by hand. Migration and rejoin of a
-StalkleHeads match are S6. Anything about how it looks beyond the card size is S7.
+StalkleHeads match are S6, below. Anything about how it looks beyond the card size is S7.
+
+### StalkleHeads over the wire: what S6 covers and what it does not
+
+`test_wire.gd`, 24 tests (D176-D178), with `tests/fixtures/wire_match.gd`.
+
+**The property.** A client's copy of a StalkleHeads match, built from what the host
+sent, is the host's match. Every comparison writes both copies out as lines of text,
+one per field, every float as its 64 bits in hex (`WireMatch.state_lines`,
+`result_lines`), and reports the first line that differs. So a pass means identical,
+not close, and a failure names the field.
+
+**The ways a copy is made, each tested:** a snapshot onto a fresh replica that loaded
+only the base content (every year of three 60-year matches, which are asserted to
+include splits and bankruptcies); a live year replayed and then its snapshot applied;
+a whole history replayed from year 0; a host migration followed by thirty more years
+on both hosts; and the real `HostSession`/`ClientSession` pair over ENet loopback.
+
+**Shown to fail.** Each of these faults, put back by hand, failed the file: the split
+halving left out of `derive_readouts` (3 tests), a failed company keeping its
+valuation (4), the replay ignoring the flow input (3), the snapshot dropping the
+desk's shorts (4), and `ClientSession` applying the snapshot before replaying the year
+(the ENet test: every result a year late). The event-bag test is itself the fault
+check for D177.
+
+**The base game.** One test pins the base game's snapshot and year-record keys, so a
+new key would fail it; `test_golden_history.gd` still proves its year unchanged.
+
+**Before S6 was built**, a fingerprint of three seeded 99-year StalkleHeads matches -
+every field of every company, industry, trader, row and player, every year - was
+recorded, and the refactor of `EarningsYearResolver` into its two halves was checked
+against it: identical, apart from the valuation readouts of failed companies, which
+D176 clears on purpose. That probe was a one-off and is not in the suite; the
+comparisons in `test_wire.gd` are what guard the two halves from here.
+
+**Not covered, and why.**
+
+- **Steam.** No test may touch Steam. Whether a StalkleHeads match migrates and
+  rejoins over Steam between two machines is [manual-testing.md](manual-testing.md)
+  D1-D4.
+- **Two different machines.** Every test runs both ends in one process, on one CPU
+  and one build. That float arithmetic gives the same bits on two machines running
+  the same build rests on IEEE 754 and on the price path using no transcendental
+  functions (D130); D2 and D3 are where a difference would show.
+- **The payload over a real socket.** `tools/wire_report.gd` measures the encoded
+  size, not what Steam or ENet add to it.
+- **Nothing on screen.** S7.
+
 
 ### StalkleHeads balance: the tool and its smoke test
 

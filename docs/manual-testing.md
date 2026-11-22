@@ -1508,7 +1508,12 @@ Two accounts on two machines, **A** and **B**. A hosts.
 10. Play to the end of the match.
 11. Check both machines show the same final standings.
 
-#### C5. What must refuse, two Steam accounts
+#### C5. What must refuse, two Steam accounts — **superseded by S6**
+
+**Do not run this any more.** It passed on 2026-11-22, when a StalkleHeads match
+could not change hosts. Since S6 (D176-D178) it can, so step 5 now gives the
+opposite result: B carries on hosting. Section D below replaces it. Kept as the
+record of what was run.
 
 **A StalkleHeads match cannot change hosts yet** (D171): the market is not sent to
 clients until S6, so a client has nothing to carry on from. This step checks it
@@ -1531,6 +1536,94 @@ fails cleanly rather than inventing a market.
   StalkleHeads companies when the host's settings arrived.
 - **C5 step 5 freezing** rather than returning is a fault; the message's wording
   is not, and can change.
+
+### D - A StalkleHeads match over the wire (phase S6) — **not yet run**
+
+**Needs two Steam accounts on two machines**, A and B, both on the same build.
+Built on 2026-11-22 (decisions.md D176-D178). The suite proves, without Steam, that
+a client's copy of the market is the host's to the bit after a snapshot, a year, a
+rejoin and a host migration (`test_wire.gd`). What it cannot reach is Steam itself,
+and two different computers doing the same arithmetic.
+
+**What you can see is limited.** The playing screen is still the base game's (S7):
+the twenty-row board, prices, cash, standings and the year-by-year page. Nothing
+about earnings is on screen. So every check below compares those. If they match on
+both machines, the market underneath matches too, because the prices are worked
+out from it.
+
+Before starting, on each machine:
+
+1. Start the game.
+2. Check the title screen's **Game** row can be set to **StalkleHeads**.
+
+#### D1. Rejoining a StalkleHeads match
+
+3. On A, set **Game** to **StalkleHeads**, then host an online game.
+4. On B, join it from **JOIN GAME**.
+5. On A, press **Start**.
+6. On B, buy some shares of any company.
+7. On both machines, press Ready.
+8. Repeat step 7 until the year is 5.
+9. On B, press Escape, then **Leave Game**, then confirm.
+10. On A, press Ready twice, so the match moves on two years without B.
+11. On B, press **REJOIN GAME**.
+12. Check B lands on the playing screen on the same year as A.
+13. Check every price on B's board is the price on A's board.
+14. Check B's cash matches what A's rankings show for B.
+15. On B, open the year-by-year page.
+16. On A, open the year-by-year page.
+17. Check the two pages show the same figures for every year, including the two years B was away.
+18. On both machines, press Ready.
+19. Check both boards show the same prices for the new year.
+
+#### D2. The host leaves and B carries on
+
+20. On both machines, press Ready until the year is at least 3 past where D1 ended.
+21. Write down the year and five prices from A's board.
+22. On A, quit the game entirely to the desktop.
+23. Check B stays on the playing screen, with no message saying the game could not continue. (Before S6, C5, B was sent back to the title screen.)
+24. Check B's year is the year from step 21.
+25. Check the five prices on B are the ones written down in step 21.
+26. On B, buy some shares of any company.
+27. On B, press Ready.
+28. Check the year advances and prices change.
+29. Repeat steps 27-28 three more times.
+
+#### D3. Coming back to the match B now hosts
+
+30. Start the game on A.
+31. On B, invite A to the match, or have A use the lobby A was in.
+32. Check A lands on the playing screen, on B's year.
+33. Check every price on A's board is the price on B's board.
+34. Check A's cash is the figure A had before quitting in step 22.
+35. On both machines, open the year-by-year page.
+36. Check both pages show the same figures for every year, before and after the handover.
+
+#### D4. Playing on to the end after the handover
+
+37. On both machines, press Ready.
+38. Check both boards show the same prices.
+39. Repeat steps 37-38 until the match ends.
+40. Check both machines show the same final standings.
+41. Check both machines show the same year-by-year page.
+
+#### What a failure here means
+
+- **Step 13, 19, 33 or 38 showing different prices** is the fault S6 exists to
+  prevent: the client's copy of the market differs from the host's. Write down the
+  year, the company and both prices, and send the console output from both machines.
+  If it only ever happens on two *different* computers, it is the one thing the
+  suite cannot test (testing.md, StalkleHeads wire).
+- **Step 11 failing with a message**, or step 32: the history or snapshot was
+  refused. The message names why; "different content" means the two machines are not
+  running the same build.
+- **Step 23 sending B to the title screen** means the take-over refusal from S5 is
+  still in the build; check both machines have the new one.
+- **Step 25 showing different prices** means the year was not carried over at the
+  moment of the handover; step 28 going wrong after a correct step 25 means the new
+  host is not dealing from the market it was handed.
+- **Step 17 or 36 differing** is the year-by-year page, which is replayed from the
+  host's draws (D178). Send a screenshot of both pages.
 
 ### Known gaps, so they are not surprises
 
