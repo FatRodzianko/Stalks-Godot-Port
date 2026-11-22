@@ -956,7 +956,8 @@ Not open questions for the port — settled for now, with the review scheduled:
   an oversight on its part. Repeat borrowing would let a player compound leverage
   across a long match, which suits a deeper financial model better than it suits the
   faithful port. If both are wanted it should become a `GameSettings` toggle rather
-  than a code change. See decisions.md D27.
+  than a code change. See decisions.md D27. **Answered in StalkleHeads S3:**
+  `GameSettings.multiple_loans_enabled`, off in the base game (decisions.md D159).
 - **Should an event still fire when its target stalk is already bankrupt?** Currently
   skipped, because an event affects exactly one stalk and a dead target makes it a
   no-op. Once events also move an industry or the wider market, firing it for the

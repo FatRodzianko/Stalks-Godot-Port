@@ -14,6 +14,10 @@ extends RefCounted
 ##     dividend on the doubled share count.
 ##
 ## See docs/game-rules.md §4.1.
+##
+## Steps 8-10 (loans, net worth and standings, game end) are not here: they are
+## shared with StalkleHeads' `EarningsYearResolver` and live in `YearSettlement`,
+## moved out unchanged (decisions.md D152).
 
 
 var _price_model: PriceModel
@@ -85,26 +89,9 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> YearResult:
 	# 7. Dividends, on post-split share counts.
 	_pay_dividends(state, result)
 
-	# 8. Loans — missed-payment penalties, then interest. Must run before net
-	#    worth, since an outstanding balance is subtracted from it.
-	_process_loans(state, result)
-
-	# 9. Net worth and standings.
-	for player: PlayerState in state.players:
-		player.net_worth = TradeRules.net_worth(player, state)
-		result.net_worths[player.id] = player.net_worth
-	result.rankings = TradeRules.rank(state.players)
-
-	# 10. Game end. The original's condition is `currentYear > maxNumberOfYears`,
-	#     so a 10-year match plays years 1..10 and then settles once more into
-	#     year 11, which ends it. See docs/game-rules.md §12.
-	if state.has_passed_final_year():
-		state.is_over = true
-		result.is_final_year = true
-		result.winners = TradeRules.winners(state.players)
-
-	state.clear_ready_flags()
-	state.history.append(result)
+	# 8-10. Loans, net worth and standings, game end, then the year is closed.
+	#       Shared with StalkleHeads' pipeline, so it lives in YearSettlement.
+	YearSettlement.settle(state, result)
 	return result
 
 
@@ -156,21 +143,6 @@ func _apply_splits(
 			var held: int = player.shares_of(stalk.id)
 			if held > 0:
 				player.set_shares(stalk.id, held * 2)
-
-
-## Runs the year-end loan assessment for every player who owes money.
-##
-## Skipped entirely when loans are disabled for the match, matching the original,
-## which wrapped its whole loan pass in that check. Note that a player can be
-## bankrupted here, which is why this runs before net worth is recomputed.
-func _process_loans(state: GameState, result: YearResult) -> void:
-	if state.settings == null or not state.settings.loans_enabled:
-		return
-
-	for player: PlayerState in state.players:
-		var change: LoanYearChange = LoanRules.process_year_end(player)
-		if change != null:
-			result.loan_changes.append(change)
 
 
 ## Pays each player a fixed per-share dividend for every stalk they hold that

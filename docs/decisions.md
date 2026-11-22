@@ -5695,3 +5695,230 @@ LOWPE leads at 49%, which §1 records rather than asserts.
 (the regime-premium line). The base game is untouched; `test_golden_history.gd` passes
 unchanged.
 
+
+### D152 - StalkleHeads has its own year pipeline, sharing the back half (§15 I)
+**2026-11-22 · Accepted**
+
+The year is two pipelines that share one class:
+
+| Class | What it is |
+|---|---|
+| `YearResolver` | The base game's year, unchanged in behaviour |
+| `EarningsYearResolver` | StalkleHeads' year: [stalkleheads-design.md](stalkleheads-design.md) §4 steps 1-10 |
+| `YearSettlement` | What both share: loans, net worth and standings, game end, then closing the year (ready flags, history) |
+
+**Why.** StalkleHeads reorders the year: the mood moves from first to last, the event
+moves before prices, there is one bankruptcy pass instead of two, and splits and
+dividends follow different rules. Doing any of that inside `YearResolver` needs
+`if mode ==`, which §13.3 of the design names as the sign that the modes have stopped
+being additive. The back half does not differ, so it is shared rather than copied.
+
+**How the extraction was done.** A pure move: steps 8-10 of
+`YearResolver.advance_year` and `_process_loans`, moved into `YearSettlement` with the
+same statements in the same order, no new draws from any RNG. `YearResolver` now ends
+with `YearSettlement.settle(state, result)`. `tests/unit/test_golden_history.gd`
+passed with `GOLDEN_HASH` unchanged, which is the proof (D127).
+
+**Rules out.** Hooks or mode checks in `YearResolver`, `YearSettlement`, `TradeRules`,
+`LoanRules` or `EventPool`. `test_earnings_year_resolver.gd` scans those files for
+`settings.mode` and `market != null` and fails if either appears.
+
+**Code:** `src/sim/year_settlement.gd`, `src/sim/year_resolver.gd`,
+`src/sim/earnings_year_resolver.gd`.
+
+### D153 - The mood is derived from the index, and read only a year late (§15 C)
+**2026-11-22 · Accepted**
+
+`EarningsYearResolver` sets the year's mood at step 7, after every price is final:
+BULL exactly when the index move is above 0, so a flat year is BEAR. The same step
+sets next year's sentiment, the index move clamped to ±20. This year's prices are
+valued on the sentiment carried in from last year.
+
+**Why.** Design §3.1 and the owner's note: the mood should be what the market did.
+Reading last year's figure is what stops this being circular, because this year's
+figure does not exist until prices do.
+
+**Rules out.** Anything before step 7 reading this year's mood or index move. Two
+tests guard it: every company's `sentiment` this year equals the figure carried in,
+and flipping last year's mood label (with no events to draw) changes no price.
+
+**Also pinned:** the derived bull rate over 200 ten-year seeds sits between 45% and 65%.
+It measures 54.5% over 4,000 seeds (D161).
+
+### D154 - The event comes from last year's mood bag, and the index carries none (§15 I2)
+**2026-11-22 · Accepted**
+
+The event is drawn at step 4, before prices, from the bag of **last year's** reported
+mood. Year 1 has no last year, so it draws from the bull bag (design §14 q14). The pool
+is the shipped `EventPool`, holding every authored event aimed at a company.
+
+**Events aimed at My Mutuals and Me Inc. are left out of the pool** in this mode
+(`EarningsMarket.build_event_pool`). The index's price is the mean move of its
+constituents (§3.9), so an event on it would be a second way to move it that no
+constituent explains, and the ledger could not show it.
+
+**An event whose target is already bankrupt is skipped and left in the bag**, as the
+base game does (D24). §4 of the design says to fire such an event when it carries an
+industry or market effect. No shipped event does yet, so the base rule holds. When
+events gain those effects (S8), the decision belongs inside `EventPool`.
+
+**Rules out.** An event on the index, and drawing from this year's mood, which does
+not exist yet at step 4.
+
+### D155 - One bankruptcy pass (§15 F)
+**2026-11-22 · Accepted**
+
+StalkleHeads sets each price once, from an identity that already contains the event,
+so it checks for bankruptcy once, at step 8. A company priced at or below 0 fails, its
+price is pinned to 0, and every holder's shares are wiped out with no compensation. The
+consequences are the base game's. A bankrupt company is never advanced again; its
+fundamentals freeze where they were.
+
+The two orderings the base game must keep still hold: splits are checked once, after
+the event, and dividends are paid after splits.
+
+### D156 - BERRY BONDS is unchanged, and is the yardstick (§15 G)
+**2026-11-22 · Accepted**
+
+In this mode the bond is mechanically the base game's: price 100, no moves, no splits,
+no bankruptcy, no events. It pays its 3 coupon every year, whichever mood the year
+reports. `EarningsYearResolver` pays a static-price row `EarningsMarket.bond_coupon`
+rather than looking the dividend up by mood. The two are the same number on shipped
+content, and a test pins that.
+
+**What is new is a set of readouts**, which nothing in the price path reads:
+`risk_free_yield_percent` (3.0), `earnings_yield_percent(12.5)` (8.0) and
+`equity_premium_percent` (5.0). They are the arithmetic behind §3.4's base multiple,
+which S7's Company tab will print.
+
+### D157 - My Mutuals and Me Inc. is an index of pre-split moves (§15 H, §14 q4)
+**2026-11-22 · Accepted**
+
+- **Constituents:** every company alive at the start of the year (eighteen on the
+  shipped roster).
+- **The move:** the mean of their percentage moves, measured **before splits**. A
+  company that went bankrupt this year counts -100 that year only; after that it is
+  not a constituent.
+- **The level:** `index_level = index_level * (100 + move) / 100`, kept as a `float`
+  on `EarningsMarket`. The row posts `int(index_level)`.
+- **Splits:** above 300, like a company. The posted price halves, rounding up (D22),
+  and the level halves.
+- **Bankruptcy:** only when every constituent fails in the same year, or the posted
+  price otherwise reaches 0.
+- **Dividend:** the mean of its living constituents' dividends per share, truncated.
+
+**Why.** Measuring moves rather than levels is how an index avoids the divisor
+problem: a constituent's split does not halve the index. The dividend is the owner's
+answer to §14 q4.
+
+**Two more places a ratio becomes money.** §3.7 promises two truncations per company
+(price and dividend). The index is not a company, and it adds two of its own: its
+posted price and its averaged dividend. Both are `int()` toward zero, like everything
+else. Like a company's (D134), the posted price can sit a coin above `int(index_level)`
+after a split, until the next move.
+
+### D158 - Yearly Change includes the event in this mode (§14 q7)
+**2026-11-22 · Accepted (decided by the owner in §14)**
+
+In StalkleHeads a row's `last_yearly_change` is its whole pre-split move, the event
+included. The base game's excludes the event (game-rules.md §5). The ledger is what
+breaks the move down. `StalkYearChange` keeps both halves: `event_delta` is the
+ledger's this-year's-event line in whole coins, and `base_delta` is everything else,
+so `total_delta()` is the move.
+
+**Why the ledger's line and not the authored figure.** The ledger telescopes in whole
+coins (D133). The event line is the change in the truncated running total when the
+event is added, which can be the authored figure or one coin either side. Using it
+keeps `base_delta + event_delta` equal to the move exactly.
+
+### D159 - More than one loan is a `GameSettings` toggle, one at a time (§14 q2)
+**2026-11-22 · Accepted**
+
+`GameSettings.multiple_loans_enabled`, off by default. Off is the base game: one loan
+per player for the whole match (D27). On, a loan that is **settled** frees the slot,
+so a player can borrow again. It is still one loan at a time. A second request while
+one is outstanding is refused with "You must pay off your loan before taking another."
+
+**Why one at a time.** The deferred question in porting-plan.md was "borrow, repay, and
+borrow again". Concurrent loans would change `PlayerState.loan` into a list and touch
+every loan screen, for a choice nobody asked for. A defaulted player is bankrupt, so
+can never borrow again whatever the toggle says.
+
+**Where it travels.** The setting goes in the snapshot (`StateSync`), so a client's
+instant pre-check applies the host's rule.
+
+**Not done here.** Nothing turns the toggle on yet: that is S5's mode selection.
+Nothing on screen offers a second loan either: that is S7.
+
+### D160 - A StalkleHeads match is a `GameState` with a market beside the board
+**2026-11-22 · Accepted**
+
+The fundamentals live on `GameState.market`, an `EarningsMarket`. It is null in a
+base-game match. The board is still `GameState.stalks`, one `StalkState` per row, so
+trading, net worth, standings and loans read prices exactly as they do in the base
+game. `EarningsYearResolver` copies each company's price onto its row every time it
+changes.
+
+- **The board** (`EarningsMarket.new_game_state`): every company in id order, then
+  BERRY BONDS, then My Mutuals and Me Inc. That is twenty rows on the shipped roster.
+- **A company the base game ships** reuses that stalk's definition, so its name and
+  description are the shared ones (design §3.2.2). Its row opens at the company's own
+  price, not at the definition's 100.
+- **A company the base game does not ship** (ten of them, five still placeholders) gets
+  a definition built in memory from its profile: id, name, ticker, industry, no
+  description, no events. It is never saved. S8 may replace these with authored files.
+- **The flow input** is `EarningsMarket.net_shares_traded`: per company, net shares
+  traded in the year being played. The next year advance reads it and clears it. It
+  stays a plain input until S4's desk fills it.
+
+**Why.** Every existing system that touches money (`TradeRules`, `LoanRules`,
+`YearSettlement`) already works on `StalkState` prices. Mirroring the price onto the
+row lets all of them work unchanged, rather than teaching each one about companies.
+Putting the market on `GameState` rather than inside the resolver means S6 can
+snapshot it, as it does the rest of the match.
+
+**Rules out.** An autoload for the market (design §10.3), and a second copy of a
+company's price that the board does not show.
+
+### D161 - The balance tool plays the real pipeline; P4 holds at 29.6%
+**2026-11-22 · Accepted**
+
+`tools/balance/stand_in_year.gd` is deleted, as D144 planned. The tool now builds a
+real `GameState` with `EarningsMarket.new_game_state`, seats each strategy as a real
+`PlayerState`, and advances the year with `EarningsYearResolver`. Dividends, splits,
+bankruptcies and net worth are the pipeline's own.
+
+**The levers (D150) reach the pipeline through two seams.**
+`EarningsYearResolver.advance_company_earnings` and `valuation_performance` are public
+methods that `tools/balance/lever_year.gd` overrides. The game never overrides them.
+With every lever at its default they call straight through, and
+`test_balance_smoke.gd` checks the override path reproduces that exactly.
+
+**What changed in the market the tool measures.** One thing only: the event. The
+stand-in drew the probe's event, `+5..+20` or `-5..-25` on any living company. The
+pipeline draws a real authored event from `EventPool`, which can only land on the eight
+companies the base game ships. Its magnitudes are 5 to 25.
+
+**Measured, 4,000 ten-year seeds, no flow, published values:**
+
+| | Stand-in (D151) | Pipeline |
+|---|---|---|
+| Leader | TREND 27.9% | TREND **29.6%** |
+| LOWPE | 25.4% | 23.9% |
+| INCOME | 15.5% | 14.9% |
+| Strategies winning at least 4% | 6 | 6 |
+| Bull-year rate | 54.4% | 54.5% |
+| Splits / bankruptcies per match | 1.63 / 0.64 | 1.69 / 0.69 |
+| RANDOM's median over the leader's (P3) | 0.62 | 0.63 |
+
+The stand-in column was re-run on the same 4,000 seeds just before the stand-in was
+deleted, and matched D151 to the digit.
+
+**P4 holds, by 0.4 points.** Nothing was retuned. The margin is now thinner than D151
+recorded, and S4's desk adds flow, which §2.6 measured as costing about a point. **S4's
+re-run is the one that decides whether D151 is enough.**
+
+**Cost.** The real pipeline is slower: 4,000 matches take about 130 s against the
+stand-in's 47 s. Most of that is `GameState.stalk_by_id`, a linear search, called per
+company per step. Fine for a tool. Worth an index if the game ever runs many years at
+once.

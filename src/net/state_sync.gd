@@ -141,6 +141,7 @@ static func encode_settings(settings: GameSettings) -> Dictionary:
 		"starting_cash": settings.starting_cash,
 		"max_years": settings.max_years,
 		"loans_enabled": settings.loans_enabled,
+		"multiple_loans_enabled": settings.multiple_loans_enabled,
 		"rng_seed": settings.rng_seed,
 	}
 
@@ -210,6 +211,9 @@ static func apply_settings(state: GameState, data: Dictionary) -> void:
 	state.settings.starting_cash = int(data.get("starting_cash", state.settings.starting_cash))
 	state.settings.max_years = int(data.get("max_years", state.settings.max_years))
 	state.settings.loans_enabled = bool(data.get("loans_enabled", state.settings.loans_enabled))
+	state.settings.multiple_loans_enabled = bool(
+		data.get("multiple_loans_enabled", state.settings.multiple_loans_enabled)
+	)
 	state.settings.rng_seed = int(data.get("rng_seed", state.settings.rng_seed))
 
 

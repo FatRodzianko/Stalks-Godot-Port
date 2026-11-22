@@ -27,6 +27,11 @@ var history: Array[YearResult] = []
 
 var is_over: bool = false
 
+## The StalkleHeads market - fundamentals, industries, sentiment, the index - or
+## null in a base-game match, which never reads it. See EarningsMarket and
+## docs/stalkleheads-design.md §10.2.
+var market: EarningsMarket = null
+
 ## Who is currently asking for a yeehaw, or empty when nobody is.
 ##
 ## **One at a time, and it is state rather than an event**, which is what lets

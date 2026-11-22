@@ -278,7 +278,9 @@ From the project root:
 <godot> --headless --path . --script res://tools/balance_report.gd
 ```
 
-That is the default: 10-year matches, 400 seeds, every strategy, no flow. To change
+That is the default: 10-year matches, 400 seeds, every strategy, no flow. It plays
+the game's own StalkleHeads year (`EarningsYearResolver`), and takes about 13 seconds
+for 400 matches. To change
 any of it, put a lone `--` after the script and the options after that. The `--` tells
 Godot that what follows is for the script, not for the engine:
 

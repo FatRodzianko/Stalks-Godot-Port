@@ -1,20 +1,26 @@
 extends RefCounted
 ## One seeded StalkleHeads match played by the strategy players of
-## docs/stalkleheads-design.md §2.1, for the balance tool (S2) and its GUT smoke
-## test. The market is `stand_in_year.gd` over the real `src/sim/` classes.
+## docs/stalkleheads-design.md §2.1, for the balance tool and its GUT smoke
+## test. **The market is the game's own**: a `GameState` built by
+## `EarningsMarket.new_game_state`, advanced by `EarningsYearResolver` (through
+## `lever_year.gd`, which only adds the sweep's levers). Each strategy is a real
+## `PlayerState`, so dividends, splits, bankruptcies and net worth are the
+## pipeline's, not this file's.
 ##
-## Each strategy is one player with the default starting cash. At the start of
-## every year it sells everything and splits its cash equally across its
-## targets, at last year's closing prices (HOLD trades in year 1 only). That is
-## the probe's trading loop (Appendix A): it rebalances completely at no cost,
-## which no real player does and which exaggerates every edge.
+## Each strategy starts with the default starting cash. At the start of every
+## year it sells everything and splits its cash equally across its targets, at
+## last year's closing prices (HOLD trades in year 1 only). That is the probe's
+## trading loop (Appendix A): it rebalances completely at no cost, which no real
+## player does and which exaggerates every edge. It moves shares and cash
+## directly rather than through `TradeRules`, because year 0 is closed to
+## trading and the probe trades before year 1.
 ##
 ## Two random streams (decisions.md D145): the market draws from one seeded with
 ## the match seed, and only RANDOM draws from the other, so choosing which
 ## strategies to run never changes the market they are measured on.
 
 
-const StandInYear := preload("res://tools/balance/stand_in_year.gd")
+const LeverYear := preload("res://tools/balance/lever_year.gd")
 const Levers := preload("res://tools/balance/levers.gd")
 
 ## Every strategy, in the order the report prints them. §2.1 also has FOLLOW
@@ -27,7 +33,7 @@ const ALL_STRATEGIES: Array[StringName] = [
 ## How many companies a picking strategy holds.
 const PICKS: int = 3
 
-const BOND_ID: StringName = &"berry_bonds"
+const BOND_ID: StringName = EarningsMarket.BOND_ID
 
 
 ## What one match produced.
@@ -42,11 +48,24 @@ class Result:
 	var final_prices: Array[int] = []
 
 
-## One player's account.
-class Book:
+## What the strategies read: the published state, plus the two figures a report
+## would carry that the state itself does not keep.
+class View:
 	extends RefCounted
-	var cash: int = 0
-	var held: Dictionary[StringName, int] = {}
+	var state: GameState
+	## Each company's profit before the latest earnings season. Absent until the
+	## first season has run, so "growth" has no value in year 1.
+	var previous_profit: Dictionary[StringName, float] = {}
+	## The dividend per share each row paid in the latest year. 0 before year 1.
+	var dividend: Dictionary[StringName, int] = {}
+
+	## Companies not bankrupt, in id order.
+	func living() -> Array[CompanyState]:
+		var alive: Array[CompanyState] = []
+		for company: CompanyState in state.market.companies:
+			if not state.stalk_by_id(company.id).is_bankrupt:
+				alive.append(company)
+		return alive
 
 
 ## Plays one match. `strategies` is a subset of ALL_STRATEGIES. With
@@ -67,90 +86,77 @@ static func play(
 	var player_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	player_rng.seed = hash("balance players %d" % match_seed)
 
-	var bond: StalkDefinition = library.stalk_by_id(BOND_ID)
-	var bond_price: int = bond.starting_price
-	var bond_coupon: int = bond.bull_dividend
-	var starting_cash: int = GameSettings.new().starting_cash
-
-	var market: StandInYear = StandInYear.new(library, years, levers)
-	var books: Dictionary[StringName, Book] = {}
+	var settings: GameSettings = GameSettings.new()
+	settings.max_years = years
+	settings.rng_seed = match_seed
+	var view: View = View.new()
+	view.state = EarningsMarket.new_game_state(library, settings)
+	var resolver: LeverYear = LeverYear.new(EarningsMarket.build_event_pool(library), levers)
 	for strategy: StringName in strategies:
-		var book: Book = Book.new()
-		book.cash = starting_cash
-		books[strategy] = book
+		view.state.players.append(PlayerState.new(strategy, String(strategy), settings.starting_cash))
 
 	var result: Result = Result.new()
 	result.years = years
 	for year: int in range(1, years + 1):
 		var net_shares: Dictionary[StringName, int] = {}
-		for strategy: StringName in strategies:
-			if strategy == &"HOLD" and year > 1:
+		for player: PlayerState in view.state.players:
+			if player.id == &"HOLD" and year > 1:
 				continue
-			var targets: Array[StringName] = _targets(strategy, market, player_rng)
+			var targets: Array[StringName] = _targets(player.id, view, player_rng)
 			if targets.is_empty():
 				continue
-			_rebalance(books[strategy], targets, market, bond_price, net_shares)
+			_rebalance(player, targets, view.state, net_shares)
 
-		var traded: Dictionary[StringName, int] = {}
 		if player_flow:
-			traded = net_shares
-		var outcome: StandInYear.Outcome = market.resolve_year(traded, market_rng)
+			view.state.market.net_shares_traded = net_shares
+		var alive: Array[CompanyState] = view.living()
+		for company: CompanyState in alive:
+			view.previous_profit[company.id] = company.profit
+		var outcome: EarningsYearResult = resolver.advance_year(view.state, market_rng)
+		view.dividend = outcome.dividend_per_share
 
-		for book: Book in books.values():
-			for company_id: StringName in outcome.bankrupt_ids:
-				book.held[company_id] = 0
-			for company_id: StringName in outcome.split_ids:
-				book.held[company_id] = book.held.get(company_id, 0) * 2
-			for asset_id: StringName in book.held:
-				var amount: int = book.held[asset_id]
-				if amount <= 0:
-					continue
-				if asset_id == BOND_ID:
-					book.cash += amount * bond_coupon
-				else:
-					book.cash += amount * int(market.dividend[asset_id])
-
-		result.splits += outcome.split_ids.size()
-		result.bankruptcies += outcome.bankrupt_ids.size()
+		for company: CompanyState in alive:
+			var change: StalkYearChange = outcome.change_for(company.id)
+			result.moves.append(absi(change.price_after - change.price_before))
+			if change.did_split:
+				result.splits += 1
+			if change.went_bankrupt:
+				result.bankruptcies += 1
 		if outcome.mood == MarketMood.Value.BULL:
 			result.bull_years += 1
-		result.moves.append_array(outcome.abs_moves)
 
-	for strategy: StringName in strategies:
-		result.net_worth[strategy] = _worth(books[strategy], market, bond_price)
-	for company: CompanyState in market.companies:
+	for player: PlayerState in view.state.players:
+		result.net_worth[player.id] = TradeRules.net_worth(player, view.state)
+	for company: CompanyState in view.state.market.companies:
 		result.final_prices.append(company.price)
 	return result
 
 
 ## Sell everything, then spend the cash equally across `targets`.
 static func _rebalance(
-	book: Book,
+	player: PlayerState,
 	targets: Array[StringName],
-	market: StandInYear,
-	bond_price: int,
+	state: GameState,
 	net_shares: Dictionary[StringName, int],
 ) -> void:
-	for asset_id: StringName in book.held:
-		var amount: int = book.held[asset_id]
-		if amount <= 0:
-			continue
-		var price: int = _price_of(asset_id, market, bond_price)
+	for asset_id: StringName in player.held_stalk_ids():
+		var amount: int = player.shares_of(asset_id)
+		var price: int = state.stalk_by_id(asset_id).price
 		if price > 0:
-			book.cash += amount * price
+			player.cash += amount * price
 			net_shares[asset_id] = net_shares.get(asset_id, 0) - amount
-		book.held[asset_id] = 0
+		player.set_shares(asset_id, 0)
 
-	var each: int = book.cash / targets.size()
+	var each: int = player.cash / targets.size()
 	for asset_id: StringName in targets:
-		var price: int = _price_of(asset_id, market, bond_price)
+		var price: int = state.stalk_by_id(asset_id).price
 		if price <= 0:
 			continue
 		var shares: int = each / price
 		if shares <= 0:
 			continue
-		book.cash -= shares * price
-		book.held[asset_id] = book.held.get(asset_id, 0) + shares
+		player.cash -= shares * price
+		player.add_shares(asset_id, shares)
 		net_shares[asset_id] = net_shares.get(asset_id, 0) + shares
 
 
@@ -158,7 +164,7 @@ static func _rebalance(
 ## state. Ties break by company id, so every run is reproducible.
 static func _targets(
 	strategy: StringName,
-	market: StandInYear,
+	market: View,
 	player_rng: RandomNumberGenerator,
 ) -> Array[StringName]:
 	var alive: Array[CompanyState] = market.living()
@@ -214,7 +220,7 @@ static func _targets(
 		&"MOMENTUM", &"CONTRARIAN":
 			var scored: Array[Array] = []
 			for company: CompanyState in alive:
-				var delta: float = float(market.last_delta[company.id])
+				var delta: float = float(market.state.stalk_by_id(company.id).last_yearly_change)
 				if strategy == &"MOMENTUM":
 					delta = -delta
 				scored.append([delta, company.id])
@@ -224,7 +230,7 @@ static func _targets(
 			for company: CompanyState in alive:
 				if company.price <= 0:
 					continue
-				var paid: float = float(market.dividend[company.id])
+				var paid: float = float(market.dividend.get(company.id, 0))
 				scored.append([-paid / float(company.price), company.id])
 			return _lowest(scored)
 	push_error("Unknown strategy %s" % strategy)
@@ -244,19 +250,3 @@ static func _score_then_id(a: Array, b: Array) -> bool:
 	if a[0] != b[0]:
 		return a[0] < b[0]
 	return String(a[1]) < String(b[1])
-
-
-static func _price_of(asset_id: StringName, market: StandInYear, bond_price: int) -> int:
-	if asset_id == BOND_ID:
-		return bond_price
-	var company: CompanyState = market.company_by_id(asset_id)
-	return company.price
-
-
-static func _worth(book: Book, market: StandInYear, bond_price: int) -> int:
-	var total: int = book.cash
-	for asset_id: StringName in book.held:
-		var amount: int = book.held[asset_id]
-		if amount > 0:
-			total += amount * _price_of(asset_id, market, bond_price)
-	return total

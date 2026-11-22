@@ -50,6 +50,15 @@ const MAX_STARTING_CASH: int = 69420
 
 @export var loans_enabled: bool = false
 
+## Whether a player may borrow again once their loan is settled.
+##
+## **Off by default, which is the base game**: one loan per player for the whole
+## match, even after it is paid off (decisions.md D27). StalkleHeads turns it on
+## (docs/stalkleheads-design.md §14 q2). Still one loan *at a time* either way:
+## this frees the slot once the loan is paid off, it does not add a second slot.
+## See decisions.md D159.
+@export var multiple_loans_enabled: bool = false
+
 ## Seed for the match RNG. Recorded as part of match state so any game can be
 ## replayed exactly — the basis of every determinism test. 0 means "choose one at
 ## match start and write it back here".

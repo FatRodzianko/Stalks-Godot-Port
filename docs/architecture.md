@@ -130,6 +130,7 @@ GameState
  ├── year: int
  ├── history: Array[YearResult]     # every year so far, from Year 0
  ├── stalks:  Array[StalkState]     # id, price, last_change, is_bankrupt, did_split
+ ├── market:  EarningsMarket        # StalkleHeads only; null in the base game (§9)
  └── players: Array[PlayerState]    # id, cash, holdings, loan, net_worth
                                     #   holdings: Dictionary[StringName, int]
                                     #   loan: LoanState or null
@@ -139,8 +140,10 @@ LoanState                           # balance, min_payment, years_remaining,
 ```
 
 A note on `PlayerState.loan`: a non-null loan means the player **has ever borrowed**,
-not that they currently owe money — a player may only take one loan per game, so the
-object's presence is what blocks a second (decisions.md D27). Use
+not that they currently owe money — in the base game a player may only take one loan
+per game, so the object's presence is what blocks a second (decisions.md D27). With
+`GameSettings.multiple_loans_enabled` on (StalkleHeads, D159), a *settled* loan no
+longer blocks a new one, which replaces it; it is still one loan at a time. Use
 `PlayerState.owes()` for the amount outstanding, which is zero once the loan is paid
 off or written off by a default.
 
@@ -151,7 +154,10 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> YearResult:
 ```
 
 It runs the ten steps in `game-rules.md` §4.1 in order, mutates `state`, and returns
-an **immutable record of everything that happened**:
+an **immutable record of everything that happened**. Steps 8-10 (loans, net worth and
+standings, game end) and closing the year (ready flags, history) are not in
+`YearResolver` itself: they are `YearSettlement.settle`, a stateless class both year
+pipelines end with (decisions.md D152, and §9 below for the second pipeline):
 
 ```gdscript
 class_name YearResult extends RefCounted
@@ -898,17 +904,19 @@ Non-negotiable, and the thing most worth protecting:
 
 ---
 
-## 9. StalkleHeads fundamentals (phases S1 and S2)
+## 9. StalkleHeads: fundamentals and its year (phases S1-S3)
 
 StalkleHeads is an optional second game mode in which prices come from simulated
 earnings instead of random rolls. Its design is
 [stalkleheads-design.md](stalkleheads-design.md); this section is how the code built
-so far is laid out. **Nothing here is reachable from the base game.** No existing
-class calls any of it, `ContentLibrary.load_from()` does not load its content, and
-`test_golden_history.gd` (D127) proves the base game is unchanged.
+so far is laid out. **Nothing here is reachable from the base game.** No base-game
+code path builds an `EarningsMarket` or an `EarningsYearResolver`,
+`ContentLibrary.load_from()` does not load its content, and `test_golden_history.gd`
+(D127) proves the base game is unchanged. Nothing picks the mode yet either: that is
+phase S5.
 
-Phase S1 built the pieces of a StalkleHeads year but **not the year itself**. The
-pipeline that calls them in order is phase S3's `EarningsYearResolver`.
+Phase S1 built the pieces of a StalkleHeads year. Phase S3 built the year itself,
+`EarningsYearResolver`, and the state it runs on, `EarningsMarket`.
 
 ### The files
 
@@ -925,81 +933,85 @@ pipeline that calls them in order is phase S3's `EarningsYearResolver`.
 | sim | `price_identity.gd` | Event carry, flow, the price, the split threshold and the split price |
 | sim | `price_ledger.gd` | Why a price moved, in whole coins that sum to the move |
 | sim | `dividend_rules.gd` | Payout ratio, dividend per share, the retention factor |
+| sim | `earnings_market.gd` | **S3.** `GameState.market`: the companies, industries, sentiment, last year's mood, the index level, the flow input. Builds a match's board and its event pool. The bond's yardstick readouts (D160, D156) |
+| sim | `earnings_year_result.gd` | **S3.** `YearResult` plus the ledgers, the index move, the sentiment used, the event bag, industry figures and every row's dividend per share |
+| sim | `earnings_year_resolver.gd` | **S3.** The StalkleHeads year, §4 steps 1-10, ending in `YearSettlement` |
+| sim | `year_settlement.gd` | **S3.** The back half both pipelines share: loans, net worth and standings, game end, closing the year (D152) |
 
 `CompanyState` pairs with `CompanyProfile` the way `StalkState` pairs with
 `StalkDefinition`, and `IndustryState` with `IndustryDefinition`: the resource is
 immutable content, the `RefCounted` is what changes during a match. The `*Rules`
 classes are static functions with no state, like `TradeRules` and `LoanRules`.
 
-### One year, as S3 will call it
+### One year: `EarningsYearResolver.advance_year`
 
 ```
-sentiment = last year's index move, clamped to +/-20       # S3 computes it (§3.1)
+year += 1; open a StalkYearChange per row; copy() every living company
 
-IndustryState.advance_all(industries, sentiment, rng)      # §4 step 1, one draw each, id order
-for each company:
-    before = company.copy()                                # for the ledger
-    company.advance_earnings(industry.performance,         # §4 step 2, two draws:
-                             match_years, rng)             #   regime roll, growth roll
-# draw the event                                           # §4 step 4, S3
-for each company:
-    company.reprice(sentiment, industry.performance,       # §4 steps 3 and 5, no draws
-                    event_delta, net_shares_traded)
-    PriceLedger.between(before, company)                   # the readout
-# index, mood, bankruptcy                                  # §4 steps 6-8, S3
-company.split_if_above()                                   # §4 step 9
-company.dividend_per_share()                               # §4 step 10, paid by S3
+1   IndustryState.advance_all(industries, market.sentiment, rng)  # one draw each, id order
+2   company.advance_earnings(performance, max_years, rng)         # two draws each, id order
+4   event = EventPool.draw(market.last_mood, state, rng)          # last year's bag; bull in year 1
+3,5 company.reprice(market.sentiment, performance, event_delta,  # no draws
+                    market.net_shares_traded[id])
+    ledger = PriceLedger.between(copy, company); row.price = company.price
+6   index move = mean pre-split % move (bankrupt this year = -100)
+    index_level *= (100 + move) / 100
+7   mood = BULL if move > 0 else BEAR; market.sentiment = clamp(move, -20, 20)
+8   bankruptcy, one pass: price <= 0 -> row bankrupt, holders wiped out
+9   splits above 300: company.split_if_above(), holders' shares doubled; the index too
+10  dividends: company from earnings, bond its coupon, index the mean of its constituents'
+YearSettlement.settle(state, result)                              # loans, net worth, game end
 ```
 
-`test_price_ledger.gd` runs exactly this loop with a synthetic event and random net
-shares. The balance tool's stand-in year (below) runs it with the index, mood,
-bankruptcy and dividends added, which is the closest thing to a StalkleHeads match
-that exists until S3.
+**How the board and the market stay in step (D160).** The board is still
+`GameState.stalks`, a `StalkState` per row, so `TradeRules`, `LoanRules` and
+`YearSettlement` work on it unchanged. The fundamentals sit beside it in
+`GameState.market`. Every time the resolver changes a company's price it copies it to
+that company's row; the bankrupt flag lives on the row. A company the base game does
+not ship gets a row definition built in memory from its profile.
 
-**What S3 has to add around it:** the index (My Mutuals and Me Inc.) from the
-companies' pre-split moves, the derived mood, the single bankruptcy pass, doubling
-holders' shares on a split, paying dividends, the event draw from last year's mood's
-bag, and the shared back half (`YearSettlement`). **What S4 adds:** the desk whose
-trades become `net_shares_traded`.
+**What is still an input.** `market.net_shares_traded` is the flow input: the caller
+fills it during a year and the next advance consumes and clears it. S4's NPC desk will
+fill it; until then only a test or the balance tool's `--player-flow` does.
+
+**Two seams, for the balance tool only.** `advance_company_earnings` and
+`valuation_performance` are public methods that `tools/balance/lever_year.gd`
+overrides to apply its levers (D150, D161). The game never overrides them.
 
 ### The rules that hold it together
 
 - **Draw counts are fixed** (D131): an industry is one draw, earnings season two,
   valuation and pricing none. So the random stream never depends on what happened,
   which multiplayer and the golden-history style of test both need.
-- **Two truncations** (D130, D138): `PriceIdentity.price_of` and
+- **Two truncations per company** (D130, D138): `PriceIdentity.price_of` and
   `DividendRules.dividend_per_share`. Revenue, profit, margin, EPS, the multiple,
-  fair value, event carry and flow are all floats.
+  fair value, event carry and flow are all floats. The index adds two of its own, its
+  posted price `int(index_level)` and its averaged dividend (D157).
 - **The ledger balances by construction** (D133), and a test checks it over forty
   seeded 30-year runs of all eighteen companies.
 
-### The balance tool and its stand-in year (phase S2)
+### The balance tool (phases S2 and S3)
 
 The balance tool plays many seeded StalkleHeads matches and prints how each player
 strategy did (design §2.6, §12.1). It is a tool, not game code: everything is in
 `tools/`, and nothing in `src/` refers to it.
 
-| File | What it is | After S3 |
-|---|---|---|
-| `tools/balance_report.gd` | The command-line entry point: reads arguments, runs the matches, prints the table | Stays |
-| `tools/balance/balance_match.gd` | One match: the nine strategy players, their trading, dividends paid into their books, net worth at the end | Stays, pointed at the real pipeline |
-| `tools/balance/levers.gd` | Balance overrides for a sweep (premium, GROWTH stay chance, ageing), applied without touching `src/sim/` (D150) | Stays, re-wired to the real pipeline |
-| `tools/balance/stand_in_year.gd` | **Stand-in.** A StalkleHeads market and one year of it, calling the S1 classes in §4's order | **Deleted**, replaced by `EarningsYearResolver` |
-| `tests/unit/test_balance_smoke.gd` | 30 fixed-seed matches with loose bands, in the GUT suite | Stays |
+| File | What it is |
+|---|---|
+| `tools/balance_report.gd` | The command-line entry point: reads arguments, runs the matches, prints the table |
+| `tools/balance/balance_match.gd` | One match: a real `GameState` from `EarningsMarket.new_game_state`, the nine strategies as real `PlayerState`s, their trading, net worth at the end |
+| `tools/balance/lever_year.gd` | `EarningsYearResolver` with the sweep's levers applied through its two seams (D161) |
+| `tools/balance/levers.gd` | Balance overrides for a sweep (premium, GROWTH stay chance, ageing), applied without touching `src/sim/` (D150) |
+| `tests/unit/test_balance_smoke.gd` | 30 fixed-seed matches with loose bands, in the GUT suite |
 
-**The stand-in year** is the S1 loop above, plus the steps S1 left to S3, done in the
-simplest way that matches the design: an event in the probe's shape (one a year,
-random company, sign from last year's mood), the index as the mean of pre-split
-moves with a bankrupt company at -100, the mood derived from it, next year's sentiment
-clamped, one bankruptcy pass by a flag, and dividends per share for the match to pay.
-It contains **no price rule of its own**: every price, earnings figure and dividend is
-a call into `src/sim/`. Why it is in `tools/` and not `src/` is D144.
+S2 drove the year with a stand-in, `tools/balance/stand_in_year.gd` (D144). S3 deleted
+it: the tool now plays the game's own year, so dividends, splits, bankruptcies, the
+index, the derived mood and the event pool are all the pipeline's (D161).
 
 **Two random streams** (D145): the market draws from a generator seeded with the match
 seed, and only the RANDOM strategy draws from a second one. So which strategies run
 never changes the market they run on.
 
 **What it leaves out:** the NPC desk, so `net_shares_traded` is zero unless
-`--player-flow` is passed; `EventPool`, bags and news; loans; Mutuals as something a
-player can buy. Each of those arrives with its phase, and the tool should be re-run
-when it does.
+`--player-flow` is passed; loans; Mutuals as something a strategy buys. The desk
+arrives in S4, and the tool should be re-run when it does.

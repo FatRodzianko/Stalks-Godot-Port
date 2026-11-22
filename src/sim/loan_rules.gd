@@ -79,8 +79,13 @@ static func validate_take_loan(
 	if player.is_bankrupt:
 		return "You are bankrupt."
 	if player.loan != null:
-		# One loan per player for the whole game, even once it is paid off.
-		return "You have already taken a loan this game."
+		if not state.settings.multiple_loans_enabled:
+			# One loan per player for the whole game, even once it is paid off.
+			return "You have already taken a loan this game."
+		if not player.loan.is_settled():
+			# The toggle frees the slot once a loan is settled; it never adds a
+			# second one alongside it. See GameSettings.multiple_loans_enabled.
+			return "You must pay off your loan before taking another."
 
 	var maximum: int = max_loan_for(player)
 	if maximum < MIN_PRINCIPAL:

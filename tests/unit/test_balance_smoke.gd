@@ -9,8 +9,8 @@ extends GutTest
 ## of 95%, one strategy winning nearly every match. P4 itself (under 30% at ten
 ## years) is the tool's to report, not this file's to assert.
 ##
-## Runs the same code as the tool, including its stand-in year
-## (tools/balance/stand_in_year.gd), which S3 replaces.
+## Runs the same code as the tool, which since S3 is the game's own
+## `EarningsYearResolver` (through tools/balance/lever_year.gd).
 
 
 const BalanceMatch := preload("res://tools/balance/balance_match.gd")

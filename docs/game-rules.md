@@ -279,6 +279,11 @@ Each event carries: **target stalk name**, **flavour text**, **price change**.
   > event affects exactly one stalk and nothing else — so a dead target makes it a
   > no-op. Keep the skip decision inside the event-selection strategy, not baked into
   > the year pipeline, so the advanced mode can choose differently.
+  >
+  > **StalkleHeads, as built (S3):** no shipped event has an industry or market effect
+  > yet, so StalkleHeads keeps this rule unchanged. It also draws from last year's
+  > mood's bag, and leaves out events aimed at My Mutuals and Me Inc. (decisions.md
+  > D154).
 
 ---
 
@@ -341,6 +346,11 @@ again, even after paying the loan off in full. Verified in
 `GamePlayer.CmdRequestLoan` and every assignment to `doesPlayerHaveLoan`. This looks
 more like an oversight than a design choice, but it is what shipped, and the port
 reproduces it. See decisions.md D27.
+
+**A toggle for repeat borrowing exists, off in the base game.**
+`GameSettings.multiple_loans_enabled` lets a player borrow again once their loan is
+settled, still one loan at a time. It is for StalkleHeads (decisions.md D159); nothing
+in the base game turns it on.
 
 ### 9.1 Terms
 
