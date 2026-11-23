@@ -7577,7 +7577,7 @@ player could learn.
 
 **A whisper tied to one subject never lies**, because a lie needs something else to
 name. When its roll says lie it stays quiet. The authoring guide says so: leave
-`subject` empty for a rumour that can mislead.
+`subject` empty for a rumor that can mislead.
 
 **What the triggers read** (`NewsSelector.trigger_holds`): `HIGH_SHORT_INTEREST` is
 the year's `short_interest_flagged`, the desk as the year began, because that is in
@@ -7628,8 +7628,8 @@ Into the room S7 left for it (design §7):
 
 **Empty means absent.** A section with nothing chosen hides with its heading, so a
 sparsely written category leaves no empty box (§8.2 rule 3). Headings and tooltips
-are explanation ("WHISPERS", "Rumours about this year's market...") and carry no
-voice.
+are explanation and carry no voice, except the WHISPERS tooltip, whose words ("Whispers
+from the Avenue...") the owner gave after manual section S on 2026-11-23.
 
 **Not in the year in review.** The design's digest sketch had a headline and a
 whisper. The narrow review sits right under the headline and whispers on the Market

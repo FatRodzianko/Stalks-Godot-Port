@@ -340,7 +340,7 @@ of them moves a price; they are things to read. The rules, as built
   from the industry's average P/E); SECTOR_RUN (an industry the same way three years
   running); NEAR_SPLIT (price above 260; the split is above 300); NEAR_FAILURE
   (DISTRESS and a price under 20).
-- **A whisper is a rumour.** One whose trigger holds for something is in play; it
+- **A whisper is a rumor.** One whose trigger holds for something is in play; it
   then rolls against its truth chance (75 for every shipped one). Honest, it names
   something the trigger holds for; a lie, it names something it does not. A whisper
   written about one named company cannot lie, so when its roll says lie it is not

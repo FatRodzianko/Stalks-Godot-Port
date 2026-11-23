@@ -118,8 +118,8 @@ const NPC_HOLDERS: String = "How many of the desk's traders hold this company, o
 # ---------------------------------------------------------------- the news
 
 const WHISPERS: String = (
-	"Rumours about this year's market.\n"
-	+ "Most are true, but not all: a whisper can name a company or industry it is not true of."
+	"Whispers from the Avenue. Rumors circulating around the Market.\n"
+	+ "Most are true, but some are not. Can you find the truth?"
 )
 const NPC_CHATTER: String = "What each desk trader said about what it did last year."
 

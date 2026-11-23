@@ -372,11 +372,11 @@ for one company replaces them for it, in the years it fits.
 
 #### Whispers
 
-A whisper is a rumour, and it is not always true: that is the point of it.
+A whisper is a rumor, and it is not always true: that is the point of it.
 `truth_chance_percent` (75 in every shipped one) is how often it is honest. When it
-lies, the game makes it name a company (or industry) the rumour is *not* true of.
+lies, the game makes it name a company (or industry) the rumor is *not* true of.
 
-- Leave **`subject`** empty for an ordinary rumour: the game picks what it names and
+- Leave **`subject`** empty for an ordinary rumor: the game picks what it names and
   fills in `{company}` or `{industry}`.
 - Set `subject` to a company id (an industry id for SECTOR_RUN) only for a line that
   can be about nothing else. Such a whisper cannot lie - there is nothing else for

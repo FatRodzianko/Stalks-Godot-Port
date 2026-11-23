@@ -1928,7 +1928,7 @@ state, computed in `sim` and asserted in tests:
 
 **`truth_chance_percent` is the field that makes whispers a skill.** A whisper that is
 always right is a free hint; one that is always wrong is noise. At, say, 75 the player
-learns to weigh them, and the game can say in as many words that these are rumours. The
+learns to weigh them, and the game can say in as many words that these are rumors. The
 roll uses the injected RNG like everything else.
 
 ### 8.2 How one is chosen

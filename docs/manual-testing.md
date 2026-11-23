@@ -2475,7 +2475,16 @@ The players are **A** (the host), **B** and **C**.
 28. Check B shows **again**.
 29. Close all the game windows.
 
-### S - StalkleHeads news (decisions.md D199-D203) — **not yet run**
+### S - StalkleHeads news (decisions.md D199-D203) — **passed 2026-11-23, with findings**
+
+**Run on 2026-11-23.** Every step passed. What came back:
+
+- **Step 13:** the tooltip read strangely; the owner gave its words, now in place.
+  Text added to the game is in American spelling (rumor, not rumour).
+- **The whispers themselves:** they state facts about this year, which reads like a
+  company spotlight, not a rumor. The owner wants them to foreshadow next year
+  against expectations, from sources of named reliability. A design question, not a
+  layout one, still open on 2026-11-23.
 
 One machine, no Steam. Run on a locally exported build containing D199; to check a
 checkout before exporting, the file `src/sim/news_selector.gd` exists. Every line is
@@ -2495,7 +2504,7 @@ not the words.
 10. Check a line starting **MARKET HEADLINE:** sits under **THIS YEAR'S NEWS**, above the event.
 11. If a **WHISPERS** heading shows at the top of the right half, check each line under it starts **WHISPER:** and names a company or an industry, not `{company}`.
 12. Hover over the word **WHISPERS**.
-13. Check a tooltip says whispers are rumours and not all are true.
+13. Check a tooltip says whispers are rumors and not all are true.
 14. Click **INDUSTRIES**.
 15. Check a **NEWS** heading under the members list has a line starting **INDUSTRY REPORT:** naming the selected industry.
 16. Click **Food**.

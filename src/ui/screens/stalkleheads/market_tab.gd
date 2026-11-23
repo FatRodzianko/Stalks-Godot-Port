@@ -18,7 +18,7 @@ extends MarginContainer
 ## lose nothing.
 ##
 ## **The news (phase S8, design §8).** At the top of the right half, the
-## year's **whispers** - rumours, true more often than not but not always - and
+## year's **whispers** - rumors, true more often than not but not always - and
 ## above the year's event, the **market headline**. Both are chosen by
 ## `NewsSelector`; when it chose none, the slot and its heading are not shown
 ## at all (§8.2: an empty slot shows nothing).

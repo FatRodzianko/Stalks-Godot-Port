@@ -1,6 +1,6 @@
 class_name Whisper
 extends Resource
-## One whisper: a rumour about a company or an industry, shown on the Market
+## One whisper: a rumor about a company or an industry, shown on the Market
 ## tab, and on the Company tab of the company it names. At most
 ## `NewsSelector.WHISPERS_PER_YEAR` a year (docs/stalkleheads-design.md §8.1).
 ## Lives in a `NewsBook` in src/data/news/.

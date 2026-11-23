@@ -281,7 +281,7 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **Earnings commentary** — one line about a company's earnings, chosen by its regime and its surprise band. On the Company tab under NEWS.
 
-**Whisper** — a rumour about a company or an industry, shown on the Market tab (and on the Company tab of a company it names). Each has a **trigger**, a real condition such as a P/E more than 20% above its industry's, and a **truth chance**: that often it is honest and names something the trigger holds for; otherwise it names something it does not. So a whisper is evidence, not a promise (decisions.md D201).
+**Whisper** — a rumor about a company or an industry, shown on the Market tab (and on the Company tab of a company it names). Each has a **trigger**, a real condition such as a P/E more than 20% above its industry's, and a **truth chance**: that often it is honest and names something the trigger holds for; otherwise it names something it does not. So a whisper is evidence, not a promise (decisions.md D201).
 
 **Trigger** — what a whisper is about: one of eight named conditions on the year's state (`NewsBands.Trigger`), each worked out in `NewsSelector.trigger_holds`.
 
