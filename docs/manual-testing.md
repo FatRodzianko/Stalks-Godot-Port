@@ -2345,6 +2345,48 @@ called **A** (the host) and **B**.
   (`HostSession._route_message`).
 - Step 27 opening anything is a security fault: stop and report it before playing on.
 
+### P - StalkleHeads from the DEV panel, three players (decisions.md D194) — **not yet run**
+
+One machine, three copies of the game, no Steam. Run on a locally exported debug
+build containing D194 (a release build has no DEV panel). To check a checkout before
+exporting: the file `src/ui/widgets/dev_overlay.tscn` contains `DevGameButton`. The
+copies are called **A** (the host), **B** and **C**.
+
+1. Open the folder holding the exported build (`stalks-build`) in File Explorer.
+2. Double-click `StalksStalksStalks.exe`. This is A.
+3. Double-click `StalksStalksStalks.exe` again. This is B.
+4. Double-click `StalksStalksStalks.exe` a third time. This is C.
+5. On A, find the **DEV** panel in the top-left corner.
+6. Check the button under **Port** reads **Stalks Stalks Stalks**.
+7. On A, click that button.
+8. Check it now reads **StalkleHeads**.
+9. On A, click **HOST**.
+10. If Windows asks to allow the game through the firewall, click **Allow**.
+11. Check A shows a lobby.
+12. On B, click **JOIN** on the DEV panel.
+13. On C, click **JOIN** on the DEV panel.
+14. Check all three lobbies list three players.
+15. On B, click **READY**.
+16. On C, click **READY**.
+17. On A, click **START**.
+18. On all three, click **Close** on the news if it is showing.
+19. Check all three show the tabs, including **MESSAGES**.
+20. On A, click **MESSAGES**.
+21. Check the list shows three players, A's own marked **(you)**.
+22. On A, click **B**'s name.
+23. Click the message box, type `for B` and press **Enter**.
+24. On B, check the **MESSAGES** button's square is yellow.
+25. On C, check the **MESSAGES** button's square is grey.
+26. On C, click **MESSAGES**.
+27. On C, click **B**'s name.
+28. Click the message box, type `from C` and press **Enter**.
+29. On B, click **MESSAGES**.
+30. Check the squares beside **A** and **C** are both yellow.
+31. On B, click **A**'s name, then **C**'s name.
+32. Check two chats are open: **for B** from A and **from C** from C.
+33. On A, check nothing from C arrived: every square is grey.
+34. Close all three windows.
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until

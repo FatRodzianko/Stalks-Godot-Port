@@ -1489,8 +1489,10 @@ func _watch_for_achievements() -> void:
 ## not a fault in the game, so it goes on the screen rather than into the log.
 ## `push_error` is reserved for things that mean the build is broken — bad
 ## content, say.
-func _on_dev_host_requested(port: int, player_name: String) -> void:
-	var problem: String = host_match(GameSettings.new(), player_name, port)
+func _on_dev_host_requested(port: int, player_name: String, game: GameMode.Value) -> void:
+	var settings: GameSettings = GameSettings.new()
+	settings.mode = game
+	var problem: String = host_match(settings, player_name, port)
 	if not problem.is_empty():
 		_report_to_menu(problem)
 

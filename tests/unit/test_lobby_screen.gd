@@ -567,6 +567,27 @@ func test_a_failed_host_leaves_the_player_on_the_menu_with_the_reason() -> void:
 	assert_engine_error("host", "ENet should report the failed bind")
 
 
+## The DEV panel's game button reaches the match: the lobby it opens is
+## StalkleHeads, with StalkleHeads' board (decisions.md D194).
+func test_the_dev_panel_hosts_a_stalkleheads_lobby_when_chosen() -> void:
+	var main: Main = MainScene.instantiate()
+	add_child_autofree(main)
+	main.show_menu()
+	var overlay: DevOverlay = main.dev_overlay()
+	assert_not_null(overlay)
+	if overlay == null:
+		return
+	overlay.get_node("%DevPortSpin").value = _free_port()
+	overlay.get_node("%DevGameButton").pressed.emit()
+	overlay.get_node("%DevHostButton").pressed.emit()
+
+	assert_true(main.current_screen() is LobbyScreen, "the lobby should open")
+	var state: GameState = main.session().state()
+	assert_eq(state.settings.mode, GameMode.Value.STALKLEHEADS)
+	assert_not_null(state.market, "with StalkleHeads' market")
+	(main.session() as NetworkedSession).close()
+
+
 func test_leaving_a_lobby_frees_the_port_for_the_next_attempt() -> void:
 	# The session holds a socket, so a lobby left behind without closing it would
 	# block the next attempt on the same port — hence `close()` in

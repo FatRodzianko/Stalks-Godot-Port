@@ -276,7 +276,8 @@ the privacy toggle are online only.
 
 **The development overlay** (`DevOverlay`) is pinned to the top-left corner in
 debug builds only, and holds the direct host/join form that used to be on the
-Join panel.
+Join panel: Host (address), Port, a button naming the game HOST opens (Stalks
+Stalks Stalks or StalkleHeads, switched by clicking it, D194), then HOST and JOIN.
 
 ## The icon
 

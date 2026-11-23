@@ -430,7 +430,9 @@ a bankrupt row's word is not clipped.
 ### Private messages: what is covered and what is not
 
 `test_messages.gd` (53) and `test_messages_wire.gd` (14), D192-D193; three
-`--game` cases in `test_launch_args.gd`.
+`--game` cases in `test_launch_args.gd`; the DEV panel's game button (D194) in
+`test_title_screen_shape.gd` (it names and switches the game, HOST carries it) and
+`test_lobby_screen.gd` (HOST opens a StalkleHeads lobby with its market).
 
 - **The sanitiser**, one test per threat in architecture.md §5.8: printable ASCII
   untouched, emoticons, markup and network paths kept as text, newlines and tabs to

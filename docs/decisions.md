@@ -7354,3 +7354,20 @@ The threat list and where each is tested is in architecture.md §5.8.
 
 **Rules out:** emoji and non-English letters, for now; clickable links of any kind;
 multi-line messages.
+
+### D194 - The DEV panel can host StalkleHeads
+**2026-11-23 · Accepted** (the owner, to test the Messages tab with more than two players)
+
+The DEV panel (debug builds only, top-left of the title screen) gains a button under
+Port that names the game HOST will open: **Stalks Stalks Stalks** until clicked,
+**StalkleHeads** after, and back again on the next click. `host_requested` now
+carries the game, and `Main._on_dev_host_requested` puts it in the match settings.
+JOIN is unchanged: a joiner learns the game from the host (D171).
+
+**A button, not a tick box**, because the panel is drawn outside the game's theme
+and an unthemed tick box showed no box, only its caption. A button that says the
+game is readable without a theme.
+
+**Nothing in the networking changes.** A StalkleHeads match over a direct ENet
+connection was already possible (`--game=stalkleheads`, D192) and is what
+`test_wire.gd` plays; the lobby takes up to ten players either way.

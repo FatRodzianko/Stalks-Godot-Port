@@ -18,12 +18,19 @@ extends PanelContainer
 ## exactly where the heading is, so judging a layout with it on display is
 ## harder than it should be. Reported while reviewing the rebuilt title screen.
 ##
+## **The game button** names the game HOST opens, and each click switches it
+## between the two (decisions.md D194), so a StalkleHeads match can be played
+## with more than two copies on one machine without Steam. A button that says
+## the game rather than a tick box, because this panel is drawn outside the
+## game's theme and an unthemed tick box showed no box at all. JOIN has no such
+## choice: a joiner learns the game from the host's first snapshot (D171).
+##
 ## It decides nothing and holds no session. It emits what was asked for and
 ## `Main` does it, exactly as the title screen does.
 
 
-## Host a direct game on `port`, under `player_name`.
-signal host_requested(port: int, player_name: String)
+## Host a direct game of `game` on `port`, under `player_name`.
+signal host_requested(port: int, player_name: String, game: GameMode.Value)
 
 ## Join a direct game at `address`:`port`, under `player_name`.
 signal join_requested(address: String, port: int, player_name: String)
@@ -39,11 +46,16 @@ const DEFAULT_PORT: int = 42420
 @onready var _port_spin: SpinBox = %DevPortSpin
 @onready var _host_button: Button = %DevHostButton
 @onready var _join_button: Button = %DevJoinButton
+@onready var _game_button: Button = %DevGameButton
+
+var _game: GameMode.Value = GameMode.Value.BASE
 
 
 func _ready() -> void:
 	_host_button.pressed.connect(_on_host_pressed)
 	_join_button.pressed.connect(_on_join_pressed)
+	_game_button.pressed.connect(_on_game_button_pressed)
+	_show_game()
 
 
 ## F1 shows and hides the panel.
@@ -89,8 +101,26 @@ func chosen_port() -> int:
 	return int(_port_spin.value)
 
 
+## The game HOST opens: the base game until the game button is clicked.
+func chosen_game() -> GameMode.Value:
+	return _game
+
+
+func _show_game() -> void:
+	_game_button.text = GameMode.label(_game)
+
+
+## The next game in `GameMode.ALL`, wrapping round. Stepping through the list
+## rather than naming the modes, because only `MatchSetup` may branch on one
+## (decisions.md D171, checked by test_game_mode.gd).
+func _on_game_button_pressed() -> void:
+	var next: int = (GameMode.ALL.find(_game) + 1) % GameMode.ALL.size()
+	_game = GameMode.ALL[next]
+	_show_game()
+
+
 func _on_host_pressed() -> void:
-	host_requested.emit(chosen_port(), chosen_name())
+	host_requested.emit(chosen_port(), chosen_name(), chosen_game())
 
 
 func _on_join_pressed() -> void:

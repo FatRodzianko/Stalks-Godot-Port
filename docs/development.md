@@ -354,6 +354,11 @@ Then, in one window click **HOST LOCALLY**; in the other click **JOIN GAME** and
 **JOIN** and **Join**. The address and port are pre-filled for the same machine,
 so neither needs typing.
 
+In a debug build the same is on the **DEV** panel in the top-left corner: **HOST**
+in one window, **JOIN** in the others. To host StalkleHeads, click the button under
+Port until it reads **StalkleHeads**, then **HOST** (decisions.md D194). Up to ten
+windows can join one host.
+
 ### Skipping the menu with flags
 
 Clicking through the menu in two windows gets old fast, so the game reads a few

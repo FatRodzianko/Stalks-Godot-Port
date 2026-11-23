@@ -176,12 +176,38 @@ func test_the_overlay_hosts_on_the_typed_port() -> void:
 
 	var seen: Array = []
 	overlay.host_requested.connect(
-		func(port: int, player_name: String) -> void: seen.append([port, player_name])
+		func(port: int, player_name: String, game: GameMode.Value) -> void:
+			seen.append([port, player_name, game])
 	)
 	(overlay.get_node("%DevHostButton") as Button).pressed.emit()
 
-	assert_eq(seen, [[43100, ""]])
+	assert_eq(seen, [[43100, "", GameMode.Value.BASE]], "the base game unless chosen")
 	assert_null(overlay.find_child("DevNameField", true, false), "no name field")
+
+
+func test_the_game_button_names_the_game_and_switches_it() -> void:
+	var overlay: DevOverlay = DevScene.instantiate()
+	add_child_autofree(overlay)
+	var button: Button = overlay.get_node("%DevGameButton")
+	assert_eq(button.text, GameMode.label(GameMode.Value.BASE))
+	button.pressed.emit()
+	assert_eq(button.text, GameMode.label(GameMode.Value.STALKLEHEADS))
+	button.pressed.emit()
+	assert_eq(overlay.chosen_game(), GameMode.Value.BASE, "and back again")
+
+
+func test_the_overlay_hosts_stalkleheads_when_chosen() -> void:
+	var overlay: DevOverlay = DevScene.instantiate()
+	add_child_autofree(overlay)
+	(overlay.get_node("%DevGameButton") as Button).pressed.emit()
+
+	var seen: Array = []
+	overlay.host_requested.connect(
+		func(_port: int, _player_name: String, game: GameMode.Value) -> void: seen.append(game)
+	)
+	(overlay.get_node("%DevHostButton") as Button).pressed.emit()
+
+	assert_eq(seen, [GameMode.Value.STALKLEHEADS])
 
 
 func test_the_overlay_joins_this_machine_by_default() -> void:
