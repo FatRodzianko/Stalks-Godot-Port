@@ -2232,7 +2232,7 @@ exporting: the file `src/ui/widgets/year_digest_panel.gd` contains `set_narrow`.
 - **Step 12 showing the whole tab moving**: the tab, not the right half, is scrolling.
 - **Step 15 showing different figures**: write down which line differs.
 
-### M - StalkleHeads Market tab spacing (decisions.md D190) — **not yet run**
+### M - StalkleHeads Market tab spacing (decisions.md D190) — **passed 2026-11-23**
 
 One machine, no Steam. Run on a locally exported build containing D190. To check a
 checkout before exporting: the file `assets/themes/stalks_theme.tres` contains
@@ -2251,7 +2251,7 @@ checkout before exporting: the file `assets/themes/stalks_theme.tres` contains
 11. Check the lines inside the year in review are the faint ones, as before.
 12. Check no lines of text touch the lines above or below them, on either half.
 
-### N - StalkleHeads owned companies in the company list (decisions.md D191) — **not yet run**
+### N - StalkleHeads owned companies in the company list (decisions.md D191) — **passed 2026-11-23**
 
 One machine, no Steam. Run on a locally exported build containing D191. To check a
 checkout before exporting: the file `src/ui/screens/stalkleheads/company_picker.gd`
