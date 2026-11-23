@@ -101,7 +101,7 @@ func test_a_base_game_match_keeps_its_three_boards() -> void:
 	assert_false(_screen.get_node("%MarketSlot").visible)
 
 
-func test_a_stalkleheads_match_shows_four_tabs_in_place_of_the_boards() -> void:
+func test_a_stalkleheads_match_shows_its_tabs_in_place_of_the_boards() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 1)
 	assert_not_null(_tabs())
 	assert_false(_screen.get_node("%Boards").visible)
@@ -109,7 +109,7 @@ func test_a_stalkleheads_match_shows_four_tabs_in_place_of_the_boards() -> void:
 	var captions: PackedStringArray = []
 	for tab: MarketTabs.Tab in MarketTabs.CAPTIONS:
 		captions.append(_tabs().tab_button(tab).text)
-	assert_eq(captions, PackedStringArray(["EXCHANGE", "MARKET", "INDUSTRIES", "COMPANY"]))
+	assert_eq(captions, PackedStringArray(["EXCHANGE", "MARKET", "INDUSTRIES", "COMPANY", "MESSAGES"]))
 	assert_eq(_tabs().current_tab(), MarketTabs.Tab.EXCHANGE)
 
 

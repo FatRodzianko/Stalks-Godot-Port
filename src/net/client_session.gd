@@ -261,6 +261,12 @@ func give_yeehaw(giver_id: StringName) -> void:
 	_rpc_give_yeehaw.rpc_id(HOST_PEER_ID)
 
 
+## Already checked by `send_message`. Only the recipient and the text go: the
+## host knows who this is.
+func _deliver_message(recipient_id: StringName, text: String) -> void:
+	_rpc_send_message.rpc_id(HOST_PEER_ID, String(recipient_id), text)
+
+
 # ------------------------------------------------------------- what the host says
 
 func _on_welcomed(
@@ -354,6 +360,9 @@ func _on_rematch_offer_pushed() -> void:
 
 
 func _on_rematch_join_pushed() -> void:
+	# A new match, whose seats need not be the same people (HostSession.
+	# offer_rematch), so the old conversations go.
+	_messages.clear()
 	rematch_joined.emit()
 
 
@@ -370,6 +379,17 @@ func _on_yeehaw_ask_pushed(player_id: StringName) -> void:
 
 func _on_yeehaw_given_pushed(giver_id: StringName, receiver_id: StringName) -> void:
 	yeehaw_given.emit(giver_id, receiver_id)
+
+
+## A message the host passed on. Checked again here, because this is the last
+## stop before the screen: the sender must be somebody in the match other than
+## this player, and the text is cleaned a second time by `record_received`.
+func _on_message_pushed(sender_id: StringName, text: String) -> void:
+	if not _has_joined or _state == null:
+		return
+	if sender_id == _local_player_id or _state.player_by_id(sender_id) == null:
+		return
+	_messages.record_received(sender_id, text)
 
 
 # -------------------------------------------------------------------- internals

@@ -7251,3 +7251,104 @@ hold shares in, and the NAME heading reads **NAME (* OWNED)**, so the mark expla
 itself. Every other name has a space in that place, so the names stay in line.
 Sorting by name ignores the mark. The list now takes the same `TradeContext` as the
 rest of the tabs, which is what knows your holdings.
+
+### D192 - Private messages between players: a relay, outside the game
+**2026-11-23 · Accepted** (the owner asked for it as its own piece of work)
+
+Players in a match can send each other private, text-only messages, and write notes
+to themselves. **Messages are not part of the game.** They are never in `GameState`,
+never touch the seeded random stream, never travel in a snapshot and never change a
+number. So nothing here needed the economy's care for determinism, and the S7 screen
+work could go on beside it.
+
+**The host is a relay.** A client sends the recipient's id and the text
+(`_rpc_send_message`, `any_peer`, `call_remote`, `reliable`) and nothing else. The
+host takes the sender from the peer id, as every other request does (D45), checks
+the recipient is a player in the match, cleans the text (D193), applies a per-sender
+rate limit, and passes it to that one recipient (`_rpc_message`, `authority`). It is
+never broadcast. The host keeps a copy only when it is the recipient. A message to
+an away player has no peer to go to; the sender's own machine refuses it first, with
+a reason.
+
+**Each machine keeps its own book** (`MessageBook`, on `GameSession`), in memory
+only. One conversation per other player, keyed by their id, both directions in one
+list, at most 200 lines. A note is a conversation keyed by your own id and never
+leaves the machine. **Known limits, accepted:** a player who rejoins, and every
+client of a host that migrates, starts with an empty book, because a new session
+object is built and nothing is synced; quitting loses it; a rematch clears it on
+purpose, because the new match's seats are filled in arrival order and "p1" need
+not be the same person.
+
+**Where it is shown: StalkleHeads only, for now.** A fifth tab, MESSAGES, on
+`MarketTabs`. The base game's playing screen is a faithful copy of the original's
+three boards with no tab strip, and fitting messages in means inventing a panel or
+an overlay the original never had; StalkleHeads already has the strip and room on
+it. The networking and the book live on `GameSession`, so the base game needs only
+a screen to get the feature. Recorded as open in stalkleheads-design.md §14.
+
+**The tab.** Its button carries the rankings' ready-dot look - a 6 x 6 square,
+`StatusDot` - grey (`Palette.TEXT_FAINT`, the away colour) with nothing unread and
+yellow (`Palette.UNREAD`, new) with something unread. On the right, every player
+including you, each with the same dot; clicking a name opens the chat, with a
+header saying who it is with, the history scrolling above, and a box and SEND
+below. Your own name opens notes. **Two chats side by side**: a third replaces
+whichever of the two was used less recently (clicked, typed in or sent from). It
+stayed simple, so it was built. A chat that is open while the tab is showing is
+read as lines arrive.
+
+**`--game=stalkleheads`**, a new launch flag. A local export has no other way to
+host a StalkleHeads match without Steam, and the manual test (section O) needs two
+copies on one machine.
+
+**Rules out:** messages in `GameState` or the snapshot; a host-side log of other
+players' messages; broadcasting; a sender id in the packet.
+
+### D193 - What a message may contain, and how it is shown
+**2026-11-23 · Accepted**
+
+Text typed by one player is drawn on another player's screen, so it is untrusted
+input. The aim: it can be read, and it can do nothing else.
+
+- **Printable ASCII only** (0x20 to 0x7E). Every key on an ordinary keyboard, so
+  old emoticons such as `<(' ')>` survive. Tab, newline and carriage return become
+  a space: a message is one paragraph and cannot fake lines of its own. Other
+  control characters and DEL are removed. Everything beyond ASCII becomes `?`:
+  accented letters, emoji, the bidirectional overrides that reverse how text reads
+  (U+202E and friends) and zero-width characters, so nothing can hide or reorder
+  text and something visibly stood there. A Godot string cannot hold U+0000 at all
+  (it becomes U+FFFD), so a NUL arrives as `?` too.
+- **The recommendation is to keep the ASCII line.** The game's font, Terminus,
+  draws little beyond ASCII anyway, so the line costs a reader nothing they could
+  have seen, and it removes the whole class of Unicode tricks (direction,
+  invisible characters, look-alike letters) without a list to maintain. If accented
+  names are wanted later, the place to widen is `MessageRules.clean`, letter by
+  letter, with a test for each.
+- **Markup is left as text, not stripped,** because nothing that shows a message
+  parses it: every line is a plain `Label`, which has no BBCode, no links and no
+  meta handling. A `[url]`, a `https://` address or a `\\server\share` path is drawn
+  as exactly those characters, and nothing on screen can be clicked to open it -
+  so no link and no SMB fetch. Using a `RichTextLabel` with BBCode off would also
+  be safe, but would leave a switch to get wrong; having none is simpler to keep
+  true, and a test checks there is none on the tab.
+- **200 characters at most** (`MessageRules.MAX_LENGTH`), counted after trimming;
+  the send box stops at 200 too. A few sentences, without one message filling a
+  panel. The cut happens before the character loop, so an enormous packet costs no
+  more than a normal one.
+- **Rate limits, two of them.** Each machine lets its player send 5 messages per
+  10 seconds, and says so in the chat when they hit it. The host passes on at most
+  8 per sender per 10 seconds and drops the rest silently. The host's is looser so
+  that packets sent seconds apart and arriving together never cost an honest player
+  a message; only a modified client reaches it. Notes are not limited.
+- **Cleaned twice.** On the host, which is the authority, and again on the
+  receiving machine (`MessageBook.record_received`) before anything is shown, so a
+  fault or a modified host cannot put raw text on screen. A client also ignores a
+  message naming a sender who is not in the match, or naming itself.
+- **Only the host relays.** Godot's server relay lets a client address an RPC to
+  another client, so `_rpc_send_message` returns at once on anything but the
+  server, and a recipient id longer than 8 characters is dropped before it is
+  looked up.
+
+The threat list and where each is tested is in architecture.md §5.8.
+
+**Rules out:** emoji and non-English letters, for now; clickable links of any kind;
+multi-line messages.

@@ -23,6 +23,7 @@ extends RefCounted
 ## | `--seed=<n>` | Host with a fixed match seed, to reproduce a bug |
 ## | `--ready` | Ready up as soon as the lobby is joined |
 ## | `--autostart` | Host: start the match as soon as everybody is ready |
+## | `--game=stalkleheads` | Host a StalkleHeads match instead of the base game |
 ##
 ## Anything unrecognised is ignored rather than refused: the command line also
 ## carries Godot's own arguments, which are none of this class's business.
@@ -61,6 +62,11 @@ var auto_ready: bool = false
 ## this takes two windows from launch to a running match with no input at all,
 ## which is what makes a networked bug reproducible from a script.
 var auto_start: bool = false
+
+## Which game a flag-launched host plays. The only way to host StalkleHeads
+## without Steam from an exported build, which its Messages tab's manual test
+## needs (decisions.md D192). A joiner learns the game from the host.
+var game: GameMode.Value = GameMode.Value.BASE
 
 
 ## What this process was told to do, or MENU in a release build.
@@ -105,6 +111,9 @@ static func parse(args: PackedStringArray) -> LaunchArgs:
 			"--autostart":
 				parsed.auto_start = true
 				parsed.mode = Mode.HOST
+			"--game":
+				if value == "stalkleheads":
+					parsed.game = GameMode.Value.STALKLEHEADS
 
 	return parsed
 
@@ -128,6 +137,7 @@ func host_settings() -> GameSettings:
 	settings.starting_cash = 10000
 	settings.loans_enabled = true
 	settings.rng_seed = rng_seed
+	settings.mode = game
 	return settings
 
 

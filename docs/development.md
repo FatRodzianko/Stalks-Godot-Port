@@ -376,6 +376,7 @@ named "Host" and the joiner "Guest" so the windows are told apart at a glance.
 | `--seed=<n>` | Host with a fixed match seed, to reproduce a bug |
 | `--ready` | Ready up as soon as the lobby is joined |
 | `--autostart` | Host: start the match as soon as everybody is ready |
+| `--game=stalkleheads` | Host a StalkleHeads match instead of the base game (decisions.md D192) |
 
 They work from a terminal too, in either form:
 

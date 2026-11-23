@@ -141,12 +141,12 @@ No price column — the price is on the Available Stalks board.
 
 **Not in the original.** StalkleHeads is the port's second mode
 ([stalkleheads-design.md](stalkleheads-design.md) §7). Its playing screen is the base
-one above with the three panels of `MainGameplayPanel` replaced by four tabs; the top
+one above with the three panels of `MainGameplayPanel` replaced by tabs (four, and MESSAGES, D192); the top
 and bottom bars are unchanged (decisions.md D180).
 
 ```
 ┌ top bar, as above ─────────────────────────────────────────────────────────┐
-│ [EXCHANGE] [MARKET] [INDUSTRIES] [COMPANY]   [HOLDINGS] [RANKINGS] [DESK]  │
+│ [EXCHANGE] [MARKET] [INDUSTRIES] [COMPANY] [MESSAGES ■]  [HOLDINGS] ...    │
 │ EXCHANGE:                                                                  │
 │  SYM  NAME      PRICE  CHG   EPS  P/E  DIV HELD [qty] BUY SELL ║CASH $9,467 ║
 │  - CONSUMER GOODS       +3%       14.2                         ║YOUR STALKS ║
@@ -200,6 +200,20 @@ per share bars, P/E against the industry's; per-share charts split-adjusted; the
 "why the price moved", whose first line gives the price move as a percentage; earnings yield against risk-free; investors by name; which
 of the desk's traders traded it last year, as a table (TRADER 30, LAST YEAR 10,
 NOW 10, framed heading); its short interest.
+
+**MESSAGES** (decisions.md D192): private messages between the players. The tab's
+button ends in a 6 x 6 square, the rankings' ready-dot shape: grey with nothing
+unread, yellow while any conversation has an unread line. On the right, 22
+characters wide, PLAYERS: every player including you ("(you)" after your name,
+"(away)" after a player who has dropped), each a button ending in the same square
+for messages from that player. Clicking a name opens its chat on the left: a header
+("Chat with Ann", or "Notes - only you see these" for your own name), the history
+oldest first, "Name: text" per line with your own lines muted and written "You",
+scrolling to the newest; then the message box and SEND. A refusal shows in red under
+the box as "Not sent: " and the reason, and the text stays. A second name opens a
+second chat beside the first; a third replaces whichever was used less recently.
+With no chat open, a faint line says how to open one. Text is plain printable ASCII,
+200 characters at most (D193).
 
 **Capitals.** Captions and phrases on the StalkleHeads screens start with a capital
 ("Index level", "Year 2", "Biggest earnings surprise"); all-capital headings and

@@ -249,6 +249,8 @@ func _detach() -> void:
 	_session.ready_state_changed.disconnect(_on_ready_state_changed)
 	_session.rematch_offered.disconnect(refresh)
 	_session.rematch_requested.disconnect(_on_rematch_requested)
+	if _session.messages().changed.is_connected(_on_messages_changed):
+		_session.messages().changed.disconnect(_on_messages_changed)
 	if _client != null and _client.connection_lost.is_connected(_on_connection_lost):
 		_client.connection_lost.disconnect(_on_connection_lost)
 	if _host != null and _host.player_left.is_connected(_on_player_left):
@@ -408,6 +410,12 @@ func _ensure_market_tabs() -> void:
 	_market_tabs.set_trade_checks(_why_not_buy_mine, _why_not_sell_mine)
 	_market_tabs.buy_requested.connect(_on_buy_requested)
 	_market_tabs.sell_requested.connect(_on_sell_requested)
+	# Private messages (decisions.md D192): the tab shows the session's book
+	# and hands back what the player typed.
+	_market_tabs.set_message_book(_session.messages())
+	_market_tabs.message_submitted.connect(_on_message_submitted)
+	if not _session.messages().changed.is_connected(_on_messages_changed):
+		_session.messages().changed.connect(_on_messages_changed)
 	# In StalkleHeads the year in review is in the news panel, so clicking the
 	# year's event always opens it, ... MORE or not (decisions.md D183).
 	_event_panel.gui_input.connect(_on_event_strip_input)
@@ -419,6 +427,18 @@ func _ensure_market_tabs() -> void:
 		_year_digest = YearDigestScene.instantiate()
 		_news_panel.set_digest(_year_digest)
 	_tell_market_tabs_the_event()
+
+
+## A message typed on the Messages tab: sent through the session, which
+## answers at once whether it went.
+func _on_message_submitted(recipient_id: StringName, text: String) -> void:
+	var reason: String = _session.send_message(recipient_id, text)
+	_market_tabs.messages_tab().show_send_result(recipient_id, reason)
+
+
+func _on_messages_changed() -> void:
+	if _market_tabs != null:
+		_market_tabs.refresh_messages()
 
 
 ## The StalkleHeads tabs, or null in a base-game match. For tests.

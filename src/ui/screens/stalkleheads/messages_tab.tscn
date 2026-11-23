@@ -1,0 +1,57 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/screens/stalkleheads/messages_tab.gd" id="1_messages"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/chat_panel.tscn" id="2_chat"]
+
+[node name="MessagesTab" type="HBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_messages")
+
+[node name="Chats" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="FirstChat" parent="Chats" instance=ExtResource("2_chat")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="SecondChat" parent="Chats" instance=ExtResource("2_chat")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="NoChat" type="Label" parent="Chats"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+theme_type_variation = &"Faint"
+text = "Choose a name on the right to open a chat with that player. Your own name opens notes only you can see."
+autowrap_mode = 3
+
+[node name="PlayerColumn" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"TightVBox"
+
+[node name="Title" type="Label" parent="PlayerColumn"]
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "PLAYERS"
+
+[node name="Scroll" type="ScrollContainer" parent="PlayerColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 4
+
+[node name="PlayerList" type="VBoxContainer" parent="PlayerColumn/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"

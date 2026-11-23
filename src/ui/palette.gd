@@ -34,6 +34,10 @@ const ACCENT_DIM: Color = Color("2f6b4c")
 const DANGER: Color = Color("e5604f")
 const BANKRUPT: Color = Color("7a2f28")
 
+# Something waiting to be read: the unread-message dot (decisions.md D192).
+# Its "nothing unread" partner is TEXT_FAINT, the rankings' away dot.
+const UNREAD: Color = Color("e7cf6e")
+
 
 ## Colour for a price movement: green up, red down, muted when nothing happened.
 static func for_change(delta: int) -> Color:

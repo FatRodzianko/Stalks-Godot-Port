@@ -427,6 +427,48 @@ a bankrupt row's word is not clipped.
   on host and client (S6). E6 checks it once by hand.
 - **News headlines, whispers and chatter.** S8.
 
+### Private messages: what is covered and what is not
+
+`test_messages.gd` (54) and `test_messages_wire.gd` (14), D192-D193; three
+`--game` cases in `test_launch_args.gd`.
+
+- **The sanitiser**, one test per threat in architecture.md §5.8: printable ASCII
+  untouched, emoticons, markup and network paths kept as text, newlines and tabs to
+  spaces, control characters removed, bidi and zero-width and other non-ASCII to
+  `?`, a NUL (which a Godot string stores as U+FFFD), the length cap and that
+  leading space does not use it up.
+- **The rate limit** with an explicit clock: the count, the sliding window, one
+  limit per sender, and that the host's is looser than a player's.
+- **The relay rules**: unknown recipient, unknown sender, a note to yourself.
+- **The book**: unread counts, sent lines never unread, one ordered conversation per
+  player, cleaning on arrival, the 200-line cap, clearing.
+- **The send path** on a `LocalSession`: notes stay local and are not limited, text
+  is cleaned, empty and unknown and away recipients are refused, the player's own
+  limit refuses with a reason, and the match's snapshot is unchanged by messages.
+- **Over ENet**: delivery both ways; the sender's own copy; between two clients the
+  host keeps nothing and the sender is not echoed; a note never reaches the host;
+  the match unchanged on both sides; and the hostile cases sent straight through
+  `_rpc_send_message`, skipping the client's checks - a forged sender, unknown and
+  overlong recipients, addressing yourself, dirty text, a flood past the host's
+  limit, and a client asked to relay.
+- **The tab**, on the real playing screen: the caption; the tab's dot and each
+  name's dot, grey and yellow, and their size and colours; every player listed
+  including you; opening a chat reads it and puts the dot out; a line arriving in an
+  open chat is read at once and on another tab is not; the header; send empties the
+  box; a refusal keeps the text and says why; the box's length cap; two chats and
+  the third replacing the less recent, by clicking and by typing; every line a
+  `Label` and no `RichTextLabel` on the tab; a solo game lists only your notes; a
+  base-game screen has no tab.
+
+**Not covered, and why.**
+
+- **How it looks**, and whether the history scrolls to the newest line on a real
+  screen: `tools/messages_shot.tscn` renders the tab with Movie Maker (instructions
+  at the top of its script), checked by eye; manual-testing.md section O.
+- **Two real processes.** The ENet tests run both ends in one process;
+  section O runs two copies of an exported build.
+- **History across a rejoin or a host migration**: none is kept, by design (D192).
+
 ### StalkleHeads balance: the tool and its smoke test
 
 Phase S2 added `tools/balance_report.gd`, the balance tool. How to run it is in

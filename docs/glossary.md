@@ -476,6 +476,22 @@ and a member list, which other players can find or be invited to. It is not the
 game's own lobby screen, though the two appear together: the Steam lobby is how
 peers find each other, and the lobby screen is what they see once they have.
 
+**Messages** (the MESSAGES tab) — private, text-only messages between the players
+in a match, in StalkleHeads. Not part of the game: the host passes each one to its
+one recipient and keeps nothing, and every machine keeps its own conversations in
+memory (`MessageBook`). See decisions.md D192.
+
+**Note** (messages) — a message to yourself, opened by clicking your own name on
+the MESSAGES tab. Kept on your machine and never sent.
+
+**Unread dot** — the small square on the MESSAGES tab and beside each name in its
+player list: grey when nothing is unread, yellow when something is. The same shape
+as the ready mark in the rankings (`StatusDot`).
+
+**Relay** (messages) — what the host does with a message from one client to
+another: works out who sent it from the connection, checks and cleans it, and hands
+it to the recipient alone. See architecture.md §5.8.
+
 **Transport** — what physically carries network messages. Godot's
 `ENetMultiplayerPeer` first, Steam's relay later. Deliberately separate from the
 session layer so Steam is a swap rather than a rewrite.

@@ -2664,6 +2664,26 @@ name ([D187](decisions.md)). Questions when it is taken up:
 Until it is designed, nothing in S8 or S9 should assume a company has no officers;
 the Company tab has room below NPC ACTIVITY.
 
+**Messages: what was left out on 2026-11-23.** Private messages between players
+were built ([D192](decisions.md), [D193](decisions.md)). Not built, on the owner's
+word, and waiting on design or content:
+
+- **Messages to and from NPCs.** A PLAYERS / NPCS switch on the MESSAGES tab's list;
+  desk traders replying, or starting a conversation themselves. It needs either
+  written lines (the owner's to write, like the trader chatter and the NPC thoughts
+  above) or a chat-bot feature, and a rule for when an NPC speaks. Whatever an NPC
+  says must not take a draw from the match's RNG.
+- **Key personnel leaking hints** about special events, as messages. This hangs on
+  the key personnel entry above, which is not yet designed: who the officers are
+  comes first, and then which of them talk, to whom, and how reliable a hint is
+  (an honest hint is foreshadowing, so §5.3 applies: it must read a real state
+  variable).
+- **Messages in the base game.** The networking and the book are on `GameSession`,
+  so only a place on the base screen is missing, which has no tab strip (D192).
+- **Keeping history across a host migration.** Each client could hand its own book
+  to the session that replaces it; nothing would cross the wire. Not done because
+  migration is only reachable over Steam and could not be tested here.
+
 Every question raised by this document has an answer. What remains is
 content the owner will write over time — the five placeholder companies, the trader
 names and every news line — and the measurement in S2, which may reopen a number but

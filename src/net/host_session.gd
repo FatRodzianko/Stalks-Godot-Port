@@ -81,6 +81,12 @@ var _rematch_asked_for_by: Array[StringName] = []
 ## exactly as any other can.
 var _rematch_identities: Dictionary[int, PlayerState] = {}
 
+## Messages passed on per sender, so a client that ignores its own send limit
+## cannot flood anybody. Looser than that limit (MessageRules.RELAY_LIMIT).
+var _relay_limit: MessageLimiter = MessageLimiter.new(
+	MessageRules.RELAY_LIMIT, MessageRules.WINDOW_MSEC
+)
+
 
 ## Starts listening on `port` with the host as the only player, and the lobby
 ## open.
@@ -433,6 +439,10 @@ func offer_rematch() -> void:
 	)
 	_lobby_is_open = true
 	_rematch_asked_for_by.clear()
+	# The new match's seats are filled by whoever joins, in that order, so
+	# "p1" need not be the same person. A conversation kept under that id
+	# would be with the wrong player.
+	_messages.clear()
 
 	_player_by_peer.clear()
 	_peer_by_player.clear()
@@ -577,6 +587,47 @@ func _on_yeehaw_offered(peer: int) -> void:
 	var giver_id: StringName = _require_player(peer)
 	if not giver_id.is_empty():
 		_apply_yeehaw_give(giver_id)
+
+
+# --------------------------------------------------------------------- messages
+#
+# The host is a relay and nothing more (decisions.md D192). It works out who
+# sent a message from the peer id, checks the recipient is in the match, cleans
+# the text, applies the rate limit, and hands it to that one recipient. It
+# keeps no copy unless it is the recipient, and nothing here touches the match.
+
+## A client's message. Dropped without a reply when refused: an honest client
+## has already made the same checks itself (`send_message`), so a refusal here
+## means a client that is not playing by them.
+func _on_message_sent(peer: int, recipient_id: StringName, raw: String) -> void:
+	var sender_id: StringName = _require_player(peer)
+	if sender_id.is_empty():
+		return
+	if not MessageRules.why_not_relay(sender_id, recipient_id, state()).is_empty():
+		return
+	var text: String = MessageRules.clean(raw)
+	if text.is_empty():
+		return
+	if not _relay_limit.allow(sender_id, _now_msec()):
+		return
+	_route_message(sender_id, recipient_id, text)
+
+
+## The host player's own message, already checked by `send_message`.
+func _deliver_message(recipient_id: StringName, text: String) -> void:
+	_route_message(local_player_id(), recipient_id, text)
+
+
+## To exactly one place: this machine's book if the host is the recipient,
+## otherwise the recipient's peer and no other. A recipient who is away has
+## no peer, and the message goes nowhere.
+func _route_message(sender_id: StringName, recipient_id: StringName, text: String) -> void:
+	if _is_host_player(recipient_id):
+		_messages.record_received(sender_id, text)
+		return
+	var peer: int = _peer_by_player.get(recipient_id, 0)
+	if peer != 0:
+		_rpc_message.rpc_id(peer, String(sender_id), text)
 
 
 # ------------------------------------------------------------ one path per action

@@ -56,6 +56,16 @@ signal rematch_requested(player_id: StringName)
 signal rematch_joined
 
 
+## This machine's private messages (decisions.md D192). Lives on the session
+## because the session is what receives them; never part of `state()`.
+var _messages: MessageBook = MessageBook.new()
+
+## This machine's own send limit. The host has a looser one of its own.
+var _send_limit: MessageLimiter = MessageLimiter.new(
+	MessageRules.SEND_LIMIT, MessageRules.WINDOW_MSEC
+)
+
+
 ## The live match state. Read-only as far as the UI is concerned: look at it to
 ## render, never write to it.
 func state() -> GameState:
@@ -110,6 +120,57 @@ func request_yeehaw(_player_id: StringName) -> void:
 ## and a client therefore cannot forge either end of the gesture.
 func give_yeehaw(_giver_id: StringName) -> void:
 	push_error("GameSession.give_yeehaw is abstract")
+
+
+# ------------------------------------------------------------------ messages
+#
+# Private, text-only, and outside the game: the host passes each message to its
+# one recipient and keeps nothing. See docs/decisions.md D192 and D193.
+
+## This machine's conversations. Read it to render; the session writes it.
+func messages() -> MessageBook:
+	return _messages
+
+
+## Sends `raw` from this machine's player to `recipient_id`, or writes it as a
+## note when the recipient is this player. Returns why it was not sent, or an
+## empty string - and what was sent is in `messages()` straight away.
+##
+## These are the same checks the host makes, run first so a refusal can be
+## shown beside the send box. The host makes them again (D45): this is a
+## courtesy, not the security.
+func send_message(recipient_id: StringName, raw: String) -> String:
+	var writer_id: StringName = local_player_id()
+	if writer_id.is_empty():
+		return "Not connected."
+	var text: String = MessageRules.clean(raw)
+	if text.is_empty():
+		return "Nothing to send."
+	if recipient_id == writer_id:
+		_messages.record_sent(writer_id, writer_id, text)
+		return ""
+	var reason: String = MessageRules.why_not_relay(writer_id, recipient_id, state())
+	if not reason.is_empty():
+		return reason
+	var recipient: PlayerState = state().player_by_id(recipient_id)
+	if recipient.is_away:
+		return "%s is not here, so it would not arrive." % recipient.display_name
+	if not _send_limit.allow(writer_id, _now_msec()):
+		return "Too many messages. Wait a few seconds."
+	_messages.record_sent(writer_id, recipient_id, text)
+	_deliver_message(recipient_id, text)
+	return ""
+
+
+## Puts an already-checked message on its way. Nowhere to go offline: a local
+## game has no other machine (hot-seat play is not supported).
+func _deliver_message(_recipient_id: StringName, _text: String) -> void:
+	pass
+
+
+## The clock both rate limits read.
+func _now_msec() -> int:
+	return Time.get_ticks_msec()
 
 
 # ------------------------------------------------------------------ the rematch

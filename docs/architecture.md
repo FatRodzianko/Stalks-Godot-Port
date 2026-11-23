@@ -533,6 +533,58 @@ row:
 | Match finished (`over`) | no | yes | no |
 | Host left, nobody else there | no | no | no, the lobby is gone |
 
+### 5.8 Private messages: a relay beside the game
+
+Players can message each other privately, and write themselves notes (decisions.md
+D192, D193). None of it is part of the match: no `GameState`, no RNG, no snapshot.
+
+```
+ChatPanel (Label lines)  --message_submitted-->  MessagesTab --> MarketTabs
+  --> GameplayScreen._on_message_submitted --> session.send_message(to, text)
+
+GameSession.send_message      clean, check, own rate limit (5 / 10 s),
+                              record in this machine's MessageBook,
+                              then _deliver_message:
+  LocalSession                nowhere (a note never gets this far)
+  ClientSession               _rpc_send_message.rpc_id(host, to, text)
+  HostSession                 _route_message(host player, to, text)
+
+HostSession._on_message_sent  sender from the peer id; why_not_relay;
+                              clean again; relay limit (8 / 10 s per sender);
+                              _route_message: host's own book, or
+                              _rpc_message.rpc_id(recipient's peer) - one peer
+ClientSession._on_message_pushed   sender must be in the match and not itself;
+                              MessageBook.record_received cleans a third time
+```
+
+**The files**, all in `src/net/` except the screen's: `message_rules.gd`
+(`MessageRules`: `clean`, `why_not_relay`, the limits), `message_limiter.gd`
+(`MessageLimiter`, a sliding window with the clock passed in), `message_book.gd`
+(`MessageBook`, conversations and unread counts; `changed` fires when a line is
+added). The screen: `src/ui/screens/stalkleheads/messages_tab.gd`,
+`src/ui/widgets/chat_panel.gd` and `src/ui/status_dot.gd`.
+
+**The book lives on the session**, because the session is what receives. The
+screen listens to `messages().changed` and redraws the tab and its dot. A session
+replaced by a rejoin or a host migration starts an empty book: a known limit.
+
+**What was considered, and how each is handled:**
+
+| Threat | Handling | Tested in |
+|---|---|---|
+| BBCode or other markup injection | Lines are plain `Label`s, which parse nothing; markup is drawn as text | `test_messages.gd`: `test_every_line_is_a_plain_label`, `test_no_rich_text_anywhere_on_the_tab`, `test_markup_is_kept_as_literal_text` |
+| Clickable links (`https://`, `file://`) | No control on the tab can open a URL; text is inert | as above |
+| UNC / SMB auto-fetch (`\\server\share`) | Nothing resolves or fetches text; drawn as characters | `test_a_network_path_is_kept_as_literal_text`, `test_every_line_is_a_plain_label` |
+| Control characters, newlines, escape codes | Tab/newline/CR to a space; other C0 and DEL removed | `test_newlines_and_tabs_become_spaces`, `test_other_control_characters_are_removed` |
+| Bidi overrides, zero-width and other non-ASCII | Replaced with `?` | `test_bidirectional_overrides_are_replaced`, `test_zero_width_characters_are_replaced`, `test_anything_beyond_ascii_is_replaced` |
+| Oversize message | Cut to 200 before the character loop; send box capped | `test_a_message_is_cut_to_the_maximum_length`, `test_the_send_box_is_capped_at_the_message_length`, `test_the_host_cleans_what_a_client_sends` |
+| Flood | 5 per 10 s on the sender's machine, 8 per 10 s per sender on the host | `test_your_own_send_limit_refuses_with_a_reason`, `test_the_host_limits_a_client_that_ignores_its_own_limit` |
+| Spoofed sender | No sender in the packet; the host uses the peer id | `test_messages_wire.gd`: `test_the_sender_is_the_peer_not_anything_in_the_packet` |
+| Recipient not in the match, or yourself over the wire | `why_not_relay` refuses; long ids dropped unread | `test_a_recipient_not_in_the_match_gets_nothing_and_nothing_breaks`, `test_a_client_addressing_itself_over_the_wire_is_not_bounced_back` |
+| A client relaying to another client | `_rpc_send_message` acts only on the server | `test_only_the_host_relays` |
+| A bad host, or a fault on the way | The receiver cleans again and ignores senders not in the match | `test_a_client_cleans_what_arrives_again`, `test_a_client_ignores_a_message_from_somebody_not_in_the_match` |
+| Delivery to the wrong machine | One `rpc_id` to the recipient's peer; never broadcast | `test_a_message_between_clients_reaches_only_its_recipient`, `test_a_note_never_leaves_the_machine` |
+
 ### 5.4 Transport is a choice, not a migration
 
 A `Transport` answers one question: how is this match carried? It hands back a
@@ -1145,6 +1197,8 @@ GameplayScreen (base game's, unchanged around the boards)
     CompanyTab       pinned title line (COMPANIES < name >), then a scroll:
                      identity line with a TradeBox, CellRow earnings table,
                      LedgerWidget, investors, desk table
+    MessagesTab      two ChatPanels side by side and the player list, each
+                     name a Button with a StatusDot icon (§5.8, D192)
     Body (MarginContainer: every child over the same rectangle)
       PagesRow       the four tabs, and SideSpace (a free column on EXCHANGE)
       PickerLayer    CompanyPicker in an OverlayFrame, over the Company tab

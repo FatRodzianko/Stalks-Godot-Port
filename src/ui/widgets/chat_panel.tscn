@@ -1,0 +1,59 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/widgets/chat_panel.gd" id="1_chat"]
+
+[node name="ChatPanel" type="PanelContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"Card"
+script = ExtResource("1_chat")
+
+[node name="Box" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="Title" type="Label" parent="Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text_overrun_behavior = 3
+
+[node name="Scroll" type="ScrollContainer" parent="Box"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 4
+
+[node name="Lines" type="VBoxContainer" parent="Box/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Empty" type="Label" parent="Box/Scroll/Lines"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Faint"
+text = "Nothing yet."
+
+[node name="InputRow" type="HBoxContainer" parent="Box"]
+layout_mode = 2
+
+[node name="Field" type="LineEdit" parent="Box/InputRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+emoji_menu_enabled = false
+
+[node name="SendButton" type="Button" parent="Box/InputRow"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "SEND"
+
+[node name="Refusal" type="Label" parent="Box"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"Danger"
+autowrap_mode = 3

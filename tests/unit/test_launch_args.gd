@@ -52,6 +52,20 @@ func test_a_flag_launched_host_enables_loans() -> void:
 	assert_true(_parsed(["--host"] as Array[String]).host_settings().loans_enabled)
 
 
+func test_a_flag_launched_host_plays_the_base_game_by_default() -> void:
+	assert_eq(_parsed(["--host"] as Array[String]).host_settings().mode, GameMode.Value.BASE)
+
+
+func test_a_flag_launched_host_can_play_stalkleheads() -> void:
+	var launch: LaunchArgs = _parsed(["--host", "--game=stalkleheads"] as Array[String])
+	assert_eq(launch.host_settings().mode, GameMode.Value.STALKLEHEADS)
+
+
+func test_an_unknown_game_is_the_base_game() -> void:
+	var launch: LaunchArgs = _parsed(["--host", "--game=chess"] as Array[String])
+	assert_eq(launch.host_settings().mode, GameMode.Value.BASE)
+
+
 func test_a_seed_can_be_fixed_to_reproduce_a_bug() -> void:
 	var launch: LaunchArgs = _parsed(["--host", "--seed=4242"] as Array[String])
 	assert_eq(launch.rng_seed, 4242)

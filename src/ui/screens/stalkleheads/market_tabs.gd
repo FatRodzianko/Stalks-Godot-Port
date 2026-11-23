@@ -1,8 +1,8 @@
 class_name MarketTabs
 extends VBoxContainer
-## The four tabs of a StalkleHeads match, in the middle of the playing screen
+## The tabs of a StalkleHeads match, in the middle of the playing screen
 ## (docs/stalkleheads-design.md §7): Stalk Exchange, Market Analysis,
-## Industries and Company - and the side panel beside them, HOLDINGS,
+## Industries, Company and Messages - and the side panel beside them, HOLDINGS,
 ## RANKINGS and THE DESK.
 ##
 ## **The base game's screen is the frame around this.** `GameplayScreen` keeps
@@ -38,15 +38,22 @@ extends VBoxContainer
 ## checks (`set_trade_checks`), and every buy or sell leaves through the same
 ## two signals.
 ##
+## **MESSAGES** (decisions.md D192) is the fifth tab: private messages between
+## the players. Its button carries the unread dot - grey, or yellow while any
+## conversation has an unread line - redrawn whenever the message book changes
+## (`refresh_messages`), whichever tab is showing.
+##
 ## Holds nothing but which tab is showing and what each tab is pointed at.
 ## Every figure comes from the state it is handed (`refresh`).
 
 
 signal buy_requested(stalk_id: StringName, shares: int)
 signal sell_requested(stalk_id: StringName, shares: int)
+## The player typed a message on the Messages tab.
+signal message_submitted(recipient_id: StringName, text: String)
 
 
-enum Tab { EXCHANGE, MARKET, INDUSTRIES, COMPANY }
+enum Tab { EXCHANGE, MARKET, INDUSTRIES, COMPANY, MESSAGES }
 
 ## The strip's captions, as the design writes them (§7.2).
 const CAPTIONS: Dictionary[Tab, String] = {
@@ -54,6 +61,7 @@ const CAPTIONS: Dictionary[Tab, String] = {
 	Tab.MARKET: "MARKET",
 	Tab.INDUSTRIES: "INDUSTRIES",
 	Tab.COMPANY: "COMPANY",
+	Tab.MESSAGES: "MESSAGES",
 }
 
 
@@ -74,12 +82,17 @@ var _context: TradeContext
 var _event_text: String = ""
 var _event_effect: String = ""
 
+## This machine's messages (GameSession.messages), and whose machine it is.
+var _book: MessageBook
+var _local_id: StringName = &""
+
 @onready var _strip: HBoxContainer = %TabStrip
 @onready var _side_strip: HBoxContainer = %SideButtons
 @onready var _exchange: ExchangeTab = %ExchangeTab
 @onready var _market: MarketTab = %MarketTab
 @onready var _industries: IndustriesTab = %IndustriesTab
 @onready var _company: CompanyTab = %CompanyTab
+@onready var _messages: MessagesTab = %MessagesTab
 @onready var _side: SidePanel = %SidePanel
 @onready var _side_frame: PanelContainer = %SideFrame
 @onready var _side_space: Control = %SideSpace
@@ -94,6 +107,7 @@ func _ready() -> void:
 		Tab.MARKET: _market,
 		Tab.INDUSTRIES: _industries,
 		Tab.COMPANY: _company,
+		Tab.MESSAGES: _messages,
 	}
 	var group: ButtonGroup = ButtonGroup.new()
 	for tab: Tab in CAPTIONS:
@@ -105,6 +119,8 @@ func _ready() -> void:
 		button.pressed.connect(_on_tab_button_pressed.bind(tab))
 		_strip.add_child(button)
 		_buttons[tab] = button
+	_buttons[Tab.MESSAGES].icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_buttons[Tab.MESSAGES].icon = StatusDot.unread(false)
 	for page: SidePanel.Page in SidePanel.CAPTIONS:
 		var button: Button = Button.new()
 		button.text = SidePanel.CAPTIONS[page]
@@ -128,6 +144,8 @@ func _ready() -> void:
 	_company.company_changed.connect(_on_company_changed)
 	_company.picker_requested.connect(_on_company_picker_requested)
 	_picker.company_chosen.connect(_on_picker_company_chosen)
+	_messages.message_submitted.connect(_on_messages_message_submitted)
+	_messages.lines_read.connect(_draw_unread_dot)
 	select_tab(Tab.EXCHANGE)
 
 
@@ -136,6 +154,19 @@ func _ready() -> void:
 func set_trade_checks(buy_check: Callable, sell_check: Callable) -> void:
 	_buy_check = buy_check
 	_sell_check = sell_check
+
+
+## The book the Messages tab shows. Set once, before the first refresh.
+func set_message_book(book: MessageBook) -> void:
+	_book = book
+
+
+## The message book changed: a line arrived or was sent. Redraws the Messages
+## tab if it is showing, and the tab's dot either way.
+func refresh_messages() -> void:
+	if _current == Tab.MESSAGES:
+		_refresh_page(Tab.MESSAGES)
+	_draw_unread_dot()
 
 
 ## Builds the board for `state`'s market. Once per match.
@@ -156,12 +187,14 @@ func refresh(
 	host_id: StringName,
 ) -> void:
 	_state = state
+	_local_id = local_id
 	_context = TradeContext.new(state, player, trading, _buy_check, _sell_check)
 	_exchange.refresh(_context)
 	_side.refresh(_context, _exchange.board_order(), ranking_order, local_id, host_id)
 	_refresh_page(_current)
 	if _picker_open:
 		_picker.refresh(_context, _company.shown_id())
+	_draw_unread_dot()
 
 
 ## The year's event, as the top strip shows it.
@@ -221,6 +254,10 @@ func company_tab() -> CompanyTab:
 	return _company
 
 
+func messages_tab() -> MessagesTab:
+	return _messages
+
+
 func side_panel() -> SidePanel:
 	return _side
 
@@ -265,6 +302,20 @@ func _refresh_page(tab: Tab) -> void:
 			_industries.refresh(_context)
 		Tab.COMPANY:
 			_company.refresh(_context)
+		Tab.MESSAGES:
+			_messages.refresh(_state, _local_id, _book)
+			_draw_unread_dot()
+
+
+## The MESSAGES button's dot: yellow while anything is unread.
+func _draw_unread_dot() -> void:
+	var unread: bool = _book != null and _book.has_unread()
+	var button: Button = _buttons[Tab.MESSAGES]
+	button.icon = StatusDot.unread(unread)
+	if unread:
+		button.tooltip_text = "Unread messages"
+	else:
+		button.tooltip_text = "No unread messages"
 
 
 func _on_tab_button_pressed(tab: Tab) -> void:
@@ -285,6 +336,10 @@ func _on_page_buy_requested(stalk_id: StringName, shares: int) -> void:
 
 func _on_page_sell_requested(stalk_id: StringName, shares: int) -> void:
 	sell_requested.emit(stalk_id, shares)
+
+
+func _on_messages_message_submitted(recipient_id: StringName, text: String) -> void:
+	message_submitted.emit(recipient_id, text)
 
 
 func _on_industries_selection_changed(_industry_id: StringName) -> void:

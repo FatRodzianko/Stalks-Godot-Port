@@ -116,6 +116,22 @@ func _rpc_want_rematch() -> void:
 	_on_rematch_wanted(_sender())
 
 
+## A private message for `recipient_id` (decisions.md D192). Carries no
+## sender: the host takes that from the peer id, so a client cannot write as
+## somebody else.
+##
+## **Only the host relays.** With Godot's default server relay a client can
+## address an RPC to another client, so the check is here rather than left to
+## the client's handler being empty.
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_send_message(recipient_id: String, text: String) -> void:
+	if not multiplayer.is_server():
+		return
+	if recipient_id.length() > MessageRules.MAX_ID_LENGTH:
+		return
+	_on_message_sent(_sender(), StringName(recipient_id), text)
+
+
 # ------------------------------------------------------- host → client (results)
 
 ## `history_data` is every year resolved before this player arrived. Empty for
@@ -192,6 +208,13 @@ func _rpc_rematch_joined() -> void:
 	_on_rematch_join_pushed()
 
 
+## A message for this player, passed on by the host. `sender_id` is the host's
+## record of who sent it, never anything the sender wrote.
+@rpc("authority", "call_remote", "reliable")
+func _rpc_message(sender_id: String, text: String) -> void:
+	_on_message_pushed(StringName(sender_id), text)
+
+
 # ------------------------------------------------------------------- the handlers
 #
 # Plain methods, overridden by exactly one side. The other side never receives
@@ -236,6 +259,14 @@ func _on_rematch_wanted(_peer: int) -> void:
 
 
 func _on_introduced(_peer: int, _player_name: String, _steam_id: int = 0) -> void:
+	pass
+
+
+func _on_message_sent(_peer: int, _recipient_id: StringName, _text: String) -> void:
+	pass
+
+
+func _on_message_pushed(_sender_id: StringName, _text: String) -> void:
 	pass
 
 

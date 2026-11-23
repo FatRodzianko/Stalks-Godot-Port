@@ -2269,6 +2269,82 @@ contains `OWNED_MARK`.
 10. Check the other names line up with the starred one's first letter.
 11. Click **COMPANIES** to close the list.
 
+### O - StalkleHeads private messages (decisions.md D192, D193) — **not yet run**
+
+One machine, two copies of the game, no Steam. Run on a locally exported debug build
+containing D192 (a release build ignores the launch flags). To check a checkout
+before exporting: the file `src/net/message_rules.gd` exists. The two copies are
+called **A** (the host) and **B**.
+
+1. Open the folder holding the exported build (`stalks-build`) in File Explorer.
+2. Click the address bar, type `powershell` and press **Enter**.
+3. In the PowerShell window, type the command below and press **Enter**:
+
+   ```powershell
+   .\StalksStalksStalks.exe --host --game=stalkleheads --name=A
+   ```
+
+4. In the same PowerShell window, type the command below and press **Enter**:
+
+   ```powershell
+   .\StalksStalksStalks.exe --join --name=B
+   ```
+
+5. If Windows asks to allow the game through the firewall, click **Allow**.
+6. On B, click **READY**.
+7. On A, click **START**.
+8. On both, click **Close** on the news if it is showing.
+9. On A, check the **MESSAGES** tab button ends in a grey square.
+10. On A, click **MESSAGES**.
+11. Check the list on the right reads **A (you)** and **B**, each with a grey square.
+12. On A, click **B** in the list.
+13. Check the header reads **Chat with B**.
+14. Click the message box.
+15. Type `hello <(' ')>` and press **Enter**.
+16. Check the chat shows **You: hello <(' ')>** and the box is empty.
+17. On B, check the **MESSAGES** button's square is yellow.
+18. On B, click **MESSAGES**.
+19. Check the square beside **A** is yellow.
+20. On B, click **A** in the list.
+21. Check the chat shows **A: hello <(' ')>**.
+22. Check the square beside **A** and the square on the **MESSAGES** button are grey.
+23. On B, click the message box.
+24. Type `[url=https://example.com]x[/url] \\server\share` and press **Enter**.
+25. On A, check the line shows exactly those characters, square brackets and backslashes included.
+26. On A, click on that line.
+27. Check nothing opens: no browser, no File Explorer window.
+28. On B, click **B (you)** in the list.
+29. Check two chats are side by side, and the new one's header reads **Notes - only you see these**.
+30. Click the notes' message box.
+31. Type `a note` and press **Enter**.
+32. Check the notes show **You: a note**.
+33. On A, check nothing new arrived in the chat with B, and every square is grey.
+34. On B, click **A**'s message box.
+35. Type `1` and press **Enter**.
+36. Type `2` and press **Enter**.
+37. Type `3` and press **Enter**.
+38. Type `4` and press **Enter**.
+39. Type `5` and press **Enter**.
+40. Type `6` and press **Enter**.
+41. Check red text under the box reads **Not sent: Too many messages. Wait a few seconds.** and `6` is still in the box.
+42. Wait ten seconds.
+43. Press **Enter**.
+44. Check **You: 6** appears and the red text is gone.
+45. On A, check the chat with B shows 1 to 6, each once.
+46. Close B's window.
+47. On A, click the message box in the chat with B.
+48. Type `are you there` and press **Enter**.
+49. Check red text says B is not here, and the text stays in the box.
+50. Close A's window.
+
+#### What a failure here means
+
+- A square that never turns yellow, or never goes grey: the book's `changed` signal
+  is not reaching the screen (`GameplayScreen._on_messages_changed`).
+- A message that arrives at the wrong copy, or twice: the relay
+  (`HostSession._route_message`).
+- Step 27 opening anything is a security fault: stop and report it before playing on.
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until
