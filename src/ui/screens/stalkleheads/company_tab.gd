@@ -18,8 +18,12 @@ extends VBoxContainer
 ##   P/E against its industry's (decisions.md D188);
 ## - **why the price moved** - the ledger widget, every point attributed;
 ## - its earnings yield against the risk-free rate;
+## - **its news** (phase S8, design §8): the year's earnings commentary on it
+##   and any whisper naming it, as `NewsSelector` chose them. No news, no NEWS
+##   heading: an empty slot shows nothing (§8.2);
 ## - **who holds it**: the players, by name only (D103), and the NPC traders who
-##   traded it last year, **each by name** (§14 q11), with short interest.
+##   traded it last year, **each by name** (§14 q11), each with what it said
+##   about it (its chatter, faint, under its line), and short interest.
 ##
 ## Beside the name line: how many shares you hold (HELD, as the board says
 ## it), and a trade box.
@@ -102,6 +106,9 @@ const TRADER_CHARS: int = 30
 const ACTION_CHARS: int = 10
 const POSITION_CHARS: int = 10
 
+## Puts a trader's chatter under its name rather than level with it.
+const CHATTER_INDENT: String = "  "
+
 ## The line under the name: ticker, industry, then the regime phrase.
 const IDENTITY_WIDTHS: Array[int] = [6, 20, 0]
 
@@ -144,6 +151,8 @@ var _view_buttons: Dictionary[View, Button] = {}
 @onready var _investors: Label = %Investors
 @onready var _activity: VBoxContainer = %Activity
 @onready var _short_line: Label = %ShortLine
+@onready var _news_section: VBoxContainer = %NewsSection
+@onready var _company_news: VBoxContainer = %CompanyNews
 
 
 func _ready() -> void:
@@ -253,6 +262,7 @@ func refresh(context: TradeContext) -> void:
 			Palette.format_percent_decimal(MarketReadouts.risk_free_percent(state)),
 		]
 
+	_show_news(state)
 	_show_investors(state, stalk)
 	_show_activity(state, company)
 
@@ -383,6 +393,31 @@ func _show_no_earnings() -> void:
 		_split_row.set_cell(column + 1, "")
 
 
+# ------------------------------------------------------------------ news
+
+## The commentary on this company, then each whisper naming it.
+func _show_news(state: GameState) -> void:
+	for child: Node in _company_news.get_children():
+		_company_news.remove_child(child)
+		child.queue_free()
+	var news: YearNews = NewsSelector.latest(state)
+	if news != null:
+		var commentary: String = news.commentary.get(_stalk_id, "")
+		if not commentary.is_empty():
+			_add_news_line(commentary)
+		for whisper: YearNews.WhisperLine in news.whispers_about(_stalk_id):
+			_add_news_line(whisper.text)
+	_news_section.visible = _company_news.get_child_count() > 0
+
+
+func _add_news_line(text: String) -> void:
+	var line: Label = Label.new()
+	line.text = text
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	line.custom_minimum_size.x = CHART_WIDTH
+	_company_news.add_child(line)
+
+
 # ------------------------------------------------------------ who holds it
 
 ## Names only, as the base game's details panel shows them (decisions.md D103).
@@ -420,6 +455,7 @@ func _show_activity(state: GameState, company: CompanyState) -> void:
 	heading.set_framed(&"HeaderCard")
 	heading.set_cell_tooltip(1, TermTips.NPC_LAST_YEAR)
 	heading.set_cell_tooltip(2, TermTips.NPC_NOW)
+	var news: YearNews = NewsSelector.latest(state)
 	for entry: Array in entries:
 		var trader: NpcTraderState = state.market.desk.trader_by_id(entry[0])
 		var row: CellRow = _add_activity_row()
@@ -429,10 +465,24 @@ func _show_activity(state: GameState, company: CompanyState) -> void:
 			Palette.sentence_case(MarketReadouts.position_caption(entry[2], entry[3])),
 		])
 		row.set_cell_variation(1, &"Faint")
+		if news != null and news.chatter.has(trader.id):
+			_add_chatter_line(news.chatter[trader.id])
 	var shorted: int = state.market.desk.short_interest(company.id)
 	_short_line.tooltip_text = TermTips.fit(TermTips.short_interest())
 	if shorted > 0:
 		_short_line.text = "Short interest %d shares" % shorted
+
+
+## A trader's chatter under its line: faint, indented, wrapped to the table.
+func _add_chatter_line(text: String) -> void:
+	var line: Label = Label.new()
+	line.text = CHATTER_INDENT + text
+	line.theme_type_variation = &"Faint"
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	line.custom_minimum_size.x = (TRADER_CHARS + ACTION_CHARS + POSITION_CHARS) * CellRow.CELL_WIDTH
+	line.tooltip_text = TermTips.fit(TermTips.NPC_CHATTER)
+	line.mouse_filter = Control.MOUSE_FILTER_PASS
+	_activity.add_child(line)
 
 
 func _add_activity_row() -> CellRow:
@@ -506,10 +556,31 @@ func investors_text() -> String:
 	return _investors.text
 
 
+## The NPC table, a line per row, chatter left out (`chatter_lines`).
 func activity_lines() -> PackedStringArray:
 	var lines: PackedStringArray = []
 	for child: Node in _activity.get_children():
-		lines.append((child as CellRow).line_text())
+		if child is CellRow:
+			lines.append((child as CellRow).line_text())
+	return lines
+
+
+## The chatter under the NPC table's rows, in order, indent removed.
+func chatter_lines() -> PackedStringArray:
+	var lines: PackedStringArray = []
+	for child: Node in _activity.get_children():
+		if not child is CellRow:
+			lines.append((child as Label).text.trim_prefix(CHATTER_INDENT))
+	return lines
+
+
+## The NEWS section's lines; empty when it is hidden.
+func news_lines() -> PackedStringArray:
+	var lines: PackedStringArray = []
+	if not _news_section.visible:
+		return lines
+	for child: Node in _company_news.get_children():
+		lines.append((child as Label).text)
 	return lines
 
 

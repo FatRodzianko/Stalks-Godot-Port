@@ -88,5 +88,11 @@ var growth_rolls: Dictionary[StringName, int] = {}
 var net_shares_priced: Dictionary[StringName, int] = {}
 
 
+## **The year's news, once a screen has asked for it** (`NewsSelector.news_for`,
+## decisions.md D200). A readout kept here so it is worked out once; null until
+## then. Never sent: every peer works it out from the history it holds.
+var news: YearNews = null
+
+
 func ledger_for(company_id: StringName) -> PriceLedger:
 	return ledgers.get(company_id, null)

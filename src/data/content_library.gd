@@ -21,6 +21,10 @@ const COMPANIES_DIR: String = "res://src/data/companies"
 const INDUSTRIES_DIR: String = "res://src/data/industries"
 const TRADERS_DIR: String = "res://src/data/traders"
 
+## StalkleHeads news (docs/stalkleheads-design.md §8): every `.tres` here is a
+## `NewsBook`. How lines are split between files is up to whoever writes them.
+const NEWS_DIR: String = "res://src/data/news"
+
 ## The short-squeeze template (docs/stalkleheads-design.md §5.3): one event whose
 ## target is filled in at the moment a squeeze fires. Not in `STALKS_DIR`, so the
 ## base game's event pool never sees it.
@@ -49,6 +53,10 @@ var industries: Array[IndustryDefinition] = []
 
 ## StalkleHeads NPC traders, sorted by id. Empty unless `load_fundamentals` ran.
 var traders: Array[NpcTraderDefinition] = []
+
+## StalkleHeads news lines, every category sorted by id, the traders' own
+## chatter included (`NewsContent.build`). Empty unless `load_fundamentals` ran.
+var news: NewsContent = NewsContent.new()
 
 ## The StalkleHeads short-squeeze template, or null unless `load_fundamentals`
 ## ran. Its `target_stalk_id` is empty: the squeeze names its own target.
@@ -103,14 +111,15 @@ static func load_from(dir_path: String = STALKS_DIR) -> ContentLibrary:
 	return library
 
 
-## Adds the StalkleHeads company profiles, industries, NPC traders and the
-## short-squeeze template, then re-validates everything. Problems loading a file
+## Adds the StalkleHeads company profiles, industries, NPC traders, the
+## short-squeeze template and the news, then re-validates everything. Problems loading a file
 ## land in `errors`, as in `load_from`.
 func load_fundamentals(
 	companies_dir: String = COMPANIES_DIR,
 	industries_dir: String = INDUSTRIES_DIR,
 	traders_dir: String = TRADERS_DIR,
 	short_squeeze_path: String = SHORT_SQUEEZE_PATH,
+	news_dir: String = NEWS_DIR,
 ) -> void:
 	var load_errors: Array[String] = []
 	companies = []
@@ -140,9 +149,18 @@ func load_fundamentals(
 	if short_squeeze == null:
 		load_errors.append("No short-squeeze event at %s" % short_squeeze_path)
 
+	var books: Array[NewsBook] = []
+	for resource: Resource in _load_all(news_dir, load_errors):
+		var book: NewsBook = resource as NewsBook
+		if book == null:
+			load_errors.append("%s is not a NewsBook" % resource.resource_path)
+			continue
+		books.append(book)
+
 	companies.sort_custom(_company_by_id)
 	industries.sort_custom(_industry_by_id)
 	traders.sort_custom(_trader_by_id)
+	news = NewsContent.build(books, traders)
 	validate()
 	errors.append_array(load_errors)
 
@@ -290,6 +308,8 @@ func _validate_fundamentals() -> void:
 				% [industry_id, count, TARGET_INDUSTRY_MEMBERS])
 
 	_validate_traders()
+	_validate_transition_matrix()
+	_validate_news(members.keys(), seen_ids.keys())
 	if short_squeeze != null:
 		if short_squeeze.price_change <= 0:
 			errors.append("The short squeeze must raise the price; its price_change is %d."
@@ -320,6 +340,121 @@ func _validate_traders() -> void:
 			errors.append("Trader %s starts with %d cash." % [label, trader.starting_cash])
 		if trader.conviction < 0 or trader.conviction > 100:
 			errors.append("Trader %s has conviction %d; it must be 0-100." % [label, trader.conviction])
+	if traders.is_empty():
+		return
+	# A strategy nobody follows is allowed, but it is a reading of the market
+	# the desk no longer shows the player (design §5.2), so it is reported.
+	for strategy: NpcStrategy.Value in NpcStrategy.ALL:
+		var followed: bool = false
+		for trader: NpcTraderDefinition in traders:
+			followed = followed or trader.strategy == strategy
+		if not followed:
+			warnings.append("No trader follows the %s strategy." % NpcStrategy.name_of(strategy))
+
+
+## Every row of the regime transition matrix sums to 100 (design §8.2). The
+## matrix is code, not content, but a row that does not sum to 100 makes some
+## regime unreachable or over-likely without any error, so it is checked with
+## everything else.
+func _validate_transition_matrix() -> void:
+	for regime: EarningsRegime.Value in EarningsRegime.ALL:
+		var row: Array = RegimeRules.TRANSITION.get(regime, [])
+		var total: int = 0
+		for odds: int in row:
+			total += odds
+		if row.size() != EarningsRegime.ALL.size() or total != 100:
+			errors.append("The transition row for %s has %d entries summing to %d; it needs %d summing to 100."
+				% [EarningsRegime.name_of(regime), row.size(), total, EarningsRegime.ALL.size()])
+
+
+## The news (design §8.1, §8.2). Every id unique across all six categories;
+## every company, industry, trader and subject it names exists; every band and
+## trigger is a known value; every truth chance is 0-100; every line has text,
+## and uses only the `{...}` tokens its category fills in - a misspelt token
+## would otherwise reach the screen as written.
+func _validate_news(industry_ids: Array, company_ids: Array) -> void:
+	var trader_ids: Array[StringName] = []
+	for trader: NpcTraderDefinition in traders:
+		trader_ids.append(trader.id)
+	var seen: Dictionary[StringName, bool] = {}
+
+	for line: MarketHeadline in news.headlines:
+		var label: String = _news_label(line, "headline", seen)
+		_check_text(line.text, label, [])
+		_check_band(line.mood, NewsBands.Mood.values(), label, "mood")
+		_check_band(line.move, NewsBands.Move.values(), label, "move")
+
+	for line: IndustryReport in news.industry_reports:
+		var label: String = _news_label(line, "industry report", seen)
+		_check_text(line.text, label, [NewsSelector.INDUSTRY_TOKEN])
+		_check_band(line.mood, NewsBands.Mood.values(), label, "mood")
+		_check_band(line.move, NewsBands.Move.values(), label, "move")
+		if not line.industry_id.is_empty() and not industry_ids.has(line.industry_id):
+			errors.append("News %s names industry %s, which does not exist." % [label, line.industry_id])
+
+	for line: EarningsCommentary in news.earnings_commentary:
+		var label: String = _news_label(line, "earnings commentary", seen)
+		_check_text(line.text, label, [NewsSelector.COMPANY_TOKEN, NewsSelector.INDUSTRY_TOKEN])
+		_check_band(line.regime, NewsBands.Regime.values(), label, "regime")
+		_check_band(line.surprise, NewsBands.Surprise.values(), label, "surprise")
+		if not line.company_id.is_empty() and not company_ids.has(line.company_id):
+			errors.append("News %s names company %s, which does not exist." % [label, line.company_id])
+
+	for line: Whisper in news.whispers:
+		var label: String = _news_label(line, "whisper", seen)
+		if not NewsBands.ALL_TRIGGERS.has(line.trigger):
+			errors.append("News %s has an unknown trigger (%d)." % [label, line.trigger])
+			continue
+		var about_industry: bool = NewsBands.is_industry_trigger(line.trigger)
+		if about_industry:
+			_check_text(line.text, label, [NewsSelector.INDUSTRY_TOKEN])
+		else:
+			_check_text(line.text, label, [NewsSelector.COMPANY_TOKEN, NewsSelector.INDUSTRY_TOKEN])
+		if line.truth_chance_percent < 0 or line.truth_chance_percent > 100:
+			errors.append("News %s has a truth chance of %d; it must be 0-100." % [label, line.truth_chance_percent])
+		if line.subject.is_empty():
+			continue
+		if about_industry and not industry_ids.has(line.subject):
+			errors.append("News %s is about %s, which is not an industry." % [label, line.subject])
+		elif not about_industry and not company_ids.has(line.subject):
+			errors.append("News %s is about %s, which is not a company." % [label, line.subject])
+
+	for line: NpcChatter in news.chatter:
+		var label: String = _news_label(line, "chatter", seen)
+		_check_text(line.text, label, [NewsSelector.TRADER_TOKEN, NewsSelector.COMPANY_TOKEN])
+		_check_band(line.situation, NpcTraderDefinition.Situation.values(), label, "situation")
+		if line.npc_id.is_empty():
+			_check_band(line.strategy, NpcStrategy.ALL, label, "strategy")
+		elif not trader_ids.has(line.npc_id):
+			errors.append("News %s names trader %s, which does not exist." % [label, line.npc_id])
+
+
+## A news line's id for messages, recording it and reporting a missing or
+## duplicate one.
+func _news_label(line: Resource, category: String, seen: Dictionary[StringName, bool]) -> String:
+	var id: StringName = line.get("id")
+	if id == &"":
+		errors.append("A %s has no id (text %s)." % [category, line.get("text")])
+		return "<missing id>"
+	if seen.has(id):
+		errors.append("Duplicate news id: %s" % id)
+	seen[id] = true
+	return str(id)
+
+
+func _check_band(value: int, allowed: Array, label: String, field: String) -> void:
+	if not allowed.has(value):
+		errors.append("News %s has an unknown %s (%d)." % [label, field, value])
+
+
+func _check_text(text: String, label: String, tokens: Array[String]) -> void:
+	if text.strip_edges().is_empty():
+		errors.append("News %s has no text." % label)
+		return
+	var pattern: RegEx = RegEx.create_from_string("\\{[^}]*\\}")
+	for found: RegExMatch in pattern.search_all(text):
+		if not tokens.has(found.get_string()):
+			errors.append("News %s uses %s, which this kind of line does not fill in." % [label, found.get_string()])
 
 
 func _validate_company(

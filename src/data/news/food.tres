@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="NewsBook" format=3]
+
+[ext_resource type="Script" path="res://src/data/npc_chatter.gd" id="1_lid0y"]
+[ext_resource type="Script" path="res://src/data/earnings_commentary.gd" id="2_tt38t"]
+[ext_resource type="Script" path="res://src/data/market_headline.gd" id="3_bav1i"]
+[ext_resource type="Script" path="res://src/data/industry_report.gd" id="4_vuphu"]
+[ext_resource type="Script" path="res://src/data/news_book.gd" id="5_oh1kf"]
+[ext_resource type="Script" path="res://src/data/whisper.gd" id="6_mvauw"]
+
+[sub_resource type="Resource" id="Resource_2dcyq"]
+script = ExtResource("4_vuphu")
+id = &"ind_food_crash_1"
+industry_id = &"food"
+move = 1
+text = "INDUSTRY REPORT: food, crash"
+
+[sub_resource type="Resource" id="Resource_lshmo"]
+script = ExtResource("4_vuphu")
+id = &"ind_food_down_1"
+industry_id = &"food"
+move = 2
+text = "INDUSTRY REPORT: food, down"
+
+[sub_resource type="Resource" id="Resource_hcc02"]
+script = ExtResource("4_vuphu")
+id = &"ind_food_flat_1"
+industry_id = &"food"
+move = 3
+text = "INDUSTRY REPORT: food, flat"
+
+[sub_resource type="Resource" id="Resource_vhnkv"]
+script = ExtResource("4_vuphu")
+id = &"ind_food_up_1"
+industry_id = &"food"
+move = 4
+text = "INDUSTRY REPORT: food, up"
+
+[sub_resource type="Resource" id="Resource_4il5a"]
+script = ExtResource("4_vuphu")
+id = &"ind_food_surge_1"
+industry_id = &"food"
+move = 5
+text = "INDUSTRY REPORT: food, surge"
+
+[resource]
+script = ExtResource("5_oh1kf")
+industry_reports = Array[ExtResource("4_vuphu")]([SubResource("Resource_2dcyq"), SubResource("Resource_lshmo"), SubResource("Resource_hcc02"), SubResource("Resource_vhnkv"), SubResource("Resource_4il5a")])

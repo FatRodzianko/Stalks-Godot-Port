@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="NewsBook" format=3]
+
+[ext_resource type="Script" path="res://src/data/npc_chatter.gd" id="1_twtjr"]
+[ext_resource type="Script" path="res://src/data/earnings_commentary.gd" id="2_7gvo8"]
+[ext_resource type="Script" path="res://src/data/market_headline.gd" id="3_wrsyq"]
+[ext_resource type="Script" path="res://src/data/industry_report.gd" id="4_5syx3"]
+[ext_resource type="Script" path="res://src/data/news_book.gd" id="5_umhtt"]
+[ext_resource type="Script" path="res://src/data/whisper.gd" id="6_ji1e1"]
+
+[sub_resource type="Resource" id="Resource_3sdgj"]
+script = ExtResource("4_5syx3")
+id = &"ind_financial_crash_1"
+industry_id = &"financial"
+move = 1
+text = "INDUSTRY REPORT: financial, crash"
+
+[sub_resource type="Resource" id="Resource_bpidn"]
+script = ExtResource("4_5syx3")
+id = &"ind_financial_down_1"
+industry_id = &"financial"
+move = 2
+text = "INDUSTRY REPORT: financial, down"
+
+[sub_resource type="Resource" id="Resource_aq61y"]
+script = ExtResource("4_5syx3")
+id = &"ind_financial_flat_1"
+industry_id = &"financial"
+move = 3
+text = "INDUSTRY REPORT: financial, flat"
+
+[sub_resource type="Resource" id="Resource_jvh8b"]
+script = ExtResource("4_5syx3")
+id = &"ind_financial_up_1"
+industry_id = &"financial"
+move = 4
+text = "INDUSTRY REPORT: financial, up"
+
+[sub_resource type="Resource" id="Resource_4ohan"]
+script = ExtResource("4_5syx3")
+id = &"ind_financial_surge_1"
+industry_id = &"financial"
+move = 5
+text = "INDUSTRY REPORT: financial, surge"
+
+[resource]
+script = ExtResource("5_umhtt")
+industry_reports = Array[ExtResource("4_5syx3")]([SubResource("Resource_3sdgj"), SubResource("Resource_bpidn"), SubResource("Resource_aq61y"), SubResource("Resource_jvh8b"), SubResource("Resource_4ohan")])

@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="NewsBook" format=3]
+
+[ext_resource type="Script" path="res://src/data/npc_chatter.gd" id="1_abnlu"]
+[ext_resource type="Script" path="res://src/data/earnings_commentary.gd" id="2_x3liq"]
+[ext_resource type="Script" path="res://src/data/market_headline.gd" id="3_oxki7"]
+[ext_resource type="Script" path="res://src/data/industry_report.gd" id="4_x32vk"]
+[ext_resource type="Script" path="res://src/data/news_book.gd" id="5_j5p02"]
+[ext_resource type="Script" path="res://src/data/whisper.gd" id="6_og2sm"]
+
+[sub_resource type="Resource" id="Resource_fwv65"]
+script = ExtResource("4_x32vk")
+id = &"ind_consumer_crash_1"
+industry_id = &"consumer"
+move = 1
+text = "INDUSTRY REPORT: consumer, crash"
+
+[sub_resource type="Resource" id="Resource_3gy6f"]
+script = ExtResource("4_x32vk")
+id = &"ind_consumer_down_1"
+industry_id = &"consumer"
+move = 2
+text = "INDUSTRY REPORT: consumer, down"
+
+[sub_resource type="Resource" id="Resource_ipxpo"]
+script = ExtResource("4_x32vk")
+id = &"ind_consumer_flat_1"
+industry_id = &"consumer"
+move = 3
+text = "INDUSTRY REPORT: consumer, flat"
+
+[sub_resource type="Resource" id="Resource_u3031"]
+script = ExtResource("4_x32vk")
+id = &"ind_consumer_up_1"
+industry_id = &"consumer"
+move = 4
+text = "INDUSTRY REPORT: consumer, up"
+
+[sub_resource type="Resource" id="Resource_5uas5"]
+script = ExtResource("4_x32vk")
+id = &"ind_consumer_surge_1"
+industry_id = &"consumer"
+move = 5
+text = "INDUSTRY REPORT: consumer, surge"
+
+[resource]
+script = ExtResource("5_j5p02")
+industry_reports = Array[ExtResource("4_x32vk")]([SubResource("Resource_fwv65"), SubResource("Resource_3gy6f"), SubResource("Resource_ipxpo"), SubResource("Resource_u3031"), SubResource("Resource_5uas5")])

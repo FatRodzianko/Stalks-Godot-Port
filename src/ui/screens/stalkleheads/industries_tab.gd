@@ -11,6 +11,10 @@ extends ScrollContainer
 ## Click an industry's line to select it. The selection is presentation only,
 ## like the Exchange tab's collapse and sort. Each member has a trade box, and
 ## clicking its name opens it on the Company tab (decisions.md D183).
+##
+## Under the members, the selected industry's **report** for the year, when
+## one was chosen (`NewsSelector`, design §8). No report, no NEWS heading:
+## an empty slot shows nothing (§8.2).
 
 
 ## A line was clicked. The host holds the state, so it redraws.
@@ -64,6 +68,8 @@ var _context: TradeContext
 @onready var _members_title: Label = %MembersTitle
 @onready var _members_header: CellRow = %MembersHeader
 @onready var _members: VBoxContainer = %Members
+@onready var _report_title: Label = %ReportTitle
+@onready var _report: Label = %Report
 
 
 func _ready() -> void:
@@ -173,6 +179,14 @@ func _refresh_selected(state: GameState) -> void:
 		line.cells().set_cell_colour(2, Palette.for_percent(change))
 		_context.prepare(line.trade_box(), company.id)
 
+	var report: String = ""
+	var news: YearNews = NewsSelector.latest(state)
+	if news != null:
+		report = news.industry_reports.get(_selected, "")
+	_report.text = report
+	_report_title.visible = not report.is_empty()
+	_report.visible = not report.is_empty()
+
 
 func selected() -> StringName:
 	return _selected
@@ -192,6 +206,10 @@ func member_lines() -> PackedStringArray:
 
 func member_line(stalk_id: StringName) -> TradeLine:
 	return _member_lines.get(stalk_id)
+
+
+func report_text() -> String:
+	return _report.text if _report.visible else ""
 
 
 func industry_chart() -> ChartWidget:

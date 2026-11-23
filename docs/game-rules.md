@@ -314,6 +314,47 @@ Each event carries: **target stalk name**, **flavour text**, **price change**.
   > figures are cleared to 0 in the year it fails. Nothing reads them afterwards;
   > clearing them lets a client rebuild every company exactly (D176).
 
+### 5.1 StalkleHeads news — **not in the original**
+
+StalkleHeads (phase S8) adds five kinds of news line beside the special event. None
+of them moves a price; they are things to read. The rules, as built
+(stalkleheads-design.md §8, decisions.md D199-D203):
+
+| Line | How many a year | Chosen by |
+|---|---|---|
+| Market headline | at most one | the year's mood, and the index's move band |
+| Industry report | at most one per industry | that industry's move band (and mood, if a line names one) |
+| Earnings commentary | at most one per company alive at the year's start | its regime this year, and its surprise band |
+| Whisper | at most two | a trigger that holds for something this year; see below |
+| NPC chatter | at most one per desk trader | what the trader did: bought, sold, shorted, covered or held |
+
+- **Move bands** (percent): CRASH at -15 or below; DOWN below -3; FLAT -3 to +3;
+  UP below +15; SURGE +15 or above.
+- **Surprise bands:** revenue growth against what the regime leads one to expect -
+  the middle of its growth band, with the long-match damping and the payout
+  retention applied. Within 3 points AS_EXPECTED; 3 to 8 BETTER or WORSE; 8 or
+  more MUCH BETTER or MUCH WORSE.
+- **Whisper triggers:** HIGH_SHORT_INTEREST (flagged this year, §5 above);
+  THIRD_GROWTH_YEAR (a third year or more in GROWTH); MARGIN_SLIPPING (margin down,
+  revenue up, on last year); PE_ABOVE_INDUSTRY / PE_BELOW_INDUSTRY (more than 20%
+  from the industry's average P/E); SECTOR_RUN (an industry the same way three years
+  running); NEAR_SPLIT (price above 260; the split is above 300); NEAR_FAILURE
+  (DISTRESS and a price under 20).
+- **A whisper is a rumour.** One whose trigger holds for something is in play; it
+  then rolls against its truth chance (75 for every shipped one). Honest, it names
+  something the trigger holds for; a lie, it names something it does not. A whisper
+  written about one named company cannot lie, so when its roll says lie it is not
+  shown.
+- **Without replacement.** A line is not repeated while another line that could fill
+  the same slot has been shown fewer times.
+- **Nothing matches, nothing shows.** No stand-in line, and the section's heading
+  hides with it.
+- **The same for everybody.** Every machine chooses the same lines; they never take a
+  draw from the match's random numbers, so news cannot change a price.
+
+All the shipped text is placeholder - the category in capitals, then the conditions
+(`INDUSTRY REPORT: energy, down`) - until the owner writes it.
+
 ---
 
 ## 6. Splits

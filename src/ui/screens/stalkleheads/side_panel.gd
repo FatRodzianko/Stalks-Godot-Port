@@ -2,7 +2,8 @@ class_name SidePanel
 extends ScrollContainer
 ## The StalkleHeads tabs' right-hand panel: **HOLDINGS** (cash, net worth, any
 ## loan, and every company you hold, with a box and SELL), **RANKINGS**, and
-## **THE DESK** (each NPC strategy's return, and short interest). One page at a
+## **THE DESK** (each NPC strategy's return, short interest, and each trader's
+## chatter about last year, when it has any - phase S8). One page at a
 ## time; `MarketTabs` owns the three buttons that choose it, whether the panel
 ## shows at all, and the bright frame that sets it apart from the tab beneath
 ## (decisions.md D183, D184).
@@ -36,6 +37,9 @@ const WIDTH_CHARS: int = 26
 const CAPTION_CHARS: int = 12
 const VALUE_CHARS: int = 12
 
+## The width chatter wraps at: the two columns above it.
+const CHATTER_WIDTH: int = (CAPTION_CHARS + VALUE_CHARS) * CellRow.CELL_WIDTH
+
 const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
 const HoldingRowScene: PackedScene = preload("res://src/ui/widgets/holding_row.tscn")
 const RankingRowScene: PackedScene = preload("res://src/ui/widgets/ranking_row.tscn")
@@ -62,6 +66,8 @@ var _context: TradeContext
 @onready var _short_title: Label = %ShortTitle
 @onready var _short_none: Label = %ShortNone
 @onready var _short_list: VBoxContainer = %ShortList
+@onready var _chatter_title: Label = %ChatterTitle
+@onready var _chatter_list: VBoxContainer = %ChatterList
 
 
 func _ready() -> void:
@@ -83,6 +89,7 @@ func _ready() -> void:
 	_holdings_header.configure_as_header()
 	_desk_title.tooltip_text = TermTips.fit(TermTips.DESK)
 	_short_title.tooltip_text = TermTips.fit(TermTips.short_interest())
+	_chatter_title.tooltip_text = TermTips.fit(TermTips.NPC_CHATTER)
 	show_page(Page.HOLDINGS)
 
 
@@ -117,6 +124,7 @@ func refresh(
 	_refresh_rankings(state, ranking_order, local_id, host_id)
 	_refresh_desk(state)
 	_refresh_short_interest(state)
+	_refresh_chatter(state)
 
 
 func clear_amounts() -> void:
@@ -207,7 +215,47 @@ func _refresh_short_interest(state: GameState) -> void:
 		row.set_cell_tooltip(0, stalk.definition.display_name)
 
 
+## Each trader that said something about last year, in the order they acted:
+## its name, faint, then the line, wrapped to the panel. No chatter, no
+## heading: an empty slot shows nothing (design §8.2).
+func _refresh_chatter(state: GameState) -> void:
+	for child: Node in _chatter_list.get_children():
+		_chatter_list.remove_child(child)
+		child.queue_free()
+	var news: YearNews = NewsSelector.latest(state)
+	var latest: EarningsYearResult = state.latest_result() as EarningsYearResult
+	if news != null and latest != null and latest.desk != null:
+		for trader_id: StringName in latest.desk.trader_ids:
+			if not news.chatter.has(trader_id):
+				continue
+			var trader: NpcTraderState = state.market.desk.trader_by_id(trader_id)
+			var caption: Label = Label.new()
+			caption.text = trader.definition.display_name
+			caption.theme_type_variation = &"Faint"
+			caption.clip_text = true
+			caption.custom_minimum_size.x = CHATTER_WIDTH
+			_chatter_list.add_child(caption)
+			var line: Label = Label.new()
+			line.text = news.chatter[trader_id]
+			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			line.custom_minimum_size.x = CHATTER_WIDTH
+			_chatter_list.add_child(line)
+	var any: bool = _chatter_list.get_child_count() > 0
+	_chatter_title.visible = any
+	_chatter_list.visible = any
+
+
 # ------------------------------------------------------------ for tests
+
+## The chatter as shown: name, line, name, line. Empty when hidden.
+func chatter_lines() -> PackedStringArray:
+	var lines: PackedStringArray = []
+	if not _chatter_list.visible:
+		return lines
+	for child: Node in _chatter_list.get_children():
+		lines.append((child as Label).text)
+	return lines
+
 
 func holding_row(stalk_id: StringName) -> HoldingRow:
 	return _holding_rows.get(stalk_id)

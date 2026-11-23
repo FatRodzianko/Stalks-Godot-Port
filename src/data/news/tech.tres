@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="NewsBook" format=3]
+
+[ext_resource type="Script" path="res://src/data/npc_chatter.gd" id="1_bgesv"]
+[ext_resource type="Script" path="res://src/data/earnings_commentary.gd" id="2_jqyp0"]
+[ext_resource type="Script" path="res://src/data/market_headline.gd" id="3_1yehi"]
+[ext_resource type="Script" path="res://src/data/industry_report.gd" id="4_hcxdw"]
+[ext_resource type="Script" path="res://src/data/news_book.gd" id="5_llmmf"]
+[ext_resource type="Script" path="res://src/data/whisper.gd" id="6_k3k66"]
+
+[sub_resource type="Resource" id="Resource_4yia1"]
+script = ExtResource("4_hcxdw")
+id = &"ind_tech_crash_1"
+industry_id = &"tech"
+move = 1
+text = "INDUSTRY REPORT: tech, crash"
+
+[sub_resource type="Resource" id="Resource_l11eu"]
+script = ExtResource("4_hcxdw")
+id = &"ind_tech_down_1"
+industry_id = &"tech"
+move = 2
+text = "INDUSTRY REPORT: tech, down"
+
+[sub_resource type="Resource" id="Resource_itm56"]
+script = ExtResource("4_hcxdw")
+id = &"ind_tech_flat_1"
+industry_id = &"tech"
+move = 3
+text = "INDUSTRY REPORT: tech, flat"
+
+[sub_resource type="Resource" id="Resource_8m4sl"]
+script = ExtResource("4_hcxdw")
+id = &"ind_tech_up_1"
+industry_id = &"tech"
+move = 4
+text = "INDUSTRY REPORT: tech, up"
+
+[sub_resource type="Resource" id="Resource_a7m0i"]
+script = ExtResource("4_hcxdw")
+id = &"ind_tech_surge_1"
+industry_id = &"tech"
+move = 5
+text = "INDUSTRY REPORT: tech, surge"
+
+[resource]
+script = ExtResource("5_llmmf")
+industry_reports = Array[ExtResource("4_hcxdw")]([SubResource("Resource_4yia1"), SubResource("Resource_l11eu"), SubResource("Resource_itm56"), SubResource("Resource_8m4sl"), SubResource("Resource_a7m0i")])

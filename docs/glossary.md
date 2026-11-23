@@ -209,7 +209,7 @@ stock rather than a better one (§3.10a).
 
 **Short squeeze** — in StalkleHeads, a special event aimed at the most shorted flagged company: its price jumps (+25 as shipped), and the short sellers lose. In a year with a company flagged it replaces the year's ordinary event 25% of the time; with none flagged it never happens.
 
-**Chatter** — a one-line remark a trader makes about what it did this year (bought, sold, shorted, covered, held). Content for the news in S8; placeholders until then.
+**Chatter** — a one-line remark a trader makes about what it did this year (bought, sold, shorted, covered, held). Shown under its name on the Company tab and on the side panel's DESK page (S8). Written on the trader's own file, or for a whole strategy in a news book; placeholders until the owner writes them.
 
 **FOLLOW** — the balance-tool strategy that copies whichever NPC trader is worth most, holding what it holds. It reads nothing about companies, only the desk.
 
@@ -270,6 +270,28 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 **Split-adjusted** — a per-share figure from before a split, restated as if the split had already happened, so a chart does not show a split as a crash. Code: `MarketReadouts.per_share_adjusted` (D188).
 
 **Readouts (on screen)** — every number the StalkleHeads tabs show that is worked out rather than stored: P/E, market share, averages, breadth. All come from `MarketReadouts` in `src/sim/`, never from a node (decisions.md D179).
+
+**News (StalkleHeads)** — the lines a StalkleHeads year shows besides its numbers: a market headline, an industry report per industry, earnings commentary per company, up to two whispers and each desk trader's chatter, plus the special event. None of them moves a price. Chosen by `NewsSelector` (design §8, decisions.md D199-D203; rules in game-rules.md §5.1).
+
+**News book** — a `.tres` file in `src/data/news/` holding news lines of any kind (`NewsBook`). The game loads every one in the folder.
+
+**Market headline** — one line about the whole market, chosen by the year's mood and how far the index moved. On the Market tab, above the event.
+
+**Industry report** — one line about an industry's year, chosen by how far it moved. On the Industries tab under the selected industry.
+
+**Earnings commentary** — one line about a company's earnings, chosen by its regime and its surprise band. On the Company tab under NEWS.
+
+**Whisper** — a rumour about a company or an industry, shown on the Market tab (and on the Company tab of a company it names). Each has a **trigger**, a real condition such as a P/E more than 20% above its industry's, and a **truth chance**: that often it is honest and names something the trigger holds for; otherwise it names something it does not. So a whisper is evidence, not a promise (decisions.md D201).
+
+**Trigger** — what a whisper is about: one of eight named conditions on the year's state (`NewsBands.Trigger`), each worked out in `NewsSelector.trigger_holds`.
+
+**Move band** — a move sorted into CRASH, DOWN, FLAT, UP or SURGE, at -15, -3, +3 and +15 percent. Headlines use the index's move, industry reports the industry's.
+
+**Surprise band** — how a company's revenue growth compared with what its regime leads one to expect: MUCH WORSE, WORSE, AS EXPECTED, BETTER or MUCH BETTER, 3 and 8 points either side (decisions.md D202).
+
+**Token** — a word in braces in a news line, filled in when the line is shown: `{company}`, `{industry}`, `{trader}`.
+
+**Placeholder line** — a news line nobody has written yet: the category in capitals, a colon, and the conditions it was chosen for (`INDUSTRY REPORT: energy, down`), so it says on screen which line is missing (design §8.3).
 
 ---
 

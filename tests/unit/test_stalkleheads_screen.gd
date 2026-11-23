@@ -778,6 +778,9 @@ func _everything_shown(state: GameState) -> PackedStringArray:
 		lines.append(tabs.exchange().group_row_for(industry.id).line_text())
 	lines.append_array(tabs.side_panel().desk_lines())
 	lines.append_array(tabs.side_panel().short_interest_lines())
+	lines.append_array(tabs.side_panel().chatter_lines())
+	lines.append(tabs.market_tab().headline_text())
+	lines.append_array(tabs.market_tab().whisper_texts())
 	tabs.select_tab(MarketTabs.Tab.MARKET)
 	lines.append(tabs.market_tab().index_chart().summary())
 	for line: MarketTab.Line in MarketTab.Line.values():
@@ -793,6 +796,8 @@ func _everything_shown(state: GameState) -> PackedStringArray:
 			lines.append(tab.earnings_line(line))
 		lines.append_array(tab.ledger().lines_text())
 		lines.append_array(tab.activity_lines())
+		lines.append_array(tab.chatter_lines())
+		lines.append_array(tab.news_lines())
 	var digest: YearDigest = YearDigest.for_latest_year(state)
 	lines.append("%s %s %s %s %s" % [
 		digest.surprise_id, digest.disappointment_id, digest.dividend_cut_id,
@@ -1154,3 +1159,87 @@ func test_the_company_list_stars_what_you_own() -> void:
 		elif line.contains("*"):
 			fail_test("only owned companies are starred: %s" % line)
 	assert_eq(starred, 1)
+
+
+# --------------------------------------------------------------- the news
+
+## Phase S8 (design §8): the year's news where S7 left room for it.
+func test_the_market_tab_shows_the_headline_and_the_whispers() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 6)
+	_tabs().select_tab(MarketTabs.Tab.MARKET)
+	var news: YearNews = NewsSelector.latest(_state())
+	assert_false(news.headline.is_empty(), "the shipped content has a headline for every year")
+	assert_eq(_tabs().market_tab().headline_text(), news.headline)
+	var expected: PackedStringArray = []
+	for whisper: YearNews.WhisperLine in news.whispers:
+		expected.append(whisper.text)
+	assert_eq(_tabs().market_tab().whisper_texts(), expected)
+
+
+func test_the_industries_tab_shows_the_selected_industrys_report() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 4)
+	_tabs().select_tab(MarketTabs.Tab.INDUSTRIES)
+	var tab: IndustriesTab = _tabs().industries_tab()
+	var news: YearNews = NewsSelector.latest(_state())
+	for industry: IndustryState in _state().market.industries:
+		for child: Node in tab.get_node("%IndustryList").get_children():
+			if (child as CellRow).key == industry.id:
+				_click(child)
+		assert_eq(tab.report_text(), news.industry_reports[industry.id])
+		assert_string_contains(tab.report_text(), "INDUSTRY REPORT: %s," % industry.id)
+
+
+func test_the_company_tab_shows_its_commentary_and_whispers() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 8)
+	var news: YearNews = NewsSelector.latest(_state())
+	for company: CompanyState in _state().market.companies:
+		_tabs().show_company(company.id)
+		var expected: PackedStringArray = []
+		if news.commentary.has(company.id):
+			expected.append(news.commentary[company.id])
+		for whisper: YearNews.WhisperLine in news.whispers_about(company.id):
+			expected.append(whisper.text)
+		assert_eq(_tabs().company_tab().news_lines(), expected, String(company.id))
+
+
+func test_chatter_sits_under_each_trader_and_on_the_desk_page() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 5)
+	var news: YearNews = NewsSelector.latest(_state())
+	var shown: int = 0
+	for company: CompanyState in _state().market.companies:
+		var activity: Array[Array] = MarketReadouts.desk_activity(_state(), company.id)
+		_tabs().show_company(company.id)
+		var expected: PackedStringArray = []
+		for entry: Array in activity:
+			expected.append(news.chatter[entry[0]])
+		assert_eq(_tabs().company_tab().chatter_lines(), expected, String(company.id))
+		shown += expected.size()
+	assert_gt(shown, 0)
+
+	var desk: PackedStringArray = []
+	var latest: EarningsYearResult = _state().latest_result() as EarningsYearResult
+	for trader_id: StringName in latest.desk.trader_ids:
+		desk.append(_state().market.desk.trader_by_id(trader_id).definition.display_name)
+		desk.append(news.chatter[trader_id])
+	assert_eq(_tabs().side_panel().chatter_lines(), desk)
+
+
+## §8.2 rule 3: a slot nothing fills shows nothing - not even its heading.
+func test_news_nobody_has_written_shows_nothing() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 3)
+	_state().market.news = NewsContent.new()
+	_session.set_ready(&"p0", true)
+	if _screen.news_panel() != null:
+		_screen.news_panel().close()
+	_tabs().select_tab(MarketTabs.Tab.MARKET)
+	assert_eq(_tabs().market_tab().headline_text(), "")
+	assert_eq(_tabs().market_tab().whisper_texts(), PackedStringArray())
+	assert_false(_tabs().market_tab().get_node("%WhisperSection").visible)
+	_tabs().select_tab(MarketTabs.Tab.INDUSTRIES)
+	assert_eq(_tabs().industries_tab().report_text(), "")
+	assert_false(_tabs().industries_tab().get_node("%ReportTitle").visible)
+	_tabs().show_company(_first_living_company().id)
+	assert_eq(_tabs().company_tab().news_lines(), PackedStringArray())
+	assert_eq(_tabs().company_tab().chatter_lines(), PackedStringArray())
+	assert_false(_tabs().company_tab().get_node("%NewsSection").visible)
+	assert_eq(_tabs().side_panel().chatter_lines(), PackedStringArray())

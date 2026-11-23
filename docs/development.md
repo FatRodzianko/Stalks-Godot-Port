@@ -233,6 +233,193 @@ files via `ResourceSaver`, rather than being retyped. That importer has been del
 the `.tres` files are the source of truth now. If you ever need to re-derive them,
 the method is in the git history for the Phase 3 commit.
 
+### Writing StalkleHeads news
+
+Every news line in StalkleHeads - market headlines, industry reports, earnings
+commentary, whispers and NPC chatter - is a short piece of text in a `.tres` file.
+**Writing them needs no code change.** Until somebody writes them they are
+placeholders that say which slot they fill, like `INDUSTRY REPORT: energy, down`,
+so one that turns up on screen tells you exactly which line is missing. To find
+every line still to write, search `src/data/` for `MARKET HEADLINE:`,
+`INDUSTRY REPORT:`, `EARNINGS:`, `WHISPER:`, `NPC NAME:` and `NPC CHATTER:`.
+
+What the game does with them - which line is chosen when, where it shows - is in
+[game-rules.md](game-rules.md) §5.1 and decisions.md D199-D203.
+
+#### Where each kind of line lives
+
+| Kind | File | One line per |
+|---|---|---|
+| Market headline | `src/data/news/market.tres`, the `headlines` list | mood and move band |
+| Earnings commentary | `src/data/news/market.tres`, the `earnings_commentary` list | regime and surprise band, for any company |
+| Whisper | `src/data/news/market.tres`, the `whispers` list | trigger |
+| Industry report | `src/data/news/<industry>.tres` (`energy.tres` and so on), the `industry_reports` list | move band |
+| NPC name and chatter | `src/data/traders/<trader>.tres`: `display_name` and `chatter_bought`, `chatter_sold`, `chatter_shorted`, `chatter_covered`, `chatter_held` | trader |
+
+The game loads **every** `.tres` in `src/data/news/`, so a new file there (made as
+below) is picked up too, and a line can sit in any of them. Its own fields say what
+it is about, not the file it is in.
+
+#### Rewrite a placeholder in a text editor (the quickest way)
+
+A `.tres` file is plain text. Each line is a block like this:
+
+```
+[sub_resource type="Resource" id="Resource_12cwi"]
+script = ExtResource("4_qenhj")
+id = &"ind_energy_down_1"
+industry_id = &"energy"
+move = 2
+text = "INDUSTRY REPORT: energy, down"
+```
+
+1. Close the Godot editor if it is open (it can overwrite a file you changed
+   outside it).
+2. Open the file in any text editor (Notepad, VS Code).
+3. Find the placeholder, for example search for `energy, down`.
+4. Replace only what is between the quotes after `text =`. Keep the quotes. To put
+   a `"` inside the text, write `\"`.
+5. Save the file.
+6. Run the tests (§4 of this file). `test_news.gd` and `test_content_library.gd`
+   fail with a message naming anything wrong.
+
+Leave every other line alone. In particular, **never change an `id`** to reword a
+line: the id is how the game remembers which lines it has shown this match.
+
+**Tokens.** Some lines may contain words in braces, which the game fills in:
+
+| Token | Becomes | Allowed in |
+|---|---|---|
+| `{company}` | the company's name | earnings commentary, company whispers, chatter (the company the trader picked) |
+| `{industry}` | the industry's name | industry reports, earnings commentary, whispers |
+| `{trader}` | the trader's name | chatter |
+
+A token a kind of line does not fill (or a misspelt one, like `{compnay}`) is an
+error the tests report.
+
+#### Rewrite a placeholder in the Godot editor
+
+Godot can edit the same files through its Inspector, which shows the conditions as
+named choices instead of numbers.
+
+1. Open the project in the Godot editor.
+2. In the **FileSystem** panel (bottom left), open `src` > `data` > `news`.
+3. Double-click `market.tres`. The **Inspector** panel (right) shows its lists:
+   **Headlines**, **Industry Reports**, **Earnings Commentary**, **Whispers**,
+   **Chatter**.
+4. Click a list's name, for example **Headlines**, to open it. It shows its
+   entries, numbered from 0.
+5. Click an entry's box (it reads **MarketHeadline**) to open it. Its fields show:
+   **Id**, **Mood**, **Move**, **Text**.
+6. Click in **Text** and type the new words.
+7. At the top of the Inspector, click the floppy-disk icon, then click **Save** in
+   the menu that opens.
+8. Run the tests.
+
+#### Add a new line
+
+More lines for one slot means it repeats less: the game shows every line that fits a
+slot once before showing any of them again.
+
+**In a text editor**, copy an existing block in the same file, including its
+`[sub_resource ...]` header, and paste it below. Then:
+
+1. Change the header's `id="..."` to something not used anywhere else in the file,
+   for example `Resource_energy_down_2`.
+2. Change `id = &"..."` to a new id used by no other news line anywhere, for example
+   `&"ind_energy_down_2"`.
+3. Change `text`.
+4. At the bottom of the file, find the list the block belongs to (for example
+   `industry_reports = Array[...]([SubResource("..."), ...])`) and add
+   `, SubResource("Resource_energy_down_2")` before its closing `])`. A block that
+   is not in a list is ignored.
+5. Save and run the tests.
+
+**In the Godot editor:**
+
+1. Open the file and the list as above.
+2. At the bottom of the list, click **+ Add Element**. A new empty entry appears.
+3. Click the new entry's **<empty>** box and pick **New MarketHeadline** (or
+   whichever kind the list holds) from the menu.
+4. Click the new entry to open it, and fill in **Id**, the conditions and **Text**.
+5. Save as above, and run the tests.
+
+#### The conditions, and what the numbers in a file mean
+
+A condition left out of a block means **ANY**: the line fits whatever that
+condition is. In the Inspector they are named; in the text they are numbers:
+
+| Field | 0 | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|---|
+| `mood` | ANY | BULL | BEAR | | | |
+| `move` | ANY | CRASH | DOWN | FLAT | UP | SURGE |
+| `regime` | ANY | GROWTH | STEADY | SLOWING | DECLINE | DISTRESS |
+| `surprise` | ANY | MUCH_WORSE | WORSE | AS_EXPECTED | BETTER | MUCH_BETTER |
+
+`trigger` (whispers): 0 HIGH_SHORT_INTEREST, 1 THIRD_GROWTH_YEAR, 2 MARGIN_SLIPPING,
+3 PE_ABOVE_INDUSTRY, 4 PE_BELOW_INDUSTRY, 5 SECTOR_RUN, 6 NEAR_SPLIT, 7 NEAR_FAILURE.
+What each means is in game-rules.md §5.1.
+
+`situation` (chatter): 0 BOUGHT, 1 SOLD, 2 SHORTED, 3 COVERED, 4 HELD.
+`strategy` (chatter): 0 VALUE, 1 MOMENTUM, 2 CONTRARIAN, 3 INCOME, 4 INDEXER,
+5 PANIC, 6 GROWTH, 7 SHORT.
+
+**Lines for one thing beat general ones.** An industry report with an
+`industry_id`, earnings commentary with a `company_id`, and a trader's own chatter
+are preferred over lines that leave that field empty. So the shipped general
+earnings lines (`EARNINGS: {company}, ...`) cover every company, and a line written
+for one company replaces them for it, in the years it fits.
+
+#### Whispers
+
+A whisper is a rumour, and it is not always true: that is the point of it.
+`truth_chance_percent` (75 in every shipped one) is how often it is honest. When it
+lies, the game makes it name a company (or industry) the rumour is *not* true of.
+
+- Leave **`subject`** empty for an ordinary rumour: the game picks what it names and
+  fills in `{company}` or `{industry}`.
+- Set `subject` to a company id (an industry id for SECTOR_RUN) only for a line that
+  can be about nothing else. Such a whisper cannot lie - there is nothing else for
+  it to name - so when its roll says lie, it is simply not shown.
+
+#### NPC names and chatter
+
+Each trader is one file in `src/data/traders/`, for example `value_1.tres`.
+
+1. Open it in a text editor (or double-click it in the Godot editor's FileSystem
+   panel and use the Inspector).
+2. Replace `display_name` with the trader's name.
+3. Replace each `chatter_...` line with what it says after that action. A line left
+   empty (`""`) shows nothing.
+4. Save and run the tests.
+
+Never change `id`, `strategy`, `starting_cash` or `conviction` to rename a trader:
+those decide how it trades, and changing them changes the balance.
+
+A chatter line for **every trader of a strategy** can also go in a news book's
+`chatter` list, with `npc_id` left empty and `strategy` and `situation` set. A
+trader's own line, when it has one, is preferred.
+
+#### Add a news file
+
+1. In the Godot editor's **FileSystem** panel, right-click the `news` folder and
+   click **Create New** > **Resource...**.
+2. In the window that opens, type `NewsBook` in the search box, click
+   **NewsBook**, then click **Create**.
+3. Type a file name ending `.tres`, for example `extra.tres`, and click **Save**.
+4. Add lines to its lists as in "Add a new line".
+
+#### Add a company, an industry or a trader
+
+Each is one file. Copy an existing one in `src/data/companies/`,
+`src/data/industries/` or `src/data/traders/`, rename it, and give it a new `id`
+(and a company a new `ticker`). An industry needs at least two companies and the
+validator warns below three (design §3.2.3); a company's `industry` must be an
+industry's `id`. A company's numbers are balance, not words: change them only with
+the balance tool (§6, "Measure StalkleHeads balance"). Every file a match loads is
+listed in `EarningsMarket.content_key`, so every player in an online match needs the
+same set.
+
 ### Add a test
 
 1. Put it in `tests/unit/`, in the file matching the unit under test, named

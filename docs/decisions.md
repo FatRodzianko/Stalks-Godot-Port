@@ -7482,3 +7482,190 @@ does the same: SEND takes no focus (`focus_mode` none), but clicking it still en
 the box's editing, so `_on_send_button_pressed` calls `grab_focus()` and `edit()`
 on the box after sending. It happens whether the send went or was refused; a
 refusal keeps the text, which is then ready to correct.
+
+### D199 - StalkleHeads news lives in one folder of news books
+**2026-11-23 · Accepted** (phase S8)
+
+Every news line except special events is a sub-resource inside a `NewsBook`
+(`src/data/news_book.gd`), and `ContentLibrary.load_fundamentals` loads **every**
+`.tres` in `src/data/news/`. The game ships seven books: `market.tres` (the market
+headlines, the earnings commentary for any company, the whispers) and one per
+industry holding that industry's reports. A line says what it is about in its own
+fields (`industry_id`, `company_id`, `subject`, `npc_id`), so which file it sits in
+changes nothing.
+
+**Why not D29's bundling**, which design §8.3 proposed (company-scoped lines on the
+company's own resource): the company profiles hold balance numbers, and the news is
+words. Keeping words in one folder means the owner can rewrite them without opening
+a file that also holds a payout ratio, and a search of one folder finds every line
+still to write. The one exception is a trader's own chatter, which S4 already put
+on the trader's file (`chatter_bought` and so on); `NewsContent.build` turns those
+into `NpcChatter` lines so the selector has one kind to handle.
+
+**Six resource types**, one per category, as §8.1 asks: `MarketHeadline`,
+`IndustryReport`, `EarningsCommentary`, `Whisper`, `NpcChatter`, and the existing
+`SpecialEventDefinition`. Their conditions are enums in `NewsBands`, with `ANY`
+first, so a field a file never mentions means `ANY`.
+
+**Rules out:** news in the company or industry files; a single file of every line
+(merge conflicts and an unreadable Inspector); player-authored JSON (D119).
+
+### D200 - The news is chosen from the history, on every peer, with its own generator
+**2026-11-23 · Accepted** (phase S8)
+
+`NewsSelector.news_for(state, year)` is a pure function of the match's history and
+the news content. Every peer works it out for itself the first time a screen asks
+and keeps it on that year's `EarningsYearResult.news`. **Nothing about the news is
+sent**, and the snapshot and the year record are unchanged.
+
+**Its own generator.** Each year's draws come from a `RandomNumberGenerator` seeded
+with a hash of the year's own draws - its number, the squeeze roll, the industry
+rolls and the companies' growth rolls, which every peer receives for the year
+anyway (D178). So the host, every client, a rejoiner who replayed the history and a
+host that took the match over all draw the same lines, and the match's own
+generator is never touched: **choosing the news cannot move a price.**
+`test_news.gd` proves both: a client's and a promoted host's news equal the host's
+over thirty years, and a match whose news is read every year is identical, field
+for field, to one whose news is never read. The golden hash is untouched because
+the base game reads none of this.
+
+**The bag, kept in the history.** §8.2 asks for `EventPool`'s bag: draw without
+replacement, refill when empty. `EventPool` keeps its bags in the market and sends
+them (D177). The news does the same thing without state: among the lines that match
+a slot, only those drawn the fewest times so far in the match are eligible, and one
+of them is picked. For a fixed set of lines that is exactly a bag - each comes round
+once per cycle, in a random order - and it also behaves sensibly when the matching
+set changes from year to year, which a slot's does. The counts are read from the
+earlier years' news, so a year's news depends on every year before it, and
+`news_for` works out any missing earlier year first.
+
+**A specific line beats a general one.** For each slot, lines written for this exact
+industry, company or trader are drawn from if there are any; otherwise the general
+ones (empty id, or for chatter, the trader's strategy).
+
+**Not in the content fingerprint.** `EarningsMarket.content_key` still covers only
+what the wire indexes by position. Two machines with different news files would
+show different words in an otherwise identical match; that is a content mismatch
+like any other, and refusing the match over it would be out of proportion.
+
+**Rules out:** drawing news from the match's generator (it would shift every later
+draw and so every later price); keeping news bags in `EarningsMarket` and sending
+them (more wire and more to keep in step, for nothing); sending the chosen lines
+(the client can work them out); a generic line when nothing matches (§8.2 rule 3).
+
+### D201 - A whisper is drawn when it can be true, then rolls for honesty
+**2026-11-23 · Accepted** (phase S8)
+
+Design §8.1 gives each whisper a `truth_chance_percent` and says that is what makes
+whispers a skill. How that works:
+
+1. A whisper is **in play** this year when its trigger holds for at least one
+   subject it may name: any living company (any industry, for `SECTOR_RUN`), or only
+   its `subject` when that is set.
+2. Up to `WHISPERS_PER_YEAR` (2) are drawn from those in play, through the bag
+   (D200), each at most once a year.
+3. Each rolls 1-100 against its truth chance. **Honest:** it names a subject the
+   trigger holds for. **A lie:** it names one the trigger does not hold for. If
+   there is no such subject - every company qualifies, or the whisper is tied to one
+   subject - nothing is shown in that slot.
+
+So the share of shown whispers that are true is the truth chance (a little more,
+because a lie sometimes has nothing to name), whatever the market is doing. The
+alternative - roll first, then look for a subject - would show far more lies in a
+quiet market than a busy one, and the number on the file would mean nothing a
+player could learn.
+
+**A whisper tied to one subject never lies**, because a lie needs something else to
+name. When its roll says lie it stays quiet. The authoring guide says so: leave
+`subject` empty for a rumour that can mislead.
+
+**What the triggers read** (`NewsSelector.trigger_holds`): `HIGH_SHORT_INTEREST` is
+the year's `short_interest_flagged`, the desk as the year began, because that is in
+the year's record on every peer, whereas the live desk changes at the year's end.
+The others read `companies_after` and `industry_performance` (D179).
+
+**Rules out:** whispers that are always true (a free hint); revealing which are
+true; a roll from the match's generator.
+
+### D202 - Where the news bands' edges are
+**2026-11-23 · Accepted** (phase S8)
+
+- **Move** (headline: the index's move; report: the industry's performance): CRASH
+  at -15% or below, DOWN below -3%, FLAT from -3% to +3% inclusive, UP below +15%,
+  SURGE at +15% or above. §8.1's numbers; the inclusive edges are this entry's.
+- **Surprise** (earnings commentary): the company's revenue growth against what its
+  regime leads one to expect, in points: within 3 is AS_EXPECTED, 3 to 8 is BETTER
+  or WORSE, 8 or more is MUCH so. **What is expected** is the middle of the regime's
+  growth band put through the same long-match damping and payout retention the
+  company's real growth goes through, with no industry effect
+  (`NewsSelector.expected_growth`). §8.1 said "against the regime's midpoint"; the
+  bare midpoint made a long match, whose growth is damped, "much worse than
+  expected" nearly every year. So the surprise is the growth roll's luck plus the
+  industry's year, which is what a player would call a surprise.
+- **NEAR_SPLIT**: a price above 260. §8.1's 130 was written for the base game's split
+  at 150; this mode splits above 300 (D134), so it is the same distance from the
+  line.
+- **PE gap**: more than 20% above or below the industry's average P/E that year;
+  **SECTOR_RUN**: an industry's performance the same sign three years running;
+  **THIRD_GROWTH_YEAR**: GROWTH for three years counting the year it was entered;
+  **NEAR_FAILURE**: DISTRESS with a price under 20. All §8.1's.
+
+`standing_band` (§8.1) is not built: none of the six categories lists it as a
+condition. It can be added beside the others when a category needs it.
+
+### D203 - Where the news shows
+**2026-11-23 · Accepted** (phase S8)
+
+Into the room S7 left for it (design §7):
+
+| Line | Where |
+|---|---|
+| Market headline | Market tab, THIS YEAR'S NEWS, above the event |
+| Whispers | Market tab, a WHISPERS section at the top of the right half; and on the Company tab of the company a whisper names |
+| Industry report | Industries tab, a NEWS heading under the selected industry's members |
+| Earnings commentary | Company tab, a NEWS section above INVESTORS |
+| NPC chatter | Company tab, faint, under each trader's line in NPC ACTIVITY; and a CHATTER list at the bottom of the side panel's DESK page |
+
+**Empty means absent.** A section with nothing chosen hides with its heading, so a
+sparsely written category leaves no empty box (§8.2 rule 3). Headings and tooltips
+are explanation ("WHISPERS", "Rumours about this year's market...") and carry no
+voice.
+
+**Not in the year in review.** The design's digest sketch had a headline and a
+whisper. The narrow review sits right under the headline and whispers on the Market
+tab, so repeating them there would show each line twice; the wide one in the news
+panel already has the year's event. Not in the base game's news panel either, which
+is shared.
+
+**Not built:** key personnel (design §14, not scheduled); special events for the
+eight companies the base game does not ship (they would need flavour text and price
+changes, which are the owner's words and S9's balance); messages from NPCs.
+
+**Rules out:** a placeholder or "no news" line in an empty slot; news on the
+Exchange tab, which is the board.
+
+### D204 - The S8 roster audit: the content S1 and S4 wrote is complete
+**2026-11-23 · Accepted** (phase S8)
+
+S8's first job was to fill the roster, the industries and the traders to the
+design. Audited against design §3.2.3, §3.2.4 and §5.1, nothing was missing:
+
+- **18 companies, three in each of six industries**, every one with the §3.2.4
+  profile to the digit (opening earnings per share, quality, industry beta,
+  payout). The five placeholders carry `TRNA`, `TRNB`, `CONA`, `TECA`, `FODA`.
+- **6 industries** with the owner's display names.
+- **24 traders**, three per strategy, 8,000 cash and conviction 45 each, names and
+  five chatter lines as placeholders (`NPC NAME: value trader 1`).
+
+**One thing for the owner, not changed here:** the five companies that are named
+but new to this mode (Landlords United, Video Chrome, Meowly, Chichen Pizza,
+Farms+) were given tickers in the placeholder style by S1 - `FINA`, `TECB`, `TECC`,
+`FODB`, `FODC` - though §3.2.3 lists only the five placeholder companies' tickers
+as temporary. A ticker is a name, so it is the owner's to choose; until then these
+stand.
+
+**The validator** gained what §8.2 listed and S1/S4 did not already check: the
+transition matrix's rows sum to 100, every news line's ids and bands resolve, and a
+warning when a strategy has no trader.
+
+**Rules out:** rebuilding content that already matched the design.

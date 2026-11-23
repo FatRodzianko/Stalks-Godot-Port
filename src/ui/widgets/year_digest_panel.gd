@@ -19,9 +19,10 @@ extends VBoxContainer
 ## line becomes two, the industries two columns, and each outlier two lines,
 ## its caption above the company and the figure.
 ##
-## The design's sketch also has an event headline and a whisper. Those are the
-## news categories of phase S8 and are not built yet; the year's event itself
-## is already in the news panel around this one.
+## The design's sketch also has an event headline and a whisper. The year's
+## event is already in the news panel around this one; the headline and the
+## whispers (phase S8) are on the Market tab, beside the narrow copy of this
+## panel, rather than repeated here (decisions.md D203).
 
 
 const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")

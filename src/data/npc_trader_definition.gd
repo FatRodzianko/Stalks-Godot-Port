@@ -11,8 +11,9 @@ extends Resource
 ## **The names and chatter are the owner's to write.** Until they are, every one
 ## is a placeholder that says which slot it fills, in the style of the news
 ## placeholders (§8.3): `NPC NAME: value trader 1`,
-## `NPC CHATTER: value trader 1, bought`. Nothing reads the chatter yet; the
-## news selector that will is phase S8.
+## `NPC CHATTER: value trader 1, bought`. `NewsContent` turns the chatter
+## into `NpcChatter` lines and `NewsSelector` chooses one a year (phase S8);
+## it shows on the Company tab and the side panel's DESK page.
 
 
 ## What a trader did in a year, as the desk reports it (`NpcDeskYear.actions`).

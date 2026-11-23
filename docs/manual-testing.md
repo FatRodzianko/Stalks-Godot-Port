@@ -2475,6 +2475,43 @@ The players are **A** (the host), **B** and **C**.
 28. Check B shows **again**.
 29. Close all the game windows.
 
+### S - StalkleHeads news (decisions.md D199-D203) — **not yet run**
+
+One machine, no Steam. Run on a locally exported build containing D199; to check a
+checkout before exporting, the file `src/sim/news_selector.gd` exists. Every line is
+a placeholder that starts with its kind in capitals, such as
+**INDUSTRY REPORT: energy, down**. The point is where each shows and how it reads,
+not the words.
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Click **START**.
+5. Click **MARKET**.
+6. Check there is no **WHISPERS** heading and no headline yet: no year has been played.
+7. Press **Ready for New Year**.
+8. Click **Close** on the news.
+9. Click **MARKET**.
+10. Check a line starting **MARKET HEADLINE:** sits under **THIS YEAR'S NEWS**, above the event.
+11. If a **WHISPERS** heading shows at the top of the right half, check each line under it starts **WHISPER:** and names a company or an industry, not `{company}`.
+12. Hover over the word **WHISPERS**.
+13. Check a tooltip says whispers are rumours and not all are true.
+14. Click **INDUSTRIES**.
+15. Check a **NEWS** heading under the members list has a line starting **INDUSTRY REPORT:** naming the selected industry.
+16. Click **Food**.
+17. Check the report now names **food**.
+18. Click **COMPANY**.
+19. Check a **NEWS** section above **INVESTORS** has a line starting **EARNINGS:** with this company's name in it.
+20. Click **>** until **NPC ACTIVITY** lists at least one trader.
+21. Check a fainter, indented line under the trader's row starts **NPC CHATTER:**.
+22. Click **DESK** on the side panel.
+23. Scroll to the bottom of the DESK page.
+24. Check a **CHATTER** list names each trader that acted, each followed by its **NPC CHATTER:** line.
+25. Press **Ready for New Year** four more times, clicking **Close** on the news each time.
+26. Click **MARKET**.
+27. Check the headline still sits above the event, and nothing overlaps.
+28. Close the game window.
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until

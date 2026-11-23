@@ -1,0 +1,278 @@
+[gd_resource type="Resource" script_class="NewsBook" format=3]
+
+[ext_resource type="Script" path="res://src/data/npc_chatter.gd" id="1_b4nbk"]
+[ext_resource type="Script" path="res://src/data/earnings_commentary.gd" id="2_clpi7"]
+[ext_resource type="Script" path="res://src/data/market_headline.gd" id="3_x0qgy"]
+[ext_resource type="Script" path="res://src/data/industry_report.gd" id="4_14ohu"]
+[ext_resource type="Script" path="res://src/data/news_book.gd" id="5_asjd0"]
+[ext_resource type="Script" path="res://src/data/whisper.gd" id="6_1ixhk"]
+
+[sub_resource type="Resource" id="Resource_k83mj"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_growth_much_worse_1"
+regime = 1
+surprise = 1
+text = "EARNINGS: {company}, growth, much worse than expected"
+
+[sub_resource type="Resource" id="Resource_8fniq"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_growth_worse_1"
+regime = 1
+surprise = 2
+text = "EARNINGS: {company}, growth, worse than expected"
+
+[sub_resource type="Resource" id="Resource_cqruv"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_growth_as_expected_1"
+regime = 1
+surprise = 3
+text = "EARNINGS: {company}, growth, as expected"
+
+[sub_resource type="Resource" id="Resource_6kowi"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_growth_better_1"
+regime = 1
+surprise = 4
+text = "EARNINGS: {company}, growth, better than expected"
+
+[sub_resource type="Resource" id="Resource_vjevv"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_growth_much_better_1"
+regime = 1
+surprise = 5
+text = "EARNINGS: {company}, growth, much better than expected"
+
+[sub_resource type="Resource" id="Resource_3flbp"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_steady_much_worse_1"
+regime = 2
+surprise = 1
+text = "EARNINGS: {company}, steady, much worse than expected"
+
+[sub_resource type="Resource" id="Resource_4pb57"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_steady_worse_1"
+regime = 2
+surprise = 2
+text = "EARNINGS: {company}, steady, worse than expected"
+
+[sub_resource type="Resource" id="Resource_qp0ru"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_steady_as_expected_1"
+regime = 2
+surprise = 3
+text = "EARNINGS: {company}, steady, as expected"
+
+[sub_resource type="Resource" id="Resource_we72o"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_steady_better_1"
+regime = 2
+surprise = 4
+text = "EARNINGS: {company}, steady, better than expected"
+
+[sub_resource type="Resource" id="Resource_8dfnl"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_steady_much_better_1"
+regime = 2
+surprise = 5
+text = "EARNINGS: {company}, steady, much better than expected"
+
+[sub_resource type="Resource" id="Resource_43xbp"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_slowing_much_worse_1"
+regime = 3
+surprise = 1
+text = "EARNINGS: {company}, slowing, much worse than expected"
+
+[sub_resource type="Resource" id="Resource_v7gr0"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_slowing_worse_1"
+regime = 3
+surprise = 2
+text = "EARNINGS: {company}, slowing, worse than expected"
+
+[sub_resource type="Resource" id="Resource_mocb1"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_slowing_as_expected_1"
+regime = 3
+surprise = 3
+text = "EARNINGS: {company}, slowing, as expected"
+
+[sub_resource type="Resource" id="Resource_6r24g"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_slowing_better_1"
+regime = 3
+surprise = 4
+text = "EARNINGS: {company}, slowing, better than expected"
+
+[sub_resource type="Resource" id="Resource_jjeg3"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_slowing_much_better_1"
+regime = 3
+surprise = 5
+text = "EARNINGS: {company}, slowing, much better than expected"
+
+[sub_resource type="Resource" id="Resource_ykawe"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_decline_much_worse_1"
+regime = 4
+surprise = 1
+text = "EARNINGS: {company}, decline, much worse than expected"
+
+[sub_resource type="Resource" id="Resource_dp4nk"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_decline_worse_1"
+regime = 4
+surprise = 2
+text = "EARNINGS: {company}, decline, worse than expected"
+
+[sub_resource type="Resource" id="Resource_fg4dq"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_decline_as_expected_1"
+regime = 4
+surprise = 3
+text = "EARNINGS: {company}, decline, as expected"
+
+[sub_resource type="Resource" id="Resource_ecmgq"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_decline_better_1"
+regime = 4
+surprise = 4
+text = "EARNINGS: {company}, decline, better than expected"
+
+[sub_resource type="Resource" id="Resource_43meh"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_decline_much_better_1"
+regime = 4
+surprise = 5
+text = "EARNINGS: {company}, decline, much better than expected"
+
+[sub_resource type="Resource" id="Resource_hwutl"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_distress_much_worse_1"
+regime = 5
+surprise = 1
+text = "EARNINGS: {company}, distress, much worse than expected"
+
+[sub_resource type="Resource" id="Resource_6fcun"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_distress_worse_1"
+regime = 5
+surprise = 2
+text = "EARNINGS: {company}, distress, worse than expected"
+
+[sub_resource type="Resource" id="Resource_cc2ni"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_distress_as_expected_1"
+regime = 5
+surprise = 3
+text = "EARNINGS: {company}, distress, as expected"
+
+[sub_resource type="Resource" id="Resource_suc43"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_distress_better_1"
+regime = 5
+surprise = 4
+text = "EARNINGS: {company}, distress, better than expected"
+
+[sub_resource type="Resource" id="Resource_7yahk"]
+script = ExtResource("2_clpi7")
+id = &"earn_any_distress_much_better_1"
+regime = 5
+surprise = 5
+text = "EARNINGS: {company}, distress, much better than expected"
+
+[sub_resource type="Resource" id="Resource_k7pkw"]
+script = ExtResource("3_x0qgy")
+id = &"mkt_bull_flat_1"
+mood = 1
+move = 3
+text = "MARKET HEADLINE: bull, flat"
+
+[sub_resource type="Resource" id="Resource_83jh5"]
+script = ExtResource("3_x0qgy")
+id = &"mkt_bull_up_1"
+mood = 1
+move = 4
+text = "MARKET HEADLINE: bull, up"
+
+[sub_resource type="Resource" id="Resource_twyq3"]
+script = ExtResource("3_x0qgy")
+id = &"mkt_bull_surge_1"
+mood = 1
+move = 5
+text = "MARKET HEADLINE: bull, surge"
+
+[sub_resource type="Resource" id="Resource_vjnyj"]
+script = ExtResource("3_x0qgy")
+id = &"mkt_bear_flat_1"
+mood = 2
+move = 3
+text = "MARKET HEADLINE: bear, flat"
+
+[sub_resource type="Resource" id="Resource_uy8my"]
+script = ExtResource("3_x0qgy")
+id = &"mkt_bear_down_1"
+mood = 2
+move = 2
+text = "MARKET HEADLINE: bear, down"
+
+[sub_resource type="Resource" id="Resource_agwpq"]
+script = ExtResource("3_x0qgy")
+id = &"mkt_bear_crash_1"
+mood = 2
+move = 1
+text = "MARKET HEADLINE: bear, crash"
+
+[sub_resource type="Resource" id="Resource_t2bqd"]
+script = ExtResource("6_1ixhk")
+id = &"whisp_high_short_interest_1"
+text = "WHISPER: {company}, high short interest"
+
+[sub_resource type="Resource" id="Resource_hg3xo"]
+script = ExtResource("6_1ixhk")
+id = &"whisp_third_growth_year_1"
+trigger = 1
+text = "WHISPER: {company}, third growth year"
+
+[sub_resource type="Resource" id="Resource_5q457"]
+script = ExtResource("6_1ixhk")
+id = &"whisp_margin_slipping_1"
+trigger = 2
+text = "WHISPER: {company}, margin slipping"
+
+[sub_resource type="Resource" id="Resource_xbnwh"]
+script = ExtResource("6_1ixhk")
+id = &"whisp_pe_above_industry_1"
+trigger = 3
+text = "WHISPER: {company}, P/E above industry"
+
+[sub_resource type="Resource" id="Resource_ndfr7"]
+script = ExtResource("6_1ixhk")
+id = &"whisp_pe_below_industry_1"
+trigger = 4
+text = "WHISPER: {company}, P/E below industry"
+
+[sub_resource type="Resource" id="Resource_oabkp"]
+script = ExtResource("6_1ixhk")
+id = &"whisp_sector_run_1"
+trigger = 5
+text = "WHISPER: {industry}, sector run"
+
+[sub_resource type="Resource" id="Resource_a0tg8"]
+script = ExtResource("6_1ixhk")
+id = &"whisp_near_split_1"
+trigger = 6
+text = "WHISPER: {company}, near split"
+
+[sub_resource type="Resource" id="Resource_bel2w"]
+script = ExtResource("6_1ixhk")
+id = &"whisp_near_failure_1"
+trigger = 7
+text = "WHISPER: {company}, near failure"
+
+[resource]
+script = ExtResource("5_asjd0")
+headlines = Array[ExtResource("3_x0qgy")]([SubResource("Resource_k7pkw"), SubResource("Resource_83jh5"), SubResource("Resource_twyq3"), SubResource("Resource_vjnyj"), SubResource("Resource_uy8my"), SubResource("Resource_agwpq")])
+earnings_commentary = Array[ExtResource("2_clpi7")]([SubResource("Resource_k83mj"), SubResource("Resource_8fniq"), SubResource("Resource_cqruv"), SubResource("Resource_6kowi"), SubResource("Resource_vjevv"), SubResource("Resource_3flbp"), SubResource("Resource_4pb57"), SubResource("Resource_qp0ru"), SubResource("Resource_we72o"), SubResource("Resource_8dfnl"), SubResource("Resource_43xbp"), SubResource("Resource_v7gr0"), SubResource("Resource_mocb1"), SubResource("Resource_6r24g"), SubResource("Resource_jjeg3"), SubResource("Resource_ykawe"), SubResource("Resource_dp4nk"), SubResource("Resource_fg4dq"), SubResource("Resource_ecmgq"), SubResource("Resource_43meh"), SubResource("Resource_hwutl"), SubResource("Resource_6fcun"), SubResource("Resource_cc2ni"), SubResource("Resource_suc43"), SubResource("Resource_7yahk")])
+whispers = Array[ExtResource("6_1ixhk")]([SubResource("Resource_t2bqd"), SubResource("Resource_hg3xo"), SubResource("Resource_5q457"), SubResource("Resource_xbnwh"), SubResource("Resource_ndfr7"), SubResource("Resource_oabkp"), SubResource("Resource_a0tg8"), SubResource("Resource_bel2w")])

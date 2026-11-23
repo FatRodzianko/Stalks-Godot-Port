@@ -77,6 +77,11 @@ var net_shares_traded: Dictionary[StringName, int] = {}
 ## The NPC desk (§5). Never null; empty if the content has no traders.
 var desk: NpcDesk = NpcDesk.new()
 
+## Every news line the match can show (`ContentLibrary.news`), for
+## `NewsSelector`. Content, not state: it never changes during a match and is
+## not sent - each peer has its own copy from disk (decisions.md D200).
+var news: NewsContent = NewsContent.new()
+
 var _industry_by_id: Dictionary[StringName, IndustryState] = {}
 
 
@@ -92,6 +97,7 @@ static func from_library(library: ContentLibrary) -> EarningsMarket:
 	for profile: CompanyProfile in library.companies:
 		market.companies.append(CompanyState.new(profile))
 	market.desk = NpcDesk.from_definitions(library.traders)
+	market.news = library.news
 	var index_definition: StalkDefinition = library.stalk_by_id(INDEX_ID)
 	if index_definition != null:
 		market.index_level = float(index_definition.starting_price)
@@ -157,6 +163,7 @@ func copy_for_replay() -> EarningsMarket:
 	twin.net_shares_traded = net_shares_traded.duplicate()
 	twin.event_bags = event_bags.duplicate(true)
 	twin.content_key = content_key
+	twin.news = news
 	return twin
 
 

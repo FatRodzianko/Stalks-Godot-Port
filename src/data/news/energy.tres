@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="NewsBook" format=3]
+
+[ext_resource type="Script" path="res://src/data/npc_chatter.gd" id="1_txeaf"]
+[ext_resource type="Script" path="res://src/data/earnings_commentary.gd" id="2_8uo47"]
+[ext_resource type="Script" path="res://src/data/market_headline.gd" id="3_bcv2j"]
+[ext_resource type="Script" path="res://src/data/industry_report.gd" id="4_qenhj"]
+[ext_resource type="Script" path="res://src/data/news_book.gd" id="5_mgci2"]
+[ext_resource type="Script" path="res://src/data/whisper.gd" id="6_rtxvw"]
+
+[sub_resource type="Resource" id="Resource_hguuk"]
+script = ExtResource("4_qenhj")
+id = &"ind_energy_crash_1"
+industry_id = &"energy"
+move = 1
+text = "INDUSTRY REPORT: energy, crash"
+
+[sub_resource type="Resource" id="Resource_12cwi"]
+script = ExtResource("4_qenhj")
+id = &"ind_energy_down_1"
+industry_id = &"energy"
+move = 2
+text = "INDUSTRY REPORT: energy, down"
+
+[sub_resource type="Resource" id="Resource_ix588"]
+script = ExtResource("4_qenhj")
+id = &"ind_energy_flat_1"
+industry_id = &"energy"
+move = 3
+text = "INDUSTRY REPORT: energy, flat"
+
+[sub_resource type="Resource" id="Resource_fs6i7"]
+script = ExtResource("4_qenhj")
+id = &"ind_energy_up_1"
+industry_id = &"energy"
+move = 4
+text = "INDUSTRY REPORT: energy, up"
+
+[sub_resource type="Resource" id="Resource_2ih1y"]
+script = ExtResource("4_qenhj")
+id = &"ind_energy_surge_1"
+industry_id = &"energy"
+move = 5
+text = "INDUSTRY REPORT: energy, surge"
+
+[resource]
+script = ExtResource("5_mgci2")
+industry_reports = Array[ExtResource("4_qenhj")]([SubResource("Resource_hguuk"), SubResource("Resource_12cwi"), SubResource("Resource_ix588"), SubResource("Resource_fs6i7"), SubResource("Resource_2ih1y")])

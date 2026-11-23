@@ -51,3 +51,16 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"TightVBox"
+
+[node name="ReportTitle" type="Label" parent="Body/Lower/Within"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "NEWS"
+
+[node name="Report" type="Label" parent="Body/Lower/Within"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = ""
+autowrap_mode = 3

@@ -115,6 +115,14 @@ const NPC_NOW: String = (
 )
 const NPC_HOLDERS: String = "How many of the desk's traders hold this company, or have sold it short."
 
+# ---------------------------------------------------------------- the news
+
+const WHISPERS: String = (
+	"Rumours about this year's market.\n"
+	+ "Most are true, but not all: a whisper can name a company or industry it is not true of."
+)
+const NPC_CHATTER: String = "What each desk trader said about what it did last year."
+
 # ------------------------------------------------------------- the panel
 
 const NET_WORTH: String = "Your cash, plus your shares at today's prices, less what you owe."

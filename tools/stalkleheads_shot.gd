@@ -11,13 +11,17 @@ extends Control
 ##     $dir = "$env:TEMP\stalks_frames"
 ##     New-Item -ItemType Directory -Force $dir | Out-Null
 ##     & $g --path . res://tools/stalkleheads_shot.tscn --write-movie "$dir\f.png" `
-##          --quit-after 65 --fixed-fps 10
+##          --quit-after 75 --fixed-fps 10
 ##
 ## Frames 6, 11, 16, 21 and 26 are the five pictures (`f00000006.png` and so
 ## on). Then the Company tab's five charts (decisions.md D188): frames 31
 ## (PRICE), 36 (SALES), 41 (MARGIN), 46 (PER SHARE) and 51 (P/E). Frame 56 is
 ## the Market tab with the side panel closed, the year in review on its right
-## (D189), and frame 61 the same scrolled to the bottom of the right half. A developer tool: `tools/` is not exported.
+## (D189), and frame 61 the same scrolled to the bottom of the right half.
+## Frame 66 is the Company tab, on a company the desk traded, scrolled to its NEWS and NPC ACTIVITY, each
+## trader's chatter under its line, and frame 72 the side panel's DESK page
+## scrolled to its CHATTER (phase S8). A developer tool: `tools/` is not
+## exported.
 
 const StageScene: PackedScene = preload("res://src/ui/stage.tscn")
 
@@ -82,3 +86,18 @@ func _process(_delta: float) -> void:
 		58:
 			var right: ScrollContainer = tabs.market_tab().get_node("%RightScroll")
 			right.scroll_vertical = 10000
+		63:
+			var state: GameState = _stage.game().session().state()
+			for company: CompanyState in state.market.companies:
+				if not MarketReadouts.desk_activity(state, company.id).is_empty():
+					tabs.show_company(company.id)
+					break
+			tabs.company_tab().select_view(CompanyTab.View.TABLE)
+		65:
+			var body: ScrollContainer = tabs.company_tab().get_node("Scroll")
+			body.scroll_vertical = 10000
+		68:
+			tabs.select_tab(MarketTabs.Tab.MARKET)
+			tabs.side_button(SidePanel.Page.DESK).pressed.emit()
+		70:
+			tabs.side_panel().scroll_vertical = 10000

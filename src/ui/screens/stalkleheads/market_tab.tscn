@@ -49,10 +49,38 @@ vertical_scroll_mode = 4
 layout_mode = 2
 size_flags_horizontal = 3
 
+[node name="WhisperSection" type="VBoxContainer" parent="Columns/RightScroll/Right"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="WhispersTitle" type="Label" parent="Columns/RightScroll/Right/WhisperSection"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 0
+theme_type_variation = &"SubHeading"
+text = "WHISPERS"
+
+[node name="Whispers" type="VBoxContainer" parent="Columns/RightScroll/Right/WhisperSection"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="WhispersRule" type="HSeparator" parent="Columns/RightScroll/Right/WhisperSection"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"SectionRule"
+
 [node name="NewsTitle" type="Label" parent="Columns/RightScroll/Right"]
 layout_mode = 2
 theme_type_variation = &"SubHeading"
 text = "THIS YEAR'S NEWS"
+
+[node name="Headline" type="Label" parent="Columns/RightScroll/Right"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = ""
+autowrap_mode = 3
 
 [node name="EventText" type="Label" parent="Columns/RightScroll/Right"]
 unique_name_in_owner = true

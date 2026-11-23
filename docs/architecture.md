@@ -967,7 +967,7 @@ Non-negotiable, and the thing most worth protecting:
 
 ---
 
-## 9. StalkleHeads: fundamentals, its year, the NPC desk, the mode, the wire and the screen (phases S1-S7)
+## 9. StalkleHeads: fundamentals, its year, the NPC desk, the mode, the wire, the screen and the news (phases S1-S8)
 
 StalkleHeads is an optional second game mode in which prices come from simulated
 earnings instead of random rolls. Its design is
@@ -984,7 +984,9 @@ the NPC desk, which trades after every year settles and whose trading is next ye
 flow, and short interest, which makes a short squeeze possible. Phase S5 made the
 mode selectable: the title screen, the lobby, and `MatchSetup` choosing the board and
 the year at match start. Phase S6 put the market on the wire, so a client holds the
-whole match, can rejoin it and can take it over.
+whole match, can rejoin it and can take it over. Phase S7 put it on screen. Phase S8
+added the news: headlines, industry reports, earnings commentary, whispers and NPC
+chatter, as content, chosen each year by a pure selector.
 
 ### The files
 
@@ -996,7 +998,7 @@ whole match, can rejoin it and can take it over.
 | data | `npc_strategy.gd` | **S4.** `NpcStrategy.Value`: the eight published trading rules. An enum because the desk branches on each |
 | data | `npc_trader_definition.gd` + `traders/*.tres` | **S4.** An NPC trader as content: id, name, strategy, starting cash, conviction, and a chatter line per `Situation`. Twenty-four of them, names and chatter placeholders (D162) |
 | data | `squeeze/short_squeeze.tres` | **S4.** The short-squeeze template: a `SpecialEventDefinition` with no target, +25, placeholder text (D165) |
-| data | `content_library.gd` | `load_fundamentals()` loads companies, industries, traders and the squeeze template; `validate()` checks them (D128, D162) |
+| data | `content_library.gd` | `load_fundamentals()` loads companies, industries, traders, the squeeze template and the news; `validate()` checks them, the transition matrix included (D128, D162, D204) |
 | sim | `regime_rules.gd` | The transition matrix and every per-regime table; the regime roll; the damping ladder |
 | sim | `company_state.gd` | One company during a match: accounts, regime, valuation, the three price terms, the posted price |
 | sim | `industry_state.gd` | One industry during a match, and its persistent yearly roll |
@@ -1017,6 +1019,12 @@ whole match, can rejoin it and can take it over.
 | sim | `match_setup.gd` | **S5.** The one place the mode is read: content, board, pipeline, forced settings, take-over refusal (D171) |
 | net | `market_sync.gd` | **S6.** The StalkleHeads half of the wire: the market block of a snapshot, and a year as its draws, both as packed rows; called only by `StateSync` (D176-D178) |
 | tools | `wire_report.gd` | **S6.** Measures the snapshot, the year packet and the welcome in both modes, in bytes (D178) |
+| data | `news_bands.gd` | **S8.** `NewsBands`: the named conditions news is chosen by - mood, move, regime, surprise - and the eight whisper triggers. Enums, `ANY` first (§8.1) |
+| data | `market_headline.gd`, `industry_report.gd`, `earnings_commentary.gd`, `whisper.gd`, `npc_chatter.gd` | **S8.** One resource type per news category: an id, its conditions and its text (D199) |
+| data | `news_book.gd` + `news/*.tres` | **S8.** A file of news lines of any category. Every `.tres` in `src/data/news/` is loaded; seven ship, all placeholders (D199) |
+| data | `news_content.gd` | **S8.** Every news line, one sorted list per category, the traders' own chatter turned into `NpcChatter` lines. `ContentLibrary.news`, `EarningsMarket.news` |
+| sim | `news_selector.gd` | **S8.** Chooses a year's news from the history: bands, triggers, the bag, the whispers' honesty roll. Its own seeded generator, never the match's (D200, D201) |
+| sim | `year_news.gd` | **S8.** One year's chosen lines with their tokens filled in, kept on `EarningsYearResult.news` |
 | tests | `fixtures/wire_match.gd` | **S6.** A seeded StalkleHeads match with scripted players, and every field of a match or a year written as lines, so two copies compare field by field |
 
 `CompanyState` pairs with `CompanyProfile` the way `StalkState` pairs with
@@ -1200,23 +1208,26 @@ GameplayScreen (base game's, unchanged around the boards)
     TopRow           tab strip, then HOLDINGS / RANKINGS / DESK buttons
     ExchangeTab      CompanyRow per board row, under group CompanyRows
     MarketTab        two halves: CellRow lines and DrawnChart index line; a
-                     scrolling right half with the event, mood row and a
-                     narrow YearDigestPanel (D189)
-    IndustriesTab    CellRow table, signed TextChart, members as TradeLines
+                     scrolling right half with the whispers, the headline,
+                     the event, mood row and a narrow YearDigestPanel (D189)
+    IndustriesTab    CellRow table, signed TextChart, members as TradeLines,
+                     the selected industry's report
     CompanyTab       pinned title line (COMPANIES < name >), then a scroll:
                      identity line with a TradeBox, CellRow earnings table,
-                     LedgerWidget, investors, desk table
+                     LedgerWidget, its news, investors, desk table with each
+                     trader's chatter under its line
     MessagesTab      two ChatPanels side by side and the player list, each
                      name a Button with a StatusDot icon (§5.8, D192)
     Body (MarginContainer: every child over the same rectangle)
       PagesRow       the four tabs, and SideSpace (a free column on EXCHANGE)
       PickerLayer    CompanyPicker in an OverlayFrame, over the Company tab
       SideLayer      SidePanel in an OverlayFrame: HOLDINGS (compact
-                     HoldingRows), RANKINGS, DESK - over the tab
+                     HoldingRows), RANKINGS, DESK (with CHATTER) - over the tab
   NewsPanel        + YearDigestPanel in its %DigestSlot
 
 src/sim/ MarketReadouts   every derived figure: P/E, shares, averages, breadth...
 src/sim/ YearDigest       the year in review's picks
+src/sim/ NewsSelector     the year's news lines (S8)
 EarningsYearResult.companies_after / index_level_after   the per-year record
 ```
 
@@ -1255,6 +1266,38 @@ tooltip is wrapped without the caller remembering (D184).
 
 **Collapse and sort** are held in `ExchangeTab` only (D182): the viewer's, not the
 match's.
+
+### The news (phase S8)
+
+```
+src/data/news/*.tres ──┐                 (NewsBook files, words only)
+src/data/traders/*.tres ┤ chatter_* fields
+                        ▼
+ContentLibrary.load_fundamentals → NewsContent.build → validate()
+                        │
+EarningsMarket.news ────┘
+                        │   a screen asks
+NewsSelector.news_for(state, year)
+   ├─ earlier years first (their draws are this year's bag counts)
+   ├─ rng seeded from the year's own draws (D200)
+   ├─ headline, report per industry, commentary per company,
+   │  up to two whispers, chatter per trader
+   └─ YearNews, kept on EarningsYearResult.news
+                        │
+MarketTab / IndustriesTab / CompanyTab / SidePanel
+```
+
+**A readout, not state.** The selector reads only the year records every peer
+already holds - mood, index move, industry performance, each company as the year
+left it (`companies_after`), the regimes, the flagged short interest, what the desk
+did - and the content. It writes nothing back to the market and sends nothing, so
+the wire, the snapshot and the match's random stream are exactly what S6 left
+(D200). A client works out the host's news; `test_news.gd` checks that, a rejoiner
+and a promoted host over thirty years.
+
+**Adding content is adding lines**, to an existing book or a new `.tres` in the
+folder. [development.md](development.md) "Writing StalkleHeads news" is the
+step-by-step; [game-rules.md](game-rules.md) §5.1 is what each condition means.
 
 ### The rules that hold it together
 

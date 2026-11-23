@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="NewsBook" format=3]
+
+[ext_resource type="Script" path="res://src/data/npc_chatter.gd" id="1_fxtt6"]
+[ext_resource type="Script" path="res://src/data/earnings_commentary.gd" id="2_2pk8y"]
+[ext_resource type="Script" path="res://src/data/market_headline.gd" id="3_k8r6o"]
+[ext_resource type="Script" path="res://src/data/industry_report.gd" id="4_wd3ii"]
+[ext_resource type="Script" path="res://src/data/news_book.gd" id="5_8hyv7"]
+[ext_resource type="Script" path="res://src/data/whisper.gd" id="6_vqce2"]
+
+[sub_resource type="Resource" id="Resource_nhyto"]
+script = ExtResource("4_wd3ii")
+id = &"ind_transport_crash_1"
+industry_id = &"transport"
+move = 1
+text = "INDUSTRY REPORT: transport, crash"
+
+[sub_resource type="Resource" id="Resource_kcmhr"]
+script = ExtResource("4_wd3ii")
+id = &"ind_transport_down_1"
+industry_id = &"transport"
+move = 2
+text = "INDUSTRY REPORT: transport, down"
+
+[sub_resource type="Resource" id="Resource_83ukl"]
+script = ExtResource("4_wd3ii")
+id = &"ind_transport_flat_1"
+industry_id = &"transport"
+move = 3
+text = "INDUSTRY REPORT: transport, flat"
+
+[sub_resource type="Resource" id="Resource_pgq4s"]
+script = ExtResource("4_wd3ii")
+id = &"ind_transport_up_1"
+industry_id = &"transport"
+move = 4
+text = "INDUSTRY REPORT: transport, up"
+
+[sub_resource type="Resource" id="Resource_606gk"]
+script = ExtResource("4_wd3ii")
+id = &"ind_transport_surge_1"
+industry_id = &"transport"
+move = 5
+text = "INDUSTRY REPORT: transport, surge"
+
+[resource]
+script = ExtResource("5_8hyv7")
+industry_reports = Array[ExtResource("4_wd3ii")]([SubResource("Resource_nhyto"), SubResource("Resource_kcmhr"), SubResource("Resource_83ukl"), SubResource("Resource_pgq4s"), SubResource("Resource_606gk")])

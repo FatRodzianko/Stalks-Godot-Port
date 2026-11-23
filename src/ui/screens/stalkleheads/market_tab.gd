@@ -17,9 +17,11 @@ extends MarginContainer
 ## year's published data, so a player can read this while the others trade and
 ## lose nothing.
 ##
-## The design's sketch also shows whispers and a market headline. Those are the
-## news categories of phase S8 and are not built yet; until then this tab shows
-## the year's event, which is what news there is.
+## **The news (phase S8, design §8).** At the top of the right half, the
+## year's **whispers** - rumours, true more often than not but not always - and
+## above the year's event, the **market headline**. Both are chosen by
+## `NewsSelector`; when it chose none, the slot and its heading are not shown
+## at all (§8.2: an empty slot shows nothing).
 
 
 const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
@@ -39,6 +41,9 @@ const MOOD_YEARS: int = 10
 ## Characters per year on the mood row.
 const MOOD_CELL: int = 3
 
+## The width a whisper wraps at, as the event text does.
+const WRAP_WIDTH: float = 240.0
+
 const BULL_MARK: String = "B"
 const BEAR_MARK: String = "b"
 const UNPLAYED_MARK: String = "."
@@ -50,6 +55,10 @@ var _lines: Dictionary[Line, CellRow] = {}
 
 @onready var _stats: VBoxContainer = %Stats
 @onready var _chart: DrawnChart = %IndexChart
+@onready var _headline: Label = %Headline
+@onready var _whisper_section: VBoxContainer = %WhisperSection
+@onready var _whispers_title: Label = %WhispersTitle
+@onready var _whispers: VBoxContainer = %Whispers
 @onready var _event_text: Label = %EventText
 @onready var _event_effect: Label = %EventEffect
 @onready var _mood_chart: Label = %MoodChart
@@ -58,6 +67,7 @@ var _lines: Dictionary[Line, CellRow] = {}
 
 func _ready() -> void:
 	_chart.custom_minimum_size = CHART_SIZE
+	_whispers_title.tooltip_text = TermTips.fit(TermTips.WHISPERS)
 	_review.set_narrow()
 	var captions: Dictionary[Line, String] = {
 		Line.INDEX: "Index level",
@@ -94,7 +104,27 @@ func refresh(state: GameState, event_text: String, event_effect: String) -> void
 	_event_text.text = event_text
 	_event_effect.text = event_effect
 	_mood_chart.text = mood_chart_text(state)
+	_refresh_news(state)
 	_refresh_review(state)
+
+
+## The headline and the whispers, or nothing where none was chosen.
+func _refresh_news(state: GameState) -> void:
+	var news: YearNews = NewsSelector.latest(state)
+	_headline.text = ""
+	for child: Node in _whispers.get_children():
+		_whispers.remove_child(child)
+		child.queue_free()
+	if news != null:
+		_headline.text = news.headline
+		for whisper: YearNews.WhisperLine in news.whispers:
+			var line: Label = Label.new()
+			line.text = whisper.text
+			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			line.custom_minimum_size.x = WRAP_WIDTH
+			_whispers.add_child(line)
+	_headline.visible = not _headline.text.is_empty()
+	_whisper_section.visible = _whispers.get_child_count() > 0
 
 
 func _refresh_stats(state: GameState) -> void:
@@ -171,6 +201,20 @@ func _refresh_review(state: GameState) -> void:
 	_review.visible = digest != null
 	if digest != null:
 		_review.show_digest(digest, state)
+
+
+func headline_text() -> String:
+	return _headline.text if _headline.visible else ""
+
+
+## The whispers as shown, one per line; empty when the section is hidden.
+func whisper_texts() -> PackedStringArray:
+	var texts: PackedStringArray = []
+	if not _whisper_section.visible:
+		return texts
+	for child: Node in _whispers.get_children():
+		texts.append((child as Label).text)
+	return texts
 
 
 func review() -> YearDigestPanel:

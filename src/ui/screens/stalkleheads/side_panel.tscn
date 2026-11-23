@@ -105,3 +105,14 @@ text = "None"
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"TightVBox"
+
+[node name="ChatterTitle" type="Label" parent="Pages/DeskPage"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+mouse_filter = 0
+text = "CHATTER"
+
+[node name="ChatterList" type="VBoxContainer" parent="Pages/DeskPage"]
+unique_name_in_owner = true
+layout_mode = 2
