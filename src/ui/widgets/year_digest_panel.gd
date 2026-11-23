@@ -83,6 +83,10 @@ func set_narrow() -> void:
 	if _narrow:
 		return
 	_narrow = true
+	# Ordinary spacing rather than tight: half the tab is narrow, so the panel
+	# is long, and tight lines run together (manual-testing.md L).
+	theme_type_variation = &""
+	_outliers.theme_type_variation = &""
 	_market.configure([12, 6, 0])
 	_market_second = CellRowScene.instantiate()
 	add_child(_market_second)

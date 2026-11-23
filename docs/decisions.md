@@ -7222,3 +7222,23 @@ previous year" would contradict the top bar.
 
 **How to revert.** This decision is a single commit. `git revert` of that commit
 restores the Market tab, the digest panel and these docs as they were.
+
+### D190 - The Market tab's sections are ruled and spaced
+**2026-11-23 · Accepted** (manual steps L, findings)
+
+The owner ran section L. The trial (D189) stays; the feedback was that the right
+half looked condensed, everything on top of everything else, with no clear
+sections.
+
+- **A bright rule between sections** (`SectionRule`, an `HSeparator` variation in
+  the theme): between THIS YEAR'S NEWS and MOOD, BY YEAR, and between the mood and
+  THE YEAR IN REVIEW. It is the overlay frame's bright green, so it is plainly a
+  different thing from the faint lines inside the year in review, which divide
+  that panel's own parts. The owner marked one of the two places as a gap rather
+  than a rule; both are rules, so the three sections read alike.
+- **A gap between the event and its effect**, half a line.
+- **Ordinary line spacing instead of tight** in both halves of the tab, and in the
+  narrow year in review.
+
+**Rules out.** Section dividers in the faint line colour, which the year in review
+already uses for its sub-sections.

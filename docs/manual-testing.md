@@ -2198,7 +2198,11 @@ run before or after section J.
 - **Step 15 showing a gap or a jump**: write down the company and the year.
 - **Step 29 showing the tab below moved**: the chart and the table are different heights.
 
-### L - StalkleHeads year in review on the Market tab (decisions.md D189) — **not yet run**
+### L - StalkleHeads year in review on the Market tab (decisions.md D189) — **passed 2026-11-23, with findings**
+
+**Run on 2026-11-23.** It looked good, but condensed: no clear sections, and lines
+too tight. Done in D190: bright rules between the sections, a gap under the event,
+ordinary spacing. Section M checks it.
 
 A trial: if it is not wanted, it is one commit to revert. One machine, no Steam.
 Run on a locally exported build containing D189. To check a checkout before
@@ -2227,6 +2231,25 @@ exporting: the file `src/ui/widgets/year_digest_panel.gd` contains `set_narrow`.
 
 - **Step 12 showing the whole tab moving**: the tab, not the right half, is scrolling.
 - **Step 15 showing different figures**: write down which line differs.
+
+### M - StalkleHeads Market tab spacing (decisions.md D190) — **not yet run**
+
+One machine, no Steam. Run on a locally exported build containing D190. To check a
+checkout before exporting: the file `assets/themes/stalks_theme.tres` contains
+`SectionRule`.
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Click **START**.
+5. Press **Ready for New Year**.
+6. Click **Close** on the news.
+7. Click **MARKET**.
+8. Check there is a gap between the event's text and the line saying what it did.
+9. Check a bright green line runs between **THIS YEAR'S NEWS** and **MOOD, BY YEAR**.
+10. Check a bright green line runs between the mood and **THE YEAR IN REVIEW**.
+11. Check the lines inside the year in review are the faint ones, as before.
+12. Check no lines of text touch the lines above or below them, on either half.
 
 ### Known gaps, so they are not surprises
 

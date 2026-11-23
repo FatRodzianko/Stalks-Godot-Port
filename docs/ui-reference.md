@@ -178,6 +178,8 @@ rest); the index by year (a drawn line, at least 38 characters wide and 7 tall,
 D188). Right, scrolling on its own: the year's news; the mood of each year as B
 (bull) or b (bear); the year in review, laid out narrow - the market on two lines,
 the industries in two columns, each outlier's caption above its company and figure.
+Bright green rules (`SectionRule`) divide the three sections; ordinary, not tight,
+line spacing (D190).
 
 **INDUSTRIES**: one line per industry (this year, three years, standing, average
 P/E, revenue share and a bar, member count); click one for its by-year chart (22

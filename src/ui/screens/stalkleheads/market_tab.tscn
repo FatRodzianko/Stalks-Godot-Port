@@ -17,7 +17,6 @@ size_flags_vertical = 3
 [node name="Left" type="VBoxContainer" parent="Columns"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = &"TightVBox"
 
 [node name="MarketTitle" type="Label" parent="Columns/Left"]
 layout_mode = 2
@@ -49,7 +48,6 @@ vertical_scroll_mode = 4
 [node name="Right" type="VBoxContainer" parent="Columns/RightScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = &"TightVBox"
 
 [node name="NewsTitle" type="Label" parent="Columns/RightScroll/Right"]
 layout_mode = 2
@@ -65,11 +63,21 @@ theme_type_variation = &"EventFlavour"
 text = ""
 autowrap_mode = 3
 
+[node name="EventGap" type="Control" parent="Columns/RightScroll/Right"]
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+mouse_filter = 2
+
 [node name="EventEffect" type="Label" parent="Columns/RightScroll/Right"]
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
 autowrap_mode = 3
+
+[node name="NewsRule" type="HSeparator" parent="Columns/RightScroll/Right"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"SectionRule"
 
 [node name="MoodTitle" type="Label" parent="Columns/RightScroll/Right"]
 layout_mode = 2
@@ -86,6 +94,11 @@ text = ""
 layout_mode = 2
 theme_type_variation = &"Faint"
 text = "B bull, b bear"
+
+[node name="MoodRule" type="HSeparator" parent="Columns/RightScroll/Right"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"SectionRule"
 
 [node name="Review" parent="Columns/RightScroll/Right" instance=ExtResource("3_digest")]
 unique_name_in_owner = true

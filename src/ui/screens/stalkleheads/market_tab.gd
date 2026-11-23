@@ -8,7 +8,10 @@ extends MarginContainer
 ## **Two halves** (decisions.md D189): the market's figures and its chart on
 ## the left; on the right, scrolling on its own, the year's news, the mood by
 ## year, and the year in review the news panel showed when the year turned.
-## The tab itself does not scroll, so the left half stays put.
+## The tab itself does not scroll, so the left half stays put. The right
+## half's three sections are divided by bright rules (`SectionRule`), brighter
+## than the faint lines inside the year in review, which divide its parts
+## (manual-testing.md L, decisions.md D190).
 ##
 ## **Nothing here changes while anybody trades** (§6.2): every figure is last
 ## year's published data, so a player can read this while the others trade and

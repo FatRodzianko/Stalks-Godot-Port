@@ -134,6 +134,9 @@ border_color = Color(0.050980393, 0.078431375, 0.06666667, 1)
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_hua00"]
 color = Color(0.23529412, 0.3137255, 0.28235295, 1)
 
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_sectn"]
+color = Color(0.43137255, 0.90588236, 0.627451, 1)
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ln4sa"]
 content_margin_left = 2.0
 content_margin_top = 0.0
@@ -505,6 +508,9 @@ OptionButton/styles/focus = SubResource("StyleBoxFlat_nymim")
 OptionButton/styles/hover = SubResource("StyleBoxFlat_braxb")
 OptionButton/styles/normal = SubResource("StyleBoxFlat_g55ww")
 OptionButton/styles/pressed = SubResource("StyleBoxFlat_fws6u")
+SectionRule/base_type = &"HSeparator"
+SectionRule/constants/separation = 13
+SectionRule/styles/separator = SubResource("StyleBoxLine_sectn")
 OverlayFrame/base_type = &"PanelContainer"
 OverlayFrame/styles/panel = SubResource("StyleBoxFlat_ovrly")
 Panel/styles/panel = SubResource("StyleBoxFlat_l57tj")
