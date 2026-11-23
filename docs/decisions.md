@@ -7316,7 +7316,9 @@ input. The aim: it can be read, and it can do nothing else.
   accented letters, emoji, the bidirectional overrides that reverse how text reads
   (U+202E and friends) and zero-width characters, so nothing can hide or reorder
   text and something visibly stood there. A Godot string cannot hold U+0000 at all
-  (it becomes U+FFFD), so a NUL arrives as `?` too.
+  (it becomes U+FFFD), so a NUL arrives as `?` too. That is not tested: writing
+  `char(0)` in a script makes the editor log a Unicode error every time the project
+  opens.
 - **The recommendation is to keep the ASCII line.** The game's font, Terminus,
   draws little beyond ASCII anyway, so the line costs a reader nothing they could
   have seen, and it removes the whole class of Unicode tricks (direction,

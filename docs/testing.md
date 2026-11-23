@@ -429,13 +429,13 @@ a bankrupt row's word is not clipped.
 
 ### Private messages: what is covered and what is not
 
-`test_messages.gd` (54) and `test_messages_wire.gd` (14), D192-D193; three
+`test_messages.gd` (53) and `test_messages_wire.gd` (14), D192-D193; three
 `--game` cases in `test_launch_args.gd`.
 
 - **The sanitiser**, one test per threat in architecture.md §5.8: printable ASCII
   untouched, emoticons, markup and network paths kept as text, newlines and tabs to
   spaces, control characters removed, bidi and zero-width and other non-ASCII to
-  `?`, a NUL (which a Godot string stores as U+FFFD), the length cap and that
+  `?`, the length cap and that
   leading space does not use it up.
 - **The rate limit** with an explicit clock: the count, the sliding window, one
   limit per sender, and that the host's is looser than a player's.

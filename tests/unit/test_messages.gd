@@ -74,13 +74,6 @@ func test_leading_space_does_not_use_up_the_length() -> void:
 	assert_eq(MessageRules.clean(padded), "x".repeat(MessageRules.MAX_LENGTH))
 
 
-func test_a_nul_cannot_reach_a_message_at_all() -> void:
-	# A Godot String cannot hold U+0000: it is stored as U+FFFD, the
-	# replacement character, which the sanitiser turns into "?" like any other
-	# character beyond ASCII. Pinned so that is known rather than assumed.
-	assert_eq(MessageRules.clean("a" + char(0) + "b"), "a?b")
-
-
 func test_whitespace_and_control_only_is_empty() -> void:
 	assert_eq(MessageRules.clean("   \n\t  "), "")
 	assert_eq(MessageRules.clean(char(1) + char(2)), "")
