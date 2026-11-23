@@ -29,6 +29,14 @@ extends Resource
 ## filling it in would edit base-game content files. See decisions.md D128.
 @export var industry: StringName = &""
 
+## The Company tab's paragraph about a company the base game does not ship
+## (`EarningsMarket.definition_for` copies it to the board definition). A
+## shipped company's comes from its `StalkDefinition` and this stays empty.
+##
+## **Lorem ipsum for now**, at the owner's request, so the tab shows where a
+## description goes (decisions.md D187). Writing the real ones is the owner's.
+@export_multiline var description: String = ""
+
 ## What it earns a share in year 0. Times the base multiple of 12.5, this is
 ## what sets its opening price: the price is not separately authored.
 @export var starting_earnings_per_share: float = 8.0

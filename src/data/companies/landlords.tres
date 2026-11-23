@@ -8,6 +8,7 @@ id = &"landlords"
 display_name = "Landlords United"
 ticker = &"FINA"
 industry = &"financial"
+description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris."
 starting_earnings_per_share = 10.4
 starting_margin_percent = 12.0
 shares_outstanding = 1000

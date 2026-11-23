@@ -191,8 +191,8 @@ static func new_game_state(library: ContentLibrary, settings: GameSettings) -> G
 	return state
 
 
-## The board definition of a company the base game does not ship: its name and
-## ticker, no description, no events, and no base-game price model (its
+## The board definition of a company the base game does not ship: its name,
+## ticker and description, no events, and no base-game price model (its
 ## `bull_change` and `bear_change` stay zero because nothing in this mode reads
 ## them). Built in memory at match start, never saved.
 static func definition_for(profile: CompanyProfile) -> StalkDefinition:
@@ -201,6 +201,7 @@ static func definition_for(profile: CompanyProfile) -> StalkDefinition:
 	definition.display_name = profile.display_name
 	definition.ticker = profile.ticker
 	definition.industry = profile.industry
+	definition.description = profile.description
 	return definition
 
 

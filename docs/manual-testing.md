@@ -2064,7 +2064,11 @@ file `src/ui/palette.gd` contains the word `sentence_case`.
 - **Step 28 lighting the wrong heading**: write down which heading lit and where the mouse was.
 - **Step 30 or 32 showing the letters moved**: the heading's spare space is missing.
 
-### I - StalkleHeads after the fourth play (decisions.md D186) — **not yet run**
+### I - StalkleHeads after the fourth play (decisions.md D186) — **passed 2026-11-22**
+
+**Run on 2026-11-22.** I1-I3 passed. Asked for with it (decisions.md D187): lorem
+ipsum descriptions for the companies that have none, the industry chart in green
+and red, and no tooltip on a desk trader's name. Section J checks them.
 
 Re-checks what section H found. One machine, no Steam. Run on a locally exported
 build containing D186. To check a checkout before exporting: the file
@@ -2107,6 +2111,39 @@ build containing D186. To check a checkout before exporting: the file
 - **Step 11 or 14 showing ...**: the description still has a line limit.
 - **Step 12 showing overlapping text**: the description grew without pushing the rest down.
 - **Step 21 showing a figure out from under its heading**: the header and the rows have different widths.
+
+### J - StalkleHeads after the fifth play (decisions.md D187) — **not yet run**
+
+One machine, no Steam. Run on a locally exported build containing D187. To check a
+checkout before exporting: the file `src/ui/widgets/chart_widget.gd` contains
+`coloured_signed`.
+
+#### J1. The industry chart
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Click **START**.
+5. Press **Ready for New Year** four times, closing the news each time.
+6. Click **INDUSTRIES**.
+7. Click an industry that has both rising and falling years.
+8. Check the bars above the **0** line are green and the bars below it are red.
+9. Check the numbers, the axis line and the year numbers are not coloured.
+
+#### J2. Placeholder descriptions
+
+10. Click **COMPANY**.
+11. Click **COMPANIES**.
+12. Click **Food Company A**.
+13. Check a lorem ipsum paragraph is shown under the identity line.
+
+#### J3. Trader names
+
+14. Click **COMPANIES**.
+15. Click a company whose **NPC** number is not blank.
+16. Scroll down to **NPC ACTIVITY, LAST YEAR**.
+17. Rest the mouse on a trader's name.
+18. Check no tooltip appears.
 
 ### Known gaps, so they are not surprises
 

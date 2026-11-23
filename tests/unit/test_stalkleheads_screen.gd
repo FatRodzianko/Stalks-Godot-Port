@@ -993,3 +993,26 @@ func test_headings_keep_clear_of_their_lines() -> void:
 	var price: Label = header.get_node("%Price")
 	_click_label(price)
 	assert_eq(price.size.x, price.custom_minimum_size.x, "PRICE^ fits without widening")
+
+
+## The industry chart's bars are green above zero and red below; the scale,
+## the axis and the captions are not coloured.
+func test_a_signed_chart_colours_its_bars_by_sign() -> void:
+	var plain: String = TextChart.signed_bars([10.0, -10.0], PackedStringArray(["Y1", "Y2"]), 6, 1)
+	var lines: PackedStringArray = ChartWidget.coloured_signed(plain, 1).split("\n")
+	var gain: String = "[color=#%s]" % Palette.BULL.to_html(false)
+	var loss: String = "[color=#%s]" % Palette.BEAR.to_html(false)
+	assert_string_contains(lines[0], gain + "██[/color]")
+	assert_false(lines[0].contains(loss))
+	assert_false(lines[1].contains("[color"), "the axis is not coloured")
+	assert_string_contains(lines[2], loss + "██[/color]")
+	assert_false(lines[2].contains(gain))
+	assert_false(lines[3].contains("[color"), "the captions are not coloured")
+
+
+func test_the_industry_chart_is_coloured() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 4)
+	_tabs().select_tab(MarketTabs.Tab.INDUSTRIES)
+	var chart: ChartWidget = _tabs().industries_tab().industry_chart()
+	assert_string_contains(chart.shown_bbcode(), "[color=#")
+	assert_false(chart.chart_text().contains("[color"), "chart_text stays plain")

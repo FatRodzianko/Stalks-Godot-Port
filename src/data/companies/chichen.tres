@@ -8,6 +8,7 @@ id = &"chichen"
 display_name = "Chichen Pizza"
 ticker = &"FODB"
 industry = &"food"
+description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris."
 starting_earnings_per_share = 5.2
 starting_margin_percent = 12.0
 shares_outstanding = 1000

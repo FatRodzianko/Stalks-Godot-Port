@@ -7087,3 +7087,34 @@ total width, which matters because the board has about 4 pixels to spare at 640:
 CHG and DIV give a character each: a year's move in price and a dividend are whole
 numbers that need at most five. EPS keeps 7 (`-123.45`). A bankrupt row's
 BANKRUPT still spans PRICE and CHG, 12 characters either way.
+
+### D187 - After the fifth play of S7: placeholder descriptions, a coloured industry chart, no name tooltip
+**2026-11-22 · Accepted** (manual steps I, passed)
+
+The owner ran section I and it passed. Three small changes came with it.
+
+**The ten companies the base game does not ship have lorem ipsum descriptions**,
+at the owner's request, so the Company tab shows where a description goes. Their
+description was always empty because their board definition is built from a
+`CompanyProfile` (`EarningsMarket.definition_for`), which had no description field.
+It now has one, and `definition_for` copies it across. A base-game company's
+description still comes from its stalk resource. The real text is the owner's to
+write; this is placeholder, exactly as the base game's lorem ipsum was (D103, on
+its descriptions). **Rules out:** inventing descriptions.
+
+**The industry chart's bars are coloured**: green above the zero line, red below,
+in the board's gain and loss colours (`Palette.BULL`, `Palette.BEAR`). A `Label`
+draws in one colour, so the chart is now a `RichTextLabel` (`ChartRich`), and
+`ChartWidget.coloured_signed` wraps each run of bar characters in a colour tag.
+The scale, the axis and the year captions stay uncoloured. `TextChart` still
+returns plain text, so the charts are still tested by comparing strings
+(`chart_text()` returns the plain text). The index chart is unchanged: the index
+level is always positive, so it has no sign to colour.
+
+**A desk trader's name has no tooltip.** It repeated the name. The longest name is
+29 characters and the column is 30, so a name is never cut. NPC thoughts, a stretch
+goal for the tooltip, are recorded in stalkleheads-design.md §14.
+
+**Asked, not yet answered:** a line chart for the index, candlestick charts, and
+tabs of charts on the Company tab. They are design questions about D181 (charts are
+text) and about what price data exists, so they wait for the owner's answer.

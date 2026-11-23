@@ -179,7 +179,7 @@ the mood of each year as B (bull) or b (bear).
 
 **INDUSTRIES**: one line per industry (this year, three years, standing, average
 P/E, revenue share and a bar, member count); click one for its by-year chart (22
-wide, signed) and its companies' shares, each with a trade box.
+wide, signed: bars green above zero and red below, decisions.md D187) and its companies' shares, each with a trade box.
 
 **COMPANY**: the title line (COMPANIES, `<`, the name, `>`) is pinned; the rest
 scrolls. **COMPANIES** opens the list of every company over the tab's left side,

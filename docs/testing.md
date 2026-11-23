@@ -353,7 +353,7 @@ comparisons in `test_wire.gd` are what guard the two halves from here.
 
 ### StalkleHeads on screen: what S7 covers and what it does not
 
-`test_market_readouts.gd` (32) and `test_stalkleheads_screen.gd` (53), D179-D186.
+`test_market_readouts.gd` (32) and `test_stalkleheads_screen.gd` (55), D179-D187.
 
 **After the first play (D183)**, tests for each finding: the arrows walk the board's
 order; the identity line keeps the industry whole; one tab lit after opening a
@@ -377,6 +377,11 @@ the year in review's captions are capitalised.
 **After the fourth play (D186)**: the longest description is shown with every line
 visible and no trimming; every board heading's style has a margin either side, and
 `PRICE^` fits its column without widening it.
+
+**After the fifth play (D187)**: a signed chart colours bars above zero in the gain
+colour and below in the loss colour, and leaves the axis and captions plain; the
+industry chart shows colour while `chart_text()` stays plain. The placeholder
+descriptions are not tested, at the owner's word.
 
 **The rule they protect.** No node works out a figure. So the numbers are tested in
 `test_market_readouts.gd` without a window, and the screen test checks that each tab

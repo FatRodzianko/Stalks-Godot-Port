@@ -289,7 +289,6 @@ func _show_activity(state: GameState, company: CompanyState) -> void:
 			Palette.sentence_case(MarketReadouts.situation_word(entry[1])),
 			Palette.sentence_case(MarketReadouts.position_caption(entry[2], entry[3])),
 		])
-		row.set_cell_tooltip(0, trader.definition.display_name)
 		row.set_cell_variation(1, &"Faint")
 	var shorted: int = state.market.desk.short_interest(company.id)
 	_short_line.tooltip_text = TermTips.fit(TermTips.short_interest())
