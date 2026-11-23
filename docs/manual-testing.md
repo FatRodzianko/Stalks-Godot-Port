@@ -2484,7 +2484,7 @@ The players are **A** (the host), **B** and **C**.
 - **The whispers themselves:** they state facts about this year, which reads like a
   company spotlight, not a rumor. The owner wants them to foreshadow next year
   against expectations, from sources of named reliability. A design question, not a
-  layout one, still open on 2026-11-23.
+  layout one; proposed as stalkleheads-design.md §8.4.
 
 One machine, no Steam. Run on a locally exported build containing D199; to check a
 checkout before exporting, the file `src/sim/news_selector.gd` exists. Every line is

@@ -1931,6 +1931,9 @@ always right is a free hint; one that is always wrong is noise. At, say, 75 the 
 learns to weigh them, and the game can say in as many words that these are rumors. The
 roll uses the injected RNG like everything else.
 
+**Superseded by §8.4** (proposed 2026-11-23): whispers that foreshadow next year,
+from sources of named reliability, in place of the triggers.
+
 ### 8.2 How one is chosen
 
 Every category uses **the bag pattern the game already has.**
@@ -2019,6 +2022,119 @@ per industry plus one for the market.
 **As built (S8):** not bundled. Every news line lives in a `NewsBook` in
 `src/data/news/`, one per industry plus one for the market, and says what it is
 about in its own fields; see [D199](decisions.md) for why.
+
+### 8.4 Whispers that foreshadow — **proposed 2026-11-23, not built**
+
+Manual section S found that the S8 whispers (§8.1's triggers, D201) state a fact
+about the year just played - "third growth year", "margin slipping" - which a player
+can check on the Company tab. That is a company spotlight, not a rumor. The owner
+wants a whisper to be **the traders' gossip mill: a hint about next year, against
+what everyone expects, from a source of known reliability.** This section is the
+design for that. It replaces the triggers; nothing of it is built yet.
+
+#### What a whisper is about
+
+**Next year's earnings surprise for one company.** Everyone can see a company's
+regime and so what growth to expect from it (§3.3; `NewsSelector.expected_growth`).
+A whisper says whether next year will beat or miss that, and by how much, in the
+five surprise bands the earnings commentary already uses:
+
+| Band | Meaning |
+|---|---|
+| `MUCH_WORSE` | next year's growth 8 points or more below what this regime leads one to expect |
+| `WORSE` | 3 to 8 below |
+| `AS_EXPECTED` | within 3 |
+| `BETTER` | 3 to 8 above |
+| `MUCH_BETTER` | 8 or more above |
+
+A line need not mention earnings at all. "The CEO has been at the golf course more
+than the board room" is a `WORSE` line; "the sales team all have new Mercedes" a
+`BETTER` one. The band is what the line *means*, not what it says.
+
+#### How a whisper can know next year
+
+A company's year of earnings takes exactly two draws (`CompanyState.advance_earnings`):
+the regime roll, then the growth roll inside the new regime's band. Neither depends on
+anything players do. So:
+
+1. **At the end of each year** (and once at match setup, for year 1), after
+   everything else in the year, each living company's two draws for **next** year
+   are made from the match's generator and kept on the company.
+2. Next year's earnings season **uses those kept draws** instead of drawing.
+3. A whisper reads them: the true band is next year's growth, before the industry's
+   effect, against what **this** year's regime leads one to expect. A regime change
+   therefore shows up as a surprise, which is exactly what a rumor should foreshadow.
+
+**Why this and not a whisper that causes its result.** The draws come from the same
+distributions as now, only a year earlier, so prices, regimes and balance are
+unchanged in distribution - nothing is nudged to make a rumor come true. What
+changes is *which* history a given seed produces in StalkleHeads (the draws are in a
+different order), so P1-P4 are re-measured with the balance tool, and the balance
+tool's regime-roll override (`EarningsYearResolver`, levers) must still apply. The
+base game draws none of this; the golden hash does not move.
+
+**The price is not promised.** The whisper is about the company's own luck and
+regime. The industry's year, special events, the desk's flow and a squeeze still move
+the price. Even a perfect source predicts earnings, not the chart.
+
+#### Sources
+
+Each whisper comes from a **source**, rolled per whisper (not written into the line),
+and shown beside it. The source decides how far the band the whisper speaks for is
+from the true one. Names are the owner's; the numbers are a first proposal:
+
+| Source | Names the true band | One band off | Two or more off |
+|---|---|---|---|
+| Rock Solid | 85% | 15% | 0% |
+| Credible | 60% | 35% | 5% |
+| Hit-or-miss | 40% | 35% | 25% |
+| Questionable | 30% | 35% | 35% |
+| Gossip | 20% | 30% | 50% |
+
+- **One band off** goes up or down with equal chance, or the only way there is at
+  the edge (`MUCH_BETTER` can only be off to `BETTER`).
+- **Two or more off** picks evenly among the bands that far away.
+- So a Credible "much better" almost always means better or much better, and very
+  rarely a bad year; Gossip is a weak hint at best.
+- Each source is equally likely to be rolled (20% each), a first proposal too.
+
+#### How many, about whom
+
+- **Two a year**, about two different companies, picked evenly from those still
+  alive. A whisper appearing at all says nothing; only its words and its source do.
+- **Shown from the start of the match** (about year 1) to the start of the last year.
+  The last year has no next year, so no whispers.
+- The line is drawn from the lines written for the band it speaks for, through the
+  bag (§8.2), so lines repeat as little as possible.
+- All of this is chosen by `NewsSelector` with its own generator (D200), never the
+  match's, so reading the whispers cannot move a price.
+
+#### Content
+
+A `Whisper` resource becomes `id`, `outcome` (one of the five bands) and `text`, with
+`{company}` filled in. `subject`, `trigger` and `truth_chance_percent` go. The owner
+writes the pool: as many lines per band as wanted, every band needing at least one.
+The placeholders are one line per band: `WHISPER: {company}, much better`.
+
+#### On the wire
+
+Every peer must know next year's kept draws to choose the same whispers, so they go
+in the state snapshot (welcome, rejoin, host migration) and each year's record. This
+**exposes nothing new**: clients already receive the match generator's state
+(`StateSync.encode_state`'s `rng_state`) for host migration, from which a modified
+client could compute next year anyway.
+
+#### On screen
+
+- Market tab, WHISPERS: each line with its source before it.
+- Company tab: the whispers naming that company, with their sources.
+
+#### Still open
+
+- Whether last year's whispers are shown again once the year is played, marked as
+  having come true or not, or left for the player to remember.
+- The source names' exact spelling and capitals as shown on screen.
+- Whether industries get whispers too (this proposal: companies only).
 
 ---
 
