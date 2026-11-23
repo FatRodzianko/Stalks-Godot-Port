@@ -3,8 +3,9 @@ extends ScrollContainer
 ## Tab 4 of a StalkleHeads match: one company in depth
 ## (docs/stalkleheads-design.md §7.5). Opened by clicking its row on the
 ## Exchange, the gesture the base game's details panel already uses
-## (decisions.md D103); `<` and `>` step through the board in its order as it
-## stands, sorted or not (decisions.md D183).
+## (decisions.md D103). `<` and `>` step through the companies in the match's
+## own order, which does not follow the board's sort; **COMPANIES** opens a list
+## of them all over the tab, to jump straight to one (decisions.md D184).
 ##
 ## What it shows:
 ##
@@ -17,7 +18,8 @@ extends ScrollContainer
 ## - **who holds it**: the players, by name only (D103), and the NPC traders who
 ##   traded it last year, **each by name** (§14 q11), with short interest.
 ##
-## Beside the name line: how many shares you hold, and a trade box.
+## Beside the name line: how many shares you hold (HELD, as the board says
+## it), and a trade box.
 ##
 ## The bond and the index are on the board but are not companies: for them this
 ## shows the name, description and investors only.
@@ -25,6 +27,9 @@ extends ScrollContainer
 
 ## `<` or `>` was pressed. The host holds the state, so it redraws.
 signal company_changed(stalk_id: StringName)
+
+## COMPANIES was pressed: show or hide the list of companies.
+signal picker_requested
 
 signal buy_requested(stalk_id: StringName, shares: int)
 signal sell_requested(stalk_id: StringName, shares: int)
@@ -51,7 +56,10 @@ const LINE_CAPTIONS: Dictionary[Line, String] = {
 	Line.PE: "P/E",
 }
 
-const TRADER_NAME_CHARS: int = 18
+## NPC ACTIVITY's columns after the trader's name, in characters: what it did
+## last year, and what it holds now.
+const ACTION_CHARS: int = 10
+const POSITION_CHARS: int = 11
 
 ## The line under the name: ticker, industry, then the regime phrase.
 const IDENTITY_WIDTHS: Array[int] = [6, 20, 0]
@@ -70,13 +78,14 @@ const LINE_TIPS: Dictionary[Line, String] = {
 
 ## The board row on show. Presentation only.
 var _stalk_id: StringName = &""
-var _board_ids: Array[StringName] = []
+var _company_ids: Array[StringName] = []
 
 var _year_row: CellRow
 var _lines: Dictionary[Line, CellRow] = {}
 var _split_row: CellRow
 var _context: TradeContext
 
+@onready var _pick: Button = %PickButton
 @onready var _previous: Button = %PreviousButton
 @onready var _next: Button = %NextButton
 @onready var _name: Label = %CompanyName
@@ -93,6 +102,7 @@ var _context: TradeContext
 
 
 func _ready() -> void:
+	_pick.pressed.connect(_on_pick_pressed)
 	_previous.pressed.connect(_on_previous_pressed)
 	_next.pressed.connect(_on_next_pressed)
 	_identity.configure(IDENTITY_WIDTHS)
@@ -100,7 +110,7 @@ func _ready() -> void:
 	_identity.set_cell_variation(1, &"Faint")
 	_identity.set_cell_tooltip(2, TermTips.REGIME)
 	_yield.mouse_filter = Control.MOUSE_FILTER_PASS
-	_yield.tooltip_text = TermTips.EARNINGS_YIELD
+	_yield.tooltip_text = TermTips.fit(TermTips.EARNINGS_YIELD)
 	_trade.buy_requested.connect(_on_trade_buy_requested)
 	_trade.sell_requested.connect(_on_trade_sell_requested)
 	_trade.amount_changed.connect(_on_trade_amount_changed)
@@ -130,11 +140,6 @@ func show_company(stalk_id: StringName) -> void:
 	_stalk_id = stalk_id
 
 
-## What `<` and `>` walk: the Exchange board's order as it stands.
-func set_board_order(order: Array[StringName]) -> void:
-	_board_ids = order.duplicate()
-
-
 func clear_amount() -> void:
 	_trade.clear_amount()
 
@@ -142,20 +147,20 @@ func clear_amount() -> void:
 func refresh(context: TradeContext) -> void:
 	_context = context
 	var state: GameState = context.state
-	if _board_ids.is_empty():
-		for row: StalkState in state.stalks:
-			_board_ids.append(row.id)
-	if _stalk_id.is_empty() or not _board_ids.has(_stalk_id):
-		if _board_ids.is_empty():
+	_company_ids.clear()
+	for row: StalkState in state.stalks:
+		_company_ids.append(row.id)
+	if _stalk_id.is_empty() or not _company_ids.has(_stalk_id):
+		if _company_ids.is_empty():
 			return
-		_stalk_id = _board_ids[0]
+		_stalk_id = _company_ids[0]
 
 	var stalk: StalkState = state.stalk_by_id(_stalk_id)
 	var company: CompanyState = state.market.company_by_id(_stalk_id)
 	_name.text = stalk.definition.display_name
 	_name.tooltip_text = stalk.definition.display_name
 	_description.text = stalk.definition.description
-	_held_label.text = "you hold %d " % context.held(_stalk_id)
+	_held_label.text = "HELD %d " % context.held(_stalk_id)
 	context.prepare(_trade, _stalk_id)
 
 	if company == null:
@@ -246,7 +251,9 @@ func _show_investors(state: GameState, stalk: StalkState) -> void:
 		_investors.text = "\n".join(names)
 
 
-## The traders who picked this company last year, by name (§14 q11).
+## The traders who picked this company last year, by name (§14 q11), as a
+## table: TRADER, what it did LAST YEAR, and what it holds NOW - a number of
+## shares, or "short" and the shares it has sold short (decisions.md D184).
 func _show_activity(state: GameState, company: CompanyState) -> void:
 	for child: Node in _activity.get_children():
 		_activity.remove_child(child)
@@ -254,21 +261,37 @@ func _show_activity(state: GameState, company: CompanyState) -> void:
 	_short_line.text = ""
 	if company == null:
 		return
-	for entry: Array in MarketReadouts.desk_activity(state, company.id):
+	var entries: Array[Array] = MarketReadouts.desk_activity(state, company.id)
+	if entries.is_empty():
+		var nobody: CellRow = _add_activity_row()
+		nobody.set_texts(["none"])
+		return
+	var heading: CellRow = _add_activity_row()
+	heading.set_texts(["TRADER", "LAST YEAR", "NOW"])
+	heading.set_row_variation(&"Faint")
+	heading.set_cell_tooltip(1, TermTips.NPC_LAST_YEAR)
+	heading.set_cell_tooltip(2, TermTips.NPC_NOW)
+	for entry: Array in entries:
 		var trader: NpcTraderState = state.market.desk.trader_by_id(entry[0])
-		var row: CellRow = CellRowScene.instantiate()
-		_activity.add_child(row)
-		row.configure([TRADER_NAME_CHARS, 0])
-		var detail: String = MarketReadouts.situation_word(entry[1])
-		if entry[3] > 0:
-			detail += ", short %d" % entry[3]
-		elif entry[2] > 0:
-			detail += ", holds %d" % entry[2]
-		row.set_texts([trader.definition.display_name, detail])
+		var row: CellRow = _add_activity_row()
+		row.set_texts([
+			trader.definition.display_name,
+			MarketReadouts.situation_word(entry[1]),
+			MarketReadouts.position_caption(entry[2], entry[3]),
+		])
+		row.set_cell_tooltip(0, trader.definition.display_name)
 		row.set_cell_variation(1, &"Faint")
 	var shorted: int = state.market.desk.short_interest(company.id)
+	_short_line.tooltip_text = TermTips.fit(TermTips.short_interest())
 	if shorted > 0:
 		_short_line.text = "short interest %d shares" % shorted
+
+
+func _add_activity_row() -> CellRow:
+	var row: CellRow = CellRowScene.instantiate()
+	_activity.add_child(row)
+	row.configure([0, ACTION_CHARS, POSITION_CHARS], [CellRow.LEFT, CellRow.LEFT, CellRow.RIGHT])
+	return row
 
 
 # ---------------------------------------------------------------- for tests
@@ -279,6 +302,15 @@ func shown_id() -> StringName:
 
 func trade_box() -> TradeBox:
 	return _trade
+
+
+## How far down the list of companies starts: below the title line.
+func title_height() -> float:
+	return _pick.get_parent_control().get_combined_minimum_size().y
+
+
+func pick_button() -> Button:
+	return _pick
 
 
 func held_text() -> String:
@@ -318,6 +350,10 @@ func activity_lines() -> PackedStringArray:
 
 # --------------------------------------------------------------- handlers
 
+func _on_pick_pressed() -> void:
+	picker_requested.emit()
+
+
 func _on_previous_pressed() -> void:
 	_step(-1)
 
@@ -326,13 +362,13 @@ func _on_next_pressed() -> void:
 	_step(1)
 
 
-## Walks the board, wrapping at either end. Asks the host to redraw, because
-## the state is the host's to hand in.
+## Walks the companies, wrapping at either end. Asks the host to redraw,
+## because the state is the host's to hand in.
 func _step(by: int) -> void:
-	if _board_ids.is_empty():
+	if _company_ids.is_empty():
 		return
-	var at: int = maxi(0, _board_ids.find(_stalk_id))
-	_stalk_id = _board_ids[posmod(at + by, _board_ids.size())]
+	var at: int = maxi(0, _company_ids.find(_stalk_id))
+	_stalk_id = _company_ids[posmod(at + by, _company_ids.size())]
 	company_changed.emit(_stalk_id)
 
 

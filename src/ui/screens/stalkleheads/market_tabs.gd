@@ -21,6 +21,17 @@ extends VBoxContainer
 ## closed with its three buttons still on the strip: a button opens it on that
 ## page, the same button again closes it, and changing tab closes it.
 ##
+## **Overlays, not columns** (D184). `Body` is a `MarginContainer`, which lays
+## every child over the same rectangle: the row of pages first, then the
+## company list's layer, then the side panel's. So the side panel opened on
+## MARKET, INDUSTRIES or COMPANY covers the tab's right-hand side instead of
+## squeezing it, inside the bright `OverlayFrame` that marks it as a window of
+## its own. On EXCHANGE the board keeps a column free for it (`SideSpace`), so
+## the board is never covered. The company list (`CompanyPicker`) opens the same
+## way over the Company tab's left-hand side, below its title line so the
+## COMPANIES button that opened it can close it. The layers ignore the mouse where
+## they are empty, so the tab beneath still takes clicks.
+##
 ## **Trading from anywhere.** Every company shown on its own - a board row, a
 ## holding, an industry's member, the Company tab - has a trade box. They all
 ## answer to one `TradeContext`, built here each refresh from the screen's two
@@ -52,6 +63,7 @@ var _buttons: Dictionary[Tab, Button] = {}
 var _pages: Dictionary[Tab, Control] = {}
 var _side_buttons: Dictionary[SidePanel.Page, Button] = {}
 var _side_open: bool = true
+var _picker_open: bool = false
 
 ## The two checks every trade box asks, `GameplayScreen`'s (see TradeContext).
 var _buy_check: Callable
@@ -69,6 +81,11 @@ var _event_effect: String = ""
 @onready var _industries: IndustriesTab = %IndustriesTab
 @onready var _company: CompanyTab = %CompanyTab
 @onready var _side: SidePanel = %SidePanel
+@onready var _side_frame: PanelContainer = %SideFrame
+@onready var _side_space: Control = %SideSpace
+@onready var _picker_frame: PanelContainer = %PickerFrame
+@onready var _picker_top: Control = %PickerTop
+@onready var _picker: CompanyPicker = %CompanyPicker
 
 
 func _ready() -> void:
@@ -103,13 +120,14 @@ func _ready() -> void:
 	_industries.sell_requested.connect(_on_page_sell_requested)
 	_company.buy_requested.connect(_on_page_buy_requested)
 	_company.sell_requested.connect(_on_page_sell_requested)
-	_side.buy_requested.connect(_on_page_buy_requested)
 	_side.sell_requested.connect(_on_page_sell_requested)
 	_exchange.company_requested.connect(show_company)
 	_industries.company_requested.connect(show_company)
 	_side.company_requested.connect(show_company)
 	_industries.selection_changed.connect(_on_industries_selection_changed)
 	_company.company_changed.connect(_on_company_changed)
+	_company.picker_requested.connect(_on_company_picker_requested)
+	_picker.company_chosen.connect(_on_picker_company_chosen)
 	select_tab(Tab.EXCHANGE)
 
 
@@ -142,6 +160,8 @@ func refresh(
 	_exchange.refresh(_context)
 	_side.refresh(_context, _exchange.board_order(), ranking_order, local_id, host_id)
 	_refresh_page(_current)
+	if _picker_open:
+		_picker.refresh(_state, _company.shown_id())
 
 
 ## The year's event, as the top strip shows it.
@@ -161,6 +181,7 @@ func select_tab(tab: Tab) -> void:
 		_buttons[each].set_pressed_no_signal(each == tab)
 	# Always open on the board; on the others, closed until asked for.
 	_set_side_open(tab == Tab.EXCHANGE)
+	_set_picker_open(false)
 	_refresh_page(tab)
 
 
@@ -208,6 +229,14 @@ func is_side_open() -> bool:
 	return _side_open
 
 
+func is_picker_open() -> bool:
+	return _picker_open
+
+
+func company_picker() -> CompanyPicker:
+	return _picker
+
+
 func tab_button(tab: Tab) -> Button:
 	return _buttons[tab]
 
@@ -218,7 +247,10 @@ func side_button(page: SidePanel.Page) -> Button:
 
 func _set_side_open(is_open: bool) -> void:
 	_side_open = is_open
-	_side.visible = is_open
+	_side_frame.visible = is_open
+	# The board's free column is exactly as wide as the framed panel.
+	_side_space.custom_minimum_size.x = _side_frame.get_combined_minimum_size().x
+	_side_space.visible = is_open and _current == Tab.EXCHANGE
 	for page: SidePanel.Page in _side_buttons:
 		_side_buttons[page].set_pressed_no_signal(is_open and page == _side.current_page())
 
@@ -232,7 +264,6 @@ func _refresh_page(tab: Tab) -> void:
 		Tab.INDUSTRIES:
 			_industries.refresh(_context)
 		Tab.COMPANY:
-			_company.set_board_order(_exchange.board_order())
 			_company.refresh(_context)
 
 
@@ -260,5 +291,27 @@ func _on_industries_selection_changed(_industry_id: StringName) -> void:
 	_refresh_page(Tab.INDUSTRIES)
 
 
+func _set_picker_open(is_open: bool) -> void:
+	_picker_open = is_open
+	_picker_frame.visible = is_open
+	# Below the Company tab's title line, so COMPANIES stays clickable.
+	_picker_top.custom_minimum_size.y = _company.title_height()
+	_company.pick_button().set_pressed_no_signal(is_open)
+	if is_open and _state != null:
+		_picker.refresh(_state, _company.shown_id())
+
+
 func _on_company_changed(_stalk_id: StringName) -> void:
 	_refresh_page(Tab.COMPANY)
+	if _picker_open:
+		_picker.refresh(_state, _company.shown_id())
+
+
+func _on_company_picker_requested() -> void:
+	_set_picker_open(not _picker_open)
+
+
+## A company picked from the list: the list closes and the tab shows it.
+func _on_picker_company_chosen(stalk_id: StringName) -> void:
+	_set_picker_open(false)
+	show_company(stalk_id)

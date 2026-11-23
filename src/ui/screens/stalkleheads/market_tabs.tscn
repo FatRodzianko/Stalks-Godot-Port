@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://src/ui/screens/stalkleheads/market_tabs.gd" id="1_tabs"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/exchange_tab.tscn" id="2_exchange"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/industries_tab.tscn" id="4_industries"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/company_tab.tscn" id="5_company"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/side_panel.tscn" id="6_side"]
+[ext_resource type="PackedScene" path="res://src/ui/screens/stalkleheads/company_picker.tscn" id="7_picker"]
 
 [node name="MarketTabs" type="VBoxContainer"]
 size_flags_horizontal = 3
@@ -25,35 +26,89 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Body" type="HBoxContainer" parent="."]
+[node name="Body" type="MarginContainer" parent="."]
 layout_mode = 2
 size_flags_vertical = 3
+mouse_filter = 2
 
-[node name="Pages" type="VBoxContainer" parent="Body"]
+[node name="PagesRow" type="HBoxContainer" parent="Body"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Pages" type="VBoxContainer" parent="Body/PagesRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_type_variation = &"TightVBox"
 
-[node name="ExchangeTab" parent="Body/Pages" instance=ExtResource("2_exchange")]
+[node name="ExchangeTab" parent="Body/PagesRow/Pages" instance=ExtResource("2_exchange")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="MarketTab" parent="Body/Pages" instance=ExtResource("3_market")]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-
-[node name="IndustriesTab" parent="Body/Pages" instance=ExtResource("4_industries")]
+[node name="MarketTab" parent="Body/PagesRow/Pages" instance=ExtResource("3_market")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 
-[node name="CompanyTab" parent="Body/Pages" instance=ExtResource("5_company")]
+[node name="IndustriesTab" parent="Body/PagesRow/Pages" instance=ExtResource("4_industries")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 
-[node name="SidePanel" parent="Body" instance=ExtResource("6_side")]
+[node name="CompanyTab" parent="Body/PagesRow/Pages" instance=ExtResource("5_company")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="SideSpace" type="Control" parent="Body/PagesRow"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="PickerLayer" type="VBoxContainer" parent="Body"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"TightVBox"
+
+[node name="PickerTop" type="Control" parent="Body/PickerLayer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="PickerRow" type="HBoxContainer" parent="Body/PickerLayer"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="PickerFrame" type="PanelContainer" parent="Body/PickerLayer/PickerRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"OverlayFrame"
+
+[node name="CompanyPicker" parent="Body/PickerLayer/PickerRow/PickerFrame" instance=ExtResource("7_picker")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PickerGap" type="Control" parent="Body/PickerLayer/PickerRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="SideLayer" type="HBoxContainer" parent="Body"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="SideGap" type="Control" parent="Body/SideLayer"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="SideFrame" type="PanelContainer" parent="Body/SideLayer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"OverlayFrame"
+
+[node name="SidePanel" parent="Body/SideLayer/SideFrame" instance=ExtResource("6_side")]
 unique_name_in_owner = true
 layout_mode = 2

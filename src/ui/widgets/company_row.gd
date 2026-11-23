@@ -8,11 +8,11 @@ extends PanelContainer
 ## reason the base board's header is its row in header mode (decisions.md
 ## D36). The widths are the design's, in characters:
 ##
-## | Marker | SYM | NAME | PRICE | CHG | EPS | P/E | DIV | HELD | QTY + B + S |
+## | Marker | SYM | NAME | PRICE | CHG | EPS | P/E | DIV | HELD | QTY + BUY + SELL |
 ## |---|---|---|---|---|---|---|---|---|---|
-## | 2 | 6 | 18 | 6 | 6 | 7 | 6 | 6 | 5 | 14 |
+## | 2 | 6 | 16 | 6 | 6 | 7 | 6 | 6 | 5 | 16 |
 ##
-## An industry header puts its name across SYM and NAME together (24 wide, the
+## An industry header puts its name across SYM and NAME together (22 wide, the
 ## same total), its year's move under CHG and its average P/E under P/E, so a
 ## member's P/E is compared with the industry's by moving the eyes two lines
 ## (§7.2). There is deliberately no column saying cheap or expensive (§14 q9).
@@ -62,7 +62,7 @@ const HEADINGS: Dictionary[StringName, String] = {
 }
 
 ## The width of SYM and NAME together, which an industry's name takes.
-const GROUP_NAME_CHARS: int = 24
+const GROUP_NAME_CHARS: int = 22
 
 ## The price and change columns, in characters. A bankrupt row hides the change
 ## column and gives its width to the price, so "BANKRUPT" fits and every column
@@ -116,8 +116,8 @@ func configure_as_header() -> void:
 		label.theme_type_variation = &"Faint"
 		label.mouse_filter = Control.MOUSE_FILTER_STOP
 		label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		label.tooltip_text = "%s
-Click to sort, within each industry." % meanings[column]
+		label.tooltip_text = TermTips.fit("%s
+Click to sort, within each industry." % meanings[column])
 		label.gui_input.connect(_on_header_cell_input.bind(column))
 	show_sort(&"", false)
 
@@ -131,12 +131,10 @@ func show_sort(column: StringName, descending: bool) -> void:
 		label.theme_type_variation = &"Faint"
 		if each == column:
 			var mark: String = SORT_DOWN if descending else SORT_UP
-			# The mark goes on the side away from the column's edge, into the
-			# spare character: before a right-aligned number, after a name.
-			if label.horizontal_alignment == HORIZONTAL_ALIGNMENT_RIGHT:
-				caption = mark + caption
-			else:
-				caption = caption + mark
+			# Always after the caption, which is where the owner reads it
+			# (manual-testing.md F4). A right-aligned heading moves one
+			# character left to make room.
+			caption = caption + mark
 			label.theme_type_variation = &""
 		if label == _name:
 			_name.set_full_text(caption)
@@ -189,10 +187,10 @@ func display_group(title: String, collapsed: bool, performance: float, average_p
 	_pe.text = ""
 	if not is_nan(average_pe):
 		_pe.text = Palette.format_decimal(average_pe, 1)
-		_pe.tooltip_text = TermTips.INDUSTRY_PE
+		_pe.tooltip_text = TermTips.fit(TermTips.INDUSTRY_PE)
 		_pe.mouse_filter = Control.MOUSE_FILTER_PASS
 	if not is_nan(performance):
-		_change.tooltip_text = TermTips.INDUSTRY_MOVE
+		_change.tooltip_text = TermTips.fit(TermTips.INDUSTRY_MOVE)
 		_change.mouse_filter = Control.MOUSE_FILTER_PASS
 	_price.text = ""
 	_eps.text = ""

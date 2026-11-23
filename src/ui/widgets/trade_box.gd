@@ -5,10 +5,11 @@ extends HBoxContainer
 ## members, the Company tab. One scene, so they all behave alike
 ## (CLAUDE.md: a repeated control is one reusable scene).
 ##
-## **Fixed in place.** The box and both buttons always take their width. S is
-## greyed, never hidden, when there is nothing to sell, so nothing beside it
+## **Fixed in place.** The box and both buttons always take their width. SELL
+## is greyed, never hidden, when there is nothing to sell, so nothing beside it
 ## moves when a player first buys (manual-testing.md E, decisions.md D183).
-## 6 + 4 + 4 characters: the box shows four digits whole.
+## 5 + 5 + 6 characters: the box shows four digits whole, and the buttons say
+## BUY and SELL in full (D184).
 ##
 ## Knows nothing about rules. Its owner says whether trading is open and why a
 ## buy or sell would be refused (`set_checks`), from the same rules the
@@ -21,9 +22,10 @@ signal amount_changed(shares: int)
 
 
 ## The three parts' widths, in characters (CellRow.CELL_WIDTH each).
-const AMOUNT_CHARS: int = 6
-const BUTTON_CHARS: int = 4
-const WIDTH_CHARS: int = AMOUNT_CHARS + 2 * BUTTON_CHARS
+const AMOUNT_CHARS: int = 5
+const BUY_CHARS: int = 5
+const SELL_CHARS: int = 6
+const WIDTH_CHARS: int = AMOUNT_CHARS + BUY_CHARS + SELL_CHARS
 
 
 var _open: bool = false
@@ -36,8 +38,8 @@ var _held: int = 0
 
 func _ready() -> void:
 	_amount.custom_minimum_size.x = AMOUNT_CHARS * CellRow.CELL_WIDTH
-	_buy.custom_minimum_size.x = BUTTON_CHARS * CellRow.CELL_WIDTH
-	_sell.custom_minimum_size.x = BUTTON_CHARS * CellRow.CELL_WIDTH
+	_buy.custom_minimum_size.x = BUY_CHARS * CellRow.CELL_WIDTH
+	_sell.custom_minimum_size.x = SELL_CHARS * CellRow.CELL_WIDTH
 	_buy.pressed.connect(_on_buy_pressed)
 	_sell.pressed.connect(_on_sell_pressed)
 	_amount.text_changed.connect(_on_amount_text_changed)

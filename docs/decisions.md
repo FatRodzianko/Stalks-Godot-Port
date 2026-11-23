@@ -6869,6 +6869,8 @@ and why.
   `ExchangeTab.board_order()`, every company in group order and, inside a group,
   in the board's current sort. That order is handed to the Company tab on each
   refresh, so the Company tab never learns how the board sorts.
+  *Reversed by D184: this was never asked for. Step 49's wording was wrong,
+  not the original order.*
 - **A long industry name ran into the regime phrase.** The line under the name
   is three cells - ticker (6), industry (20), regime (the rest) - so each part
   has its own room and a clip can only ever cut the regime's end.
@@ -6890,7 +6892,7 @@ strategies and short interest. This replaces D182's fixed right-hand strip.
   this.
 - **It sits beside the page, not over it**, so it never hides what it is next to.
   Every tab is measured to fit 640 px with it open; the Market tab's right column
-  went from 240 to 180 px for that.
+  went from 240 to 180 px for that. *Reversed by D184: it lies over the tab.*
 
 **Trading from every company shown on its own**: a board row, a holding, an
 industry's member line and the Company tab (which also says "you hold N"). One
@@ -6902,7 +6904,8 @@ chances to disagree.
 **The trade box is fixed**: `TradeBox` is a quantity box six characters wide, then
 **B** and **S**, four each. **S is greyed, never hidden**, when nothing is held, so
 the box and B never move. **Why not BUY and SELL in full:** with the side panel,
-the board row is 18 px short for the longer captions.
+the board row is 18 px short for the longer captions. *Reversed by D184: BUY and
+SELL in full, NAME two characters narrower.*
 
 **Smaller choices.**
 
@@ -6924,3 +6927,74 @@ the board row is 18 px short for the longer captions.
 
 **Rules out.** A right-hand strip fixed to the board; S appearing and disappearing;
 a trade check written inside one tab; tooltip text scattered through the scenes.
+
+### D184 - After the second play of S7: overlays, the company list, wrapped tooltips
+**2026-11-22 · Accepted** (manual steps F, findings)
+
+The owner ran section F. F2's other steps, F3, and F4's sorting passed. These are
+the changes.
+
+**The side panel lies over the tab.** On MARKET, INDUSTRIES and COMPANY it opens
+over the tab's right-hand side, like a window, in a bright frame (`OverlayFrame`:
+the theme's bright green, the colour of a selected button, around an opaque
+panel). D183 put it beside the page instead, which pushed the tab across.
+**How:** `MarketTabs`' body is a `MarginContainer`, which lays each child over the
+same rectangle. The row of pages comes first, then a layer for the company list,
+then a layer for the side panel. Each layer ignores the mouse where it is empty.
+**On EXCHANGE** the board keeps a column free for it (`SideSpace`, exactly the
+frame's width), so the board is never covered, and the frame shows there too. The
+Market tab's right column is back to 240 px.
+
+**The holdings are the base game's own row.** `HoldingRow` is made compact
+(`set_compact`): the ticker in place of the name, HELD in place of OWNED, a box and
+SELL, no ALL. There is no buy here; the owner asked for sell only. Clicking a
+ticker still opens the company. `TradeContext.prepare_holding` and
+`check_holding` apply the same sell check as everywhere else.
+
+**`<` and `>` walk the companies in the match's order again**, as built in S7.
+D183 made them follow the board's sort. Nobody asked for that: step 49 described
+the arrows wrongly, and the owner was reporting what the step said.
+
+**COMPANIES**, a button on the Company tab's title line, opens a list of every
+company (`CompanyPicker`). It covers the tab's left-hand side, below the title
+line, so the button that opened it can close it. Click a company: the list closes
+and the tab shows that company. A tab change closes it too. Columns: SYM, NAME, and
+**NPC**, the number of the desk's traders holding or short that company now
+(`MarketReadouts.npc_holder_count`), blank for none. **Why that column:** the
+owner asked for a way to see which companies have NPC investors, and this answers
+it in the list they open anyway.
+
+**NPC ACTIVITY is a table**: TRADER, LAST YEAR (bought, sold, shorted, covered,
+held) and NOW (a share count, "short N", or "-"), with headings and tooltips. The
+old line put an 18-character name, then the action, then the position, and the
+placeholder names ("NPC NAME: short trader 1") ran into the rest. The result
+read as "short" over and over.
+
+**HELD N** on the Company tab, matching the board's column, in place of "you hold
+N".
+
+**The sort marker goes after the caption**, always: `P/E^`. A right-aligned heading
+moves one character left.
+
+**BUY and SELL in full.** `TradeBox` is quantity 5, BUY 5, SELL 6 characters; five
+characters still show four digits. NAME on the board went from 18 to 16
+characters to make room. It scrolls on hover, and the ticker is beside it.
+
+**Tooltips.** Three problems, three fixes:
+
+- **Unreadable**: the theme had no tooltip style, so Godot's half-transparent
+  default showed text through it. `TooltipPanel` is now opaque with the bright
+  border, and `TooltipLabel` uses the game's font.
+- **Too wide**: Godot's tooltip is one line per newline, so a long sentence
+  stretched most of the way across the screen. Every StalkleHeads tooltip passes
+  through `TermTips.fit`, which wraps at `TermTips.MAX_CHARS` (36). The owner asked
+  for a maximum width, not a fixed one.
+- **Far from the pointer**: that followed from the width. Godot flips a tooltip to
+  the pointer's other side when it would run off the screen, but one wider than
+  the space could only hug the far edge. Narrow ones flip beside the pointer.
+  `display/mouse_cursor/tooltip_position_offset` is (0, 6), down from Godot's
+  (10, 10), so the tooltip's corner sits under the pointer's arrow.
+
+**Rules out.** A panel or list that squeezes the tab it opens over; a StalkleHeads
+copy of the holdings row; tooltips longer than `MAX_CHARS` on the tabs (tested);
+the arrows following the board's sort.

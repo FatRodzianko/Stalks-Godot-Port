@@ -54,10 +54,11 @@ func _process(_delta: float) -> void:
 	match _frames:
 		8:
 			tabs.select_tab(MarketTabs.Tab.MARKET)
+			tabs.side_button(SidePanel.Page.HOLDINGS).pressed.emit()
 		13:
 			tabs.select_tab(MarketTabs.Tab.INDUSTRIES)
 		18:
 			tabs.show_company(_stage.game().session().state().market.companies[0].id)
-			tabs.side_button(SidePanel.Page.HOLDINGS).pressed.emit()
+			tabs.company_tab().pick_button().pressed.emit()
 		23:
 			screen.get_node("%EventFlavour").more_requested.emit()

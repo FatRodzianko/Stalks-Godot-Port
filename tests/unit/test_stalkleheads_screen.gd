@@ -368,7 +368,30 @@ func test_the_side_panel_opens_and_closes_as_asked() -> void:
 	assert_true(tabs.is_side_open())
 
 
-## Your holdings, in board order, each with a trade box that sells.
+## F1: opened on another tab, the panel lies over the tab like a window - the
+## tab keeps its width - and on the board it has a column of its own.
+func test_the_side_panel_lies_over_the_tabs_but_beside_the_board() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 2)
+	_screen.size = Vector2(640, 360)
+	var tabs: MarketTabs = _tabs()
+	var frame: PanelContainer = tabs.get_node("%SideFrame")
+	assert_eq(frame.theme_type_variation, &"OverlayFrame", "framed brightly")
+
+	tabs.select_tab(MarketTabs.Tab.MARKET)
+	await wait_physics_frames(2)
+	var page: Control = tabs.market_tab()
+	var width: float = page.size.x
+	tabs.side_button(SidePanel.Page.HOLDINGS).pressed.emit()
+	await wait_physics_frames(2)
+	assert_eq(page.size.x, width, "the tab is not squeezed")
+	assert_gt(page.get_global_rect().end.x, frame.global_position.x, "the panel covers its right-hand side")
+
+	tabs.select_tab(MarketTabs.Tab.EXCHANGE)
+	await wait_physics_frames(2)
+	assert_true(tabs.exchange().get_global_rect().end.x <= frame.global_position.x, "the board is not covered")
+
+
+## Your holdings, in board order, each the base game's row: a box and SELL.
 func test_holdings_list_what_you_own_and_sell_from_there() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 1)
 	var side: SidePanel = _tabs().side_panel()
@@ -378,17 +401,20 @@ func test_holdings_list_what_you_own_and_sell_from_there() -> void:
 	_session.request_buy(&"p0", later, 2)
 	_session.request_buy(&"p0", first, 3)
 	assert_eq(side.holding_ids(), [first, later] as Array[StringName], "board order")
-	var line: TradeLine = side.holding_line(first)
-	assert_string_contains(line.line_text(), String(_state().stalk_by_id(first).definition.ticker))
-	assert_string_contains(line.line_text(), "3")
+	var row: HoldingRow = side.holding_row(first)
+	assert_eq((row.get_node("%Name") as Label).text, String(_state().stalk_by_id(first).definition.ticker))
+	assert_eq((row.get_node("%Owned") as Label).text, "3")
+	assert_false((row.get_node("%SellAllButton") as Button).visible, "sell only, no ALL")
 
-	line.trade_box().type_amount("3")
-	line.trade_box().press_sell()
+	var amount: LineEdit = row.get_node("%Amount")
+	amount.text = "3"
+	amount.text_changed.emit("3")
+	(row.get_node("%SellButton") as Button).pressed.emit()
 	assert_eq(_player().shares_of(first), 0)
 	assert_eq(side.holding_ids(), [later] as Array[StringName], "sold out, gone from the list")
 
 
-## The trade box never moves: S is greyed, not hidden, and every box is the
+## The trade box never moves: SELL is greyed, not hidden, and every box is the
 ## same width on every row (manual-testing.md E, D183).
 func test_the_trade_box_keeps_its_place() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 1)
@@ -403,19 +429,21 @@ func test_the_trade_box_keeps_its_place() -> void:
 	assert_true(sell.disabled)
 	_session.request_buy(&"p0", company.id, 1)
 	await wait_physics_frames(2)
-	assert_eq(buy.global_position.x, before, "B did not move")
+	assert_eq(buy.text, "BUY")
+	assert_eq(sell.text, "SELL")
+	assert_eq(buy.global_position.x, before, "BUY did not move")
 	assert_false(sell.disabled)
 	assert_eq(box.size.x, float(TradeBox.WIDTH_CHARS * CellRow.CELL_WIDTH))
 
 
-## Clicking a column heading marks it ^, again v.
+## Clicking a column heading marks it ^, again v, always after the caption.
 func test_the_sorted_heading_shows_its_direction() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 1)
 	var header: CompanyRow = _exchange().get_node("%HeaderSlot").get_child(0)
 	_click_label(header.get_node("%Pe"))
-	assert_eq(header.column_text(CompanyRow.SORT_PE), "^P/E")
+	assert_eq(header.column_text(CompanyRow.SORT_PE), "P/E^")
 	_click_label(header.get_node("%Pe"))
-	assert_eq(header.column_text(CompanyRow.SORT_PE), "vP/E")
+	assert_eq(header.column_text(CompanyRow.SORT_PE), "P/Ev")
 	_click_label(header.get_node("%Name"))
 	assert_eq(header.column_text(CompanyRow.SORT_NAME), "NAME^")
 	assert_eq(header.column_text(CompanyRow.SORT_PE), "P/E")
@@ -467,12 +495,14 @@ func test_the_ledgers_total_is_the_boards_change() -> void:
 		assert_eq(lines[4], "this event %s" % Palette.format_change(ledger.this_years_event))
 
 
-## Step 49 of manual test E: the arrows walk the board as it is shown, its
-## groups and any sort, not the order the companies are stored in.
-func test_the_arrows_walk_the_board_and_wrap() -> void:
+## The arrows walk the companies in the match's own order and wrap; sorting
+## the board does not change it (F4 asked for this back, D184).
+func test_the_arrows_walk_the_companies_and_wrap() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 1)
 	_click_label(_exchange().get_node("%HeaderSlot").get_child(0).get_node("%Pe"))
-	var order: Array[StringName] = _exchange().board_order()
+	var order: Array[StringName] = []
+	for stalk: StalkState in _state().stalks:
+		order.append(stalk.id)
 	_tabs().show_company(order[0])
 	var tab: CompanyTab = _tabs().company_tab()
 	tab.get_node("%NextButton").pressed.emit()
@@ -487,6 +517,46 @@ func test_the_arrows_walk_the_board_and_wrap() -> void:
 
 ## Opening a company from a click lights COMPANY alone, not COMPANY and the
 ## tab the click came from.
+## COMPANIES opens the list over the tab; a click picks a company and closes
+## it; the NPC column counts the desk's holders.
+func test_the_company_list_picks_a_company() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 4)
+	_screen.size = Vector2(640, 360)
+	var tabs: MarketTabs = _tabs()
+	tabs.select_tab(MarketTabs.Tab.COMPANY)
+	await wait_physics_frames(2)
+	var tab: CompanyTab = tabs.company_tab()
+	var width: float = tab.size.x
+	tab.pick_button().pressed.emit()
+	await wait_physics_frames(2)
+	assert_true(tabs.is_picker_open())
+	assert_eq(tab.size.x, width, "the tab is not squeezed")
+	var picker: CompanyPicker = tabs.company_picker()
+	assert_eq(picker.line_count(), _state().stalks.size())
+
+	var counted: int = 0
+	for company: CompanyState in _state().market.companies:
+		var holders: int = MarketReadouts.npc_holder_count(_state(), company.id)
+		var stalk: StalkState = _state().stalk_by_id(company.id)
+		var expected: String = "%s %s" % [stalk.definition.ticker, stalk.definition.display_name]
+		if holders > 0:
+			expected += " %d" % holders
+			counted += 1
+		assert_eq(picker.line_text(company.id), expected)
+	assert_gt(counted, 0, "by year 4 the desk holds something")
+
+	var last: StringName = _state().stalks[_state().stalks.size() - 1].id
+	picker.choose(last)
+	assert_false(tabs.is_picker_open(), "closes on a pick")
+	assert_eq(tab.shown_id(), last)
+	tab.pick_button().pressed.emit()
+	tab.pick_button().pressed.emit()
+	assert_false(tabs.is_picker_open(), "the button closes it again")
+	tab.pick_button().pressed.emit()
+	tabs.select_tab(MarketTabs.Tab.MARKET)
+	assert_false(tabs.is_picker_open(), "a tab change closes it")
+
+
 func test_opening_a_company_lights_one_tab() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 1)
 	_tabs().show_company(_first_living_company().id)
@@ -500,11 +570,11 @@ func test_the_company_tab_trades_and_shows_what_you_hold() -> void:
 	var company: CompanyState = _first_living_company()
 	_tabs().show_company(company.id)
 	var tab: CompanyTab = _tabs().company_tab()
-	assert_eq(tab.held_text(), "you hold 0")
+	assert_eq(tab.held_text(), "HELD 0")
 	tab.trade_box().type_amount("2")
 	tab.trade_box().press_buy()
 	assert_eq(_player().shares_of(company.id), 2)
-	assert_eq(tab.held_text(), "you hold 2")
+	assert_eq(tab.held_text(), "HELD 2")
 
 
 ## E6 step 62: the industry has a column of its own, so the regime phrase
@@ -542,9 +612,15 @@ func test_the_company_tab_names_the_traders_who_traded_it() -> void:
 			continue
 		_tabs().show_company(company.id)
 		var lines: PackedStringArray = _tabs().company_tab().activity_lines()
-		assert_eq(lines.size(), activity.size())
+		assert_eq(lines.size(), activity.size() + 1, "a heading, then one line each")
+		assert_eq(lines[0], "TRADER LAST YEAR NOW")
 		var trader: NpcTraderState = _state().market.desk.trader_by_id(activity[0][0])
-		assert_string_contains(lines[0], trader.definition.display_name)
+		var expected: String = "%s %s %s" % [
+			trader.definition.display_name,
+			MarketReadouts.situation_word(activity[0][1]),
+			MarketReadouts.position_caption(activity[0][2], activity[0][3]),
+		]
+		assert_eq(lines[1], expected)
 		named += 1
 	assert_gt(named, 0, "some company should have desk activity")
 
@@ -735,7 +811,7 @@ func test_every_tab_fits_the_picture() -> void:
 		var needed: Vector2 = _screen.get_combined_minimum_size()
 		assert_true(needed.x <= 640.0, "%s needs %d px across" % [MarketTabs.CAPTIONS[tab], needed.x])
 		assert_true(needed.y <= 360.0, "%s needs %d px down" % [MarketTabs.CAPTIONS[tab], needed.y])
-		# And with the side panel opened beside it (D183).
+		# And with the side panel open over it (D184).
 		if tab != MarketTabs.Tab.EXCHANGE:
 			_tabs().side_button(SidePanel.Page.HOLDINGS).pressed.emit()
 			await wait_physics_frames(2)
@@ -781,3 +857,33 @@ func test_a_bankrupt_row_shows_the_whole_word_and_keeps_its_columns() -> void:
 			row.get_node("%" + name).global_position.x,
 			"%s column" % name,
 		)
+
+
+## F5: no tooltip on the tabs is wider than TermTips.MAX_CHARS, so it stays by
+## the pointer. A scrolling name's tooltip is the name itself and is exempt.
+func test_every_tooltip_on_the_tabs_is_wrapped() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 4)
+	var tabs: MarketTabs = _tabs()
+	var checked: int = 0
+	for tab: MarketTabs.Tab in MarketTabs.CAPTIONS:
+		tabs.select_tab(tab)
+		for node: Node in tabs.find_children("*", "Control", true, false):
+			var control: Control = node as Control
+			if control is MarqueeLabel or control.tooltip_text.is_empty() or not control.is_visible_in_tree():
+				continue
+			for line: String in control.tooltip_text.split("\n"):
+				assert_true(
+					line.length() <= TermTips.MAX_CHARS or not line.contains(" "),
+					"%s: %s" % [control.name, line],
+				)
+			checked += 1
+	assert_gt(checked, 20)
+
+
+func test_fit_wraps_at_the_limit_and_keeps_line_breaks() -> void:
+	var text: String = "one two three four five six seven eight nine ten eleven\nshort"
+	var lines: PackedStringArray = TermTips.fit(text).split("\n")
+	assert_eq(lines[lines.size() - 1], "short")
+	for line: String in lines:
+		assert_true(line.length() <= TermTips.MAX_CHARS, line)
+	assert_eq(TermTips.fit(text).replace("\n", " "), text.replace("\n", " "))

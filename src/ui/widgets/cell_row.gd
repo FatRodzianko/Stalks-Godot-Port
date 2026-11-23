@@ -97,11 +97,11 @@ func set_cell_colour(index: int, colour: Color) -> void:
 
 
 ## A cell's tooltip: what a term means (`TermTips`), or a name a short code
-## stands for. The cell then takes the mouse so the tooltip can show, passing
-## clicks on to the row.
+## stands for, wrapped to `TermTips.MAX_CHARS`. The cell then takes the mouse
+## so the tooltip can show, passing clicks on to the row.
 func set_cell_tooltip(index: int, text: String) -> void:
 	if index >= 0 and index < _labels.size():
-		_labels[index].tooltip_text = text
+		_labels[index].tooltip_text = TermTips.fit(text)
 		_labels[index].mouse_filter = Control.MOUSE_FILTER_PASS
 
 

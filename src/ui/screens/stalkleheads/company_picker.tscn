@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/screens/stalkleheads/company_picker.gd" id="1_picker"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/cell_row.tscn" id="2_row"]
+
+[node name="CompanyPicker" type="ScrollContainer"]
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+script = ExtResource("1_picker")
+
+[node name="Body" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="Header" parent="Body" instance=ExtResource("2_row")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="List" type="VBoxContainer" parent="Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TightVBox"

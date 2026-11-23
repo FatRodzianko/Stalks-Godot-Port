@@ -53,6 +53,24 @@ func prepare(box: TradeBox, stalk_id: StringName) -> void:
 
 
 ## Re-checks what is typed in `box`, after the player types.
+## The holdings panel's rows are the base game's `HoldingRow`, sell only
+## (decisions.md D184): open while trading, and greyed with the reason when
+## what is typed would be refused.
+func prepare_holding(row: HoldingRow, stalk_id: StringName) -> void:
+	row.set_trading_open(trading and player != null)
+	check_holding(row, stalk_id)
+
+
+func check_holding(row: HoldingRow, stalk_id: StringName) -> void:
+	if not trading or player == null:
+		return
+	var shares: int = row.shares_entered()
+	if shares <= 0 or not _sell_check.is_valid():
+		row.set_sell_blocked("")
+		return
+	row.set_sell_blocked(_sell_check.call(stalk_id, shares))
+
+
 func check(box: TradeBox, stalk_id: StringName) -> void:
 	if not trading or player == null:
 		return

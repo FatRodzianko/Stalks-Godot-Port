@@ -245,9 +245,11 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **HELD** — the EXCHANGE board's column for how many shares of that row you own. StalkleHeads only; the base board keeps its separate "Your Stalks" list (design §14 q1).
 
-**Side panel (HOLDINGS / RANKINGS / DESK)** — the StalkleHeads panel to the right of the tabs. HOLDINGS lists cash, net worth and every company you hold by ticker, with a trade box on each; RANKINGS the players; DESK the desk's strategies and short interest. Always open on EXCHANGE, opened by its buttons elsewhere. Code: `SidePanel` (decisions.md D183).
+**Side panel (HOLDINGS / RANKINGS / DESK)** — the StalkleHeads panel to the right of the tabs. HOLDINGS lists cash, net worth and every company you hold by ticker, each with a box and SELL (the base game's row); RANKINGS the players; DESK the desk's strategies and short interest. Always open on EXCHANGE, beside the board; opened by its buttons elsewhere, over the tab in a bright frame. Code: `SidePanel` (decisions.md D183, D184).
 
-**Trade box** — a quantity box with **B** (buy) and **S** (sell), on every company shown on its own in StalkleHeads. S is greyed when you hold none. Code: `TradeBox`, checked through `TradeContext` (D183).
+**Company list (COMPANIES)** — the Company tab's list of every company, opened over the tab by its COMPANIES button; click one to show it. Its NPC column counts the desk's traders holding or short that company. Code: `CompanyPicker` (D184).
+
+**Trade box** — a quantity box with **BUY** and **SELL**, on every company shown on its own in StalkleHeads. SELL is greyed when you hold none. Code: `TradeBox`, checked through `TradeContext` (D183, D184).
 
 **YoY (year on year)** — a change measured against the same figure a year earlier, as a percentage of the earlier one. The Company tab's ledger shows the price's.
 

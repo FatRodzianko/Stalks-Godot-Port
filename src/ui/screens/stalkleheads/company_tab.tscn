@@ -19,11 +19,19 @@ theme_type_variation = &"TightVBox"
 [node name="Title" type="HBoxContainer" parent="Body"]
 layout_mode = 2
 
+[node name="PickButton" type="Button" parent="Body/Title"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+focus_mode = 0
+tooltip_text = "Every company, to pick one"
+text = "COMPANIES"
+
 [node name="PreviousButton" type="Button" parent="Body/Title"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 0)
 layout_mode = 2
-tooltip_text = "The row above on the board"
+tooltip_text = "The previous company"
 text = "<"
 
 [node name="CompanyName" type="Label" parent="Body/Title"]
@@ -40,7 +48,7 @@ text_overrun_behavior = 3
 unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 0)
 layout_mode = 2
-tooltip_text = "The row below on the board"
+tooltip_text = "The next company"
 text = ">"
 
 [node name="IdentityLine" type="HBoxContainer" parent="Body"]

@@ -389,6 +389,29 @@ static func desk_activity(state: GameState, company_id: StringName) -> Array[Arr
 	return rows
 
 
+## What an NPC trader holds of a company, for the Company tab's NOW column:
+## "short 239" when it is short, the share count when it holds shares, "-" for
+## neither.
+static func position_caption(shares: int, short_shares: int) -> String:
+	if short_shares > 0:
+		return "short %d" % short_shares
+	if shares > 0:
+		return str(shares)
+	return "-"
+
+
+## How many of the desk's traders hold `company_id` or are short it now: the
+## company list's NPC column.
+static func npc_holder_count(state: GameState, company_id: StringName) -> int:
+	if state.market == null or state.market.desk == null:
+		return 0
+	var count: int = 0
+	for trader: NpcTraderState in state.market.desk.traders:
+		if trader.shares_of(company_id) > 0 or trader.short_of(company_id) > 0:
+			count += 1
+	return count
+
+
 ## A situation as one lower-case word, for a line about what a trader did.
 static func situation_word(situation: NpcTraderDefinition.Situation) -> String:
 	match situation:

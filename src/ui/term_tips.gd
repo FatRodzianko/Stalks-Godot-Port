@@ -8,6 +8,16 @@ extends RefCounted
 ## how to read it, in the words of docs/glossary.md, which is the longer form.
 ## A rule changing means its sentence here changes too; where a figure comes
 ## from code (the short-interest flag), it is read from the rule, not retyped.
+##
+## **Every tooltip is passed through `fit`**, which wraps it at `MAX_CHARS`.
+## Godot's tooltip is one line per newline, as wide as its longest line, so an
+## unwrapped sentence stretched most of the way across the screen, far from the
+## mouse (manual-testing.md F5, decisions.md D184).
+
+
+## The widest a tooltip line may be, in characters: about a third of the
+## picture, so a tooltip stays beside the pointer.
+const MAX_CHARS: int = 36
 
 
 # ------------------------------------------------------------ the board
@@ -97,6 +107,14 @@ const LEDGER_FLOW: String = (
 	+ "Never more than 5% of what the company's earnings are worth."
 )
 
+# ------------------------------------------------------- the Company tab
+
+const NPC_LAST_YEAR: String = "What the trader did with this company last year: bought, sold, shorted, covered or held."
+const NPC_NOW: String = (
+	"What the trader holds now: a number of shares, or \"short\" and the shares it has sold short."
+)
+const NPC_HOLDERS: String = "How many of the desk's traders hold this company, or have sold it short."
+
 # ------------------------------------------------------------- the panel
 
 const NET_WORTH: String = "Your cash, plus your shares at today's prices, less what you owe."
@@ -135,3 +153,21 @@ static func strategy(value: NpcStrategy.Value) -> String:
 		NpcStrategy.Value.SHORT:
 			return "Sells short the company with the highest P/E, betting it falls."
 	return ""
+
+
+## `text` word-wrapped so no line is longer than `MAX_CHARS`. Existing line
+## breaks are kept; a single word longer than the limit is left whole.
+static func fit(text: String) -> String:
+	var out: PackedStringArray = []
+	for paragraph: String in text.split("\n"):
+		var line: String = ""
+		for word: String in paragraph.split(" ", false):
+			if line.is_empty():
+				line = word
+			elif line.length() + 1 + word.length() <= MAX_CHARS:
+				line += " " + word
+			else:
+				out.append(line)
+				line = word
+		out.append(line)
+	return "\n".join(out)

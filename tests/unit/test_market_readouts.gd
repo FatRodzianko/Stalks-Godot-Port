@@ -368,6 +368,12 @@ func test_a_share_bar_is_at_least_one_cell_and_at_most_its_length() -> void:
 	assert_eq(TextChart.share_bar(100.0, 10), "▄▄▄▄▄▄▄▄▄▄")
 
 
+func test_a_traders_position_reads_short_held_or_nothing() -> void:
+	assert_eq(MarketReadouts.position_caption(0, 239), "short 239")
+	assert_eq(MarketReadouts.position_caption(120, 0), "120")
+	assert_eq(MarketReadouts.position_caption(0, 0), "-")
+
+
 func test_a_percent_change_is_of_the_starting_figure() -> void:
 	assert_almost_eq(MarketReadouts.percent_change(80, 100), 25.0, 0.0001)
 	assert_almost_eq(MarketReadouts.percent_change(100, 80), -20.0, 0.0001)

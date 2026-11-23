@@ -8,23 +8,23 @@ script = ExtResource("1_trade")
 
 [node name="Amount" type="LineEdit" parent="."]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(36, 0)
+custom_minimum_size = Vector2(30, 0)
 layout_mode = 2
 size_flags_vertical = 4
 alignment = 2
 
 [node name="BuyButton" type="Button" parent="."]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(24, 0)
+custom_minimum_size = Vector2(30, 0)
 layout_mode = 2
 size_flags_vertical = 4
 tooltip_text = "Buy"
-text = "B"
+text = "BUY"
 
 [node name="SellButton" type="Button" parent="."]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(24, 0)
+custom_minimum_size = Vector2(36, 0)
 layout_mode = 2
 size_flags_vertical = 4
 tooltip_text = "Sell"
-text = "S"
+text = "SELL"

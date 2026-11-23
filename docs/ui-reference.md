@@ -148,45 +148,52 @@ and bottom bars are unchanged (decisions.md D180).
 ┌ top bar, as above ─────────────────────────────────────────────────────────┐
 │ [EXCHANGE] [MARKET] [INDUSTRIES] [COMPANY]   [HOLDINGS] [RANKINGS] [DESK]  │
 │ EXCHANGE:                                                                  │
-│  SYM  NAME        PRICE  CHG   EPS  P/E  DIV HELD  [qty] B S │ CASH  $9,467│
-│  - CONSUMER GOODS         +3%       14.2                     │ NET  $10,000│
-│  CONA Consumer Go  136    +7 10.26 13.3    3    0  [   ] B S │ YOUR STALKS │
-│  ...                                                         │ FODB 5 [ ]BS│
+│  SYM  NAME      PRICE  CHG   EPS  P/E  DIV HELD [qty] BUY SELL ║CASH $9,467 ║
+│  - CONSUMER GOODS       +3%       14.2                         ║YOUR STALKS ║
+│  CONA Consumer G  136    +7 10.26 13.3    3    0 [   ] BUY SELL ║FODB 5 [] SELL║
+│  ...                                                           ║ (bright frame)║
 ├ bottom bar, as above ──────────────────────────────────────────────────────┤
 ```
 
 **Column widths on the EXCHANGE board**, in characters of the 6 x 12 grid: marker 2,
-SYM 6, NAME 18 (scrolls on hover), PRICE 6, CHG 6, EPS 7, P/E 6, DIV 6, HELD 5, then
-the trade box: quantity 6, B 4, S 4. S is greyed, not hidden, when nothing is held.
-The sorted column heading carries `^` or `v`.
+SYM 6, NAME 16 (scrolls on hover), PRICE 6, CHG 6, EPS 7, P/E 6, DIV 6, HELD 5, then
+the trade box: quantity 5, BUY 5, SELL 6. SELL is greyed, not hidden, when nothing is
+held. The sorted column heading carries `^` or `v` after its caption. A header, a
+group line and a company row are one scene (`CompanyRow`), so the columns line up.
+A bankrupt row hides CHG and writes BANKRUPT across PRICE and CHG.
 
-**The side panel** is 26 characters wide, to the right of every tab: HOLDINGS (cash,
-net, loan, then SYM 6 and HELD 5 with a trade box per holding), RANKINGS, DESK. Open
-on EXCHANGE always; on the other tabs only after one of its buttons is pressed, and
-closed again by the same button or a change of tab (decisions.md D183). A header, a group line and a company row
-are one scene (`CompanyRow`), so the columns line up. A bankrupt row hides CHG and
-writes BANKRUPT across PRICE and CHG.
+**The side panel** is 26 characters wide, in a bright one-pixel frame: HOLDINGS (cash,
+net, loan, then the base game's holding row, compact: ticker, HELD, a box and SELL),
+RANKINGS, DESK. Open on EXCHANGE always, in a column the board leaves free; on the
+other tabs only after one of its buttons is pressed, **over** the tab's right-hand
+side, and closed again by the same button or a change of tab (decisions.md D183,
+D184).
 
 **MARKET**: index level and move, market P/E, mood and bull years, breadth,
 risk-free rate; the index by year (a text chart 38 wide, 7 tall); the year's news
-(at least 180 px wide);
+(at least 240 px wide);
 the mood of each year as B (bull) or b (bear).
 
 **INDUSTRIES**: one line per industry (this year, three years, standing, average
 P/E, revenue share and a bar, member count); click one for its by-year chart (22
 wide, signed) and its companies' shares, each with a trade box.
 
-**COMPANY**: `<` and `>` walk the board in its order; ticker (6), industry (20) and
-earnings regime ("SLOWING, 1st year"), then "you hold N" and a trade box; five years of revenue, expenses, profit, margin,
+**COMPANY**: **COMPANIES** opens the list of every company over the tab's left side,
+below the title line (SYM 6, NAME, NPC 4: how many desk traders hold it); `<` and
+`>` walk the companies in the match's order; ticker (6), industry (20) and earnings
+regime ("SLOWING, 1st year"), then "HELD N" and a trade box; five years of revenue, expenses, profit, margin,
 earnings per share, price and P/E, with `^split` under a year it split; the ledger
 "why the price moved", whose first line gives the price move as a percentage; earnings yield against risk-free; investors by name; which
-of the desk's traders traded it last year; its short interest.
+of the desk's traders traded it last year, as a table (TRADER, LAST YEAR, NOW); its
+short interest.
 
 **The news panel** gains the year in review above the event, with a line between its
 sections, and widens to 480 px. Clicking the year's event in the top strip opens it.
 
 **Tooltips** on every financial term (column headings, the Market figures, the
-Company lines, the ledger) give a one-line definition (`src/ui/term_tips.gd`).
+Company lines, the ledger) give a short definition (`src/ui/term_tips.gd`), wrapped
+at 36 characters, on an opaque panel with a bright border, its corner under the
+pointer.
 
 ---
 

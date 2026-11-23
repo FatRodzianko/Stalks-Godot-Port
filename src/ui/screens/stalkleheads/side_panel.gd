@@ -1,17 +1,18 @@
 class_name SidePanel
 extends ScrollContainer
 ## The StalkleHeads tabs' right-hand panel: **HOLDINGS** (cash, net worth, any
-## loan, and every company you hold, with a trade box to sell or buy more),
-## **RANKINGS**, and **THE DESK** (each NPC strategy's return, and short
-## interest). One page at a time; `MarketTabs` owns the three buttons that
-## choose it and whether the panel shows at all (decisions.md D183).
+## loan, and every company you hold, with a box and SELL), **RANKINGS**, and
+## **THE DESK** (each NPC strategy's return, and short interest). One page at a
+## time; `MarketTabs` owns the three buttons that choose it, whether the panel
+## shows at all, and the bright frame that sets it apart from the tab beneath
+## (decisions.md D183, D184).
 ##
 ## Asked for after the first play test: HELD on the board alone made a player
 ## hunt for what they owned. The base game lists your stalks beside the board,
-## and this does the same.
+## and this does the same **with the base game's own row** (`HoldingRow`, made
+## compact: ticker for name, no ALL), so it looks and sells the same way.
 
 
-signal buy_requested(stalk_id: StringName, shares: int)
 signal sell_requested(stalk_id: StringName, shares: int)
 
 ## A holding was clicked: open that company on the Company tab.
@@ -27,23 +28,22 @@ const CAPTIONS: Dictionary[Page, String] = {
 	Page.DESK: "DESK",
 }
 
-## The panel's width in characters: a holding's SYM and HELD and a trade box.
+## The panel's width in characters: a compact `HoldingRow` - ticker, count, box
+## and SELL - with room for the scroll bar.
 const WIDTH_CHARS: int = 26
-const HOLDING_SYM_CHARS: int = 6
-const HOLDING_HELD_CHARS: int = 5
 
 ## The two-column lines (cash, the desk, short interest), in characters.
 const CAPTION_CHARS: int = 12
 const VALUE_CHARS: int = 12
 
 const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
-const TradeLineScene: PackedScene = preload("res://src/ui/widgets/trade_line.tscn")
+const HoldingRowScene: PackedScene = preload("res://src/ui/widgets/holding_row.tscn")
 const RankingRowScene: PackedScene = preload("res://src/ui/widgets/ranking_row.tscn")
 
 
 var _page: Page = Page.HOLDINGS
 var _pages: Dictionary[Page, Control] = {}
-var _holding_lines: Dictionary[StringName, TradeLine] = {}
+var _holding_rows: Dictionary[StringName, HoldingRow] = {}
 var _desk_rows: Array[CellRow] = []
 var _context: TradeContext
 
@@ -53,7 +53,7 @@ var _context: TradeContext
 @onready var _cash_row: CellRow = %CashRow
 @onready var _net_row: CellRow = %NetRow
 @onready var _loan_row: CellRow = %LoanRow
-@onready var _holdings_header: CellRow = %HoldingsHeader
+@onready var _holdings_header: HoldingRow = %HoldingsHeader
 @onready var _holdings_list: VBoxContainer = %HoldingsList
 @onready var _holdings_none: Label = %HoldingsNone
 @onready var _ranking_list: VBoxContainer = %RankingList
@@ -79,11 +79,10 @@ func _ready() -> void:
 	_net_row.set_cell_tooltip(0, TermTips.NET_WORTH)
 	_loan_row.set_cell(0, "LOAN")
 	_loan_row.set_cell_variation(1, &"Bear")
-	_holdings_header.configure([HOLDING_SYM_CHARS, HOLDING_HELD_CHARS], [CellRow.LEFT, CellRow.RIGHT])
-	_holdings_header.set_texts(["SYM", "HELD"])
-	_holdings_header.set_row_variation(&"Faint")
-	_desk_title.tooltip_text = TermTips.DESK
-	_short_title.tooltip_text = TermTips.short_interest()
+	_holdings_header.set_compact()
+	_holdings_header.configure_as_header()
+	_desk_title.tooltip_text = TermTips.fit(TermTips.DESK)
+	_short_title.tooltip_text = TermTips.fit(TermTips.short_interest())
 	show_page(Page.HOLDINGS)
 
 
@@ -121,8 +120,8 @@ func refresh(
 
 
 func clear_amounts() -> void:
-	for line: TradeLine in _holding_lines.values():
-		line.trade_box().clear_amount()
+	for row: HoldingRow in _holding_rows.values():
+		row.clear_amount()
 
 
 # ------------------------------------------------------------- holdings
@@ -132,30 +131,26 @@ func _refresh_holdings(state: GameState, board_order: Array[StringName]) -> void
 	for stalk_id: StringName in board_order:
 		if _context.held(stalk_id) > 0:
 			held_ids.append(stalk_id)
-	for stalk_id: StringName in _holding_lines.keys():
+	for stalk_id: StringName in _holding_rows.keys():
 		if not held_ids.has(stalk_id):
-			var gone: TradeLine = _holding_lines[stalk_id]
-			_holding_lines.erase(stalk_id)
+			var gone: HoldingRow = _holding_rows[stalk_id]
+			_holding_rows.erase(stalk_id)
 			_holdings_list.remove_child(gone)
 			gone.queue_free()
 	for index: int in held_ids.size():
 		var stalk_id: StringName = held_ids[index]
-		var line: TradeLine = _holding_lines.get(stalk_id)
-		if line == null:
-			line = TradeLineScene.instantiate()
-			_holdings_list.add_child(line)
-			line.configure([HOLDING_SYM_CHARS, HOLDING_HELD_CHARS], [CellRow.LEFT, CellRow.RIGHT])
-			line.stalk_id = stalk_id
-			line.buy_requested.connect(_on_line_buy_requested)
-			line.sell_requested.connect(_on_line_sell_requested)
-			line.amount_changed.connect(_on_line_amount_changed)
-			line.info_requested.connect(_on_line_info_requested)
-			_holding_lines[stalk_id] = line
-		_holdings_list.move_child(line, index)
-		var stalk: StalkState = state.stalk_by_id(stalk_id)
-		line.cells().set_texts([String(stalk.definition.ticker), str(_context.held(stalk_id))])
-		line.cells().set_cell_tooltip(0, stalk.definition.display_name)
-		_context.prepare(line.trade_box(), stalk_id)
+		var row: HoldingRow = _holding_rows.get(stalk_id)
+		if row == null:
+			row = HoldingRowScene.instantiate()
+			_holdings_list.add_child(row)
+			row.set_compact()
+			row.sell_requested.connect(_on_row_sell_requested)
+			row.amount_changed.connect(_on_row_amount_changed)
+			row.info_requested.connect(_on_row_info_requested)
+			_holding_rows[stalk_id] = row
+		_holdings_list.move_child(row, index)
+		row.display(state.stalk_by_id(stalk_id), _context.held(stalk_id))
+		_context.prepare_holding(row, stalk_id)
 	_holdings_none.visible = held_ids.is_empty()
 
 
@@ -214,14 +209,14 @@ func _refresh_short_interest(state: GameState) -> void:
 
 # ------------------------------------------------------------ for tests
 
-func holding_line(stalk_id: StringName) -> TradeLine:
-	return _holding_lines.get(stalk_id)
+func holding_row(stalk_id: StringName) -> HoldingRow:
+	return _holding_rows.get(stalk_id)
 
 
 func holding_ids() -> Array[StringName]:
 	var ids: Array[StringName] = []
 	for child: Node in _holdings_list.get_children():
-		ids.append((child as TradeLine).stalk_id)
+		ids.append((child as HoldingRow).stalk_id())
 	return ids
 
 
@@ -249,19 +244,15 @@ func cash_text() -> String:
 
 # ------------------------------------------------------------- handlers
 
-func _on_line_buy_requested(stalk_id: StringName, shares: int) -> void:
-	buy_requested.emit(stalk_id, shares)
-
-
-func _on_line_sell_requested(stalk_id: StringName, shares: int) -> void:
+func _on_row_sell_requested(stalk_id: StringName, shares: int) -> void:
 	sell_requested.emit(stalk_id, shares)
 
 
-func _on_line_amount_changed(stalk_id: StringName, _shares: int) -> void:
-	var line: TradeLine = _holding_lines.get(stalk_id)
-	if line != null and _context != null:
-		_context.check(line.trade_box(), stalk_id)
+func _on_row_amount_changed(stalk_id: StringName, _shares: int) -> void:
+	var row: HoldingRow = _holding_rows.get(stalk_id)
+	if row != null and _context != null:
+		_context.check_holding(row, stalk_id)
 
 
-func _on_line_info_requested(stalk_id: StringName) -> void:
+func _on_row_info_requested(stalk_id: StringName) -> void:
 	company_requested.emit(stalk_id)

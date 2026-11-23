@@ -1777,7 +1777,25 @@ E1-E5 need one machine and no Steam. E6 needs two Steam accounts on two machines
 - **Step 63, 65 or 68 differing**: a figure the client cannot rebuild. Send a screenshot of both screens.
 - **Anything cut off**: write down the tab, the step and what was cut.
 
-### F - StalkleHeads after the first play (decisions.md D183) — **not yet run**
+### F - StalkleHeads after the first play (decisions.md D183) — **passed 2026-11-22, with findings**
+
+**Run on 2026-11-22.** F2's other steps, F3 and F4's sorting passed. What came back,
+and what was done about it (decisions.md D184):
+
+- **F1:** the panel should lie over MARKET, INDUSTRIES and COMPANY like a window, in
+  a bright border, not push them across; holdings should look like the base game's,
+  with SELL only.
+- **F2 step 35:** "you hold 3" read as unprofessional; now **HELD 3**.
+- **F4:** the sort mark belongs after the caption. Steps 51-56 tested something
+  never asked for: the arrows following the board's sort. Reverted; a **COMPANIES**
+  list was asked for instead, drawn over the tab.
+- **NPC activity** was unreadable: names ran into the action and the position.
+  Asked: a way to see which companies the desk holds (the list's NPC column).
+- **F5:** tooltips were hard to read over text, too wide, and far from the pointer.
+- **Asked:** do BUY and SELL fit on the board? They do now.
+
+The steps below are as run. Section G re-checks the changes.
+
 
 Re-checks what section E found and asked for. One machine, no Steam. Run on a
 locally exported build containing D183. To check a checkout before exporting: the
@@ -1882,6 +1900,84 @@ file `src/ui/screens/stalkleheads/side_panel.tscn` exists.
 - **Step 34 lighting two tabs**: the tab strip is not releasing the old tab.
 - **Step 54 or 56 showing another company**: the arrows are not walking the board.
 - **Anything cut off with the panel open**: write down the tab and what was cut.
+
+### G - StalkleHeads after the second play (decisions.md D184) — **not yet run**
+
+Re-checks what section F found and asked for. One machine, no Steam. Run on a
+locally exported build containing D184. To check a checkout before exporting: the
+file `src/ui/screens/stalkleheads/company_picker.tscn` exists.
+
+#### G1. The side panel over the tabs
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Click **START**.
+5. Check the panel on the right has a bright green border.
+6. Check the board's rows end to the left of that border, none under it.
+7. Check each company row ends in a quantity box, **BUY** and a greyed **SELL**.
+8. Press **Ready for New Year**, closing the news panel if it opens.
+9. In the first company row, type **5** in the quantity box.
+10. Click that row's **BUY**.
+11. Check **YOUR STALKS** on the right shows that company's short code, **5**, a box and **SELL**, and no **BUY**.
+12. Click **MARKET**.
+13. Write down the last word you can read at the right end of the **THIS YEAR'S NEWS** text's first line.
+14. Click **HOLDINGS**.
+15. Check the panel opens with a bright green border, on top of the right side of the tab.
+16. Check the text you can still see on the left has not moved.
+17. Click **HOLDINGS** again.
+18. Check the panel closes and the word from step 13 is still at the end of the line.
+19. Click **HOLDINGS**.
+20. In the panel's line, type **2** in the box.
+21. Click its **SELL**.
+22. Check the line now reads **3**.
+23. Click the short code in that line.
+24. Check the **COMPANY** tab opens on that company and the line under the name ends **HELD 3**.
+
+#### G2. The company list
+
+25. On the Company tab, click **COMPANIES**.
+26. Check a list of every company opens on top of the left side of the tab, with a bright green border, below the **COMPANIES** button.
+27. Check the company on show is highlighted in the list.
+28. Check some companies show a number under **NPC**.
+29. Scroll the list to the bottom.
+30. Click the last company in the list.
+31. Check the list closes and the tab shows that company.
+32. Click **COMPANIES**.
+33. Click **COMPANIES** again.
+34. Check the list closes.
+35. Click **>**.
+36. Check it shows the first company in the list from step 26.
+
+#### G3. NPC activity
+
+37. Click **COMPANIES**.
+38. Click a company with a number under **NPC**.
+39. Check **NPC ACTIVITY, LAST YEAR** shows headings **TRADER**, **LAST YEAR** and **NOW**, or the word **none**.
+40. If it has headings, check each line shows a trader's name, one word such as **bought** or **shorted**, then a number or **short** and a number.
+
+#### G4. Sorting and tooltips
+
+41. Click **EXCHANGE**.
+42. Click the **P/E** column heading.
+43. Check it reads **P/E^** or **P/Ev**, the mark after the letters.
+44. Rest the mouse on the **EPS** heading.
+45. Check the tooltip has a solid background, its text easy to read.
+46. Check the tooltip starts at the mouse pointer, not across the screen from it.
+47. Click **COMPANY** and rest the mouse on **margin**.
+48. Check the tooltip is no wider than about a third of the screen.
+49. Click **MARKET** and rest the mouse on **risk-free**.
+50. Check the tooltip touches the mouse pointer.
+51. Click **EXCHANGE** and rest the mouse on the **HELD** heading, at the right of the board.
+52. Check the tooltip sits beside the pointer, not against the far left of the screen.
+
+#### What a failure here means
+
+- **Step 6 showing a row under the panel**: the board's free column is narrower than the panel.
+- **Step 16 or 18 showing text moved**: the panel is pushing the tab, not lying over it.
+- **Step 26 covering COMPANIES**: the list starts too high.
+- **Step 36 showing another company**: the arrows are not walking the list's order.
+- **Steps 45-52**: send a screenshot with the pointer in it.
 
 ### Known gaps, so they are not surprises
 

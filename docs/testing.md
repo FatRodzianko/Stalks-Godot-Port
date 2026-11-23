@@ -108,7 +108,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-1254 tests in 52 scripts, about 150 seconds.
+1259 tests in 52 scripts, about 150 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -353,7 +353,7 @@ comparisons in `test_wire.gd` are what guard the two halves from here.
 
 ### StalkleHeads on screen: what S7 covers and what it does not
 
-`test_market_readouts.gd` (31) and `test_stalkleheads_screen.gd` (42), D179-D183.
+`test_market_readouts.gd` (32) and `test_stalkleheads_screen.gd` (46), D179-D184.
 
 **After the first play (D183)**, tests for each finding: the arrows walk the board's
 order; the identity line keeps the industry whole; one tab lit after opening a
@@ -362,6 +362,12 @@ the trade box keeps its place with S greyed; the sorted heading's marker; tradin
 from an industry's members and the Company tab; the ledger's YoY; clicking the event
 opens the year in review; the digest's sentiment line; the news panel's tick box
 showing the setting (`test_gameplay_screen.gd`).
+
+**After the second play (D184)**: the side panel lies over a tab without changing
+its width and beside the board without covering it; the holdings are compact
+`HoldingRow`s, sell only; the arrows walk the match's order again; the company list
+opens, picks, closes and counts the desk's holders; the NPC table's heading and
+lines; `TermTips.fit`; every visible tooltip on every tab within `MAX_CHARS`.
 
 **The rule they protect.** No node works out a figure. So the numbers are tested in
 `test_market_readouts.gd` without a window, and the screen test checks that each tab
