@@ -7056,3 +7056,34 @@ owner tabled it until the current plan works.
 
 **Rules out.** Lower-case captions on the StalkleHeads screens; a heading that
 moves when sorted; a title line that scrolls away.
+
+### D186 - After the fourth play of S7: The Market:, whole descriptions, padded headings
+**2026-11-22 · Accepted** (manual steps H, findings)
+
+The owner ran section H. It passed apart from three things.
+
+**"The Market:"** starts the year in review's market line, with a capital and a
+colon, as the owner asked.
+
+**A company's description is shown whole.** It was held to two lines and cut with
+an ellipsis. The Company tab is the only place a description is shown, so a cut
+one could never be read. The label now has no line limit and no trimming; it sits
+inside the tab's scroll, so a long one pushes the rest of the tab down. **Rules
+out:** a line limit on the description, and a tooltip or MORE link as the way to
+read the rest.
+
+**A heading's caption keeps clear of its lines.** D185 drew each board heading as
+a cell with a one-pixel line down its right edge, but with no margin, so captions
+touched the lines (`|NAME`, `PRICEv|`). `HeaderCell` and `HeaderCellHover` now have
+2 pixels of margin left and right. That made `PRICE^` (6 characters plus 4 pixels)
+and `HELD ` too wide for their columns, so the columns were rebalanced at the same
+total width, which matters because the board has about 4 pixels to spare at 640:
+
+| | PRICE | CHG | DIV | HELD |
+|---|---|---|---|---|
+| before | 6 | 6 | 6 | 5 |
+| after | 7 | 5 | 5 | 6 |
+
+CHG and DIV give a character each: a year's move in price and a dividend are whole
+numbers that need at most five. EPS keeps 7 (`-123.45`). A bankrupt row's
+BANKRUPT still spans PRICE and CHG, 12 characters either way.

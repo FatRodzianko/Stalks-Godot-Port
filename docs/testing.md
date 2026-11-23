@@ -353,7 +353,7 @@ comparisons in `test_wire.gd` are what guard the two halves from here.
 
 ### StalkleHeads on screen: what S7 covers and what it does not
 
-`test_market_readouts.gd` (32) and `test_stalkleheads_screen.gd` (51), D179-D185.
+`test_market_readouts.gd` (32) and `test_stalkleheads_screen.gd` (53), D179-D186.
 
 **After the first play (D183)**, tests for each finding: the arrows walk the board's
 order; the identity line keeps the industry whole; one tab lit after opening a
@@ -373,6 +373,10 @@ lines; `TermTips.fit`; every visible tooltip on every tab within `MAX_CHARS`.
 their cell, hover and lit styles; an industry header has no tooltip; the Company
 tab's title line is outside its scroll; the company list sorts by each heading;
 the year in review's captions are capitalised.
+
+**After the fourth play (D186)**: the longest description is shown with every line
+visible and no trimming; every board heading's style has a margin either side, and
+`PRICE^` fits its column without widening it.
 
 **The rule they protect.** No node works out a figure. So the numbers are tested in
 `test_market_readouts.gd` without a window, and the screen test checks that each tab

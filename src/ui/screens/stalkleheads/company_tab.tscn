@@ -83,8 +83,6 @@ layout_mode = 2
 theme_type_variation = &"EventFlavour"
 text = ""
 autowrap_mode = 3
-max_lines_visible = 2
-text_overrun_behavior = 3
 
 [node name="Middle" type="HBoxContainer" parent="Scroll/Body"]
 layout_mode = 2

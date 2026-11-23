@@ -10,7 +10,7 @@ extends PanelContainer
 ##
 ## | Marker | SYM | NAME | PRICE | CHG | EPS | P/E | DIV | HELD | QTY + BUY + SELL |
 ## |---|---|---|---|---|---|---|---|---|---|
-## | 2 | 6 | 16 | 6 | 6 | 7 | 6 | 6 | 5 | 16 |
+## | 2 | 6 | 16 | 7 | 5 | 7 | 6 | 5 | 6 | 16 |
 ##
 ## An industry header puts its name across SYM and NAME together (22 wide, the
 ## same total), its year's move under CHG and its average P/E under P/E, so a
@@ -68,8 +68,8 @@ const GROUP_NAME_CHARS: int = 22
 ## The price and change columns, in characters. A bankrupt row hides the change
 ## column and gives its width to the price, so "BANKRUPT" fits and every column
 ## after it stays where it was (the row has no separation, `TightHBox`).
-const PRICE_CHARS: int = 6
-const CHANGE_CHARS: int = 6
+const PRICE_CHARS: int = 7
+const CHANGE_CHARS: int = 5
 
 enum Kind { COMPANY, GROUP, HEADER }
 

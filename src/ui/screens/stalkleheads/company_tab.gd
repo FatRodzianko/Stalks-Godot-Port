@@ -122,7 +122,8 @@ func _ready() -> void:
 	_trade.buy_requested.connect(_on_trade_buy_requested)
 	_trade.sell_requested.connect(_on_trade_sell_requested)
 	_trade.amount_changed.connect(_on_trade_amount_changed)
-	ReservedLines.reserve(_description)
+	# The description has no line limit: this tab is the only place it is
+	# shown, so it grows and pushes the rest down (manual-testing.md H2).
 
 	var widths: Array[int] = [CAPTION_CHARS]
 	var aligns: Array[int] = [CellRow.LEFT]

@@ -64,7 +64,7 @@ func show_digest(digest: YearDigest, state: GameState) -> void:
 	_title.set_texts(["THE YEAR IN REVIEW", "Year %d" % digest.year])
 
 	_market.set_texts([
-		"The market",
+		"The Market:",
 		Palette.format_percent_change(digest.index_move_percent),
 		"-> %s" % MarketMood.label(digest.mood),
 		"Market P/E %s" % Palette.format_decimal(digest.market_pe, 1),

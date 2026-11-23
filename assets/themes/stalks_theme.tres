@@ -354,18 +354,18 @@ border_width_bottom = 1
 border_color = Color(0.43137255, 0.90588236, 0.627451, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hcell"]
-content_margin_left = 0.0
+content_margin_left = 2.0
 content_margin_top = 0.0
-content_margin_right = 0.0
+content_margin_right = 2.0
 content_margin_bottom = 0.0
 bg_color = Color(0, 0, 0, 0)
 border_width_right = 1
 border_color = Color(0.23529412, 0.3137255, 0.28235295, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hcelh"]
-content_margin_left = 0.0
+content_margin_left = 2.0
 content_margin_top = 0.0
-content_margin_right = 0.0
+content_margin_right = 2.0
 content_margin_bottom = 0.0
 bg_color = Color(0.18431373, 0.41960785, 0.29803923, 1)
 border_width_right = 1

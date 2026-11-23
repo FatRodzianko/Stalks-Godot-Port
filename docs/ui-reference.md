@@ -156,11 +156,12 @@ and bottom bars are unchanged (decisions.md D180).
 ```
 
 **Column widths on the EXCHANGE board**, in characters of the 6 x 12 grid: marker 2,
-SYM 6, NAME 16 (scrolls on hover), PRICE 6, CHG 6, EPS 7, P/E 6, DIV 6, HELD 5, then
+SYM 6, NAME 16 (scrolls on hover), PRICE 7, CHG 5, EPS 7, P/E 6, DIV 5, HELD 6, then
 the trade box: quantity 5, BUY 5, SELL 6. SELL is greyed, not hidden, when nothing is
 held. The sorted column heading carries `^` or `v` after its caption, in a space a
 right-aligned heading always keeps, so nothing moves. Each heading is drawn as a cell
-with a faint line down its right edge, lit under the mouse. A header, a
+with a faint line down its right edge and 2 pixels of margin either side of its
+caption, lit under the mouse (decisions.md D186). A header, a
 group line and a company row are one scene (`CompanyRow`), so the columns line up.
 A bankrupt row hides CHG and writes BANKRUPT across PRICE and CHG.
 
@@ -185,7 +186,8 @@ scrolls. **COMPANIES** opens the list of every company over the tab's left side,
 below the title line (SYM 6, NAME, NPC 4: how many desk traders hold it; click a
 heading to sort); `<` and
 `>` walk the companies in the match's order; ticker (6), industry (20) and earnings
-regime ("SLOWING, 1st year"), then "HELD N" and a trade box; five years of revenue, expenses, profit, margin,
+regime ("SLOWING, 1st year"), then "HELD N" and a trade box; the company's description,
+whole, however many lines it takes; five years of revenue, expenses, profit, margin,
 earnings per share, price and P/E, with `^split` under a year it split; the ledger
 "why the price moved", whose first line gives the price move as a percentage; earnings yield against risk-free; investors by name; which
 of the desk's traders traded it last year, as a table (TRADER 30, LAST YEAR 10,

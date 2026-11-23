@@ -41,7 +41,7 @@ clip_text = true
 
 [node name="Price" type="Label" parent="Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(36, 0)
+custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
 size_flags_vertical = 4
 theme_type_variation = &"Numeric"
@@ -51,7 +51,7 @@ clip_text = true
 
 [node name="Change" type="Label" parent="Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(36, 0)
+custom_minimum_size = Vector2(30, 0)
 layout_mode = 2
 size_flags_vertical = 4
 theme_type_variation = &"Numeric"
@@ -81,7 +81,7 @@ clip_text = true
 
 [node name="Dividend" type="Label" parent="Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(36, 0)
+custom_minimum_size = Vector2(30, 0)
 layout_mode = 2
 size_flags_vertical = 4
 theme_type_variation = &"Numeric"
@@ -91,7 +91,7 @@ clip_text = true
 
 [node name="Held" type="Label" parent="Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(30, 0)
+custom_minimum_size = Vector2(36, 0)
 layout_mode = 2
 size_flags_vertical = 4
 theme_type_variation = &"Numeric"

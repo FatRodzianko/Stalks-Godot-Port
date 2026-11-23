@@ -957,7 +957,39 @@ func test_the_company_list_sorts_by_its_headings() -> void:
 func test_the_year_in_review_is_capitalised() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 3)
 	var lines: PackedStringArray = _screen.year_digest().lines_text()
-	assert_string_contains(lines[1], "The market")
+	assert_string_contains(lines[1], "The Market:")
 	assert_string_contains(lines[1], "Market P/E")
 	for line: String in lines:
 		assert_false(line.begins_with("biggest") or line.begins_with("dividend cut") or line.begins_with("the desk"), line)
+
+
+## H2: the longest description is shown whole; the tab is the only place it is.
+func test_the_company_description_is_never_cut() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 1)
+	var longest: StalkState = _state().stalks[0]
+	for stalk: StalkState in _state().stalks:
+		if stalk.definition.description.length() > longest.definition.description.length():
+			longest = stalk
+	_tabs().show_company(longest.id)
+	await wait_process_frames(2)
+	var description: Label = _tabs().company_tab().get_node("%Description")
+	assert_eq(description.text, longest.definition.description)
+	assert_eq(description.text_overrun_behavior, TextServer.OVERRUN_NO_TRIMMING)
+	assert_true(description.max_lines_visible < 0, "no line limit")
+	assert_gt(description.get_line_count(), 2, "long enough to have been cut before")
+	assert_eq(description.get_visible_line_count(), description.get_line_count())
+
+
+## H3: a heading's caption keeps clear of the lines either side of it, and
+## the widest heading still fits its column.
+func test_headings_keep_clear_of_their_lines() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 1)
+	var header: CompanyRow = _exchange().get_node("%HeaderSlot").get_child(0)
+	for node: String in ["Ticker", "Name", "Price", "Change", "Eps", "Pe", "Dividend", "Held"]:
+		var label: Label = header.get_node("%" + node)
+		var box: StyleBox = label.get_theme_stylebox("normal")
+		assert_gte(box.get_margin(SIDE_LEFT), 1.0, node)
+		assert_gte(box.get_margin(SIDE_RIGHT), 1.0, node)
+	var price: Label = header.get_node("%Price")
+	_click_label(price)
+	assert_eq(price.size.x, price.custom_minimum_size.x, "PRICE^ fits without widening")

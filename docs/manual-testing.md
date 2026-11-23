@@ -1998,7 +1998,18 @@ file `src/ui/screens/stalkleheads/company_picker.tscn` exists.
 - **Step 36 showing another company**: the arrows are not walking the list's order.
 - **Steps 45-52**: send a screenshot with the pointer in it.
 
-### H - StalkleHeads after the third play (decisions.md D185) — **not yet run**
+### H - StalkleHeads after the third play (decisions.md D185) — **passed 2026-11-22, with findings**
+
+**Run on 2026-11-22.** H1-H3 passed. What came back, and what was done about it
+(decisions.md D186):
+
+- **H1:** the market line should start **The Market:**. Changed.
+- **H2:** a long company description was cut off, and the Company tab is the only
+  place it is shown. It is now shown whole and pushes the rest of the tab down.
+- **H3:** the headings' captions touched the lines between them. Each now has 2
+  pixels either side; PRICE and HELD gained a character, CHG and DIV gave one.
+
+The steps below are as run. Section I re-checks the changes.
 
 Re-checks what section G found and asked for. One machine, no Steam. Run on a
 locally exported build containing D185. To check a checkout before exporting: the
@@ -2052,6 +2063,50 @@ file `src/ui/palette.gd` contains the word `sentence_case`.
 - **Step 23 showing the title line gone**: the title line is scrolling with the tab.
 - **Step 28 lighting the wrong heading**: write down which heading lit and where the mouse was.
 - **Step 30 or 32 showing the letters moved**: the heading's spare space is missing.
+
+### I - StalkleHeads after the fourth play (decisions.md D186) — **not yet run**
+
+Re-checks what section H found. One machine, no Steam. Run on a locally exported
+build containing D186. To check a checkout before exporting: the file
+`src/ui/widgets/company_row.gd` contains `PRICE_CHARS: int = 7`.
+
+#### I1. The Market:
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Click **START**.
+5. Press **Ready for New Year** twice.
+6. Check the year in review's market line starts **The Market:**.
+7. Click **Close**.
+
+#### I2. Whole descriptions
+
+8. Click **COMPANY**.
+9. Click **COMPANIES**.
+10. Click a company with a long name, such as **My Pillow, Your Pillow, We're All Pillows!**.
+11. Check the description under the identity line ends in a full stop, not **...**.
+12. Check the tables below it start under the description's last line, not over it.
+13. Click **>** until you have looked at five more companies.
+14. Check none of their descriptions ends in **...**.
+
+#### I3. The board's headings
+
+15. Click **EXCHANGE**.
+16. Check there is a gap between each heading's letters and the faint line either side of it: **NAME**, **PRICE**, **HELD** especially.
+17. Click **PRICE**.
+18. Check **PRICE^** has a gap before the line on its right.
+19. Click **PRICE** again.
+20. Check **PRICEv** still has the gap.
+21. Check each company's price, change, EPS, P/E, dividend and held number still sits under its heading.
+22. Find a bankrupt company, if one has gone bankrupt.
+23. Check **BANKRUPT** is written in full and the columns after it line up with the rows above.
+
+#### What a failure here means
+
+- **Step 11 or 14 showing ...**: the description still has a line limit.
+- **Step 12 showing overlapping text**: the description grew without pushing the rest down.
+- **Step 21 showing a figure out from under its heading**: the header and the rows have different widths.
 
 ### Known gaps, so they are not surprises
 
