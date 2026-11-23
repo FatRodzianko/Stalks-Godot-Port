@@ -18,13 +18,20 @@ extends MarginContainer
 ## lose nothing.
 ##
 ## **The news (phase S8, design §8).** At the top of the right half, the
-## year's **whispers** - rumors, true more often than not but not always - and
-## above the year's event, the **market headline**. Both are chosen by
-## `NewsSelector`; when it chose none, the slot and its heading are not shown
-## at all (§8.2: an empty slot shows nothing).
+## **whispers** heard at the end of the year just played (or at the match's
+## start) about the year to come, each with its source (§8.4, decisions.md
+## D205); and above the year's event, the **market headline**. Both are chosen
+## by `NewsSelector`; when it chose none, the slot and its heading are not
+## shown at all (§8.2: an empty slot shows nothing).
+##
+## **VIEW HISTORY** opens every round of whispers so far, newest first, over
+## the right half, each with what really came of it once its year has been
+## played. It closes with CLOSE, and whenever the tab is left, so the tab
+## always opens on the current whispers.
 
 
 const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
+const WhisperRowScene: PackedScene = preload("res://src/ui/widgets/whisper_row.tscn")
 
 ## The index chart's size in cells (design §7.6): the plot, plus the scale
 ## labels left of it and the year captions under it. A line since D188.
@@ -44,6 +51,9 @@ const MOOD_CELL: int = 3
 ## The width a whisper wraps at, as the event text does.
 const WRAP_WIDTH: float = 240.0
 
+## The least width a whisper's words wrap at, beside its source column.
+const WHISPER_TEXT_WIDTH: float = 170.0
+
 const BULL_MARK: String = "B"
 const BEAR_MARK: String = "b"
 const UNPLAYED_MARK: String = "."
@@ -59,6 +69,10 @@ var _lines: Dictionary[Line, CellRow] = {}
 @onready var _whisper_section: VBoxContainer = %WhisperSection
 @onready var _whispers_title: Label = %WhispersTitle
 @onready var _whispers: VBoxContainer = %Whispers
+@onready var _history_button: Button = %HistoryButton
+@onready var _history_frame: PanelContainer = %HistoryFrame
+@onready var _history_list: VBoxContainer = %HistoryList
+@onready var _close_history_button: Button = %CloseHistoryButton
 @onready var _event_text: Label = %EventText
 @onready var _event_effect: Label = %EventEffect
 @onready var _mood_chart: Label = %MoodChart
@@ -68,6 +82,10 @@ var _lines: Dictionary[Line, CellRow] = {}
 func _ready() -> void:
 	_chart.custom_minimum_size = CHART_SIZE
 	_whispers_title.tooltip_text = TermTips.fit(TermTips.WHISPERS)
+	_history_button.tooltip_text = TermTips.fit(TermTips.WHISPER_HISTORY)
+	_history_button.pressed.connect(show_history)
+	_close_history_button.pressed.connect(hide_history)
+	visibility_changed.connect(_on_visibility_changed)
 	_review.set_narrow()
 	var captions: Dictionary[Line, String] = {
 		Line.INDEX: "Index level",
@@ -112,19 +130,73 @@ func refresh(state: GameState, event_text: String, event_effect: String) -> void
 func _refresh_news(state: GameState) -> void:
 	var news: YearNews = NewsSelector.latest(state)
 	_headline.text = ""
-	for child: Node in _whispers.get_children():
-		_whispers.remove_child(child)
-		child.queue_free()
 	if news != null:
 		_headline.text = news.headline
-		for whisper: YearNews.WhisperLine in news.whispers:
-			var line: Label = Label.new()
-			line.text = whisper.text
-			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			line.custom_minimum_size.x = WRAP_WIDTH
-			_whispers.add_child(line)
 	_headline.visible = not _headline.text.is_empty()
-	_whisper_section.visible = _whispers.get_child_count() > 0
+
+	_clear(_whispers)
+	var current: WhisperRound = NewsSelector.latest_whispers(state)
+	if current != null:
+		for line: WhisperRound.Line in current.lines:
+			_add_whisper(_whispers, line)
+	_refresh_history(state)
+	# The section shows while there is anything to read, now or before, and
+	# the button with it: the history holds the current round too.
+	var heard_any: bool = _history_list.get_child_count() > 0
+	_whisper_section.visible = _whispers.get_child_count() > 0 or heard_any
+	_history_button.visible = heard_any
+
+
+## Every round heard so far, newest first, with its outcomes once known.
+## Rounds in which nothing was heard are left out.
+func _refresh_history(state: GameState) -> void:
+	_clear(_history_list)
+	var rounds: Array[WhisperRound] = NewsSelector.whisper_history(state)
+	rounds.reverse()
+	for round: WhisperRound in rounds:
+		if round.lines.is_empty():
+			continue
+		var heading: Label = Label.new()
+		heading.theme_type_variation = &"SubHeading"
+		heading.text = "ABOUT YEAR %d" % round.about_year()
+		_history_list.add_child(heading)
+		for line: WhisperRound.Line in round.lines:
+			var row: WhisperRow = _add_whisper(_history_list, line)
+			if round.is_settled(state):
+				row.show_outcome(line.truth)
+			else:
+				row.show_outcome_unknown()
+
+
+func _add_whisper(parent: VBoxContainer, line: WhisperRound.Line) -> WhisperRow:
+	var row: WhisperRow = WhisperRowScene.instantiate()
+	parent.add_child(row)
+	row.show_whisper(line, WHISPER_TEXT_WIDTH)
+	return row
+
+
+func _clear(container: Container) -> void:
+	for child: Node in container.get_children():
+		container.remove_child(child)
+		child.queue_free()
+
+
+## Opens the whisper history over the right half.
+func show_history() -> void:
+	_history_frame.visible = true
+
+
+func hide_history() -> void:
+	_history_frame.visible = false
+
+
+func is_history_open() -> bool:
+	return _history_frame.visible
+
+
+func _on_visibility_changed() -> void:
+	if not is_visible_in_tree():
+		hide_history()
 
 
 func _refresh_stats(state: GameState) -> void:
@@ -207,13 +279,31 @@ func headline_text() -> String:
 	return _headline.text if _headline.visible else ""
 
 
-## The whispers as shown, one per line; empty when the section is hidden.
+## The current whispers as shown, `source | words` per line; empty when the
+## section is hidden.
 func whisper_texts() -> PackedStringArray:
+	return _row_texts(_whispers if _whisper_section.visible else null)
+
+
+## The whisper history as listed: each round's heading, then each whisper as
+## `source | words | outcome`.
+func history_texts() -> PackedStringArray:
+	return _row_texts(_history_list)
+
+
+func _row_texts(container: VBoxContainer) -> PackedStringArray:
 	var texts: PackedStringArray = []
-	if not _whisper_section.visible:
+	if container == null:
 		return texts
-	for child: Node in _whispers.get_children():
-		texts.append((child as Label).text)
+	for child: Node in container.get_children():
+		if child is WhisperRow:
+			var row: WhisperRow = child
+			var parts: PackedStringArray = [row.source_text(), row.whisper_text()]
+			if not row.outcome_text().is_empty():
+				parts.append(row.outcome_text())
+			texts.append(" | ".join(parts))
+		elif child is Label:
+			texts.append((child as Label).text)
 	return texts
 
 

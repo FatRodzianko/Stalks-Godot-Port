@@ -224,55 +224,73 @@ mood = 2
 move = 1
 text = "MARKET HEADLINE: bear, crash"
 
-[sub_resource type="Resource" id="Resource_t2bqd"]
+[sub_resource type="Resource" id="Resource_wh_com_much_worse"]
 script = ExtResource("6_1ixhk")
-id = &"whisp_high_short_interest_1"
-text = "WHISPER: {company}, high short interest"
+id = &"whisp_company_much_worse_1"
+outcome = 1
+text = "WHISPER: {company}, much worse"
 
-[sub_resource type="Resource" id="Resource_hg3xo"]
+[sub_resource type="Resource" id="Resource_wh_com_worse"]
 script = ExtResource("6_1ixhk")
-id = &"whisp_third_growth_year_1"
-trigger = 1
-text = "WHISPER: {company}, third growth year"
+id = &"whisp_company_worse_1"
+outcome = 2
+text = "WHISPER: {company}, worse"
 
-[sub_resource type="Resource" id="Resource_5q457"]
+[sub_resource type="Resource" id="Resource_wh_com_as_expected"]
 script = ExtResource("6_1ixhk")
-id = &"whisp_margin_slipping_1"
-trigger = 2
-text = "WHISPER: {company}, margin slipping"
+id = &"whisp_company_as_expected_1"
+outcome = 3
+text = "WHISPER: {company}, as expected"
 
-[sub_resource type="Resource" id="Resource_xbnwh"]
+[sub_resource type="Resource" id="Resource_wh_com_better"]
 script = ExtResource("6_1ixhk")
-id = &"whisp_pe_above_industry_1"
-trigger = 3
-text = "WHISPER: {company}, P/E above industry"
+id = &"whisp_company_better_1"
+outcome = 4
+text = "WHISPER: {company}, better"
 
-[sub_resource type="Resource" id="Resource_ndfr7"]
+[sub_resource type="Resource" id="Resource_wh_com_much_better"]
 script = ExtResource("6_1ixhk")
-id = &"whisp_pe_below_industry_1"
-trigger = 4
-text = "WHISPER: {company}, P/E below industry"
+id = &"whisp_company_much_better_1"
+outcome = 5
+text = "WHISPER: {company}, much better"
 
-[sub_resource type="Resource" id="Resource_oabkp"]
+[sub_resource type="Resource" id="Resource_wh_ind_much_worse"]
 script = ExtResource("6_1ixhk")
-id = &"whisp_sector_run_1"
-trigger = 5
-text = "WHISPER: {industry}, sector run"
+id = &"whisp_industry_much_worse_1"
+about = 1
+outcome = 1
+text = "WHISPER: {industry}, much worse"
 
-[sub_resource type="Resource" id="Resource_a0tg8"]
+[sub_resource type="Resource" id="Resource_wh_ind_worse"]
 script = ExtResource("6_1ixhk")
-id = &"whisp_near_split_1"
-trigger = 6
-text = "WHISPER: {company}, near split"
+id = &"whisp_industry_worse_1"
+about = 1
+outcome = 2
+text = "WHISPER: {industry}, worse"
 
-[sub_resource type="Resource" id="Resource_bel2w"]
+[sub_resource type="Resource" id="Resource_wh_ind_as_expected"]
 script = ExtResource("6_1ixhk")
-id = &"whisp_near_failure_1"
-trigger = 7
-text = "WHISPER: {company}, near failure"
+id = &"whisp_industry_as_expected_1"
+about = 1
+outcome = 3
+text = "WHISPER: {industry}, as expected"
+
+[sub_resource type="Resource" id="Resource_wh_ind_better"]
+script = ExtResource("6_1ixhk")
+id = &"whisp_industry_better_1"
+about = 1
+outcome = 4
+text = "WHISPER: {industry}, better"
+
+[sub_resource type="Resource" id="Resource_wh_ind_much_better"]
+script = ExtResource("6_1ixhk")
+id = &"whisp_industry_much_better_1"
+about = 1
+outcome = 5
+text = "WHISPER: {industry}, much better"
 
 [resource]
 script = ExtResource("5_asjd0")
 headlines = Array[ExtResource("3_x0qgy")]([SubResource("Resource_k7pkw"), SubResource("Resource_83jh5"), SubResource("Resource_twyq3"), SubResource("Resource_vjnyj"), SubResource("Resource_uy8my"), SubResource("Resource_agwpq")])
 earnings_commentary = Array[ExtResource("2_clpi7")]([SubResource("Resource_k83mj"), SubResource("Resource_8fniq"), SubResource("Resource_cqruv"), SubResource("Resource_6kowi"), SubResource("Resource_vjevv"), SubResource("Resource_3flbp"), SubResource("Resource_4pb57"), SubResource("Resource_qp0ru"), SubResource("Resource_we72o"), SubResource("Resource_8dfnl"), SubResource("Resource_43xbp"), SubResource("Resource_v7gr0"), SubResource("Resource_mocb1"), SubResource("Resource_6r24g"), SubResource("Resource_jjeg3"), SubResource("Resource_ykawe"), SubResource("Resource_dp4nk"), SubResource("Resource_fg4dq"), SubResource("Resource_ecmgq"), SubResource("Resource_43meh"), SubResource("Resource_hwutl"), SubResource("Resource_6fcun"), SubResource("Resource_cc2ni"), SubResource("Resource_suc43"), SubResource("Resource_7yahk")])
-whispers = Array[ExtResource("6_1ixhk")]([SubResource("Resource_t2bqd"), SubResource("Resource_hg3xo"), SubResource("Resource_5q457"), SubResource("Resource_xbnwh"), SubResource("Resource_ndfr7"), SubResource("Resource_oabkp"), SubResource("Resource_a0tg8"), SubResource("Resource_bel2w")])
+whispers = Array[ExtResource("6_1ixhk")]([SubResource("Resource_wh_com_much_worse"), SubResource("Resource_wh_com_worse"), SubResource("Resource_wh_com_as_expected"), SubResource("Resource_wh_com_better"), SubResource("Resource_wh_com_much_better"), SubResource("Resource_wh_ind_much_worse"), SubResource("Resource_wh_ind_worse"), SubResource("Resource_wh_ind_as_expected"), SubResource("Resource_wh_ind_better"), SubResource("Resource_wh_ind_much_better")])

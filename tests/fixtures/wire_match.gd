@@ -125,6 +125,14 @@ static func market_lines(market: EarningsMarket) -> PackedStringArray:
 		lines.append("trader %s cash %d holdings %s shorts %s" % [
 			trader.id, trader.cash, _sorted(trader.holdings), _sorted(trader.shorts),
 		])
+	if market.next_draws == null:
+		lines.append("next draws none")
+	else:
+		lines.append("next draws industries %s regimes %s rolls %s" % [
+			_sorted(market.next_draws.industry_rolls),
+			_sorted(market.next_draws.regimes),
+			_sorted(market.next_draws.growth_rolls),
+		])
 	return lines
 
 

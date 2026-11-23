@@ -986,7 +986,8 @@ mode selectable: the title screen, the lobby, and `MatchSetup` choosing the boar
 the year at match start. Phase S6 put the market on the wire, so a client holds the
 whole match, can rejoin it and can take it over. Phase S7 put it on screen. Phase S8
 added the news: headlines, industry reports, earnings commentary, whispers and NPC
-chatter, as content, chosen each year by a pure selector.
+chatter, as content, chosen each year by a pure selector. Its whispers foretell next
+year, from next year's draws made a year early (D205).
 
 ### The files
 
@@ -1019,12 +1020,16 @@ chatter, as content, chosen each year by a pure selector.
 | sim | `match_setup.gd` | **S5.** The one place the mode is read: content, board, pipeline, forced settings, take-over refusal (D171) |
 | net | `market_sync.gd` | **S6.** The StalkleHeads half of the wire: the market block of a snapshot, and a year as its draws, both as packed rows; called only by `StateSync` (D176-D178) |
 | tools | `wire_report.gd` | **S6.** Measures the snapshot, the year packet and the welcome in both modes, in bytes (D178) |
-| data | `news_bands.gd` | **S8.** `NewsBands`: the named conditions news is chosen by - mood, move, regime, surprise - and the eight whisper triggers. Enums, `ANY` first (§8.1) |
+| data | `news_bands.gd` | **S8.** `NewsBands`: the named conditions news is chosen by - mood, move, regime, surprise - and whether a whisper is about a company or an industry. Enums, `ANY` first (§8.1) |
 | data | `market_headline.gd`, `industry_report.gd`, `earnings_commentary.gd`, `whisper.gd`, `npc_chatter.gd` | **S8.** One resource type per news category: an id, its conditions and its text (D199) |
 | data | `news_book.gd` + `news/*.tres` | **S8.** A file of news lines of any category. Every `.tres` in `src/data/news/` is loaded; seven ship, all placeholders (D199) |
 | data | `news_content.gd` | **S8.** Every news line, one sorted list per category, the traders' own chatter turned into `NpcChatter` lines. `ContentLibrary.news`, `EarningsMarket.news` |
-| sim | `news_selector.gd` | **S8.** Chooses a year's news from the history: bands, triggers, the bag, the whispers' honesty roll. Its own seeded generator, never the match's (D200, D201) |
+| sim | `news_selector.gd` | **S8.** Chooses a year's news from the history (bands, the bag), and each round of whispers (`whispers_for`). Its own seeded generators, never the match's (D200, D205) |
 | sim | `year_news.gd` | **S8.** One year's chosen lines with their tokens filled in, kept on `EarningsYearResult.news` |
+| sim | `kept_draws.gd` | **S8.** Next year's industry swings, regimes and growth rolls, drawn a year early by `EarningsYearResolver.draw_ahead` and kept on `EarningsMarket.next_draws`; in the snapshot (D205) |
+| sim | `whisper_rules.gd` | **S8.** A whisper's true outcome (a company's or industry's next year against expectations) and its five sources' odds (D205) |
+| sim | `whisper_round.gd` | **S8.** The whispers heard at one year's end, with source, told outcome and true outcome; cached on `EarningsMarket.whisper_rounds`, never sent (D205) |
+| ui | `widgets/whisper_row.tscn` | **S8.** One whisper as shown: faint source column, words, and in the history its outcome (D206) |
 | tests | `fixtures/wire_match.gd` | **S6.** A seeded StalkleHeads match with scripted players, and every field of a match or a year written as lines, so two copies compare field by field |
 
 `CompanyState` pairs with `CompanyProfile` the way `StalkState` pairs with
@@ -1208,8 +1213,9 @@ GameplayScreen (base game's, unchanged around the boards)
     TopRow           tab strip, then HOLDINGS / RANKINGS / DESK buttons
     ExchangeTab      CompanyRow per board row, under group CompanyRows
     MarketTab        two halves: CellRow lines and DrawnChart index line; a
-                     scrolling right half with the whispers, the headline,
-                     the event, mood row and a narrow YearDigestPanel (D189)
+                     scrolling right half with the whispers (WhisperRows,
+                     VIEW HISTORY over the half), the headline, the event,
+                     mood row and a narrow YearDigestPanel (D189, D206)
     IndustriesTab    CellRow table, signed TextChart, members as TradeLines,
                      the selected industry's report
     CompanyTab       pinned title line (COMPANIES < name >), then a scroll:
@@ -1281,13 +1287,26 @@ NewsSelector.news_for(state, year)
    ├─ earlier years first (their draws are this year's bag counts)
    ├─ rng seeded from the year's own draws (D200)
    ├─ headline, report per industry, commentary per company,
-   │  up to two whispers, chatter per trader
+   │  chatter per trader
    └─ YearNews, kept on EarningsYearResult.news
+
+NewsSelector.whispers_for(state, year)          heard at year's end, about year + 1
+   ├─ that year's draws: its record if played, else market.next_draws
+   ├─ rng seeded from those draws; two subjects, true outcome, a source,
+   │  the outcome it tells, a line for that outcome
+   └─ WhisperRound, cached on EarningsMarket.whisper_rounds
                         │
 MarketTab / IndustriesTab / CompanyTab / SidePanel
 ```
 
-**A readout, not state.** The selector reads only the year records every peer
+**Next year, drawn early (D205).** `EarningsYearResolver` no longer draws a year's
+industry swings and earnings in that year. It uses the ones it drew at the end of
+the year before (step 14, `draw_ahead`; for year 1, `open_match` from
+`LocalSession.build_authority`), kept on `EarningsMarket.next_draws`, which the
+snapshot carries. That is the one change to state and the wire the news made: it is
+what lets a whisper foretell next year honestly, and it changes no odds.
+
+**A readout, not state.** Apart from that, the selector reads only the year records every peer
 already holds - mood, index move, industry performance, each company as the year
 left it (`companies_after`), the regimes, the flagged short interest, what the desk
 did - and the content. It writes nothing back to the market and sends nothing, so

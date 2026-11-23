@@ -15,7 +15,8 @@ extends RefCounted
 ## - **The snapshot** carries the market's *state*: every number the next year
 ##   or the desk reads that cannot be worked out from the others - revenue,
 ##   margin, shares, regime, event carry, flow, every NPC trader's book, the
-##   flow input, the event bags. It does not carry profit, the multiple, fair
+##   flow input, the event bags, and next year's kept earnings draws
+##   (`KeptDraws`, D205). It does not carry profit, the multiple, fair
 ##   value or anything else `CompanyState.derive_readouts` rebuilds. It must be
 ##   enough on its own for a client to take the match over (D105).
 ## - **The year record** carries only the year's *draws* - the industry rolls,
@@ -44,6 +45,13 @@ extends RefCounted
 const COMPANY_REALS: int = 6   # revenue, margin_percent, profit_before_season, revenue_growth_percent, event_carry, flow
 const COMPANY_INTS: int = 7    # shares_outstanding, regime, years_in_regime, growth_roll, event_delta, price, did_split
 const MARKET_REALS: int = 3    # sentiment, sentiment_used, index_level
+
+## Next year's kept draws (`KeptDraws`, decisions.md D205), when there are
+## any: each industry's swing in `EarningsMarket.industries` order, then per
+## company its regime and growth roll, -1 and 0 for a company with none (one
+## already bankrupt). An empty block means none: before the match is opened,
+## or after its last year.
+const NEXT_COMPANY_INTS: int = 2
 
 ## A year record's integers per company: regime, growth roll, net shares priced.
 const YEAR_COMPANY_INTS: int = 3
@@ -90,6 +98,7 @@ static func encode_market(state: GameState) -> Dictionary:
 		"flow": _pack(flow),
 		"bags": _encode_bags(market.event_bags),
 		"desk": _pack(_encode_desk(market.desk, state)),
+		"next": _pack(_encode_next(market)),
 	}
 
 
@@ -171,7 +180,50 @@ static func apply_market(state: GameState, data: Dictionary, library: ContentLib
 	market.event_bags = bags
 	if not _apply_desk(market.desk, _ints(data.get("desk")), state):
 		return MALFORMED
+	if not _apply_next(market, _ints(data.get("next"))):
+		return MALFORMED
 	return ""
+
+
+static func _encode_next(market: EarningsMarket) -> Array[int]:
+	var out: Array[int] = []
+	var draws: KeptDraws = market.next_draws
+	if draws == null:
+		return out
+	for industry: IndustryState in market.industries:
+		out.append(draws.industry_rolls.get(industry.id, 0))
+	for company: CompanyState in market.companies:
+		if draws.regimes.has(company.id):
+			out.append_array([int(draws.regimes[company.id]), draws.growth_rolls.get(company.id, 0)])
+		else:
+			out.append_array([-1, 0])
+	return out
+
+
+## Next year's draws back from `_encode_next`. False if the block is the wrong
+## size or names a regime that does not exist.
+static func _apply_next(market: EarningsMarket, data: PackedInt64Array) -> bool:
+	market.next_draws = null
+	if data.is_empty():
+		return true
+	var industries: int = market.industries.size()
+	if data.size() != industries + market.companies.size() * NEXT_COMPANY_INTS:
+		return false
+	var draws: KeptDraws = KeptDraws.new()
+	for index: int in industries:
+		draws.industry_rolls[market.industries[index].id] = int(data[index])
+	for index: int in market.companies.size():
+		var at: int = industries + index * NEXT_COMPANY_INTS
+		var regime: int = int(data[at])
+		if regime == -1:
+			continue
+		if regime < 0 or regime >= EarningsRegime.ALL.size():
+			return false
+		var company_id: StringName = market.companies[index].id
+		draws.regimes[company_id] = EarningsRegime.ALL[regime]
+		draws.growth_rolls[company_id] = int(data[at + 1])
+	market.next_draws = draws
+	return true
 
 
 ## Every trader's book: `[cash, holdings, (row, shares) x holdings, shorts,

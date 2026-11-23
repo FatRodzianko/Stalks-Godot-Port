@@ -24,6 +24,15 @@ extends YearPipeline
 ##
 ##  13. The NPC desk     trades on the settled, published state; its net shares
 ##                       are recorded as next year's flow input (§5)
+##  14. Next year drawn  next year's industry swings and every living company's
+##                       regime and growth roll, kept on the market
+##
+## **Steps 1 and 2 do not draw (decisions.md D205).** Their draws were made a
+## year early, at step 14 of the year before (or by `open_match` for year 1),
+## and kept in `EarningsMarket.next_draws`, so that a whisper can foreshadow
+## them (design §8.4). Nothing a player does reaches them, and nothing draws
+## between the end of one year and the start of the next, so drawing them early
+## takes the same place in the stream: a seed plays the same match as before.
 ##
 ## Step 13 comes after the settlement, so the desk can never move the year it
 ## traded in, only the next, and what a player sees of the desk's positions is
@@ -69,9 +78,11 @@ func _init(event_pool: EventPool, short_squeeze: SpecialEventDefinition = null) 
 
 ## Advances `state` by one year and returns what happened. `state.market` must
 ## be set (see `EarningsMarket.new_game_state`). All randomness comes from
-## `rng`, in a fixed order: six industry rolls in id order, two draws per
-## living company in id order, the squeeze roll, the event pool's draws (when no
-## squeeze fired), then two draws per NPC trader in id order.
+## `rng`, in a fixed order: the squeeze roll, the event pool's draws (when no
+## squeeze fired), two draws per NPC trader in id order, then next year's draws
+## (`draw_ahead`) unless this was the last year. This year's industry and
+## earnings draws were made the year before; a market nobody opened draws them
+## first.
 func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearResult:
 	var market: EarningsMarket = state.market
 	var result: EarningsYearResult = EarningsYearResult.new()
@@ -80,15 +91,27 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearR
 	# host that has run every year itself this puts back exactly what is there.
 	if not market.event_bags.is_empty():
 		_event_pool.restore_bags(market.event_bags)
+	if market.next_draws == null:
+		# A market `open_match` never saw: a test, or the balance tool.
+		market.next_draws = draw_ahead(state, rng)
+	var draws: KeptDraws = market.next_draws
+	market.next_draws = null
 	var year: YearInProgress = _open_year(state, result)
 
-	# 1. Industry year, leaning on last year's sentiment.
-	IndustryState.advance_all(market.industries, market.sentiment, rng)
+	# 1. Industry year, from the swing kept last year, leaning on last year's
+	#    sentiment.
+	for industry: IndustryState in market.industries:
+		industry.replay(draws.industry_rolls.get(industry.id, 0), market.sentiment)
 	_record_industries(market, result)
 
-	# 2. Earnings season.
+	# 2. Earnings season, from the regimes and growth rolls kept last year.
 	for company: CompanyState in year.alive:
-		advance_company_earnings(market, company, state.settings.max_years, rng)
+		company.replay_earnings(
+			draws.regimes.get(company.id, company.regime),
+			draws.growth_rolls.get(company.id, 0),
+			market.performance_of(company),
+			state.settings.max_years,
+		)
 		result.regimes[company.id] = company.regime
 		result.growth_rolls[company.id] = company.growth_roll
 
@@ -122,7 +145,36 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearR
 	result.desk = market.desk.act(state, rng)
 	for stalk_id: StringName in result.desk.net_shares:
 		market.record_trade(stalk_id, result.desk.net_shares[stalk_id])
+
+	# 14. Next year's earnings, drawn now and kept, so a whisper can know them.
+	if state.year < state.settings.max_years:
+		market.next_draws = draw_ahead(state, rng)
 	return result
+
+
+## A fresh match: year 1's draws, made before anybody sees year 0, so the
+## first whispers have a year to foreshadow (`YearPipeline.open_match`).
+func open_match(state: GameState, rng: RandomNumberGenerator) -> void:
+	if state.market != null and state.market.next_draws == null:
+		state.market.next_draws = draw_ahead(state, rng)
+
+
+## Next year's industry and earnings draws, from the market as it stands now:
+## one swing per industry in id order, then two draws per living company in
+## the market's order (`draw_company_earnings`). Draws exactly that; changes
+## nothing.
+func draw_ahead(state: GameState, rng: RandomNumberGenerator) -> KeptDraws:
+	var market: EarningsMarket = state.market
+	var draws: KeptDraws = KeptDraws.new()
+	var ordered: Array[IndustryState] = market.industries.duplicate()
+	ordered.sort_custom(_industry_by_id)
+	for industry: IndustryState in ordered:
+		draws.industry_rolls[industry.id] = rng.randi_range(-IndustryState.SWING, IndustryState.SWING)
+	for company: CompanyState in _living(state):
+		var drawn: Vector2i = draw_company_earnings(market, company, state.settings.max_years, rng)
+		draws.regimes[company.id] = EarningsRegime.ALL[drawn.x]
+		draws.growth_rolls[company.id] = drawn.y
+	return draws
 
 
 ## A year the host already resolved, rebuilt from the inputs it sent, on a copy
@@ -271,16 +323,22 @@ func record_trade(state: GameState, stalk_id: StringName, shares: int) -> void:
 	state.market.record_trade(stalk_id, shares)
 
 
-## §4 step 2 for one company. **A seam for the balance tool only**, which
-## overrides it to sweep the transition matrix (tools/balance/levers.gd,
-## decisions.md D150); nothing in the game overrides it. Two draws.
-func advance_company_earnings(
-	market: EarningsMarket,
+## §4 step 2's draws for one company, a year early: the regime it will enter
+## and the growth roll from that regime's band, as `Vector2i(regime, roll)`.
+## Changes nothing. **A seam for the balance tool only**, which overrides it to
+## sweep the transition matrix (tools/balance/levers.gd, decisions.md D150);
+## nothing in the game overrides it. Two draws, as `CompanyState.advance_earnings`.
+func draw_company_earnings(
+	_market: EarningsMarket,
 	company: CompanyState,
-	match_years: int,
+	_match_years: int,
 	rng: RandomNumberGenerator,
-) -> void:
-	company.advance_earnings(market.performance_of(company), match_years, rng)
+) -> Vector2i:
+	var next: EarningsRegime.Value = RegimeRules.roll_next(
+		company.regime, company.profile.quality, company.years_in_regime, rng
+	)
+	var band: Vector2i = RegimeRules.GROWTH_BAND[next]
+	return Vector2i(int(next), rng.randi_range(band.x, band.y))
 
 
 ## §5.3: the chance, in percent, of a squeeze this year. **A seam for the
@@ -329,6 +387,10 @@ static func mood_for(index_move: float) -> MarketMood.Value:
 
 
 ## Companies whose row is not bankrupt, in id order.
+static func _industry_by_id(a: IndustryState, b: IndustryState) -> bool:
+	return String(a.id) < String(b.id)
+
+
 func _living(state: GameState) -> Array[CompanyState]:
 	var alive: Array[CompanyState] = []
 	for company: CompanyState in state.market.companies:

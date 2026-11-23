@@ -187,14 +187,21 @@ func enter_regime(next_regime: EarningsRegime.Value) -> void:
 func move_accounts(roll: int, industry_performance: float, match_years: int) -> void:
 	growth_roll = roll
 	profit_before_season = profit
-	var own: float = float(roll) * RegimeRules.growth_damping(match_years)
-	own = DividendRules.retained_growth(own, profile.payout_policy_percent)
+	var own: float = own_growth(roll, profile.payout_policy_percent, match_years)
 	var from_industry: float = industry_performance * float(profile.industry_beta_percent) / 100.0
 	revenue_growth_percent = own + from_industry
 
 	revenue = revenue * (100.0 + revenue_growth_percent) / 100.0
 	margin_percent += (RegimeRules.MARGIN_TARGET[regime] - margin_percent) / RegimeRules.MARGIN_DIVISOR
 	profit = revenue * margin_percent / 100.0
+
+
+## The regime's own part of revenue growth for a growth roll: damped for long
+## matches, then retained if positive. `move_accounts` adds the industry's share
+## to it; a whisper reads it alone (`WhisperRules.company_outcome`).
+static func own_growth(roll: int, payout_policy_percent: int, match_years: int) -> float:
+	var own: float = float(roll) * RegimeRules.growth_damping(match_years)
+	return DividendRules.retained_growth(own, payout_policy_percent)
 
 
 ## §4 steps 3 and 5: valuation, then the price identity. Draws nothing.

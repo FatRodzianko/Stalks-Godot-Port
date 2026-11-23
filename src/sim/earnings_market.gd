@@ -82,6 +82,18 @@ var desk: NpcDesk = NpcDesk.new()
 ## not sent - each peer has its own copy from disk (decisions.md D200).
 var news: NewsContent = NewsContent.new()
 
+## Next year's earnings draws, made a year early (`KeptDraws`, design §8.4,
+## decisions.md D205). Null before the match is opened, after the last year,
+## and in a market that is only replaying years. **State**: it travels in the
+## snapshot.
+var next_draws: KeptDraws = null
+
+## The whispers worked out so far, by the year they were heard at the end of
+## (0 for the match's start). A cache for `NewsSelector.whispers_for`, never
+## sent: every peer works them out for itself from the history and
+## `next_draws`.
+var whisper_rounds: Dictionary[int, WhisperRound] = {}
+
 var _industry_by_id: Dictionary[StringName, IndustryState] = {}
 
 
@@ -164,6 +176,8 @@ func copy_for_replay() -> EarningsMarket:
 	twin.event_bags = event_bags.duplicate(true)
 	twin.content_key = content_key
 	twin.news = news
+	if next_draws != null:
+		twin.next_draws = next_draws.copy()
 	return twin
 
 

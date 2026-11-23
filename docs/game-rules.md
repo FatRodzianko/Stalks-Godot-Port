@@ -318,14 +318,14 @@ Each event carries: **target stalk name**, **flavour text**, **price change**.
 
 StalkleHeads (phase S8) adds five kinds of news line beside the special event. None
 of them moves a price; they are things to read. The rules, as built
-(stalkleheads-design.md §8, decisions.md D199-D203):
+(stalkleheads-design.md §8, decisions.md D199-D206):
 
 | Line | How many a year | Chosen by |
 |---|---|---|
 | Market headline | at most one | the year's mood, and the index's move band |
 | Industry report | at most one per industry | that industry's move band (and mood, if a line names one) |
 | Earnings commentary | at most one per company alive at the year's start | its regime this year, and its surprise band |
-| Whisper | at most two | a trigger that holds for something this year; see below |
+| Whisper | two a round, heard at each year's end (and the match's start) about the next year | next year's real outcome for a company or industry, bent by a source; see below |
 | NPC chatter | at most one per desk trader | what the trader did: bought, sold, shorted, covered or held |
 
 - **Move bands** (percent): CRASH at -15 or below; DOWN below -3; FLAT -3 to +3;
@@ -334,17 +334,30 @@ of them moves a price; they are things to read. The rules, as built
   the middle of its growth band, with the long-match damping and the payout
   retention applied. Within 3 points AS_EXPECTED; 3 to 8 BETTER or WORSE; 8 or
   more MUCH BETTER or MUCH WORSE.
-- **Whisper triggers:** HIGH_SHORT_INTEREST (flagged this year, §5 above);
-  THIRD_GROWTH_YEAR (a third year or more in GROWTH); MARGIN_SLIPPING (margin down,
-  revenue up, on last year); PE_ABOVE_INDUSTRY / PE_BELOW_INDUSTRY (more than 20%
-  from the industry's average P/E); SECTOR_RUN (an industry the same way three years
-  running); NEAR_SPLIT (price above 260; the split is above 300); NEAR_FAILURE
-  (DISTRESS and a price under 20).
-- **A whisper is a rumor.** One whose trigger holds for something is in play; it
-  then rolls against its truth chance (75 for every shipped one). Honest, it names
-  something the trigger holds for; a lie, it names something it does not. A whisper
-  written about one named company cannot lie, so when its roll says lie it is not
-  shown.
+- **Whispers foretell next year** (§8.4, D205). Next year's industry swings and
+  every living company's regime and growth roll are drawn a year early - at the end
+  of each year, and at the match's start for year 1 - and kept. A round of whispers
+  picks two different subjects evenly from every industry and every company still
+  trading. Each one's **true outcome** is in the surprise bands: a company's own
+  growth from its kept growth roll against what its current regime leads one to
+  expect (so a regime change is a surprise), or an industry's kept swing.
+- **Each whisper has a source**, one of five, equally likely, shown beside it. The
+  source decides how far the outcome the whisper tells is from the truth:
+
+  | Source | True band | One band off | Two or more off |
+  |---|---|---|---|
+  | Rock Solid | 85% | 15% | 0% |
+  | Credible | 60% | 35% | 5% |
+  | Hit-or-miss | 40% | 35% | 25% |
+  | Questionable | 30% | 35% | 35% |
+  | Gossip | 20% | 30% | 50% |
+
+  One band off goes either way evenly (or the only way, at an end); two or more off
+  picks evenly among the bands that far away. The line shown is one written for the
+  outcome told. A whisper predicts the company's or industry's own year, not the
+  price: the industry's year, events and trading still move it.
+- **The last year has no whispers**, having no next year. A round's outcomes are
+  shown in the Market tab's whisper history once the year it was about is played.
 - **Without replacement.** A line is not repeated while another line that could fill
   the same slot has been shown fewer times.
 - **Nothing matches, nothing shows.** No stand-in line, and the section's heading

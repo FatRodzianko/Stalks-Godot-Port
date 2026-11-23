@@ -7554,7 +7554,10 @@ them (more wire and more to keep in step, for nothing); sending the chosen lines
 (the client can work them out); a generic line when nothing matches (§8.2 rule 3).
 
 ### D201 - A whisper is drawn when it can be true, then rolls for honesty
-**2026-11-23 · Accepted** (phase S8)
+**2026-11-23 · Superseded by D205 the same day** (phase S8)
+
+*Manual section S found these whispers read as a company spotlight: they stated what
+was already true. D205 replaces the model; this entry is kept for the record.*
 
 Design §8.1 gives each whisper a `truth_chance_percent` and says that is what makes
 whispers a skill. How that works:
@@ -7588,7 +7591,9 @@ The others read `companies_after` and `industry_performance` (D179).
 true; a roll from the match's generator.
 
 ### D202 - Where the news bands' edges are
-**2026-11-23 · Accepted** (phase S8)
+**2026-11-23 · Accepted** (phase S8) · *the trigger edges (PE gap, SECTOR_RUN,
+THIRD_GROWTH_YEAR, NEAR_SPLIT, NEAR_FAILURE) are superseded by D205, which has no
+triggers; the move and surprise bands stand, and whispers use the surprise bands*
 
 - **Move** (headline: the index's move; report: the industry's performance): CRASH
   at -15% or below, DOWN below -3%, FLAT from -3% to +3% inclusive, UP below +15%,
@@ -7614,7 +7619,7 @@ true; a roll from the match's generator.
 condition. It can be added beside the others when a category needs it.
 
 ### D203 - Where the news shows
-**2026-11-23 · Accepted** (phase S8)
+**2026-11-23 · Accepted** (phase S8) · *whispers amended by D206*
 
 Into the room S7 left for it (design §7):
 
@@ -7669,3 +7674,105 @@ transition matrix's rows sum to 100, every news line's ids and bands resolve, an
 warning when a strategy has no trader.
 
 **Rules out:** rebuilding content that already matched the design.
+
+### D205 - Whispers foreshadow next year, from next year's draws kept a year early
+**2026-11-23 · Accepted** (after manual section S) · **supersedes D201** and D202's trigger edges
+
+Manual section S found that D201's whispers stated facts about the year just played
+("third growth year", "margin slipping"), which a player could check on the Company
+tab. The owner wanted them to be the traders' gossip mill: **a hint about next year,
+against what everyone expects, from a source of known reliability**
+(stalkleheads-design.md §8.4).
+
+**How a whisper can know next year.** A StalkleHeads year's earnings take one swing
+per industry and two draws per living company (the regime, then the growth roll from
+the new regime's band). Nothing a player does reaches them. So
+`EarningsYearResolver` now makes them **a year early**: at the end of each year,
+after the desk (new step 14), and once at match start (`YearPipeline.open_match`,
+called by `LocalSession.build_authority`). They are kept in
+`EarningsMarket.next_draws` (`KeptDraws`) and the next year uses them instead of
+drawing. A market nobody opened (a test, the balance tool) draws them at the start
+of its first year. After the last year nothing is drawn.
+
+- **The odds are unchanged.** Every draw comes from the same distribution as before,
+  only sooner - and **in the same place in the match's stream**. Drawing next
+  year's swings and earnings at the very end of a year is the same position as
+  drawing them at the start of the next, because nothing draws in between (players'
+  trades draw nothing), and year 1's are drawn at match start, before anything
+  else. So **every seed plays exactly the match it played before**; only when the
+  numbers are drawn has moved. The one change is that nothing is drawn after the
+  last year. The base game draws none of this, so the golden hash does not move.
+- **The balance tool's regime lever** now overrides `draw_company_earnings`, which
+  returns the regime and growth roll rather than applying them; the same two draws.
+- **On the wire**, the kept draws travel in the snapshot (`MarketSync`, block
+  `next`), so every peer chooses the same whispers and a promoted host goes on with
+  the departed host's draws. This exposes nothing new: the snapshot already carries
+  the match generator's state for host migration, from which a modified client
+  could work out next year anyway. The year record is unchanged; a year already
+  played has its draws in its record.
+
+**What a whisper is about.** One company or one industry, and next year's
+**outcome against expectations** in the earnings commentary's five surprise bands:
+
+- **A company:** its own growth from next year's growth roll, damped and retained
+  exactly as `CompanyState.move_accounts` does (now `CompanyState.own_growth`),
+  against what **this** year's regime leads one to expect. A regime change shows up
+  as a surprise. The industry's part of its growth is left out: a company's whisper
+  is about the company.
+- **An industry** (the owner asked for these too, for rumors like new regulation):
+  next year's swing, the part of its performance nobody can see coming. The
+  carried-over trend and the market's lean are in plain view already.
+
+**Sources** (`WhisperRules`). Each whisper is from one of five sources, rolled
+evenly: Rock Solid, Credible, Hit-or-miss, Questionable, Gossip (the owner's names).
+The source decides how far the outcome it tells is from the truth:
+
+| Source | True band | One band off | Two or more off |
+|---|---|---|---|
+| Rock Solid | 85% | 15% | 0% |
+| Credible | 60% | 35% | 5% |
+| Hit-or-miss | 40% | 35% | 25% |
+| Questionable | 30% | 35% | 35% |
+| Gossip | 20% | 30% | 50% |
+
+One band off goes either way evenly, or the only way there is at an end; two or more
+off picks evenly among the bands that far away. The **line** shown is one written for
+the outcome the source told (`Whisper.outcome`), so a line always speaks with
+conviction and the source says how far to trust it.
+
+**How many.** Two a round, about two different subjects picked evenly from every
+industry and every company still trading, so that a whisper appearing at all says
+nothing. A round is heard at the end of every year but the last, and at the match's
+start. Chosen by `NewsSelector.whispers_for` with its own generator, seeded from the
+draws it is about, never the match's (D200); the bag counts earlier rounds' lines;
+a line written for one subject beats a general one; with no line for the told
+outcome, that whisper is not heard. Rounds are cached on
+`EarningsMarket.whisper_rounds` and never sent.
+
+**Measured.** The balance tool's 4,000-seed default run after the change matches
+D172's to every figure (LOWPE 27.7%, TREND 23.9%, six contenders, P3 0.64, splits
+1.64, bankruptcies 0.59, bull years 55.5%, squeezes 1.16, flagged 47.8%), and every
+seeded StalkleHeads test passed unchanged: the same seed, the same match.
+
+**Rules out:** a whisper that causes its own result (it would nudge the economy to
+make rumors come true, and change the odds); sending the chosen whispers (every peer
+can work them out); a truth chance on each line (the source now carries it); hiding
+the draws from clients (the generator's state already travels).
+
+### D206 - Where whispers show, and their history
+**2026-11-23 · Accepted** (after manual section S) · **amends D203**
+
+- **Market tab, WHISPERS:** the latest round, each whisper's source in a faint
+  column before its words (`WhisperRow`). Shown before year 1 too, since round 0 is
+  heard at the start.
+- **VIEW HISTORY**, under the whispers (the owner's mockup): every round so far
+  opens over the right half of the Market tab, newest first, headed ABOUT YEAR N,
+  each whisper with its source and, once its year has been played, **what really
+  came of it** ("Outcome: better than expected"), or "Outcome: not known yet".
+  CLOSE shuts it, and so does leaving the tab, so the tab always opens on the
+  current whispers. The owner offered CURRENT/HISTORY tabs as the lighter
+  alternative; the panel was the first choice and fit.
+- **Company tab, NEWS:** the current whispers about the company **or its industry**,
+  with their sources, after the earnings commentary.
+- The outcome is never shown before its year is played: it is next year's earnings.
+- The WHISPERS heading's tooltip is the owner's words (D203).

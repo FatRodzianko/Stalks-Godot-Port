@@ -61,7 +61,9 @@ static func build_authority(
 			settings.starting_cash,
 		))
 
-	return MatchAuthority.new(state, MatchSetup.new_pipeline(settings, library), rng)
+	var pipeline: YearPipeline = MatchSetup.new_pipeline(settings, library)
+	pipeline.open_match(state, rng)
+	return MatchAuthority.new(state, pipeline, rng)
 
 
 func state() -> GameState:

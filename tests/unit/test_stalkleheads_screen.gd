@@ -1171,9 +1171,48 @@ func test_the_market_tab_shows_the_headline_and_the_whispers() -> void:
 	assert_false(news.headline.is_empty(), "the shipped content has a headline for every year")
 	assert_eq(_tabs().market_tab().headline_text(), news.headline)
 	var expected: PackedStringArray = []
-	for whisper: YearNews.WhisperLine in news.whispers:
-		expected.append(whisper.text)
+	for whisper: WhisperRound.Line in NewsSelector.latest_whispers(_state()).lines:
+		expected.append("%s | %s" % [WhisperRules.SOURCE_NAMES[whisper.source], whisper.text])
+	assert_eq(expected.size(), NewsSelector.WHISPERS_PER_YEAR)
 	assert_eq(_tabs().market_tab().whisper_texts(), expected)
+
+
+## Design §8.4: VIEW HISTORY opens every round so far over the right half,
+## newest first, with each outcome once its year has been played, and leaving
+## the tab closes it.
+func test_view_history_lists_every_round_with_its_outcome() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 3)
+	_tabs().select_tab(MarketTabs.Tab.MARKET)
+	var tab: MarketTab = _tabs().market_tab()
+	assert_false(tab.is_history_open())
+	(tab.get_node("%HistoryButton") as Button).pressed.emit()
+	assert_true(tab.is_history_open())
+	var expected: PackedStringArray = []
+	var rounds: Array[WhisperRound] = NewsSelector.whisper_history(_state())
+	assert_eq(rounds.size(), 4, "heard at the start and after years 1, 2 and 3")
+	rounds.reverse()
+	for round: WhisperRound in rounds:
+		expected.append("ABOUT YEAR %d" % round.about_year())
+		for line: WhisperRound.Line in round.lines:
+			var outcome: String = "Outcome: not known yet"
+			if round.year < 3:
+				outcome = "Outcome: %s" % WhisperRow.OUTCOME_WORDS[line.truth]
+			expected.append("%s | %s | %s" % [WhisperRules.SOURCE_NAMES[line.source], line.text, outcome])
+	assert_eq(tab.history_texts(), expected)
+	(tab.get_node("%CloseHistoryButton") as Button).pressed.emit()
+	assert_false(tab.is_history_open())
+	(tab.get_node("%HistoryButton") as Button).pressed.emit()
+	_tabs().select_tab(MarketTabs.Tab.EXCHANGE)
+	_tabs().select_tab(MarketTabs.Tab.MARKET)
+	assert_false(tab.is_history_open(), "the tab opens on the current whispers")
+
+
+## Whispers are heard before the first year is played, about year 1.
+func test_whispers_show_before_the_first_year() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 0)
+	_tabs().select_tab(MarketTabs.Tab.MARKET)
+	assert_eq(_tabs().market_tab().whisper_texts().size(), NewsSelector.WHISPERS_PER_YEAR)
+	assert_eq(_tabs().market_tab().headline_text(), "", "no year, no headline")
 
 
 func test_the_industries_tab_shows_the_selected_industrys_report() -> void:
@@ -1197,8 +1236,11 @@ func test_the_company_tab_shows_its_commentary_and_whispers() -> void:
 		var expected: PackedStringArray = []
 		if news.commentary.has(company.id):
 			expected.append(news.commentary[company.id])
-		for whisper: YearNews.WhisperLine in news.whispers_about(company.id):
-			expected.append(whisper.text)
+		var whispers: WhisperRound = NewsSelector.latest_whispers(_state())
+		var about: Array[WhisperRound.Line] = whispers.lines_about(company.id)
+		about.append_array(whispers.lines_about(company.profile.industry))
+		for whisper: WhisperRound.Line in about:
+			expected.append("%s | %s" % [WhisperRules.SOURCE_NAMES[whisper.source], whisper.text])
 		assert_eq(_tabs().company_tab().news_lines(), expected, String(company.id))
 
 
@@ -1228,6 +1270,7 @@ func test_chatter_sits_under_each_trader_and_on_the_desk_page() -> void:
 func test_news_nobody_has_written_shows_nothing() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 3)
 	_state().market.news = NewsContent.new()
+	_state().market.whisper_rounds.clear()
 	_session.set_ready(&"p0", true)
 	if _screen.news_panel() != null:
 		_screen.news_panel().close()
@@ -1235,6 +1278,7 @@ func test_news_nobody_has_written_shows_nothing() -> void:
 	assert_eq(_tabs().market_tab().headline_text(), "")
 	assert_eq(_tabs().market_tab().whisper_texts(), PackedStringArray())
 	assert_false(_tabs().market_tab().get_node("%WhisperSection").visible)
+	assert_eq(_tabs().market_tab().history_texts(), PackedStringArray())
 	_tabs().select_tab(MarketTabs.Tab.INDUSTRIES)
 	assert_eq(_tabs().industries_tab().report_text(), "")
 	assert_false(_tabs().industries_tab().get_node("%ReportTitle").visible)

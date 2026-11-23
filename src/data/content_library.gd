@@ -368,8 +368,8 @@ func _validate_transition_matrix() -> void:
 
 
 ## The news (design §8.1, §8.2). Every id unique across all six categories;
-## every company, industry, trader and subject it names exists; every band and
-## trigger is a known value; every truth chance is 0-100; every line has text,
+## every company, industry, trader and subject it names exists; every band is
+## a known value, and a whisper's outcome is not ANY; every line has text,
 ## and uses only the `{...}` tokens its category fills in - a misspelt token
 ## would otherwise reach the screen as written.
 func _validate_news(industry_ids: Array, company_ids: Array) -> void:
@@ -402,16 +402,15 @@ func _validate_news(industry_ids: Array, company_ids: Array) -> void:
 
 	for line: Whisper in news.whispers:
 		var label: String = _news_label(line, "whisper", seen)
-		if not NewsBands.ALL_TRIGGERS.has(line.trigger):
-			errors.append("News %s has an unknown trigger (%d)." % [label, line.trigger])
-			continue
-		var about_industry: bool = NewsBands.is_industry_trigger(line.trigger)
+		_check_band(line.about, NewsBands.Subject.values(), label, "subject kind")
+		_check_band(line.outcome, NewsBands.Surprise.values(), label, "outcome")
+		if line.outcome == NewsBands.Surprise.ANY:
+			errors.append("News %s has no outcome; a whisper must foretell one." % label)
+		var about_industry: bool = line.about == NewsBands.Subject.INDUSTRY
 		if about_industry:
 			_check_text(line.text, label, [NewsSelector.INDUSTRY_TOKEN])
 		else:
 			_check_text(line.text, label, [NewsSelector.COMPANY_TOKEN, NewsSelector.INDUSTRY_TOKEN])
-		if line.truth_chance_percent < 0 or line.truth_chance_percent > 100:
-			errors.append("News %s has a truth chance of %d; it must be 0-100." % [label, line.truth_chance_percent])
 		if line.subject.is_empty():
 			continue
 		if about_industry and not industry_ids.has(line.subject):

@@ -11,7 +11,7 @@ extends Control
 ##     $dir = "$env:TEMP\stalks_frames"
 ##     New-Item -ItemType Directory -Force $dir | Out-Null
 ##     & $g --path . res://tools/stalkleheads_shot.tscn --write-movie "$dir\f.png" `
-##          --quit-after 75 --fixed-fps 10
+##          --quit-after 85 --fixed-fps 10
 ##
 ## Frames 6, 11, 16, 21 and 26 are the five pictures (`f00000006.png` and so
 ## on). Then the Company tab's five charts (decisions.md D188): frames 31
@@ -20,7 +20,9 @@ extends Control
 ## (D189), and frame 61 the same scrolled to the bottom of the right half.
 ## Frame 66 is the Company tab, on a company the desk traded, scrolled to its NEWS and NPC ACTIVITY, each
 ## trader's chatter under its line, and frame 72 the side panel's DESK page
-## scrolled to its CHATTER (phase S8). A developer tool: `tools/` is not
+## scrolled to its CHATTER (phase S8). Frame 76 is the Market tab with its
+## whispers and their sources, and frame 81 its whisper history open over the
+## right half (decisions.md D205). A developer tool: `tools/` is not
 ## exported.
 
 const StageScene: PackedScene = preload("res://src/ui/stage.tscn")
@@ -101,3 +103,9 @@ func _process(_delta: float) -> void:
 			tabs.side_button(SidePanel.Page.DESK).pressed.emit()
 		70:
 			tabs.side_panel().scroll_vertical = 10000
+		73:
+			tabs.side_button(SidePanel.Page.DESK).pressed.emit()
+			var right: ScrollContainer = tabs.market_tab().get_node("%RightScroll")
+			right.scroll_vertical = 0
+		78:
+			tabs.market_tab().show_history()

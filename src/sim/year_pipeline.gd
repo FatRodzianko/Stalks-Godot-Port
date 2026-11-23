@@ -25,6 +25,15 @@ func advance_year(_state: GameState, _rng: RandomNumberGenerator) -> YearResult:
 	return YearResult.new()
 
 
+## A fresh match is about to start at year 0, with `rng` the match's own
+## generator. Called once, by `LocalSession.build_authority`, before anybody
+## sees the match; never on a match taken over (it is already open). Does
+## nothing unless the mode draws ahead, which only StalkleHeads does
+## (`EarningsYearResolver`, decisions.md D205).
+func open_match(_state: GameState, _rng: RandomNumberGenerator) -> void:
+	pass
+
+
 ## An accepted trade: `shares` positive for bought, negative for sold. Called by
 ## `MatchAuthority` after the trade is applied. Does nothing unless the mode's
 ## prices read trades, which only StalkleHeads' do.

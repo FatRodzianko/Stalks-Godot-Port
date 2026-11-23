@@ -37,7 +37,12 @@ text = "INDEX, BY YEAR"
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="RightScroll" type="ScrollContainer" parent="Columns"]
+[node name="RightHalf" type="MarginContainer" parent="Columns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RightScroll" type="ScrollContainer" parent="Columns/RightHalf"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -45,36 +50,43 @@ size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 4
 
-[node name="Right" type="VBoxContainer" parent="Columns/RightScroll"]
+[node name="Right" type="VBoxContainer" parent="Columns/RightHalf/RightScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="WhisperSection" type="VBoxContainer" parent="Columns/RightScroll/Right"]
+[node name="WhisperSection" type="VBoxContainer" parent="Columns/RightHalf/RightScroll/Right"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="WhispersTitle" type="Label" parent="Columns/RightScroll/Right/WhisperSection"]
+[node name="WhispersTitle" type="Label" parent="Columns/RightHalf/RightScroll/Right/WhisperSection"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 0
 theme_type_variation = &"SubHeading"
 text = "WHISPERS"
 
-[node name="Whispers" type="VBoxContainer" parent="Columns/RightScroll/Right/WhisperSection"]
+[node name="Whispers" type="VBoxContainer" parent="Columns/RightHalf/RightScroll/Right/WhisperSection"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="WhispersRule" type="HSeparator" parent="Columns/RightScroll/Right/WhisperSection"]
+[node name="HistoryButton" type="Button" parent="Columns/RightHalf/RightScroll/Right/WhisperSection"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+focus_mode = 0
+text = "VIEW HISTORY"
+
+[node name="WhispersRule" type="HSeparator" parent="Columns/RightHalf/RightScroll/Right/WhisperSection"]
 layout_mode = 2
 mouse_filter = 2
 theme_type_variation = &"SectionRule"
 
-[node name="NewsTitle" type="Label" parent="Columns/RightScroll/Right"]
+[node name="NewsTitle" type="Label" parent="Columns/RightHalf/RightScroll/Right"]
 layout_mode = 2
 theme_type_variation = &"SubHeading"
 text = "THIS YEAR'S NEWS"
 
-[node name="Headline" type="Label" parent="Columns/RightScroll/Right"]
+[node name="Headline" type="Label" parent="Columns/RightHalf/RightScroll/Right"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(240, 0)
 layout_mode = 2
@@ -82,7 +94,7 @@ size_flags_horizontal = 3
 text = ""
 autowrap_mode = 3
 
-[node name="EventText" type="Label" parent="Columns/RightScroll/Right"]
+[node name="EventText" type="Label" parent="Columns/RightHalf/RightScroll/Right"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(240, 0)
 layout_mode = 2
@@ -91,43 +103,78 @@ theme_type_variation = &"EventFlavour"
 text = ""
 autowrap_mode = 3
 
-[node name="EventGap" type="Control" parent="Columns/RightScroll/Right"]
+[node name="EventGap" type="Control" parent="Columns/RightHalf/RightScroll/Right"]
 custom_minimum_size = Vector2(0, 6)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="EventEffect" type="Label" parent="Columns/RightScroll/Right"]
+[node name="EventEffect" type="Label" parent="Columns/RightHalf/RightScroll/Right"]
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
 autowrap_mode = 3
 
-[node name="NewsRule" type="HSeparator" parent="Columns/RightScroll/Right"]
+[node name="NewsRule" type="HSeparator" parent="Columns/RightHalf/RightScroll/Right"]
 layout_mode = 2
 mouse_filter = 2
 theme_type_variation = &"SectionRule"
 
-[node name="MoodTitle" type="Label" parent="Columns/RightScroll/Right"]
+[node name="MoodTitle" type="Label" parent="Columns/RightHalf/RightScroll/Right"]
 layout_mode = 2
 theme_type_variation = &"SubHeading"
 text = "MOOD, BY YEAR"
 
-[node name="MoodChart" type="Label" parent="Columns/RightScroll/Right"]
+[node name="MoodChart" type="Label" parent="Columns/RightHalf/RightScroll/Right"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Chart"
 text = ""
 
-[node name="MoodKey" type="Label" parent="Columns/RightScroll/Right"]
+[node name="MoodKey" type="Label" parent="Columns/RightHalf/RightScroll/Right"]
 layout_mode = 2
 theme_type_variation = &"Faint"
 text = "B bull, b bear"
 
-[node name="MoodRule" type="HSeparator" parent="Columns/RightScroll/Right"]
+[node name="MoodRule" type="HSeparator" parent="Columns/RightHalf/RightScroll/Right"]
 layout_mode = 2
 mouse_filter = 2
 theme_type_variation = &"SectionRule"
 
-[node name="Review" parent="Columns/RightScroll/Right" instance=ExtResource("3_digest")]
+[node name="Review" parent="Columns/RightHalf/RightScroll/Right" instance=ExtResource("3_digest")]
 unique_name_in_owner = true
 layout_mode = 2
+
+[node name="HistoryFrame" type="PanelContainer" parent="Columns/RightHalf"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"OverlayFrame"
+
+[node name="History" type="VBoxContainer" parent="Columns/RightHalf/HistoryFrame"]
+layout_mode = 2
+
+[node name="HistoryTop" type="HBoxContainer" parent="Columns/RightHalf/HistoryFrame/History"]
+layout_mode = 2
+
+[node name="HistoryTitle" type="Label" parent="Columns/RightHalf/HistoryFrame/History/HistoryTop"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SubHeading"
+text = "WHISPER HISTORY"
+
+[node name="CloseHistoryButton" type="Button" parent="Columns/RightHalf/HistoryFrame/History/HistoryTop"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "CLOSE"
+
+[node name="HistoryScroll" type="ScrollContainer" parent="Columns/RightHalf/HistoryFrame/History"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 4
+
+[node name="HistoryList" type="VBoxContainer" parent="Columns/RightHalf/HistoryFrame/History/HistoryScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3

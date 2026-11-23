@@ -2484,7 +2484,7 @@ The players are **A** (the host), **B** and **C**.
 - **The whispers themselves:** they state facts about this year, which reads like a
   company spotlight, not a rumor. The owner wants them to foreshadow next year
   against expectations, from sources of named reliability. A design question, not a
-  layout one; proposed as stalkleheads-design.md §8.4.
+  layout one; built as stalkleheads-design.md §8.4 (D205, D206), checked as section T.
 
 One machine, no Steam. Run on a locally exported build containing D199; to check a
 checkout before exporting, the file `src/sim/news_selector.gd` exists. Every line is
@@ -2520,6 +2520,44 @@ not the words.
 26. Click **MARKET**.
 27. Check the headline still sits above the event, and nothing overlaps.
 28. Close the game window.
+
+### T - StalkleHeads whispers that foretell next year (decisions.md D205, D206) — **not yet run**
+
+One machine, no Steam. Run on a locally exported build containing D205; to check a
+checkout before exporting, the file `src/sim/whisper_rules.gd` exists. Every whisper
+is still a placeholder, such as **WHISPER: Food, much worse**; the last words are
+the outcome it foretells for next year.
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Click **START**.
+5. Click **MARKET**.
+6. Check **WHISPERS** shows two lines before any year has been played.
+7. Check each line starts with a faint source name: **Rock Solid**, **Credible**, **Hit-or-miss**, **Questionable** or **Gossip**.
+8. Check the words of both lines start at the same place, whatever the source.
+9. Hover over the word **WHISPERS**.
+10. Check the tooltip reads "Whispers from the Avenue. Rumors circulating around the Market." and "Most are true, but some are not. Can you find the truth?"
+11. Check a **VIEW HISTORY** button sits under the whispers.
+12. Click **VIEW HISTORY**.
+13. Check a **WHISPER HISTORY** panel covers the right half, with **ABOUT YEAR 1** and the same two whispers.
+14. Check each whisper has **Outcome: not known yet** under it.
+15. Click **CLOSE**.
+16. Press **Ready for New Year**.
+17. Click **Close** on the news.
+18. Click **MARKET**.
+19. Click **VIEW HISTORY**.
+20. Check **ABOUT YEAR 2** is at the top, its whispers marked **Outcome: not known yet**.
+21. Check **ABOUT YEAR 1** is below it, each whisper now with an outcome such as **Outcome: better than expected**.
+22. Click **EXCHANGE**.
+23. Click **MARKET**.
+24. Check the history panel is closed and the current whispers show.
+25. If neither whisper names a company, press **Ready for New Year**, click **Close**, click **MARKET**, and repeat until one does.
+26. Note the company's name.
+27. Click **COMPANY**.
+28. Click **>** until the company you noted is shown.
+29. Check its **NEWS** section shows the same whisper, with its source before it.
+30. Close the game window.
 
 ### Known gaps, so they are not surprises
 

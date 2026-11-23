@@ -12,18 +12,6 @@ extends RefCounted
 ## year's `EarningsYearResult.news`.
 
 
-## One whisper as shown: its text, and what it names.
-class WhisperLine:
-	extends RefCounted
-	var id: StringName = &""
-	## The company (or, for SECTOR_RUN, the industry) it names.
-	var subject: StringName = &""
-	## True when the trigger holds for `subject`. **Not for the screen**: what
-	## makes a whisper a skill is that the player cannot see this. Tests read it.
-	var is_true: bool = false
-	var text: String = ""
-
-
 var year: int = 0
 
 ## The market headline, or empty.
@@ -35,9 +23,6 @@ var industry_reports: Dictionary[StringName, String] = {}
 ## Earnings commentary by company id. A company with none has no key.
 var commentary: Dictionary[StringName, String] = {}
 
-## The year's whispers, in the order they were drawn.
-var whispers: Array[WhisperLine] = []
-
 ## Chatter by NPC trader id. A trader with none has no key.
 var chatter: Dictionary[StringName, String] = {}
 
@@ -45,25 +30,14 @@ var chatter: Dictionary[StringName, String] = {}
 var drawn: Array[StringName] = []
 
 
-## The whispers that name `subject`: a company, or an industry.
-func whispers_about(subject: StringName) -> Array[WhisperLine]:
-	var found: Array[WhisperLine] = []
-	for line: WhisperLine in whispers:
-		if line.subject == subject:
-			found.append(line)
-	return found
-
-
-## Every chosen line, as text: headline, reports, commentary, whispers,
-## chatter, each group in id order. For tests comparing two peers.
+## Every chosen line, as text: headline, reports, commentary, chatter, each
+## group in id order. For tests comparing two peers.
 func all_lines() -> PackedStringArray:
 	var lines: PackedStringArray = ["headline=%s" % headline]
 	for key: StringName in _sorted(industry_reports.keys()):
 		lines.append("report %s=%s" % [key, industry_reports[key]])
 	for key: StringName in _sorted(commentary.keys()):
 		lines.append("earnings %s=%s" % [key, commentary[key]])
-	for line: WhisperLine in whispers:
-		lines.append("whisper %s %s %s=%s" % [line.id, line.subject, line.is_true, line.text])
 	for key: StringName in _sorted(chatter.keys()):
 		lines.append("chatter %s=%s" % [key, chatter[key]])
 	return lines

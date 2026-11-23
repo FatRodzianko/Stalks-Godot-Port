@@ -122,6 +122,7 @@ const WHISPERS: String = (
 	+ "Most are true, but some are not. Can you find the truth?"
 )
 const NPC_CHATTER: String = "What each desk trader said about what it did last year."
+const WHISPER_HISTORY: String = "Every whisper heard so far, year by year, and what came of it."
 
 # ------------------------------------------------------------- the panel
 

@@ -1,6 +1,6 @@
 extends GutTest
 ## StalkleHeads phase S8: the news (docs/stalkleheads-design.md §8;
-## decisions.md D199-D203).
+## decisions.md D199-D203, and D205 for whispers).
 ##
 ## Three things are under test:
 ##
@@ -8,7 +8,8 @@ extends GutTest
 ##   that can come up has a line to fill it, and each kind of mistake an author
 ##   can make is reported rather than producing a line that never fires;
 ## - **the selector** - the bands, the bag, the preference for specific lines,
-##   the empty slot, the whispers' honesty, the chatter;
+##   the empty slot, the chatter; the whispers - next year's draws kept and
+##   used, each whisper's truth, its source's odds, the line it is heard as;
 ## - **determinism** - the same match makes the same news; a client, a
 ##   rejoiner and a host that took over make the host's news; and choosing it
 ##   never moves the match.
@@ -33,6 +34,8 @@ func _all_news(state: GameState) -> PackedStringArray:
 	for year: int in range(1, state.year + 1):
 		for line: String in NewsSelector.news_for(state, year).all_lines():
 			lines.append("%d %s" % [year, line])
+	for round: WhisperRound in NewsSelector.whisper_history(state):
+		lines.append_array(round.all_lines())
 	return lines
 
 
@@ -62,6 +65,7 @@ func _has_error(library: ContentLibrary, fragment: String) -> bool:
 ## year's cached news cleared, so it is chosen again from `content`.
 func _rechoose(state: GameState, content: NewsContent) -> void:
 	state.market.news = content
+	state.market.whisper_rounds.clear()
 	for result: YearResult in state.history:
 		(result as EarningsYearResult).news = null
 
@@ -75,7 +79,7 @@ func test_the_shipped_news_loads_and_validates_clean() -> void:
 	assert_eq(library.news.headlines.size(), 6, "one per mood and move that can happen")
 	assert_eq(library.news.industry_reports.size(), 30, "five moves for each of six industries")
 	assert_eq(library.news.earnings_commentary.size(), 25, "five regimes by five surprises")
-	assert_eq(library.news.whispers.size(), NewsBands.ALL_TRIGGERS.size(), "one per trigger")
+	assert_eq(library.news.whispers.size(), 10, "five outcomes, for a company and for an industry")
 	assert_eq(library.news.chatter.size(), 24 * 5, "every trader's five lines")
 
 
@@ -101,11 +105,12 @@ func test_every_slot_that_can_come_up_has_a_line() -> void:
 				var fits_industry: bool = line.industry_id in [industry.id, &""]
 				found = found or (fits_industry and line.move in [move, NewsBands.Move.ANY])
 			assert_true(found, "a report for %s %d" % [industry.id, move])
-	for trigger: NewsBands.Trigger in NewsBands.ALL_TRIGGERS:
-		var found: bool = false
-		for line: Whisper in news.whispers:
-			found = found or line.trigger == trigger
-		assert_true(found, "a whisper for trigger %d" % trigger)
+	for about: NewsBands.Subject in [NewsBands.Subject.COMPANY, NewsBands.Subject.INDUSTRY]:
+		for outcome: NewsBands.Surprise in WhisperRules.OUTCOMES:
+			var found: bool = false
+			for line: Whisper in news.whispers:
+				found = found or (line.about == about and line.outcome == outcome and line.subject.is_empty())
+			assert_true(found, "a whisper about any %d for %d" % [about, outcome])
 
 
 func test_the_validator_reports_every_kind_of_mistake() -> void:
@@ -123,9 +128,9 @@ func test_the_validator_reports_every_kind_of_mistake() -> void:
 	book.earnings_commentary.append(commentary)
 	var lie: Whisper = Whisper.new()
 	lie.id = &"w1"
-	lie.trigger = NewsBands.Trigger.SECTOR_RUN
+	lie.about = NewsBands.Subject.INDUSTRY
 	lie.subject = &"stryker"
-	lie.truth_chance_percent = 150
+	lie.outcome = NewsBands.Surprise.ANY
 	lie.text = "WHISPER: {company}"
 	book.whispers.append(lie)
 	var chatter: NpcChatter = NpcChatter.new()
@@ -144,7 +149,7 @@ func test_the_validator_reports_every_kind_of_mistake() -> void:
 	assert_true(_has_error(library, "names company nobody"), "a company that does not exist")
 	assert_true(_has_error(library, "uses {compnay}"), "a misspelt token")
 	assert_true(_has_error(library, "uses {company}"), "a token the kind of line does not fill")
-	assert_true(_has_error(library, "truth chance of 150"), "a truth chance out of range")
+	assert_true(_has_error(library, "w1 has no outcome"), "a whisper that foretells nothing")
 	assert_true(_has_error(library, "stryker, which is not an industry"), "a subject of the wrong kind")
 	assert_true(_has_error(library, "names trader nobody_1"), "a trader that does not exist")
 	assert_true(_has_error(library, "c1 has no text"), "an empty line")
@@ -254,7 +259,7 @@ func test_a_slot_nothing_matches_stays_empty() -> void:
 		assert_eq(news.headline, "", "year %d" % year)
 		assert_true(news.industry_reports.is_empty())
 		assert_true(news.commentary.is_empty())
-		assert_true(news.whispers.is_empty())
+		assert_true(NewsSelector.whispers_for(played.state, year - 1).lines.is_empty(), "heard after year %d" % (year - 1))
 		assert_true(news.chatter.is_empty())
 
 
@@ -292,105 +297,163 @@ func test_commentary_names_its_company_and_matches_its_regime() -> void:
 
 # ------------------------------------------------------------- whispers
 
-func test_an_honest_whisper_is_true_and_a_lie_is_not() -> void:
-	var played: WireMatch = _played()
-	var state: GameState = played.state
-	var honest: int = 0
-	var lies: int = 0
-	for year: int in range(1, YEARS + 1):
-		var news: YearNews = NewsSelector.news_for(state, year)
-		assert_true(news.whispers.size() <= NewsSelector.WHISPERS_PER_YEAR)
-		for whisper: YearNews.WhisperLine in news.whispers:
-			var trigger: NewsBands.Trigger = _whisper_by_id(state, whisper.id).trigger
-			assert_eq(NewsSelector.trigger_holds(state, year, trigger, whisper.subject), whisper.is_true,
-				"%s about %s in year %d" % [whisper.id, whisper.subject, year])
-			if whisper.is_true:
-				honest += 1
-			else:
-				lies += 1
-	assert_gt(honest, 0)
-	assert_gt(lies, 0, "at 75%, thirty years should hold a lie")
+## Every round of a played match, from the start to the last year with one.
+func _rounds(state: GameState) -> Array[WhisperRound]:
+	return NewsSelector.whisper_history(state)
 
 
-func _whisper_by_id(state: GameState, id: StringName) -> Whisper:
-	for line: Whisper in state.market.news.whispers:
-		if line.id == id:
-			return line
-	return null
-
-
-func _single_whisper(state: GameState, library: ContentLibrary, truth: int, subject: StringName) -> void:
-	var book: NewsBook = NewsBook.new()
+func _whisper(id: String, about: NewsBands.Subject, outcome: NewsBands.Surprise, subject: StringName, text: String) -> Whisper:
 	var line: Whisper = Whisper.new()
-	line.id = &"w"
-	line.trigger = NewsBands.Trigger.PE_ABOVE_INDUSTRY
-	line.truth_chance_percent = truth
+	line.id = StringName(id)
+	line.about = about
+	line.outcome = outcome
 	line.subject = subject
-	line.text = "W {company}"
-	book.whispers.append(line)
-	_rechoose(state, _with_news(library, book))
+	line.text = text
+	return line
 
 
-func test_a_whisper_at_one_hundred_never_lies_and_at_zero_always_does() -> void:
-	var played: WireMatch = _played()
-	_single_whisper(played.state, played.library, 100, &"")
-	var shown: int = 0
-	for year: int in range(1, YEARS + 1):
-		for whisper: YearNews.WhisperLine in NewsSelector.news_for(played.state, year).whispers:
-			assert_true(whisper.is_true)
-			shown += 1
-	assert_gt(shown, 0)
-	_single_whisper(played.state, played.library, 0, &"")
-	for year: int in range(1, YEARS + 1):
-		for whisper: YearNews.WhisperLine in NewsSelector.news_for(played.state, year).whispers:
-			assert_false(whisper.is_true)
+## Each source tells the true outcome, one band off and further off as often as
+## design §8.4's table says. 20,000 seeded draws per source, within 2 points.
+func test_each_source_bends_the_truth_as_often_as_its_odds_say() -> void:
+	var rng: RandomNumberGenerator = StalksFixture.rng(77)
+	for source: WhisperRules.Source in WhisperRules.ALL_SOURCES:
+		var tally: Array[int] = [0, 0, 0]
+		var draws: int = 20000
+		for index: int in draws:
+			var truth: NewsBands.Surprise = WhisperRules.OUTCOMES[index % WhisperRules.OUTCOMES.size()]
+			var said: NewsBands.Surprise = WhisperRules.distort(truth, source, rng)
+			tally[mini(WhisperRules.distance(said, truth), 2)] += 1
+		var odds: Vector2i = WhisperRules.ODDS[source]
+		var name: String = WhisperRules.SOURCE_NAMES[source]
+		assert_almost_eq(tally[0] * 100.0 / draws, float(odds.x), 2.0, "%s true" % name)
+		assert_almost_eq(tally[1] * 100.0 / draws, float(odds.y), 2.0, "%s one off" % name)
+		assert_almost_eq(tally[2] * 100.0 / draws, float(100 - odds.x - odds.y), 2.0, "%s further" % name)
+	# Rock Solid is never two bands out.
+	for index: int in 5000:
+		var said: NewsBands.Surprise = WhisperRules.distort(NewsBands.Surprise.AS_EXPECTED, WhisperRules.Source.ROCK_SOLID, rng)
+		assert_true(WhisperRules.distance(said, NewsBands.Surprise.AS_EXPECTED) <= 1)
 
 
-## A whisper tied to one company has nothing else to name, so it cannot lie:
-## when its roll says lie it is not shown (D201).
-func test_a_whisper_about_one_company_is_never_a_lie() -> void:
+## One band off from an end can only go one way; two off picks among those far
+## enough away.
+func test_a_bent_outcome_stays_on_the_scale() -> void:
+	var rng: RandomNumberGenerator = StalksFixture.rng(3)
+	var seen_far: Dictionary[NewsBands.Surprise, bool] = {}
+	for index: int in 3000:
+		var near: NewsBands.Surprise = WhisperRules.distort(NewsBands.Surprise.MUCH_BETTER, WhisperRules.Source.ROCK_SOLID, rng)
+		assert_true(near in [NewsBands.Surprise.MUCH_BETTER, NewsBands.Surprise.BETTER])
+		var said: NewsBands.Surprise = WhisperRules.distort(NewsBands.Surprise.AS_EXPECTED, WhisperRules.Source.GOSSIP, rng)
+		if WhisperRules.distance(said, NewsBands.Surprise.AS_EXPECTED) >= 2:
+			seen_far[said] = true
+	assert_eq(seen_far.size(), 2, "both ends, and nothing else")
+	assert_true(seen_far.has(NewsBands.Surprise.MUCH_WORSE) and seen_far.has(NewsBands.Surprise.MUCH_BETTER))
+
+
+## The draws a year uses are the ones kept for it the year before, and the
+## first year's are made when the match is opened (D205).
+func test_next_years_draws_are_kept_and_then_used() -> void:
+	var played: WireMatch = WireMatch.start(SEED, 3, 12)
+	assert_not_null(played.state.market.next_draws, "drawn before year 1")
+	for _year: int in 12:
+		var kept: KeptDraws = played.state.market.next_draws.copy()
+		var result: EarningsYearResult = WireMatch.play_year(played.authority)
+		assert_eq(result.industry_rolls, kept.industry_rolls, "year %d industries" % result.year)
+		assert_eq(result.regimes, kept.regimes, "year %d regimes" % result.year)
+		assert_eq(result.growth_rolls, kept.growth_rolls, "year %d growth" % result.year)
+	assert_null(played.state.market.next_draws, "nothing is drawn after the last year")
+
+
+## Whispers are heard from the match's start, about year 1, and not at the end
+## of the last year, which has no next year.
+func test_whispers_are_heard_from_the_start_and_not_after_the_last_year() -> void:
+	var fresh: WireMatch = WireMatch.start(SEED, 3, 5)
+	var opening: WhisperRound = NewsSelector.latest_whispers(fresh.state)
+	assert_not_null(opening)
+	assert_eq(opening.year, 0)
+	assert_eq(opening.about_year(), 1)
+	assert_eq(opening.lines.size(), NewsSelector.WHISPERS_PER_YEAR)
+	assert_false(opening.is_settled(fresh.state))
+	fresh.play(5)
+	assert_null(NewsSelector.whispers_for(fresh.state, 5))
+	assert_eq(_rounds(fresh.state).size(), 5, "rounds 0 to 4")
+	assert_true(opening.is_settled(fresh.state))
+
+
+## The truth a whisper carries is next year's real outcome, worked out again
+## here from the year's record: a company's growth roll against its regime the
+## year before, an industry's swing.
+func test_a_whispers_truth_is_what_next_year_brought() -> void:
 	var played: WireMatch = _played()
 	var state: GameState = played.state
-	var subject: StringName = &""
-	for year: int in range(1, YEARS + 1):
-		for company: CompanyState in state.market.companies:
-			if subject.is_empty() and NewsSelector.trigger_holds(state, year, NewsBands.Trigger.PE_ABOVE_INDUSTRY, company.id):
-				subject = company.id
-	assert_false(subject.is_empty())
-	_single_whisper(state, played.library, 0, subject)
-	for year: int in range(1, YEARS + 1):
-		assert_true(NewsSelector.news_for(state, year).whispers.is_empty(), "year %d" % year)
-	_single_whisper(state, played.library, 100, subject)
-	var shown: int = 0
-	for year: int in range(1, YEARS + 1):
-		for whisper: YearNews.WhisperLine in NewsSelector.news_for(state, year).whispers:
-			assert_eq(whisper.subject, subject)
-			shown += 1
-	assert_gt(shown, 0)
+	var companies: int = 0
+	var industries: int = 0
+	for round: WhisperRound in _rounds(state):
+		var next: EarningsYearResult = MarketReadouts.result_for_year(state, round.about_year())
+		assert_true(round.lines.size() <= NewsSelector.WHISPERS_PER_YEAR)
+		var subjects: Dictionary[StringName, bool] = {}
+		for line: WhisperRound.Line in round.lines:
+			assert_false(subjects.has(line.subject), "two whispers about one subject")
+			subjects[line.subject] = true
+			var expected: NewsBands.Surprise
+			if line.about == NewsBands.Subject.INDUSTRY:
+				industries += 1
+				expected = WhisperRules.industry_outcome(next.industry_rolls[line.subject])
+				assert_true(line.text.contains(state.market.industry_by_id(line.subject).definition.display_name))
+			else:
+				companies += 1
+				var now: CompanyState = MarketReadouts.company_in_year(state, line.subject, round.year)
+				expected = WhisperRules.company_outcome(
+					now.regime, next.growth_rolls[line.subject], now.profile.payout_policy_percent, state.settings.max_years
+				)
+				assert_true(line.text.contains(state.stalk_by_id(line.subject).definition.display_name))
+			assert_eq(line.truth, expected, "%s heard in year %d" % [line.subject, round.year])
+	assert_gt(companies, 0)
+	assert_gt(industries, 0)
 
 
-func test_the_triggers_read_real_state() -> void:
+## The line heard is one written for the outcome its source told, never for
+## the truth when they differ.
+func test_the_line_heard_is_written_for_what_the_source_told() -> void:
 	var played: WireMatch = _played()
-	var state: GameState = played.state
-	for year: int in range(1, YEARS + 1):
-		var result: EarningsYearResult = MarketReadouts.result_for_year(state, year)
-		for company_id: StringName in NewsSelector.subjects_for(state, year, NewsBands.Trigger.NEAR_SPLIT):
-			var after: CompanyState = result.companies_after[company_id]
-			assert_eq(NewsSelector.trigger_holds(state, year, NewsBands.Trigger.NEAR_SPLIT, company_id), after.price > 260)
-			assert_eq(
-				NewsSelector.trigger_holds(state, year, NewsBands.Trigger.HIGH_SHORT_INTEREST, company_id),
-				result.short_interest_flagged.has(company_id),
-			)
-			var near_failure: bool = after.regime == EarningsRegime.Value.DISTRESS and after.price < 20
-			assert_eq(NewsSelector.trigger_holds(state, year, NewsBands.Trigger.NEAR_FAILURE, company_id), near_failure)
-		for industry: IndustryState in state.market.industries:
-			if year < 3:
-				assert_false(NewsSelector.trigger_holds(state, year, NewsBands.Trigger.SECTOR_RUN, industry.id))
-	# A failed company is nobody's subject.
-	for year: int in range(1, YEARS + 1):
-		var result: EarningsYearResult = MarketReadouts.result_for_year(state, year)
-		for company_id: StringName in NewsSelector.subjects_for(state, year, NewsBands.Trigger.MARGIN_SLIPPING):
-			assert_gt(result.companies_after[company_id].price, 0)
+	var by_id: Dictionary[StringName, Whisper] = {}
+	for line: Whisper in played.state.market.news.whispers:
+		by_id[line.id] = line
+	var bent: int = 0
+	for round: WhisperRound in _rounds(played.state):
+		for line: WhisperRound.Line in round.lines:
+			assert_eq(by_id[line.id].outcome, line.said)
+			assert_eq(by_id[line.id].about, line.about)
+			if line.said != line.truth:
+				bent += 1
+	assert_gt(bent, 0, "some whispers are wrong")
+
+
+## Which subjects are picked does not depend on the words, so the company
+## whispered about first with the shipped lines is whispered about again here.
+func test_a_whisper_written_for_one_subject_beats_a_general_one() -> void:
+	var played: WireMatch = _played(SEED, 20)
+	var chosen: StringName = &""
+	for round: WhisperRound in _rounds(played.state):
+		for line: WhisperRound.Line in round.lines:
+			if chosen.is_empty() and line.about == NewsBands.Subject.COMPANY:
+				chosen = line.subject
+	var book: NewsBook = NewsBook.new()
+	for outcome: NewsBands.Surprise in WhisperRules.OUTCOMES:
+		book.whispers.append(_whisper("general_%d" % outcome, NewsBands.Subject.COMPANY, outcome, &"", "ANY {company}"))
+		book.whispers.append(_whisper("ss_%d" % outcome, NewsBands.Subject.COMPANY, outcome, chosen, "ONE COMPANY ONLY"))
+		book.whispers.append(_whisper("ind_%d" % outcome, NewsBands.Subject.INDUSTRY, outcome, &"", "IND {industry}"))
+	_rechoose(played.state, _with_news(played.library, book))
+	var own: int = 0
+	for round: WhisperRound in _rounds(played.state):
+		for line: WhisperRound.Line in round.lines:
+			if line.subject == chosen:
+				own += 1
+				assert_eq(line.text, "ONE COMPANY ONLY")
+			elif line.about == NewsBands.Subject.COMPANY:
+				assert_eq(line.text, "ANY %s" % played.state.stalk_by_id(line.subject).definition.display_name)
+			else:
+				assert_true(line.text.begins_with("IND "))
+	assert_gt(own, 0)
 
 
 # --------------------------------------------------------------- chatter
@@ -444,6 +507,7 @@ func test_choosing_the_news_never_moves_the_match() -> void:
 		WireMatch.play_year(quiet.authority)
 		WireMatch.play_year(reading.authority)
 		NewsSelector.latest(reading.state)
+		NewsSelector.latest_whispers(reading.state)
 	assert_eq(WireMatch.first_difference(WireMatch.state_lines(quiet.state), WireMatch.state_lines(reading.state)), "")
 
 

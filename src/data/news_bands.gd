@@ -27,40 +27,11 @@ enum Regime { ANY, GROWTH, STEADY, SLOWING, DECLINE, DISTRESS }
 
 ## How a company's revenue growth compared with what its regime leads one to
 ## expect: the middle of the regime's growth band (`NewsSelector.surprise_band`).
+## Also what a whisper foretells for next year (design §8.4).
 enum Surprise { ANY, MUCH_WORSE, WORSE, AS_EXPECTED, BETTER, MUCH_BETTER }
 
-## What a whisper is about: a real condition on real state, worked out in
-## `NewsSelector.trigger_holds` and asserted in tests (design §8.1).
-enum Trigger {
-	## The SHORT traders' position in a company was flagged this year (§5.3).
-	HIGH_SHORT_INTEREST,
-	## A company is in its third year (or later) of GROWTH: ageing is about to bite.
-	THIRD_GROWTH_YEAR,
-	## A company's margin fell while its revenue rose.
-	MARGIN_SLIPPING,
-	## A company's P/E is more than 20% above its industry's average.
-	PE_ABOVE_INDUSTRY,
-	## A company's P/E is more than 20% below its industry's average.
-	PE_BELOW_INDUSTRY,
-	## An industry has moved the same way three years running. About an industry.
-	SECTOR_RUN,
-	## A company's price is close enough to the split line that a split is in reach.
-	NEAR_SPLIT,
-	## A company is in DISTRESS with a price under 20.
-	NEAR_FAILURE,
-}
-
-## Every trigger, in the order above.
-const ALL_TRIGGERS: Array[Trigger] = [
-	Trigger.HIGH_SHORT_INTEREST,
-	Trigger.THIRD_GROWTH_YEAR,
-	Trigger.MARGIN_SLIPPING,
-	Trigger.PE_ABOVE_INDUSTRY,
-	Trigger.PE_BELOW_INDUSTRY,
-	Trigger.SECTOR_RUN,
-	Trigger.NEAR_SPLIT,
-	Trigger.NEAR_FAILURE,
-]
+## What a whisper is about (design §8.4).
+enum Subject { COMPANY, INDUSTRY }
 
 
 ## The band for an `EarningsRegime` value.
@@ -76,7 +47,3 @@ static func regime_band(regime: EarningsRegime.Value) -> Regime:
 			return Regime.DECLINE
 	return Regime.DISTRESS
 
-
-## True when a trigger is about an industry rather than a company.
-static func is_industry_trigger(trigger: Trigger) -> bool:
-	return trigger == Trigger.SECTOR_RUN

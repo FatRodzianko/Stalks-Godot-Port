@@ -108,7 +108,7 @@ several; the point of this suite is that the port does not.
 
 ## Current coverage
 
-1417 tests in 56 scripts, about 150 seconds.
+1422 tests in 56 scripts, about 150 seconds.
 
 The networked tests account for most of that time — each one opens a real socket.
 
@@ -127,9 +127,9 @@ The networked tests account for most of that time — each one opens a real sock
 | `test_earnings_year_resolver.gd` | **The StalkleHeads year (S3)**, D152-D160: the twenty-row board, companies at their own prices, shared and built definitions, the index at its authored price; `YearSettlement` computing net worth and standings, ending the game and skipping loans when off; the earnings pipeline running the same loans and game end; same seed same match; **every ledger balancing and being the Yearly Change** over 20 seeds of 15 years; the event inside Yearly Change; the mood BULL exactly when the index rose; sentiment as last year's move clamped; **no circularity** (prices valued on the sentiment carried in, and the mood label moving no price but through the event bag); **the derived bull rate between 45% and 65%** over 200 seeds; the bull bag in year 1, last year's bag after, over a whole match; the event drawn before prices; a bankrupt target skipped; no event on the index; the index as the mean pre-split move, a bankrupt constituent at -100 once then dropped, alive while one constituent is, failing only when all do, paying the average dividend; the bond fixed at 100 and paying 3 in both moods, and its 3% / 8% / 5-point yardstick; one bankruptcy pass wiping out holders; a dead company frozen; a split doubling holders and value-neutral; dividends from earnings on post-split shares; policy 0 never paying; the flow input consumed once; scans for mode checks in the shared files and for `pow`/`exp`/`log`/`sqrt` in the price path | 45 |
 | `test_game_mode.gd` | **StalkleHeads mode and lobby (S5)**, D171: the base game the default; `MatchSetup` choosing board, pipeline, content and loans by mode; players' trades reaching flow; the mode in the snapshot and a base-content client resolving a StalkleHeads board; take-over refused without a market (since S6: a snapshot from an older build that sent none); the lobby row; the title screen's Game row and its card size; `Main` starting either mode; only `MatchSetup` branching on the mode | 33 |
 | `test_wire.gd` | **StalkleHeads over the wire (S6)**, D176-D178: every snapshot of three 60-year matches rebuilding the host's market on a base-content replica to the bit, derived readouts included; year 0 as the profiles' figures; every live year replayed to the host's result, ledgers and all, then the snapshot; a year sent as inputs only; a welcomed history year for year; a rejoiner equal to a player who stayed; **a promoted host making the same thirty years the old host would have**, and parting from them with the event bags forgotten; the same through real sessions over ENet; refusals of other content, short blocks, 32-bit reals, a desk entry off the board, a truncated year and a history with one broken year; the 32/64-bit packing; the layout widths pinned; the base game's snapshot and year keys unchanged; a stale market cleared; a failed company's valuation cleared; the 99-year ten-player welcome under 256 KB | 24 |
-| `test_news.gd` | **StalkleHeads news (S8)**, D199-D204: the shipped news loading clean and covering every slot that can come up; the validator reporting every kind of authoring mistake, warning on a strategy nobody follows and checking the transition matrix; a trader's own chatter as a news line; the move and surprise bands at their edges and the expectation damped like real growth; the least-drawn line first and a full cycle before any repeat; an empty slot staying empty; a specific line beating a general one; commentary naming its company and regime; whispers honest and lying as their roll says, truth 100 and 0, a one-company whisper never lying; the triggers reading real state; chatter by trader and by strategy with tokens filled; the same match the same news; **reading the news never moving the match**; a welcomed client's and a promoted host's news equal to the host's | 23 |
+| `test_news.gd` | **StalkleHeads news (S8)**, D199-D206 (whispers rebuilt by D205): the shipped news loading clean and covering every slot that can come up; the validator reporting every kind of authoring mistake, warning on a strategy nobody follows and checking the transition matrix; a trader's own chatter as a news line; the move and surprise bands at their edges and the expectation damped like real growth; the least-drawn line first and a full cycle before any repeat; an empty slot staying empty; a specific line beating a general one; commentary naming its company and regime; whispers honest and lying as their roll says, truth 100 and 0, a one-company whisper never lying; the triggers reading real state; chatter by trader and by strategy with tokens filled; the same match the same news; **reading the news never moving the match**; a welcomed client's and a promoted host's news equal to the host's | 26 |
 | `test_market_readouts.gd` | **StalkleHeads readouts (S7)**, D179: each year recording every company as it closed, and a year's record not moving with later years; year 0 read from the profile; five years of history oldest first; a P/E without earnings as no figure; an industry's average P/E as its members' mean; market shares and industry revenue shares summing to 100; the three-year move compounding; the regime caption and ordinals; the index by year starting at its opening price; breadth; bull years; the dividend shown as last year's payout; the desk's returns, nothing before it trades; short interest most first; which traders' pick a company was; no digest before year 1, then its market line, industries, surprise, dividend cut and desk pick; `TextChart` bars, the latest values that fit, a flat series, signed bars and share bars as exact strings; the shared formatter's ratios and missing figures | 30 |
-| `test_stalkleheads_screen.gd` | **StalkleHeads on screen (S7)**, D180-D182, on the real `gameplay_screen.tscn`: a base match keeps its three boards and builds no tabs; a StalkleHeads match shows the four tabs in their place; one tab at a time; every row under its industry with its ticker; a header's average P/E and year; a row's figures; buying and selling through a row changing HELD; an unaffordable quantity greying B; year 0 and readying up closing the board; collapsing a group; collapse and sort changing nothing in `GameState`; sorting within groups only, and surviving a refresh; the strip's cash, rankings, desk and short interest; clicking a row opening its company with the regime named; five years of earnings; the ledger's total equal to CHG for every company; the arrows walking and wrapping; traders and investors named; the index chart and mood row; selecting an industry; the digest arriving with the year's news; the mood line carrying the index move; **a client's four tabs, line for line, equal to the host's** after a welcome; every tab fitting 640 x 360; the header lining up with a row; a bankrupt row showing BANKRUPT whole without moving a column. **S8:** the headline, whispers, industry reports, company news and chatter where D203 puts them, and nothing at all when no line is written | 68 |
+| `test_stalkleheads_screen.gd` | **StalkleHeads on screen (S7)**, D180-D182, on the real `gameplay_screen.tscn`: a base match keeps its three boards and builds no tabs; a StalkleHeads match shows the four tabs in their place; one tab at a time; every row under its industry with its ticker; a header's average P/E and year; a row's figures; buying and selling through a row changing HELD; an unaffordable quantity greying B; year 0 and readying up closing the board; collapsing a group; collapse and sort changing nothing in `GameState`; sorting within groups only, and surviving a refresh; the strip's cash, rankings, desk and short interest; clicking a row opening its company with the regime named; five years of earnings; the ledger's total equal to CHG for every company; the arrows walking and wrapping; traders and investors named; the index chart and mood row; selecting an industry; the digest arriving with the year's news; the mood line carrying the index move; **a client's four tabs, line for line, equal to the host's** after a welcome; every tab fitting 640 x 360; the header lining up with a row; a bankrupt row showing BANKRUPT whole without moving a column. **S8:** the headline, whispers, industry reports, company news and chatter where D203 puts them, and nothing at all when no line is written | 70 |
 | `test_balance_smoke.gd` | **StalkleHeads balance, smoke only** (§12.1, D144-D150, on the real pipeline since D161): 30 fixed-seed ten-year matches of the balance tool's nine strategies; the same seed replaying the same match; a strategy subset leaving the market unchanged; the bond player ending on 13,426 every time; splits, bankruptcies and bull-year rate in wide bands; no strategy winning three in four; RANDOM keeping half its cash; the best reader beating RANDOM; the sweep's lever overrides, set to the published values, reproducing the real path exactly, a moved lever moving the market, a rebuilt GROWTH row summing to 100, and the SHORT-target lever at its published value changing nothing while `slowest` moves the market. Does **not** assert P4 | 16 |
 | `test_loan_rules.gd` | Annuity arithmetic, eligibility, the full ten-payment schedule, penalties and default, overpayment, one-loan-per-game, pipeline integration | 40 |
 | `test_marquee_label.gd` | The scrolling name label: overflow detection against the real font, hover and click-to-pin, character-by-character stepping, a two-second hold on the end of the name before going back (D175), reset on leave | 14 |
@@ -494,18 +494,19 @@ a bankrupt row's word is not clipped.
 
 ### StalkleHeads news: what S8 covers and what it does not
 
-`test_news.gd` (23 tests) and five more in `test_stalkleheads_screen.gd`, D199-D204.
+`test_news.gd` (26 tests) and seven more in `test_stalkleheads_screen.gd`, D199-D206.
 
 **Covered.**
 
 - **The content.** The shipped news loads with no errors or warnings, in the
-  numbers shipped (6 headlines, 30 reports, 25 commentary lines, 8 whispers, 120
+  numbers shipped (6 headlines, 30 reports, 25 commentary lines, 10 whispers, 120
   trader lines); every slot that can come up has a line (every mood and move a
-  headline can have, every industry at every move, every trigger). That second test
+  headline can have, every industry at every move, every outcome a whisper can
+  tell about a company and about an industry). That second test
   stays true whatever the words become.
 - **The validator.** One test plants every kind of mistake - an industry, company or
   trader that does not exist, a misspelt token, a token the kind of line does not
-  fill, a truth chance of 150, a whisper about the wrong kind of subject, an empty
+  fill, a whisper that foretells no outcome, a whisper about the wrong kind of subject, an empty
   line, a duplicate id, a band number that does not exist - and checks each is
   reported. A strategy nobody follows is a warning, not an error; the transition
   matrix rows sum to 100.
@@ -515,18 +516,27 @@ a bankrupt row's word is not clipped.
   empty in every category; an industry's own report beating a general one, with
   `{industry}` filled in; every commentary line naming its company and its real
   regime.
-- **Whispers.** Over thirty years, every honest whisper's trigger holds for what it
-  names and every lie's does not, and both happen; truth 100 never lies and 0 always
-  does; a whisper tied to one company never lies (it stays quiet instead); the
-  triggers agree with the state they read; a failed company is nobody's subject.
+- **Whispers (D205).** Next year's draws are made when the match opens and at each
+  year's end, and the next year uses exactly them; none is made after the last
+  year. A round is heard at the start, about year 1, and none after the last year.
+  Over thirty years, every whisper's true outcome equals one worked out again from
+  the next year's record; two a round, never about one subject twice, about both
+  companies and industries, each naming its subject. The line heard is written
+  for the outcome its source told, and some are wrong. Each source's odds hold
+  within 2 points over 20,000 seeded draws; Rock Solid is never two bands out; a
+  bent outcome stays on the scale. A line written for one subject beats a general
+  one.
 - **Chatter.** Each trader says its own line for what it did; a strategy line speaks
   for traders with none, with `{trader}` and `{company}` filled in.
 - **Determinism.** The same match makes the same news; **reading the news every year
   leaves the match identical, field for field, to one where it is never read**; a
   welcomed client makes the host's news for thirty years; a promoted host goes on
   making the news the departed host would have.
-- **On screen.** The Market tab shows the headline and whispers; the Industries tab
-  each industry's report; the Company tab each company's commentary and whispers;
+- **On screen.** The Market tab shows the headline and the whispers with their
+  sources, also before year 1; VIEW HISTORY lists every round newest first with its
+  outcomes once known, CLOSE and leaving the tab shut it (D206); the Industries tab
+  each industry's report; the Company tab each company's commentary and the
+  whispers about it or its industry;
   the chatter under each trader in NPC ACTIVITY and on the DESK page; with no lines
   written, every slot and its heading hidden. The host-and-client comparison now
   includes all of it, and every tab still fits 640 x 360.
@@ -534,7 +544,7 @@ a bankrupt row's word is not clipped.
 **Not covered, and why.**
 
 - **How it reads.** Whether the placement and the faint chatter read well is for a
-  person: [manual-testing.md](manual-testing.md) section S.
+  person: [manual-testing.md](manual-testing.md) sections S and T.
 - **Real words.** Every line is a placeholder. A test cannot judge the owner's
   writing, only that it is valid and reachable.
 - **Two machines.** Covered in one process, as for S6; the news adds nothing to the
@@ -574,7 +584,9 @@ measured it at 29.6% over 4,000 ten-year seeds on the real pipeline (D161).
 anything about how a real person plays. Re-run the tool when each arrives. The S4
 measurement, with the desk, is decisions.md D167; the SHORT target that made P4 pass
 is D169. S5 re-ran it once players' trades reached flow in the game: LOWPE 27.7%,
-identical to D170 (D172).
+identical to D170 (D172). S8 re-ran it after next year's earnings began to be drawn a
+year early for the whispers (D205): identical to D172 in every figure, as expected,
+since the draws take the same place in the stream.
 
 ### Scene tests
 

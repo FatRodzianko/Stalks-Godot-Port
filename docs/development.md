@@ -244,7 +244,7 @@ every line still to write, search `src/data/` for `MARKET HEADLINE:`,
 `INDUSTRY REPORT:`, `EARNINGS:`, `WHISPER:`, `NPC NAME:` and `NPC CHATTER:`.
 
 What the game does with them - which line is chosen when, where it shows - is in
-[game-rules.md](game-rules.md) §5.1 and decisions.md D199-D203.
+[game-rules.md](game-rules.md) §5.1 and decisions.md D199-D206.
 
 #### Where each kind of line lives
 
@@ -252,7 +252,7 @@ What the game does with them - which line is chosen when, where it shows - is in
 |---|---|---|
 | Market headline | `src/data/news/market.tres`, the `headlines` list | mood and move band |
 | Earnings commentary | `src/data/news/market.tres`, the `earnings_commentary` list | regime and surprise band, for any company |
-| Whisper | `src/data/news/market.tres`, the `whispers` list | trigger |
+| Whisper | `src/data/news/market.tres`, the `whispers` list | outcome it foretells, for a company or for an industry |
 | Industry report | `src/data/news/<industry>.tres` (`energy.tres` and so on), the `industry_reports` list | move band |
 | NPC name and chatter | `src/data/traders/<trader>.tres`: `display_name` and `chatter_bought`, `chatter_sold`, `chatter_shorted`, `chatter_covered`, `chatter_held` | trader |
 
@@ -291,7 +291,7 @@ line: the id is how the game remembers which lines it has shown this match.
 | Token | Becomes | Allowed in |
 |---|---|---|
 | `{company}` | the company's name | earnings commentary, company whispers, chatter (the company the trader picked) |
-| `{industry}` | the industry's name | industry reports, earnings commentary, whispers |
+| `{industry}` | the industry's name (for a company line, the company's industry) | industry reports, earnings commentary, whispers |
 | `{trader}` | the trader's name | chatter |
 
 A token a kind of line does not fill (or a misspelt one, like `{compnay}`) is an
@@ -356,9 +356,8 @@ condition is. In the Inspector they are named; in the text they are numbers:
 | `regime` | ANY | GROWTH | STEADY | SLOWING | DECLINE | DISTRESS |
 | `surprise` | ANY | MUCH_WORSE | WORSE | AS_EXPECTED | BETTER | MUCH_BETTER |
 
-`trigger` (whispers): 0 HIGH_SHORT_INTEREST, 1 THIRD_GROWTH_YEAR, 2 MARGIN_SLIPPING,
-3 PE_ABOVE_INDUSTRY, 4 PE_BELOW_INDUSTRY, 5 SECTOR_RUN, 6 NEAR_SPLIT, 7 NEAR_FAILURE.
-What each means is in game-rules.md §5.1.
+`outcome` (whispers) uses the `surprise` numbers above, but never 0: a whisper
+must foretell something. `about` (whispers): 0 COMPANY, 1 INDUSTRY.
 
 `situation` (chatter): 0 BOUGHT, 1 SOLD, 2 SHORTED, 3 COVERED, 4 HELD.
 `strategy` (chatter): 0 VALUE, 1 MOMENTUM, 2 CONTRARIAN, 3 INCOME, 4 INDEXER,
@@ -372,15 +371,27 @@ for one company replaces them for it, in the years it fits.
 
 #### Whispers
 
-A whisper is a rumor, and it is not always true: that is the point of it.
-`truth_chance_percent` (75 in every shipped one) is how often it is honest. When it
-lies, the game makes it name a company (or industry) the rumor is *not* true of.
+A whisper is a rumor about **next year**, heard at the end of this one. The game
+already knows next year's earnings (it draws them a year early), works out how a
+company or industry will really do against what everyone expects, then lets a
+**source** - Rock Solid down to Gossip - bend that, and shows a line written for
+whatever the source told. So:
 
-- Leave **`subject`** empty for an ordinary rumor: the game picks what it names and
-  fills in `{company}` or `{industry}`.
-- Set `subject` to a company id (an industry id for SECTOR_RUN) only for a line that
-  can be about nothing else. Such a whisper cannot lie - there is nothing else for
-  it to name - so when its roll says lie, it is simply not shown.
+- **Write each line as if it were certain.** How far to trust it is the source's
+  job, and the game shows the source beside the line.
+- **`outcome` is what the line means**, not what it says. "The CEO has been at the
+  golf course more than the board room" is a WORSE line; "the sales team all have
+  new Mercedes" is a BETTER one. Write as many lines for each of the five outcomes as
+  you like; more means fewer repeats.
+- **`about`** says whether the line is about a company (`{company}`, and `{industry}`
+  for its industry) or about an industry (`{industry}` only), such as a rumor of new
+  regulation.
+- Leave **`subject`** empty for a line that fits any company (or any industry). Set
+  it to one company's or industry's id for a line that only fits that one; it is
+  then used for that subject in preference to the general lines.
+- Every combination of `about` and `outcome` needs at least one general line, or a
+  whisper that comes up there is not heard; the tests check the shipped set has
+  them.
 
 #### NPC names and chatter
 

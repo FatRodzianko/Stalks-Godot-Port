@@ -9,7 +9,8 @@ extends EarningsYearResolver
 ## settlement - is the game's own code. This file changes only:
 ##
 ## - **the regime roll**, when a regime lever is set: one roll, drawn here, then
-##   the real `CompanyState.move_accounts`. Same two draws as the real path;
+##   the growth roll from that regime's band. Same two draws as the real path,
+##   made a year early like it (decisions.md D205);
 ## - **the industry performance a company is valued on**, when the premium lever
 ##   is set, shifted so the multiple comes out as if the premium table had the
 ##   override (`Levers.valuation_performance`);
@@ -37,24 +38,20 @@ func _init(
 		levers = Levers.new()
 
 
-func advance_company_earnings(
+func draw_company_earnings(
 	market: EarningsMarket,
 	company: CompanyState,
 	match_years: int,
 	rng: RandomNumberGenerator,
-) -> void:
+) -> Vector2i:
 	if not levers.changes_regimes():
-		super(market, company, match_years, rng)
-		return
-	var was: EarningsRegime.Value = company.regime
+		return super(market, company, match_years, rng)
 	var roll: int = rng.randi_range(1, 100)
-	company.regime = levers.regime_for_roll(was, roll, company.profile.quality, company.years_in_regime)
-	if company.regime == was:
-		company.years_in_regime += 1
-	else:
-		company.years_in_regime = 0
-	var band: Vector2i = RegimeRules.GROWTH_BAND[company.regime]
-	company.move_accounts(rng.randi_range(band.x, band.y), market.performance_of(company), match_years)
+	var next: EarningsRegime.Value = levers.regime_for_roll(
+		company.regime, roll, company.profile.quality, company.years_in_regime
+	)
+	var band: Vector2i = RegimeRules.GROWTH_BAND[next]
+	return Vector2i(int(next), rng.randi_range(band.x, band.y))
 
 
 func squeeze_chance_percent(any_flagged: bool) -> int:

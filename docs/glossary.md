@@ -271,7 +271,7 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **Readouts (on screen)** — every number the StalkleHeads tabs show that is worked out rather than stored: P/E, market share, averages, breadth. All come from `MarketReadouts` in `src/sim/`, never from a node (decisions.md D179).
 
-**News (StalkleHeads)** — the lines a StalkleHeads year shows besides its numbers: a market headline, an industry report per industry, earnings commentary per company, up to two whispers and each desk trader's chatter, plus the special event. None of them moves a price. Chosen by `NewsSelector` (design §8, decisions.md D199-D203; rules in game-rules.md §5.1).
+**News (StalkleHeads)** — the lines a StalkleHeads year shows besides its numbers: a market headline, an industry report per industry, earnings commentary per company, each desk trader's chatter, plus the special event; and, heard at each year's end about the next, two whispers. None of them moves a price. Chosen by `NewsSelector` (design §8, decisions.md D199-D206; rules in game-rules.md §5.1).
 
 **News book** — a `.tres` file in `src/data/news/` holding news lines of any kind (`NewsBook`). The game loads every one in the folder.
 
@@ -281,13 +281,17 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **Earnings commentary** — one line about a company's earnings, chosen by its regime and its surprise band. On the Company tab under NEWS.
 
-**Whisper** — a rumor about a company or an industry, shown on the Market tab (and on the Company tab of a company it names). Each has a **trigger**, a real condition such as a P/E more than 20% above its industry's, and a **truth chance**: that often it is honest and names something the trigger holds for; otherwise it names something it does not. So a whisper is evidence, not a promise (decisions.md D201).
+**Whisper** — a rumor about a company or an industry, heard at the end of a year (or at the match's start) and about **the next year**: whether it will do much worse, worse, as expected, better or much better than everyone expects. Two a round, on the Market tab with their sources, and on the Company tab of a company they name or its industry. A whisper can be wrong, and how often depends on its **source** (decisions.md D205).
 
-**Trigger** — what a whisper is about: one of eight named conditions on the year's state (`NewsBands.Trigger`), each worked out in `NewsSelector.trigger_holds`.
+**Source (of a whisper)** — who a whisper came from, which says how far to trust it: Rock Solid, Credible, Hit-or-miss, Questionable or Gossip. Rock Solid is right 85% of the time and never far out; Gossip is right 20% of the time. The table is in game-rules.md §5.1; the code is `WhisperRules`.
+
+**Whisper history** — every round of whispers so far, opened with VIEW HISTORY on the Market tab, each with what really came of it once its year has been played (decisions.md D206).
+
+**Kept draws** — next year's industry swings and every living company's regime and growth roll, drawn a year early and kept on the market (`KeptDraws`, `EarningsMarket.next_draws`) so a whisper can foretell them. The odds are the same as drawing them in their own year (decisions.md D205).
 
 **Move band** — a move sorted into CRASH, DOWN, FLAT, UP or SURGE, at -15, -3, +3 and +15 percent. Headlines use the index's move, industry reports the industry's.
 
-**Surprise band** — how a company's revenue growth compared with what its regime leads one to expect: MUCH WORSE, WORSE, AS EXPECTED, BETTER or MUCH BETTER, 3 and 8 points either side (decisions.md D202).
+**Surprise band** — how a company's revenue growth compared with what its regime leads one to expect: MUCH WORSE, WORSE, AS EXPECTED, BETTER or MUCH BETTER, 3 and 8 points either side (decisions.md D202). Also what a whisper foretells (D205).
 
 **Token** — a word in braces in a news line, filled in when the line is shown: `{company}`, `{industry}`, `{trader}`.
 

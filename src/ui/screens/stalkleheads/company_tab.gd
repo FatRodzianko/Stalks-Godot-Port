@@ -18,8 +18,9 @@ extends VBoxContainer
 ##   P/E against its industry's (decisions.md D188);
 ## - **why the price moved** - the ledger widget, every point attributed;
 ## - its earnings yield against the risk-free rate;
-## - **its news** (phase S8, design §8): the year's earnings commentary on it
-##   and any whisper naming it, as `NewsSelector` chose them. No news, no NEWS
+## - **its news** (phase S8, design §8): the year's earnings commentary on it,
+##   then any current whisper about it or its industry, each with its source
+##   (§8.4, decisions.md D205), as `NewsSelector` chose them. No news, no NEWS
 ##   heading: an empty slot shows nothing (§8.2);
 ## - **who holds it**: the players, by name only (D103), and the NPC traders who
 ##   traded it last year, **each by name** (§14 q11), each with what it said
@@ -47,6 +48,7 @@ signal sell_requested(stalk_id: StringName, shares: int)
 
 
 const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
+const WhisperRowScene: PackedScene = preload("res://src/ui/widgets/whisper_row.tscn")
 
 ## The earnings table: a caption column, then one column per year.
 const YEARS_SHOWN: int = 5
@@ -108,6 +110,9 @@ const POSITION_CHARS: int = 10
 
 ## Puts a trader's chatter under its name rather than level with it.
 const CHATTER_INDENT: String = "  "
+
+## The least width a whisper's words wrap at, beside its source column.
+const WHISPER_TEXT_WIDTH: int = CHART_WIDTH - 90
 
 ## The line under the name: ticker, industry, then the regime phrase.
 const IDENTITY_WIDTHS: Array[int] = [6, 20, 0]
@@ -395,7 +400,8 @@ func _show_no_earnings() -> void:
 
 # ------------------------------------------------------------------ news
 
-## The commentary on this company, then each whisper naming it.
+## The commentary on this company, then each current whisper about it or its
+## industry.
 func _show_news(state: GameState) -> void:
 	for child: Node in _company_news.get_children():
 		_company_news.remove_child(child)
@@ -405,8 +411,15 @@ func _show_news(state: GameState) -> void:
 		var commentary: String = news.commentary.get(_stalk_id, "")
 		if not commentary.is_empty():
 			_add_news_line(commentary)
-		for whisper: YearNews.WhisperLine in news.whispers_about(_stalk_id):
-			_add_news_line(whisper.text)
+	var whispers: WhisperRound = NewsSelector.latest_whispers(state)
+	var company: CompanyState = state.market.company_by_id(_stalk_id) if state.market != null else null
+	if whispers != null and company != null:
+		var about: Array[WhisperRound.Line] = whispers.lines_about(_stalk_id)
+		about.append_array(whispers.lines_about(company.profile.industry))
+		for line: WhisperRound.Line in about:
+			var row: WhisperRow = WhisperRowScene.instantiate()
+			_company_news.add_child(row)
+			row.show_whisper(line, WHISPER_TEXT_WIDTH)
 	_news_section.visible = _company_news.get_child_count() > 0
 
 
@@ -575,12 +588,18 @@ func chatter_lines() -> PackedStringArray:
 
 
 ## The NEWS section's lines; empty when it is hidden.
+## The NEWS section as shown: the commentary, then each whisper as
+## `source | words`.
 func news_lines() -> PackedStringArray:
 	var lines: PackedStringArray = []
 	if not _news_section.visible:
 		return lines
 	for child: Node in _company_news.get_children():
-		lines.append((child as Label).text)
+		if child is WhisperRow:
+			var row: WhisperRow = child
+			lines.append("%s | %s" % [row.source_text(), row.whisper_text()])
+		else:
+			lines.append((child as Label).text)
 	return lines
 
 
