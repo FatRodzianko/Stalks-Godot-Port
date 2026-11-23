@@ -187,7 +187,7 @@ func _refresh_desk(state: GameState) -> void:
 	for index: int in order.size():
 		var strategy: NpcStrategy.Value = order[index]
 		var row: CellRow = _desk_rows[index]
-		row.set_texts([NpcStrategy.name_of(strategy).to_lower(), Palette.format_percent_change(returns[strategy])])
+		row.set_texts([Palette.sentence_case(NpcStrategy.name_of(strategy).to_lower()), Palette.format_percent_change(returns[strategy])])
 		row.set_cell_colour(1, Palette.for_percent(returns[strategy]))
 		row.set_cell_tooltip(0, TermTips.strategy(strategy))
 

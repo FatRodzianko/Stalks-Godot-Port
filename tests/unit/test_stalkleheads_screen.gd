@@ -329,7 +329,7 @@ func test_the_side_panel_shows_cash_rankings_and_the_desk() -> void:
 	assert_eq(lines.size(), returns.size())
 	var best: NpcStrategy.Value = MarketReadouts.strategies_by_return(_state())[0]
 	assert_eq(lines[0], "%s %s" % [
-		NpcStrategy.name_of(best).to_lower(), Palette.format_percent_change(returns[best]),
+		Palette.sentence_case(NpcStrategy.name_of(best).to_lower()), Palette.format_percent_change(returns[best]),
 	])
 
 
@@ -446,7 +446,7 @@ func test_the_sorted_heading_shows_its_direction() -> void:
 	assert_eq(header.column_text(CompanyRow.SORT_PE), "P/Ev")
 	_click_label(header.get_node("%Name"))
 	assert_eq(header.column_text(CompanyRow.SORT_NAME), "NAME^")
-	assert_eq(header.column_text(CompanyRow.SORT_PE), "P/E")
+	assert_eq(header.column_text(CompanyRow.SORT_PE), "P/E ")
 
 
 # ---------------------------------------------------------- the company tab
@@ -471,9 +471,9 @@ func test_the_company_tab_shows_five_years_of_earnings() -> void:
 	var company: CompanyState = _first_living_company()
 	_tabs().show_company(company.id)
 	var tab: CompanyTab = _tabs().company_tab()
-	assert_eq(tab.years_line(), "EARNINGS yr2 yr3 yr4 yr5 yr6")
+	assert_eq(tab.years_line(), "EARNINGS Year 2 Year 3 Year 4 Year 5 Year 6")
 	var history: Array[CompanyState] = MarketReadouts.company_history(_state(), company.id, 5)
-	var revenue: PackedStringArray = ["revenue"]
+	var revenue: PackedStringArray = ["Revenue"]
 	for record: CompanyState in history:
 		revenue.append(Palette.format_decimal(record.revenue, 0))
 	assert_eq(tab.earnings_line(CompanyTab.Line.REVENUE), " ".join(revenue))
@@ -491,8 +491,8 @@ func test_the_ledgers_total_is_the_boards_change() -> void:
 		_tabs().show_company(company.id)
 		var lines: PackedStringArray = _tabs().company_tab().ledger().lines_text()
 		var stalk: StalkState = _state().stalk_by_id(company.id)
-		assert_eq(lines[lines.size() - 1], "total %s" % Palette.format_change(stalk.last_yearly_change), String(company.id))
-		assert_eq(lines[4], "this event %s" % Palette.format_change(ledger.this_years_event))
+		assert_eq(lines[lines.size() - 1], "Total %s" % Palette.format_change(stalk.last_yearly_change), String(company.id))
+		assert_eq(lines[4], "This event %s" % Palette.format_change(ledger.this_years_event))
 
 
 ## The arrows walk the companies in the match's own order and wrap; sorting
@@ -617,8 +617,8 @@ func test_the_company_tab_names_the_traders_who_traded_it() -> void:
 		var trader: NpcTraderState = _state().market.desk.trader_by_id(activity[0][0])
 		var expected: String = "%s %s %s" % [
 			trader.definition.display_name,
-			MarketReadouts.situation_word(activity[0][1]),
-			MarketReadouts.position_caption(activity[0][2], activity[0][3]),
+			Palette.sentence_case(MarketReadouts.situation_word(activity[0][1])),
+			Palette.sentence_case(MarketReadouts.position_caption(activity[0][2], activity[0][3])),
 		]
 		assert_eq(lines[1], expected)
 		named += 1
@@ -629,7 +629,7 @@ func test_the_company_tab_lists_its_investors_by_name() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 1)
 	var company: CompanyState = _first_living_company()
 	_tabs().show_company(company.id)
-	assert_eq(_tabs().company_tab().investors_text(), "none")
+	assert_eq(_tabs().company_tab().investors_text(), "None")
 	_session.request_buy(&"p0", company.id, 1)
 	_tabs().show_company(company.id)
 	assert_eq(_tabs().company_tab().investors_text(), _player().display_name)
@@ -701,7 +701,7 @@ func test_the_year_digest_opens_with_the_years_news() -> void:
 	assert_true(_screen.news_panel().is_open())
 	var digest: YearDigest = YearDigest.for_latest_year(_state())
 	var lines: PackedStringArray = _screen.year_digest().lines_text()
-	assert_eq(lines[0], "THE YEAR IN REVIEW year 1")
+	assert_eq(lines[0], "THE YEAR IN REVIEW Year 1")
 	assert_string_contains(lines[1], Palette.format_percent_change(digest.index_move_percent))
 	assert_string_contains(lines[1], MarketMood.label(digest.mood))
 	assert_true(_screen.year_digest().is_visible_in_tree())
@@ -717,7 +717,7 @@ func test_clicking_the_event_opens_the_year_in_review() -> void:
 	assert_false(_screen.news_panel().is_open(), "turned off, so it did not open by itself")
 	_click_label(_screen.get_node("%EventPanel"))
 	assert_true(_screen.news_panel().is_open())
-	assert_eq(_screen.year_digest().lines_text()[0], "THE YEAR IN REVIEW year 2")
+	assert_eq(_screen.year_digest().lines_text()[0], "THE YEAR IN REVIEW Year 2")
 	assert_true(_screen.news_panel().dont_show_again_box().button_pressed, "shows the setting")
 
 
@@ -729,7 +729,7 @@ func test_the_digest_names_next_years_sentiment() -> void:
 	_click_label(_screen.get_node("%EventPanel"))
 	assert_string_contains(
 		_screen.year_digest().lines_text()[1],
-		"year 4 sentiment %s" % Palette.format_percent_change(digest.next_sentiment),
+		"Year 4 sentiment %s" % Palette.format_percent_change(digest.next_sentiment),
 	)
 	assert_eq(digest.next_sentiment, _state().market.sentiment)
 
@@ -887,3 +887,77 @@ func test_fit_wraps_at_the_limit_and_keeps_line_breaks() -> void:
 	for line: String in lines:
 		assert_true(line.length() <= TermTips.MAX_CHARS, line)
 	assert_eq(TermTips.fit(text).replace("\n", " "), text.replace("\n", " "))
+
+
+## G4: marking the sorted column moves no heading - a right-aligned caption
+## keeps its mark's space - and each heading is drawn as a cell.
+func test_sorting_moves_no_heading() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 1)
+	var header: CompanyRow = _exchange().get_node("%HeaderSlot").get_child(0)
+	var pe: Label = header.get_node("%Pe")
+	assert_eq(pe.theme_type_variation, &"HeaderCell")
+	var before: int = pe.text.length()
+	_click_label(pe)
+	assert_eq(pe.text.length(), before, "same length, so nothing shifts")
+	assert_eq(pe.theme_type_variation, &"HeaderCellLit")
+	pe.mouse_entered.emit()
+	assert_eq(pe.theme_type_variation, &"HeaderCellHover", "lit under the mouse")
+	pe.mouse_exited.emit()
+	assert_eq(pe.theme_type_variation, &"HeaderCellLit")
+	assert_string_contains(header.get_node("%Name").tooltip_text, "Click to sort")
+
+
+## G4: an industry's header does not repeat its name as a tooltip.
+func test_an_industry_header_has_no_name_tooltip() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 1)
+	for child: Node in _exchange().find_children("*", "CompanyRow", true, false):
+		var row: CompanyRow = child as CompanyRow
+		if row.get_node("%Ticker").visible:
+			continue
+		assert_eq((row.get_node("%Name") as Control).tooltip_text, "")
+
+
+## G2: the Company tab's title line stays put while the rest scrolls.
+func test_the_company_title_line_is_pinned() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 1)
+	var tab: CompanyTab = _tabs().company_tab()
+	var scroll: ScrollContainer = tab.get_node("Scroll")
+	assert_false(scroll.is_ancestor_of(tab.pick_button()), "outside the scrolling part")
+	assert_true(scroll.is_ancestor_of(tab.get_node("%Activity")))
+
+
+## G2: the company list sorts by a heading, again reversed, ties in match order.
+func test_the_company_list_sorts_by_its_headings() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 4)
+	var tabs: MarketTabs = _tabs()
+	tabs.select_tab(MarketTabs.Tab.COMPANY)
+	tabs.company_tab().pick_button().pressed.emit()
+	var picker: CompanyPicker = tabs.company_picker()
+	var tickers: Array[String] = []
+	for stalk: StalkState in _state().stalks:
+		tickers.append(String(stalk.definition.ticker))
+	tickers.sort()
+	picker.press_heading(0)
+	assert_eq(picker.header_text(), "SYM^ NAME NPC")
+	var shown: Array[String] = []
+	for id: StringName in picker.shown_order():
+		shown.append(String(_state().stalk_by_id(id).definition.ticker))
+	assert_eq(shown, tickers)
+	picker.press_heading(2)
+	picker.press_heading(2)
+	assert_eq(picker.header_text(), "SYM NAME NPCv")
+	var counts: Array[int] = []
+	for id: StringName in picker.shown_order():
+		counts.append(MarketReadouts.npc_holder_count(_state(), id))
+	for index: int in counts.size() - 1:
+		assert_true(counts[index] >= counts[index + 1], "most held first")
+
+
+## G1: captions and phrases in the year in review start with a capital.
+func test_the_year_in_review_is_capitalised() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 3)
+	var lines: PackedStringArray = _screen.year_digest().lines_text()
+	assert_string_contains(lines[1], "The market")
+	assert_string_contains(lines[1], "Market P/E")
+	for line: String in lines:
+		assert_false(line.begins_with("biggest") or line.begins_with("dividend cut") or line.begins_with("the desk"), line)

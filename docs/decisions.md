@@ -6974,7 +6974,7 @@ read as "short" over and over.
 N".
 
 **The sort marker goes after the caption**, always: `P/E^`. A right-aligned heading
-moves one character left.
+moves one character left. *Changed by D185: nothing moves.*
 
 **BUY and SELL in full.** `TradeBox` is quantity 5, BUY 5, SELL 6 characters; five
 characters still show four digits. NAME on the board went from 18 to 16
@@ -6998,3 +6998,61 @@ characters to make room. It scrolls on hover, and the ticker is beside it.
 **Rules out.** A panel or list that squeezes the tab it opens over; a StalkleHeads
 copy of the holdings row; tooltips longer than `MAX_CHARS` on the tabs (tested);
 the arrows following the board's sort.
+
+### D185 - After the third play of S7: capitals, pinned title, readable headings
+**2026-11-22 · Accepted** (manual steps G, findings)
+
+The owner ran section G. It mostly passed; these are the changes.
+
+**Captions and phrases start with a capital.** The owner's rule: a title of
+something is capitalised like a title; a phrase or sentence starts with a capital
+letter; anything already all capitals (buttons, section headings) stays that way.
+It applies to every StalkleHeads screen, not only the year in review where it was
+noticed:
+
+- the year in review: "The market", "Market P/E", "Year 3 sentiment", "Year 2",
+  "Biggest earnings surprise", "Profit +31%", "Contrarian and value buying";
+- the Market tab's captions ("Index level", "Rose this year"), the Company tab's
+  ("Revenue", "Earnings yield ...", "Short interest ...", "None", year columns
+  "Year 2"), the ledger ("Earnings", "This event", "Total"), the desk's
+  strategies, and NPC ACTIVITY's values ("Bought", "Short 239").
+
+`Palette.sentence_case` capitalises the first letter of text that is built from
+lower-case parts. Godot's own `capitalize()` would capitalise every word.
+**Not changed:** the mood words `BULL!!!` and `bear...`. They are the original
+game's words, shown the same way in the top bar, and the case is part of their
+voice.
+
+**The Company tab's title line is pinned.** The tab is a `VBoxContainer`: the
+title line (COMPANIES, `<`, the name, `>`), then a `ScrollContainer` with
+everything else. So scrolling a long NPC table never hides which company it is
+about.
+
+**NPC ACTIVITY has fixed columns**: TRADER 30, LAST YEAR 10, NOW 10 characters,
+under a framed heading row. The name column used to take the rest of the line,
+which put the action and the holding at the far edge of the tab.
+
+**The company list sorts** by SYM, NAME or NPC. Click a heading to sort by it;
+click again to reverse. The mark goes after the caption, and ties stay in the
+match's order. `CellRow` gained `set_cell_clickable` and `cell_pressed` for
+this.
+
+**The board's headings.** Two problems:
+
+- **Marking a sort moved the caption.** A right-aligned heading now always keeps
+  a trailing space, and the mark replaces it: `P/E ` becomes `P/E^`.
+- **Nobody could see where a heading's clickable area began.** The captions sit
+  at the right of their cells, over right-aligned numbers, so the gap left of a
+  caption belongs to that caption's column. To the owner, that gap looked like
+  part of the previous heading. Each heading is now drawn as a cell: a faint line
+  down its right edge (`HeaderCell`), lit under the mouse (`HeaderCellHover`),
+  bright when sorted (`HeaderCellLit`).
+
+**An industry header has no tooltip.** It repeated the industry's name.
+
+**Key personnel**, asked for in the same round, is recorded in
+stalkleheads-design.md §14 as not scheduled. It changes the simulation, so the
+owner tabled it until the current plan works.
+
+**Rules out.** Lower-case captions on the StalkleHeads screens; a heading that
+moves when sorted; a title line that scrolls away.

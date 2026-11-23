@@ -47,7 +47,7 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Faint"
-text = "none"
+text = "None"
 
 [node name="HoldingsList" type="VBoxContainer" parent="Pages/HoldingsPage"]
 unique_name_in_owner = true
@@ -99,7 +99,7 @@ text = "SHORT INTEREST"
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Faint"
-text = "none"
+text = "None"
 
 [node name="ShortList" type="VBoxContainer" parent="Pages/DeskPage"]
 unique_name_in_owner = true

@@ -53,6 +53,16 @@ static func for_mood(mood: MarketMood.Value) -> Color:
 ## em dash when it did not move.
 ## "Ann", "Ann and Bob", "Ann, Bob and Cal". Names read better than a count
 ## when the reader is deciding whether to wait for somebody in particular.
+## `text` with its first letter capitalised and the rest left alone: a caption
+## or a phrase on the StalkleHeads screens reads as a sentence does
+## (decisions.md D185). Not Godot's `capitalize()`, which capitalises every
+## word.
+static func sentence_case(text: String) -> String:
+	if text.is_empty():
+		return text
+	return text.left(1).to_upper() + text.substr(1)
+
+
 static func list_names(names: PackedStringArray) -> String:
 	if names.is_empty():
 		return ""

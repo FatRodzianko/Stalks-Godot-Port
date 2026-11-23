@@ -353,6 +353,24 @@ border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.43137255, 0.90588236, 0.627451, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hcell"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0, 0, 0, 0)
+border_width_right = 1
+border_color = Color(0.23529412, 0.3137255, 0.28235295, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hcelh"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.18431373, 0.41960785, 0.29803923, 1)
+border_width_right = 1
+border_color = Color(0.43137255, 0.90588236, 0.627451, 1)
+
 [resource]
 default_font = ExtResource("1_pr7vg")
 default_font_size = 12
@@ -417,6 +435,15 @@ HSeparator/constants/separation = 2
 HSeparator/styles/separator = SubResource("StyleBoxLine_hua00")
 HeaderCard/base_type = &"PanelContainer"
 HeaderCard/styles/panel = SubResource("StyleBoxFlat_ln4sa")
+HeaderCell/base_type = &"Label"
+HeaderCell/colors/font_color = Color(0.43137255, 0.5058824, 0.4627451, 1)
+HeaderCell/styles/normal = SubResource("StyleBoxFlat_hcell")
+HeaderCellHover/base_type = &"Label"
+HeaderCellHover/colors/font_color = Color(0.90588236, 0.93333334, 0.9137255, 1)
+HeaderCellHover/styles/normal = SubResource("StyleBoxFlat_hcelh")
+HeaderCellLit/base_type = &"Label"
+HeaderCellLit/colors/font_color = Color(0.90588236, 0.93333334, 0.9137255, 1)
+HeaderCellLit/styles/normal = SubResource("StyleBoxFlat_hcell")
 HeaderField/base_type = &"LineEdit"
 HeaderField/colors/font_placeholder_color = Color(0.43137255, 0.5058824, 0.4627451, 1)
 HeaderField/styles/focus = SubResource("StyleBoxEmpty_218lh")

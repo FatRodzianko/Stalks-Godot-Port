@@ -1,5 +1,5 @@
 class_name CompanyTab
-extends ScrollContainer
+extends VBoxContainer
 ## Tab 4 of a StalkleHeads match: one company in depth
 ## (docs/stalkleheads-design.md §7.5). Opened by clicking its row on the
 ## Exchange, the gesture the base game's details panel already uses
@@ -20,6 +20,10 @@ extends ScrollContainer
 ##
 ## Beside the name line: how many shares you hold (HELD, as the board says
 ## it), and a trade box.
+##
+## **The title line is pinned**: COMPANIES, `<`, the name and `>` stay at the
+## top while everything under them scrolls, so a long NPC table never hides
+## which company it is about (decisions.md D185).
 ##
 ## The bond and the index are on the board but are not companies: for them this
 ## shows the name, description and investors only.
@@ -47,19 +51,23 @@ const SPLIT_MARK: String = "^split"
 enum Line { REVENUE, EXPENSES, PROFIT, MARGIN, EPS, PRICE, PE }
 
 const LINE_CAPTIONS: Dictionary[Line, String] = {
-	Line.REVENUE: "revenue",
-	Line.EXPENSES: "expenses",
-	Line.PROFIT: "profit",
-	Line.MARGIN: "margin",
-	Line.EPS: "earnings/share",
-	Line.PRICE: "price",
+	Line.REVENUE: "Revenue",
+	Line.EXPENSES: "Expenses",
+	Line.PROFIT: "Profit",
+	Line.MARGIN: "Margin",
+	Line.EPS: "Earnings/share",
+	Line.PRICE: "Price",
 	Line.PE: "P/E",
 }
 
-## NPC ACTIVITY's columns after the trader's name, in characters: what it did
-## last year, and what it holds now.
+## NPC ACTIVITY's columns, in characters: the trader's name, what it did last
+## year, and what it holds now. Fixed widths rather than a name column that
+## takes the rest of the line, so the three sit together and read across
+## (manual-testing.md G3). 30 holds the longest placeholder name; a longer one
+## is clipped and shown whole in its tooltip.
+const TRADER_CHARS: int = 30
 const ACTION_CHARS: int = 10
-const POSITION_CHARS: int = 11
+const POSITION_CHARS: int = 10
 
 ## The line under the name: ticker, industry, then the regime phrase.
 const IDENTITY_WIDTHS: Array[int] = [6, 20, 0]
@@ -184,7 +192,7 @@ func refresh(context: TradeContext) -> void:
 		if latest != null:
 			ledger = latest.ledger_for(_stalk_id)
 		_ledger.show_ledger(ledger)
-		_yield.text = "earnings yield %s  against risk-free %s" % [
+		_yield.text = "Earnings yield %s  against risk-free %s" % [
 			Palette.format_percent_decimal(MarketReadouts.earnings_yield_percent(state, company)),
 			Palette.format_percent_decimal(MarketReadouts.risk_free_percent(state)),
 		]
@@ -214,7 +222,7 @@ func _show_earnings(state: GameState, company: CompanyState) -> void:
 			_split_row.set_cell(cell, "")
 			continue
 		var record: CompanyState = records[column]
-		_year_row.set_cell(cell, "yr%d" % years[column])
+		_year_row.set_cell(cell, "Year %d" % years[column])
 		_lines[Line.REVENUE].set_cell(cell, Palette.format_decimal(record.revenue, 0))
 		_lines[Line.EXPENSES].set_cell(cell, Palette.format_decimal(MarketReadouts.expenses(record), 0))
 		_lines[Line.PROFIT].set_cell(cell, Palette.format_decimal(record.profit, 0))
@@ -246,7 +254,7 @@ func _show_investors(state: GameState, stalk: StalkState) -> void:
 	if stalk.definition.investors_are_anonymous and not names.is_empty():
 		_investors.text = "(anonymous)"
 	elif names.is_empty():
-		_investors.text = "none"
+		_investors.text = "None"
 	else:
 		_investors.text = "\n".join(names)
 
@@ -264,11 +272,12 @@ func _show_activity(state: GameState, company: CompanyState) -> void:
 	var entries: Array[Array] = MarketReadouts.desk_activity(state, company.id)
 	if entries.is_empty():
 		var nobody: CellRow = _add_activity_row()
-		nobody.set_texts(["none"])
+		nobody.set_texts(["None"])
 		return
 	var heading: CellRow = _add_activity_row()
 	heading.set_texts(["TRADER", "LAST YEAR", "NOW"])
 	heading.set_row_variation(&"Faint")
+	heading.set_framed(&"HeaderCard")
 	heading.set_cell_tooltip(1, TermTips.NPC_LAST_YEAR)
 	heading.set_cell_tooltip(2, TermTips.NPC_NOW)
 	for entry: Array in entries:
@@ -276,21 +285,21 @@ func _show_activity(state: GameState, company: CompanyState) -> void:
 		var row: CellRow = _add_activity_row()
 		row.set_texts([
 			trader.definition.display_name,
-			MarketReadouts.situation_word(entry[1]),
-			MarketReadouts.position_caption(entry[2], entry[3]),
+			Palette.sentence_case(MarketReadouts.situation_word(entry[1])),
+			Palette.sentence_case(MarketReadouts.position_caption(entry[2], entry[3])),
 		])
 		row.set_cell_tooltip(0, trader.definition.display_name)
 		row.set_cell_variation(1, &"Faint")
 	var shorted: int = state.market.desk.short_interest(company.id)
 	_short_line.tooltip_text = TermTips.fit(TermTips.short_interest())
 	if shorted > 0:
-		_short_line.text = "short interest %d shares" % shorted
+		_short_line.text = "Short interest %d shares" % shorted
 
 
 func _add_activity_row() -> CellRow:
 	var row: CellRow = CellRowScene.instantiate()
 	_activity.add_child(row)
-	row.configure([0, ACTION_CHARS, POSITION_CHARS], [CellRow.LEFT, CellRow.LEFT, CellRow.RIGHT])
+	row.configure([TRADER_CHARS, ACTION_CHARS, POSITION_CHARS], [CellRow.LEFT, CellRow.LEFT, CellRow.RIGHT])
 	return row
 
 

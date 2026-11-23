@@ -353,7 +353,7 @@ comparisons in `test_wire.gd` are what guard the two halves from here.
 
 ### StalkleHeads on screen: what S7 covers and what it does not
 
-`test_market_readouts.gd` (32) and `test_stalkleheads_screen.gd` (46), D179-D184.
+`test_market_readouts.gd` (32) and `test_stalkleheads_screen.gd` (51), D179-D185.
 
 **After the first play (D183)**, tests for each finding: the arrows walk the board's
 order; the identity line keeps the industry whole; one tab lit after opening a
@@ -368,6 +368,11 @@ its width and beside the board without covering it; the holdings are compact
 `HoldingRow`s, sell only; the arrows walk the match's order again; the company list
 opens, picks, closes and counts the desk's holders; the NPC table's heading and
 lines; `TermTips.fit`; every visible tooltip on every tab within `MAX_CHARS`.
+
+**After the third play (D185)**: sorting moves no heading and the headings take
+their cell, hover and lit styles; an industry header has no tooltip; the Company
+tab's title line is outside its scroll; the company list sorts by each heading;
+the year in review's captions are capitalised.
 
 **The rule they protect.** No node works out a figure. So the numbers are tested in
 `test_market_readouts.gd` without a window, and the screen test checks that each tab

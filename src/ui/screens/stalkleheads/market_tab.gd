@@ -44,11 +44,11 @@ var _lines: Dictionary[Line, CellRow] = {}
 
 func _ready() -> void:
 	var captions: Dictionary[Line, String] = {
-		Line.INDEX: "index level",
-		Line.PE: "market P/E",
-		Line.MOOD: "mood",
-		Line.BREADTH: "breadth",
-		Line.RISK_FREE: "risk-free",
+		Line.INDEX: "Index level",
+		Line.PE: "Market P/E",
+		Line.MOOD: "Mood",
+		Line.BREADTH: "Breadth",
+		Line.RISK_FREE: "Risk-free",
 	}
 	var tips: Dictionary[Line, String] = {
 		Line.INDEX: TermTips.INDEX_LEVEL,
@@ -86,7 +86,7 @@ func _refresh_stats(state: GameState) -> void:
 		var move: String = ""
 		if latest != null:
 			move = Palette.format_percent_change(latest.index_move_percent)
-		_lines[Line.INDEX].set_texts(["index level", str(index.price), Palette.format_change(index.last_yearly_change), "  " + move])
+		_lines[Line.INDEX].set_texts(["Index level", str(index.price), Palette.format_change(index.last_yearly_change), "  " + move])
 		_lines[Line.INDEX].set_cell_colour(2, Palette.for_change(index.last_yearly_change))
 
 	_lines[Line.PE].set_cell(1, Palette.format_decimal(MarketReadouts.market_pe(state), 1))
@@ -97,14 +97,14 @@ func _refresh_stats(state: GameState) -> void:
 		_lines[Line.MOOD].set_cell_colour(1, Palette.for_mood(latest.mood))
 		_lines[Line.MOOD].set_cell(3, "  %d of last %d bull" % [bulls.x, bulls.y])
 	else:
-		_lines[Line.MOOD].set_texts(["mood", "", "", ""])
+		_lines[Line.MOOD].set_texts(["Mood", "", "", ""])
 
 	var breadth: Vector2i = MarketReadouts.breadth(state)
 	if breadth.y > 0:
 		_lines[Line.BREADTH].set_cell(1, "%d/%d" % [breadth.x, breadth.y])
-		_lines[Line.BREADTH].set_cell(3, "  rose this year")
+		_lines[Line.BREADTH].set_cell(3, "  Rose this year")
 	else:
-		_lines[Line.BREADTH].set_texts(["breadth", "", "", ""])
+		_lines[Line.BREADTH].set_texts(["Breadth", "", "", ""])
 
 	var bond: StalkState = state.stalk_by_id(EarningsMarket.BOND_ID)
 	_lines[Line.RISK_FREE].set_cell(1, Palette.format_percent_decimal(MarketReadouts.risk_free_percent(state)))

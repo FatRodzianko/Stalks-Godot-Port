@@ -20,7 +20,7 @@ const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
 
 ## Each line's caption, in order. Explanatory names, not voice.
 const CAPTIONS: Array[String] = [
-	"earnings", "multiple", "industry", "this event", "last, faded", "flow",
+	"Earnings", "Multiple", "Industry", "This event", "Last, faded", "Flow",
 ]
 
 ## What each line means, in the same order (`TermTips`).
@@ -61,7 +61,7 @@ func show_nothing() -> void:
 	_move.set_texts(["", ""])
 	for row: CellRow in _rows:
 		row.set_cell(1, "")
-	_total.set_texts(["  total", ""])
+	_total.set_texts(["  Total", ""])
 
 
 func show_ledger(ledger: PriceLedger) -> void:
@@ -86,7 +86,7 @@ func show_ledger(ledger: PriceLedger) -> void:
 	for index: int in _rows.size():
 		_rows[index].set_cell(1, Palette.format_change(values[index]))
 		_rows[index].set_cell_colour(1, Palette.for_change(values[index]))
-	_total.set_texts(["  total", Palette.format_change(ledger.total())])
+	_total.set_texts(["  Total", Palette.format_change(ledger.total())])
 	_total.set_cell_colour(1, Palette.for_change(ledger.total()))
 
 

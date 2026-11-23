@@ -19,6 +19,10 @@ extends PanelContainer
 ## Somebody clicked a clickable row.
 signal pressed(key: StringName)
 
+## Somebody clicked a cell made clickable with `set_cell_clickable`: a sortable
+## heading, say.
+signal cell_pressed(index: int)
+
 
 ## Pixels per character at the game's font size (docs/ui-reference.md).
 const CELL_WIDTH: int = 6
@@ -105,6 +109,17 @@ func set_cell_tooltip(index: int, text: String) -> void:
 		_labels[index].mouse_filter = Control.MOUSE_FILTER_PASS
 
 
+## Makes one cell take clicks on its own, emitting `cell_pressed` with its
+## index, with the pointing hand over it.
+func set_cell_clickable(index: int) -> void:
+	if index < 0 or index >= _labels.size():
+		return
+	var label: Label = _labels[index]
+	label.mouse_filter = Control.MOUSE_FILTER_STOP
+	label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	label.gui_input.connect(_on_cell_input.bind(index))
+
+
 ## Every cell in the row the same variation: a heading row, say.
 func set_row_variation(variation: StringName) -> void:
 	for label: Label in _labels:
@@ -150,3 +165,11 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	accept_event()
 	pressed.emit(key)
+
+
+func _on_cell_input(event: InputEvent, index: int) -> void:
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
+		return
+	accept_event()
+	cell_pressed.emit(index)

@@ -5,21 +5,26 @@
 [ext_resource type="PackedScene" path="res://src/ui/widgets/ledger_widget.tscn" id="3_ledger"]
 [ext_resource type="PackedScene" path="res://src/ui/widgets/trade_box.tscn" id="4_trade"]
 
-[node name="CompanyTab" type="ScrollContainer"]
+[node name="CompanyTab" type="VBoxContainer"]
 size_flags_horizontal = 3
 size_flags_vertical = 3
-horizontal_scroll_mode = 0
+theme_type_variation = &"TightVBox"
 script = ExtResource("1_tab")
 
-[node name="Body" type="VBoxContainer" parent="."]
+[node name="Title" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Scroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Body" type="VBoxContainer" parent="Scroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"TightVBox"
 
-[node name="Title" type="HBoxContainer" parent="Body"]
-layout_mode = 2
-
-[node name="PickButton" type="Button" parent="Body/Title"]
+[node name="PickButton" type="Button" parent="Title"]
 unique_name_in_owner = true
 layout_mode = 2
 toggle_mode = true
@@ -27,14 +32,14 @@ focus_mode = 0
 tooltip_text = "Every company, to pick one"
 text = "COMPANIES"
 
-[node name="PreviousButton" type="Button" parent="Body/Title"]
+[node name="PreviousButton" type="Button" parent="Title"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 0)
 layout_mode = 2
 tooltip_text = "The previous company"
 text = "<"
 
-[node name="CompanyName" type="Label" parent="Body/Title"]
+[node name="CompanyName" type="Label" parent="Title"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -44,35 +49,35 @@ text = ""
 clip_text = true
 text_overrun_behavior = 3
 
-[node name="NextButton" type="Button" parent="Body/Title"]
+[node name="NextButton" type="Button" parent="Title"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 0)
 layout_mode = 2
 tooltip_text = "The next company"
 text = ">"
 
-[node name="IdentityLine" type="HBoxContainer" parent="Body"]
+[node name="IdentityLine" type="HBoxContainer" parent="Scroll/Body"]
 layout_mode = 2
 
-[node name="Identity" parent="Body/IdentityLine" instance=ExtResource("2_row")]
+[node name="Identity" parent="Scroll/Body/IdentityLine" instance=ExtResource("2_row")]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 
-[node name="HeldLabel" type="Label" parent="Body/IdentityLine"]
+[node name="HeldLabel" type="Label" parent="Scroll/Body/IdentityLine"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 4
 theme_type_variation = &"Faint"
 text = ""
 
-[node name="Trade" parent="Body/IdentityLine" instance=ExtResource("4_trade")]
+[node name="Trade" parent="Scroll/Body/IdentityLine" instance=ExtResource("4_trade")]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 4
 
-[node name="Description" type="Label" parent="Body"]
+[node name="Description" type="Label" parent="Scroll/Body"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"EventFlavour"
@@ -81,59 +86,59 @@ autowrap_mode = 3
 max_lines_visible = 2
 text_overrun_behavior = 3
 
-[node name="Middle" type="HBoxContainer" parent="Body"]
+[node name="Middle" type="HBoxContainer" parent="Scroll/Body"]
 layout_mode = 2
 
-[node name="Earnings" type="VBoxContainer" parent="Body/Middle"]
+[node name="Earnings" type="VBoxContainer" parent="Scroll/Body/Middle"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"TightVBox"
 
-[node name="Ledger" parent="Body/Middle" instance=ExtResource("3_ledger")]
+[node name="Ledger" parent="Scroll/Body/Middle" instance=ExtResource("3_ledger")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="YieldLine" type="Label" parent="Body"]
+[node name="YieldLine" type="Label" parent="Scroll/Body"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Faint"
 text = ""
 
-[node name="Lower" type="HBoxContainer" parent="Body"]
+[node name="Lower" type="HBoxContainer" parent="Scroll/Body"]
 layout_mode = 2
 
-[node name="InvestorsBox" type="VBoxContainer" parent="Body/Lower"]
+[node name="InvestorsBox" type="VBoxContainer" parent="Scroll/Body/Lower"]
 custom_minimum_size = Vector2(132, 0)
 layout_mode = 2
 theme_type_variation = &"TightVBox"
 
-[node name="InvestorsTitle" type="Label" parent="Body/Lower/InvestorsBox"]
+[node name="InvestorsTitle" type="Label" parent="Scroll/Body/Lower/InvestorsBox"]
 layout_mode = 2
 theme_type_variation = &"SubHeading"
 text = "INVESTORS"
 
-[node name="Investors" type="Label" parent="Body/Lower/InvestorsBox"]
+[node name="Investors" type="Label" parent="Scroll/Body/Lower/InvestorsBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
 
-[node name="ActivityBox" type="VBoxContainer" parent="Body/Lower"]
+[node name="ActivityBox" type="VBoxContainer" parent="Scroll/Body/Lower"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"TightVBox"
 
-[node name="ActivityTitle" type="Label" parent="Body/Lower/ActivityBox"]
+[node name="ActivityTitle" type="Label" parent="Scroll/Body/Lower/ActivityBox"]
 layout_mode = 2
 theme_type_variation = &"SubHeading"
 text = "NPC ACTIVITY, LAST YEAR"
 
-[node name="Activity" type="VBoxContainer" parent="Body/Lower/ActivityBox"]
+[node name="Activity" type="VBoxContainer" parent="Scroll/Body/Lower/ActivityBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"TightVBox"
 
-[node name="ShortLine" type="Label" parent="Body/Lower/ActivityBox"]
+[node name="ShortLine" type="Label" parent="Scroll/Body/Lower/ActivityBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Faint"

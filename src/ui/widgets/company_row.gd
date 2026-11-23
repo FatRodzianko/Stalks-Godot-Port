@@ -49,8 +49,9 @@ const SORT_HELD: StringName = &"held"
 const MARKER_OPEN: String = "-"
 const MARKER_CLOSED: String = "+"
 
-## The sorted column's heading carries one of these: ascending, descending.
-## Every heading has a spare character for it (decisions.md D183).
+## The sorted column's heading carries one of these after its caption:
+## ascending, descending. A right-aligned heading always keeps a trailing space
+## where the mark goes, so marking it moves nothing (decisions.md D185).
 const SORT_UP: String = "^"
 const SORT_DOWN: String = "v"
 
@@ -79,6 +80,12 @@ var _group_id: StringName = &""
 var _is_bankrupt: bool = false
 var _held: int = 0
 
+## The header's state: which column is sorted, which way, and each heading's
+## tooltip (a scrolling label replaces its tooltip with its text).
+var _sort_column: StringName = &""
+var _sort_descending: bool = false
+var _heading_tips: Dictionary[StringName, String] = {}
+
 @onready var _marker: Label = %Marker
 @onready var _ticker: Label = %Ticker
 @onready var _name: MarqueeLabel = %Name
@@ -100,6 +107,13 @@ func _ready() -> void:
 # ------------------------------------------------------------- configuration
 
 ## The column header. Each sortable label takes clicks and asks for its sort.
+##
+## **Each heading is drawn as a cell** (`HeaderCell`: a faint line down its right
+## edge), so a player can see where one column's clickable area ends and the
+## next begins - the numbers are right-aligned, so the gap left of a caption
+## belongs to it, not to the column before (manual-testing.md G4). The heading
+## under the mouse lights up (`HeaderCellHover`); the sorted one is bright
+## (`HeaderCellLit`).
 func configure_as_header() -> void:
 	_kind = Kind.HEADER
 	theme_type_variation = &"HeaderCard"
@@ -113,33 +127,47 @@ func configure_as_header() -> void:
 	}
 	for column: StringName in HEADINGS:
 		var label: Label = _heading_label(column)
-		label.theme_type_variation = &"Faint"
 		label.mouse_filter = Control.MOUSE_FILTER_STOP
 		label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		label.tooltip_text = TermTips.fit("%s
+		_heading_tips[column] = TermTips.fit("%s
 Click to sort, within each industry." % meanings[column])
 		label.gui_input.connect(_on_header_cell_input.bind(column))
+		label.mouse_entered.connect(_on_heading_mouse_entered.bind(column))
+		label.mouse_exited.connect(_on_heading_mouse_exited.bind(column))
 	show_sort(&"", false)
 
 
 ## Marks the sorted column's heading with ^ or v and brightens it; the others
 ## read plainly. `column` empty means board order.
 func show_sort(column: StringName, descending: bool) -> void:
+	_sort_column = column
+	_sort_descending = descending
 	for each: StringName in HEADINGS:
 		var label: Label = _heading_label(each)
 		var caption: String = HEADINGS[each]
-		label.theme_type_variation = &"Faint"
+		var slot: String = ""
+		if label.horizontal_alignment == HORIZONTAL_ALIGNMENT_RIGHT:
+			slot = " "
 		if each == column:
-			var mark: String = SORT_DOWN if descending else SORT_UP
-			# Always after the caption, which is where the owner reads it
-			# (manual-testing.md F4). A right-aligned heading moves one
-			# character left to make room.
-			caption = caption + mark
-			label.theme_type_variation = &""
+			slot = SORT_DOWN if descending else SORT_UP
+		caption += slot
 		if label == _name:
 			_name.set_full_text(caption)
 		else:
 			label.text = caption
+		label.tooltip_text = _heading_tips.get(each, "")
+		_style_heading(each, false)
+
+
+## A heading's look: lit under the mouse, bright when sorted, faint otherwise.
+func _style_heading(column: StringName, hovered: bool) -> void:
+	var label: Label = _heading_label(column)
+	if hovered:
+		label.theme_type_variation = &"HeaderCellHover"
+	elif column == _sort_column:
+		label.theme_type_variation = &"HeaderCellLit"
+	else:
+		label.theme_type_variation = &"HeaderCell"
 
 
 func _heading_label(column: StringName) -> Label:
@@ -180,6 +208,9 @@ func configure_as_group(group_id: StringName) -> void:
 func display_group(title: String, collapsed: bool, performance: float, average_pe: float) -> void:
 	_marker.text = MARKER_CLOSED if collapsed else MARKER_OPEN
 	_name.set_full_text(title)
+	# The industry's name is already there to read; repeating it as a tooltip
+	# only gets in the way (manual-testing.md G4).
+	_name.tooltip_text = ""
 	_change.text = ""
 	if not is_nan(performance):
 		_change.text = Palette.format_percent_change(performance)
@@ -353,6 +384,14 @@ func _gui_input(event: InputEvent) -> void:
 		Kind.COMPANY:
 			accept_event()
 			info_requested.emit(_stalk_id)
+
+
+func _on_heading_mouse_entered(column: StringName) -> void:
+	_style_heading(column, true)
+
+
+func _on_heading_mouse_exited(column: StringName) -> void:
+	_style_heading(column, false)
 
 
 func _on_header_cell_input(event: InputEvent, column: StringName) -> void:

@@ -1901,7 +1901,26 @@ file `src/ui/screens/stalkleheads/side_panel.tscn` exists.
 - **Step 54 or 56 showing another company**: the arrows are not walking the board.
 - **Anything cut off with the panel open**: write down the tab and what was cut.
 
-### G - StalkleHeads after the second play (decisions.md D184) — **not yet run**
+### G - StalkleHeads after the second play (decisions.md D184) — **passed 2026-11-22, with findings**
+
+**Run on 2026-11-22.** G1-G4 mostly passed; the tooltips read well. What came back,
+and what was done about it (decisions.md D185):
+
+- **G1:** the year in review had captions and phrases in lower case. Titles are now
+  capitalised, phrases start with a capital, on every StalkleHeads screen.
+- **G2:** asked for the company list to sort by its headings (done), and for the
+  Company tab's title line to stay on screen while scrolling (pinned).
+- **G3:** NPC ACTIVITY's columns were far apart; the trader column is now 30
+  characters, under a framed heading.
+- **G4:** marking a sort moved a right-aligned heading; and the gap left of a
+  heading belongs to it, which looked like the previous heading's. Headings now
+  keep a space for the mark and are drawn as cells, lit under the mouse.
+  An industry header's tooltip repeated its name; removed.
+- **Asked for:** key personnel on the Company tab. Recorded, not scheduled
+  (stalkleheads-design.md §14).
+
+The steps below are as run. Section H re-checks the changes.
+
 
 Re-checks what section F found and asked for. One machine, no Steam. Run on a
 locally exported build containing D184. To check a checkout before exporting: the
@@ -1978,6 +1997,61 @@ file `src/ui/screens/stalkleheads/company_picker.tscn` exists.
 - **Step 26 covering COMPANIES**: the list starts too high.
 - **Step 36 showing another company**: the arrows are not walking the list's order.
 - **Steps 45-52**: send a screenshot with the pointer in it.
+
+### H - StalkleHeads after the third play (decisions.md D185) — **not yet run**
+
+Re-checks what section G found and asked for. One machine, no Steam. Run on a
+locally exported build containing D185. To check a checkout before exporting: the
+file `src/ui/palette.gd` contains the word `sentence_case`.
+
+#### H1. Capitals
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Click **START**.
+5. Press **Ready for New Year** twice.
+6. Check the news panel's year in review reads **Year 2** at the right, and its market line starts **The market** and has **Market P/E** and **Year 3 sentiment**.
+7. Check the four lines below start **Biggest earnings surprise**, **Biggest disappointment**, **Dividend cut** and **The desk piled into**, and their right-hand words start with a capital.
+8. Click **Close**.
+9. Click **MARKET**.
+10. Check the captions read **Index level**, **Market P/E**, **Mood**, **Breadth**, **Risk-free**.
+11. Click **COMPANY**.
+12. Check the earnings captions start with a capital (**Revenue**, **Expenses**) and the year columns read **Year 0**, **Year 1**, **Year 2**.
+13. Check **WHY THE PRICE MOVED** lines start with a capital and the last reads **Total**.
+
+#### H2. The Company tab
+
+14. Click **COMPANIES**.
+15. Click the **NPC** heading.
+16. Check it reads **NPC^** and the list is re-ordered by that column.
+17. Click **NPC** again.
+18. Check it reads **NPCv** and the companies with the largest numbers are at the top.
+19. Click **SYM**.
+20. Check the list is in alphabetical order of the short codes.
+21. Click the company at the top of the list.
+22. Scroll down to **NPC ACTIVITY, LAST YEAR**.
+23. Check **COMPANIES**, **<**, the company name and **>** are still at the top.
+24. If it shows traders, check the three columns sit close together under a framed heading row: **TRADER**, **LAST YEAR**, **NOW**.
+
+#### H3. The board's headings
+
+25. Click **EXCHANGE**.
+26. Check each column heading has a faint line down its right-hand edge.
+27. Move the mouse slowly from **P/E** across to **DIV**.
+28. Check each heading lights up while the mouse is over it, and the light moves from P/E to DIV at the line between them.
+29. Click **P/E**.
+30. Check the letters **P/E** did not move and **^** appeared after them.
+31. Click **P/E** again.
+32. Check it reads **P/Ev** and the letters still did not move.
+33. Rest the mouse on an industry name, such as **FOOD**.
+34. Check no tooltip appears.
+
+#### What a failure here means
+
+- **Step 23 showing the title line gone**: the title line is scrolling with the tab.
+- **Step 28 lighting the wrong heading**: write down which heading lit and where the mouse was.
+- **Step 30 or 32 showing the letters moved**: the heading's spare space is missing.
 
 ### Known gaps, so they are not surprises
 

@@ -1140,8 +1140,9 @@ GameplayScreen (base game's, unchanged around the boards)
     ExchangeTab      CompanyRow per board row, under group CompanyRows
     MarketTab        CellRow lines, TextChart index chart, mood row
     IndustriesTab    CellRow table, signed TextChart, members as TradeLines
-    CompanyTab       COMPANIES < name >, identity line with a TradeBox,
-                     CellRow earnings table, LedgerWidget, investors, desk table
+    CompanyTab       pinned title line (COMPANIES < name >), then a scroll:
+                     identity line with a TradeBox, CellRow earnings table,
+                     LedgerWidget, investors, desk table
     Body (MarginContainer: every child over the same rectangle)
       PagesRow       the four tabs, and SideSpace (a free column on EXCHANGE)
       PickerLayer    CompanyPicker in an OverlayFrame, over the Company tab

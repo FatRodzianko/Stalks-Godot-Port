@@ -22,10 +22,10 @@ const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
 
 ## Captions for the outlier lines: the design's words (§6.3), which explain
 ## what each line is rather than give it a voice.
-const SURPRISE: String = "biggest earnings surprise"
-const DISAPPOINTMENT: String = "biggest disappointment"
-const DIVIDEND_CUT: String = "dividend cut"
-const DESK_PICK: String = "the desk piled into"
+const SURPRISE: String = "Biggest earnings surprise"
+const DISAPPOINTMENT: String = "Biggest disappointment"
+const DIVIDEND_CUT: String = "Dividend cut"
+const DESK_PICK: String = "The desk piled into"
 
 const CAPTION_CHARS: int = 27
 const COMPANY_CHARS: int = 26
@@ -61,14 +61,14 @@ func _ready() -> void:
 
 ## Lays out `digest`. `state` is what names the companies and industries.
 func show_digest(digest: YearDigest, state: GameState) -> void:
-	_title.set_texts(["THE YEAR IN REVIEW", "year %d" % digest.year])
+	_title.set_texts(["THE YEAR IN REVIEW", "Year %d" % digest.year])
 
 	_market.set_texts([
-		"the market",
+		"The market",
 		Palette.format_percent_change(digest.index_move_percent),
 		"-> %s" % MarketMood.label(digest.mood),
-		"market P/E %s" % Palette.format_decimal(digest.market_pe, 1),
-		"year %d sentiment %s" % [digest.year + 1, Palette.format_percent_change(digest.next_sentiment)],
+		"Market P/E %s" % Palette.format_decimal(digest.market_pe, 1),
+		"Year %d sentiment %s" % [digest.year + 1, Palette.format_percent_change(digest.next_sentiment)],
 	])
 	_market.set_cell_colour(4, Palette.for_percent(digest.next_sentiment))
 	_market.set_cell_colour(1, Palette.for_percent(digest.index_move_percent))
@@ -77,8 +77,8 @@ func show_digest(digest: YearDigest, state: GameState) -> void:
 	_show_industries(digest)
 
 	_show_outlier(0, digest.surprise_id, state,
-		"profit %s" % Palette.format_percent_change(digest.surprise_profit_percent))
-	_show_outlier(1, digest.disappointment_id, state, "margin %s -> %s" % [
+		"Profit %s" % Palette.format_percent_change(digest.surprise_profit_percent))
+	_show_outlier(1, digest.disappointment_id, state, "Margin %s -> %s" % [
 		Palette.format_percent(digest.disappointment_margin_before),
 		Palette.format_percent(digest.disappointment_margin_after),
 	])
@@ -125,7 +125,7 @@ func _desk_detail(digest: YearDigest) -> String:
 		names.append(NpcStrategy.name_of(strategy).to_lower())
 	if names.is_empty():
 		return "%d shares net" % digest.desk_pick_shares
-	return "%s buying" % Palette.list_names(names)
+	return Palette.sentence_case("%s buying" % Palette.list_names(names))
 
 
 ## Every line, for tests.
