@@ -152,9 +152,10 @@ func send_message(recipient_id: StringName, raw: String) -> String:
 	var reason: String = MessageRules.why_not_relay(writer_id, recipient_id, state())
 	if not reason.is_empty():
 		return reason
-	var recipient: PlayerState = state().player_by_id(recipient_id)
-	if recipient.is_away:
-		return "%s is not here, so it would not arrive." % recipient.display_name
+	if recipient_id != MessageRules.ALL_PLAYERS:
+		var recipient: PlayerState = state().player_by_id(recipient_id)
+		if recipient.is_away:
+			return "%s is not here, so it would not arrive." % recipient.display_name
 	if not _send_limit.allow(writer_id, _now_msec()):
 		return "Too many messages. Wait a few seconds."
 	_messages.record_sent(writer_id, recipient_id, text)

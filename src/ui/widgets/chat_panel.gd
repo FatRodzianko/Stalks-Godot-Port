@@ -21,9 +21,16 @@ signal message_submitted(recipient_id: StringName, text: String)
 ## open when a third is opened (MessagesTab).
 signal used(recipient_id: StringName)
 
+## The player pressed BLOCK? or UNBLOCK at the top of this chat (D196).
+signal block_toggled(player_id: StringName, blocked: bool)
+
 
 ## Before a line's text, for lines this machine's player wrote.
 const YOU: String = "You"
+
+## The block button's two captions, the owner's words (D196).
+const BLOCK_CAPTION: String = "BLOCK?"
+const UNBLOCK_CAPTION: String = "UNBLOCK"
 
 
 var _recipient_id: StringName = &""
@@ -32,8 +39,10 @@ var _recipient_id: StringName = &""
 ## (MessageBook.MAX_LINES).
 var _last_line: MessageBook.Line = null
 var _line_count: int = 0
+var _is_blocked: bool = false
 
 @onready var _title: Label = %Title
+@onready var _block_button: Button = %BlockButton
 @onready var _scroll: ScrollContainer = %Scroll
 @onready var _lines: VBoxContainer = %Lines
 @onready var _empty: Label = %Empty
@@ -45,6 +54,7 @@ var _line_count: int = 0
 func _ready() -> void:
 	_field.max_length = MessageRules.MAX_LENGTH
 	_send_button.pressed.connect(_on_send_button_pressed)
+	_block_button.pressed.connect(_on_block_button_pressed)
 	_field.text_submitted.connect(_on_field_text_submitted)
 	_field.focus_entered.connect(_on_field_focus_entered)
 	_scroll.get_v_scroll_bar().changed.connect(_on_scroll_bar_changed)
@@ -52,6 +62,9 @@ func _ready() -> void:
 
 ## Shows the conversation with `recipient_id`. `names` maps every player id to
 ## the name to write before their lines; this machine's player is "You".
+##
+## Call `show_block_state` as well for a chat with one other player; a note or
+## the ALL PLAYERS room has nobody to block, and shows no button.
 func show_chat(
 	recipient_id: StringName,
 	title: String,
@@ -68,6 +81,7 @@ func show_chat(
 		_line_count = -1
 	_title.text = title
 	_title.tooltip_text = title
+	_block_button.visible = false
 	if is_note:
 		_field.placeholder_text = "Type a note"
 	else:
@@ -97,6 +111,22 @@ func show_chat(
 			label.theme_type_variation = &"Muted"
 		label.text = "%s: %s" % [writer, line.text]
 		_lines.add_child(label)
+
+
+## Shows BLOCK? or UNBLOCK for the player this chat is with.
+func show_block_state(is_blocked: bool) -> void:
+	_is_blocked = is_blocked
+	_block_button.visible = true
+	if is_blocked:
+		_block_button.text = UNBLOCK_CAPTION
+		_block_button.tooltip_text = "Show their messages again"
+	else:
+		_block_button.text = BLOCK_CAPTION
+		_block_button.tooltip_text = "Drop their messages. They are not told."
+
+
+func block_button() -> Button:
+	return _block_button
 
 
 ## What became of the last thing typed: an empty `reason` means it went, so the
@@ -151,6 +181,10 @@ func _submit() -> void:
 		return
 	used.emit(_recipient_id)
 	message_submitted.emit(_recipient_id, _field.text)
+
+
+func _on_block_button_pressed() -> void:
+	block_toggled.emit(_recipient_id, not _is_blocked)
 
 
 func _on_send_button_pressed() -> void:

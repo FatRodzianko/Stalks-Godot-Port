@@ -209,10 +209,11 @@ func _rpc_rematch_joined() -> void:
 
 
 ## A message for this player, passed on by the host. `sender_id` is the host's
-## record of who sent it, never anything the sender wrote.
+## record of who sent it, never anything the sender wrote. `in_room` says it was
+## sent to the ALL PLAYERS room rather than to this player alone (D195).
 @rpc("authority", "call_remote", "reliable")
-func _rpc_message(sender_id: String, text: String) -> void:
-	_on_message_pushed(StringName(sender_id), text)
+func _rpc_message(sender_id: String, text: String, in_room: bool) -> void:
+	_on_message_pushed(StringName(sender_id), text, in_room)
 
 
 # ------------------------------------------------------------------- the handlers
@@ -266,7 +267,7 @@ func _on_message_sent(_peer: int, _recipient_id: StringName, _text: String) -> v
 	pass
 
 
-func _on_message_pushed(_sender_id: StringName, _text: String) -> void:
+func _on_message_pushed(_sender_id: StringName, _text: String, _in_room: bool) -> void:
 	pass
 
 

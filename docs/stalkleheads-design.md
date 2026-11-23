@@ -2683,6 +2683,9 @@ word, and waiting on design or content:
 - **Keeping history across a host migration.** Each client could hand its own book
   to the session that replaces it; nothing would cross the wire. Not done because
   migration is only reachable over Steam and could not be tested here.
+- **Keeping blocks beyond one match** ([D196](decisions.md)). A block lasts as long
+  as the book, so a rejoin, a migration or a rematch unblocks. Keeping it would mean
+  saving it on disk against something that outlives a match, such as a Steam id.
 
 Every question raised by this document has an answer. What remains is
 content the owner will write over time — the five placeholder companies, the trader

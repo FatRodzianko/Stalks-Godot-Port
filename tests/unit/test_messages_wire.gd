@@ -226,13 +226,84 @@ func test_only_the_host_relays() -> void:
 func test_a_client_ignores_a_message_from_somebody_not_in_the_match() -> void:
 	if not await _connect():
 		return
-	_harness.client._on_message_pushed(&"p7", "ghost")
-	_harness.client._on_message_pushed(&"p1", "from myself")
+	_harness.client._on_message_pushed(&"p7", "ghost", false)
+	_harness.client._on_message_pushed(&"p1", "from myself", false)
 	assert_false(_harness.client.messages().has_unread())
 
 
 func test_a_client_cleans_what_arrives_again() -> void:
 	if not await _connect():
 		return
-	_harness.client._on_message_pushed(&"p0", "x\ty" + char(0x200B))
+	_harness.client._on_message_pushed(&"p0", "x\ty" + char(0x200B), false)
 	assert_eq(_texts(_harness.client.messages(), &"p0"), PackedStringArray(["p0:x y?"]))
+
+
+# ------------------------------------------------------ the ALL PLAYERS room
+
+func test_a_room_message_reaches_everybody_but_its_sender() -> void:
+	var third: ClientSession = await _connect_three()
+	if third == null:
+		return
+	assert_eq(_harness.client.send_message(MessageRules.ALL_PLAYERS, "hello all"), "")
+	await _harness.settle(self)
+
+	var room: StringName = MessageRules.ALL_PLAYERS
+	assert_eq(_texts(_harness.host.messages(), room), PackedStringArray(["p1:hello all"]))
+	assert_eq(_texts(third.messages(), room), PackedStringArray(["p1:hello all"]))
+	assert_eq(third.messages().unread_from(room), 1)
+	# Into the room, not into a private chat with the sender.
+	assert_eq(third.messages().lines(&"p1").size(), 0)
+	# The sender has their own copy once, not echoed back, and nothing unread.
+	assert_eq(_texts(_harness.client.messages(), room), PackedStringArray(["p1:hello all"]))
+	assert_false(_harness.client.messages().has_unread())
+
+
+func test_the_hosts_room_message_reaches_every_client_and_not_the_host_twice() -> void:
+	var third: ClientSession = await _connect_three()
+	if third == null:
+		return
+	assert_eq(_harness.host.send_message(MessageRules.ALL_PLAYERS, "from the host"), "")
+	await _harness.settle(self)
+
+	var room: StringName = MessageRules.ALL_PLAYERS
+	assert_eq(_texts(_harness.client.messages(), room), PackedStringArray(["p0:from the host"]))
+	assert_eq(_texts(third.messages(), room), PackedStringArray(["p0:from the host"]))
+	assert_eq(_texts(_harness.host.messages(), room), PackedStringArray(["p0:from the host"]))
+	assert_false(_harness.host.messages().has_unread())
+
+
+func test_the_host_cleans_a_room_message_too() -> void:
+	var third: ClientSession = await _connect_three()
+	if third == null:
+		return
+	_harness.client._rpc_send_message.rpc_id(
+		NetworkedSession.HOST_PEER_ID, String(MessageRules.ALL_PLAYERS), "a\nb" + char(0x202E)
+	)
+	await _harness.settle(self)
+	assert_eq(
+		_texts(third.messages(), MessageRules.ALL_PLAYERS), PackedStringArray(["p1:a b?"])
+	)
+
+
+# ------------------------------------------------------------------ blocking
+
+func test_blocking_is_silent_and_drops_what_the_blocked_player_sends() -> void:
+	var third: ClientSession = await _connect_three()
+	if third == null:
+		return
+	third.messages().set_blocked(&"p1", true)
+	# The blocked player is not told, and can keep sending.
+	assert_eq(_harness.client.send_message(&"p2", "are you there"), "")
+	assert_eq(_harness.client.send_message(MessageRules.ALL_PLAYERS, "anyone"), "")
+	assert_eq(_harness.host.send_message(MessageRules.ALL_PLAYERS, "me too"), "")
+	await _harness.settle(self)
+
+	assert_eq(third.messages().lines(&"p1").size(), 0)
+	assert_eq(
+		_texts(third.messages(), MessageRules.ALL_PLAYERS), PackedStringArray(["p0:me too"])
+	)
+	# Everybody else still hears the blocked player.
+	assert_true(_texts(_harness.host.messages(), MessageRules.ALL_PLAYERS).has("p1:anyone"))
+	# Nothing about the block reached the host or the blocked player.
+	assert_false(_harness.host.messages().is_blocked(&"p1"))
+	assert_false(_harness.client.messages().is_blocked(&"p2"))

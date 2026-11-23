@@ -384,12 +384,12 @@ func _on_yeehaw_given_pushed(giver_id: StringName, receiver_id: StringName) -> v
 ## A message the host passed on. Checked again here, because this is the last
 ## stop before the screen: the sender must be somebody in the match other than
 ## this player, and the text is cleaned a second time by `record_received`.
-func _on_message_pushed(sender_id: StringName, text: String) -> void:
+func _on_message_pushed(sender_id: StringName, text: String, in_room: bool) -> void:
 	if not _has_joined or _state == null:
 		return
 	if sender_id == _local_player_id or _state.player_by_id(sender_id) == null:
 		return
-	_messages.record_received(sender_id, text)
+	_messages.record_received(sender_id, text, in_room)
 
 
 # -------------------------------------------------------------------- internals

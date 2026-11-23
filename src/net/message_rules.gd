@@ -24,6 +24,12 @@ extends RefCounted
 ## list are in docs/architecture.md (Messages) and decisions.md D193.
 
 
+## The ALL PLAYERS room's id, used where a player's id would be: as a
+## message's recipient and as the room's key in a MessageBook (decisions.md
+## D195). Starts with `*`, which no player id does ("p0" to "p9"), so it can
+## never be mistaken for a player.
+const ALL_PLAYERS: StringName = &"*all"
+
 ## Longest message, in characters, after cleaning. Two lines of a half-width
 ## chat at the game's resolution is about 80; this allows a few sentences
 ## without letting one message fill the panel.
@@ -78,7 +84,8 @@ static func clean(raw: String) -> String:
 ## anything from the packet (D45).
 ##
 ## A message to yourself is a note and stays on your own machine, so one
-## arriving at the host has nowhere to go.
+## arriving at the host has nowhere to go. A message to ALL_PLAYERS goes to
+## everybody else in the match (D195).
 static func why_not_relay(
 	sender_id: StringName, recipient_id: StringName, state: GameState
 ) -> String:
@@ -88,6 +95,8 @@ static func why_not_relay(
 		return "Unknown sender."
 	if recipient_id == sender_id:
 		return "Notes to yourself are not sent."
+	if recipient_id == ALL_PLAYERS:
+		return ""
 	if state.player_by_id(recipient_id) == null:
 		return "No such player."
 	return ""

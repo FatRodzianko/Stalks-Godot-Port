@@ -11,13 +11,14 @@ extends Control
 ##     $dir = "$env:TEMP\messages_frames"
 ##     New-Item -ItemType Directory -Force $dir | Out-Null
 ##     & $g --path . res://tools/messages_shot.tscn --write-movie "$dir\f.png" `
-##          --quit-after 30 --fixed-fps 10
+##          --quit-after 40 --fixed-fps 10
 ##
 ## Frames: 6, the Exchange tab with the MESSAGES dot lit; 11, the Messages tab
 ## with no chat open; 16, the chat with Ann (long enough to scroll, and lines
 ## that look like markup and a network path, drawn as plain text); 21, Ann and
 ## your notes side by side; 26, Bob opened, replacing the notes because Ann was
-## used more recently. A developer tool: `tools/` is not exported.
+## used more recently; 31, Bob blocked (BLOCK? pressed); 36, the ALL PLAYERS room
+## opened in place of Bob. A developer tool: `tools/` is not exported.
 
 const StageScene: PackedScene = preload("res://src/ui/stage.tscn")
 
@@ -62,6 +63,8 @@ func _process(_delta: float) -> void:
 			book.record_received(&"p1", "\\\\server\\share\\file.txt and file://c:/windows")
 			book.record_received(&"p1", "<(' ')>  :-)  " + "x".repeat(60))
 			book.record_received(&"p2", "Selling everything next year.")
+			book.record_received(&"p1", "Anyone buying the index?", true)
+			book.record_received(&"p2", "Not me.", true)
 		8:
 			tabs.select_tab(MarketTabs.Tab.MESSAGES)
 		13:
@@ -72,3 +75,8 @@ func _process(_delta: float) -> void:
 			tabs.messages_tab().open_chat(&"p1")
 		23:
 			tabs.messages_tab().open_chat(&"p2")
+		28:
+			tabs.messages_tab().chat_with(&"p2").block_button().pressed.emit()
+		33:
+			tabs.messages_tab().open_chat(&"p1")
+			tabs.messages_tab().open_chat(MessageRules.ALL_PLAYERS)

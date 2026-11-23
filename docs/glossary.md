@@ -488,6 +488,14 @@ the MESSAGES tab. Kept on your machine and never sent.
 player list: grey when nothing is unread, yellow when something is. The same shape
 as the ready mark in the rankings (`StatusDot`).
 
+**ALL PLAYERS** (messages) — the room at the top of the MESSAGES tab's list:
+every message written in it goes to everybody else in the match. See decisions.md
+D195.
+
+**Blocked** (messages) — a player whose messages this machine drops, set with
+BLOCK? at the top of their chat. Silent: nobody else, the blocked player included,
+is told. Shown greyed in the list with "(blocked)". See decisions.md D196.
+
 **Relay** (messages) — what the host does with a message from one client to
 another: works out who sent it from the connection, checks and cleans it, and hands
 it to the recipient alone. See architecture.md §5.8.

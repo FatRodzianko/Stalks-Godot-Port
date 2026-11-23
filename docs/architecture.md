@@ -535,8 +535,9 @@ row:
 
 ### 5.8 Private messages: a relay beside the game
 
-Players can message each other privately, and write themselves notes (decisions.md
-D192, D193). None of it is part of the match: no `GameState`, no RNG, no snapshot.
+Players can message each other privately, talk to everybody in the ALL PLAYERS
+room, block a player, and write themselves notes (decisions.md D192, D193, D195,
+D196). None of it is part of the match: no `GameState`, no RNG, no snapshot.
 
 ```
 ChatPanel (Label lines)  --message_submitted-->  MessagesTab --> MarketTabs
@@ -552,16 +553,20 @@ GameSession.send_message      clean, check, own rate limit (5 / 10 s),
 HostSession._on_message_sent  sender from the peer id; why_not_relay;
                               clean again; relay limit (8 / 10 s per sender);
                               _route_message: host's own book, or
-                              _rpc_message.rpc_id(recipient's peer) - one peer
+                              _rpc_message.rpc_id(recipient's peer) - one peer;
+                              to ALL_PLAYERS, _route_to_room: one rpc_id per
+                              present peer but the sender's, in_room = true
 ClientSession._on_message_pushed   sender must be in the match and not itself;
-                              MessageBook.record_received cleans a third time
+                              MessageBook.record_received drops a blocked
+                              sender, cleans a third time, and files the line
+                              under the sender or under ALL_PLAYERS
 ```
 
 **The files**, all in `src/net/` except the screen's: `message_rules.gd`
 (`MessageRules`: `clean`, `why_not_relay`, the limits), `message_limiter.gd`
 (`MessageLimiter`, a sliding window with the clock passed in), `message_book.gd`
-(`MessageBook`, conversations and unread counts; `changed` fires when a line is
-added). The screen: `src/ui/screens/stalkleheads/messages_tab.gd`,
+(`MessageBook`, conversations, unread counts and blocks; `changed` fires when a
+line is added or a block changes). The screen: `src/ui/screens/stalkleheads/messages_tab.gd`,
 `src/ui/widgets/chat_panel.gd` and `src/ui/status_dot.gd`.
 
 **The book lives on the session**, because the session is what receives. The
@@ -584,6 +589,8 @@ replaced by a rejoin or a host migration starts an empty book: a known limit.
 | A client relaying to another client | `_rpc_send_message` acts only on the server | `test_only_the_host_relays` |
 | A bad host, or a fault on the way | The receiver cleans again and ignores senders not in the match | `test_a_client_cleans_what_arrives_again`, `test_a_client_ignores_a_message_from_somebody_not_in_the_match` |
 | Delivery to the wrong machine | One `rpc_id` to the recipient's peer; never broadcast | `test_a_message_between_clients_reaches_only_its_recipient`, `test_a_note_never_leaves_the_machine` |
+| A room message echoed to its sender | `_route_to_room` skips the sender's peer by name | `test_a_room_message_reaches_everybody_but_its_sender`, `test_the_hosts_room_message_reaches_every_client_and_not_the_host_twice` |
+| A blocked player learning they are blocked | Blocks are never sent anywhere; their sends succeed and are dropped on arrival | `test_blocking_is_silent_and_drops_what_the_blocked_player_sends` |
 
 ### 5.4 Transport is a choice, not a migration
 

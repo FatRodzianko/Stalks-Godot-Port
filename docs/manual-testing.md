@@ -2387,6 +2387,57 @@ copies are called **A** (the host), **B** and **C**.
 33. On A, check nothing from C arrived: every square is grey.
 34. Close all three windows.
 
+### Q - StalkleHeads ALL PLAYERS and blocking (decisions.md D195, D196) — **not yet run**
+
+One machine, three copies of the game, no Steam. Run on a locally exported debug
+build containing D195 and D196. To check a checkout before exporting: the file
+`src/ui/widgets/chat_panel.tscn` contains `BlockButton`. The copies are called
+**A** (the host), **B** and **C**.
+
+1. Open the folder holding the exported build (`stalks-build`) in File Explorer.
+2. Double-click `StalksStalksStalks.exe`. This is A.
+3. Double-click `StalksStalksStalks.exe` again. This is B.
+4. Double-click `StalksStalksStalks.exe` a third time. This is C.
+5. On A, click the button under **Port** on the **DEV** panel until it reads **StalkleHeads**.
+6. On A, click **HOST**.
+7. If Windows asks to allow the game through the firewall, click **Allow**.
+8. On B, click **JOIN** on the DEV panel.
+9. On C, click **JOIN** on the DEV panel.
+10. On B, click **READY**.
+11. On C, click **READY**.
+12. On A, click **START**.
+13. On all three, click **Close** on the news if it is showing.
+14. On all three, click **MESSAGES**.
+15. Check the first name in each list is **ALL PLAYERS**.
+16. On A, click **ALL PLAYERS**.
+17. Check the chat's header reads **Chat with all players**.
+18. Check the chat has no **BLOCK?** button.
+19. Click the message box, type `hello all` and press **Enter**.
+20. On B, check the square beside **ALL PLAYERS** is yellow.
+21. On C, check the square beside **ALL PLAYERS** is yellow.
+22. On A, check the square beside **ALL PLAYERS** is grey.
+23. On B, click **ALL PLAYERS**.
+24. Check the chat shows **hello all** from A.
+25. On C, click **A**'s name.
+26. Check the chat with A is empty: the room message did not land here.
+27. Check **BLOCK?** shows at the right of the chat's header.
+28. On C, click **BLOCK?**.
+29. Check the button now reads **UNBLOCK**.
+30. Check the header ends **(blocked)**.
+31. Check A's name in C's list is grey and ends **(blocked)**.
+32. On A, click **C**'s name.
+33. Click the message box, type `secret` and press **Enter**.
+34. Check A shows no **Not sent** line.
+35. On A, click **ALL PLAYERS**.
+36. Click the message box, type `to the room` and press **Enter**.
+37. On C, check nothing from A arrived: no square in C's list is yellow.
+38. On B, check **to the room** arrived in **ALL PLAYERS**.
+39. On C, click **UNBLOCK**.
+40. Check A's name in C's list is no longer grey and has no **(blocked)**.
+41. On A, type `again` in the chat with C and press **Enter**.
+42. On C, check **again** arrived from A, and **secret** did not.
+43. Close all three windows.
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until

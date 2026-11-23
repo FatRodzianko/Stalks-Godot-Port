@@ -429,7 +429,7 @@ a bankrupt row's word is not clipped.
 
 ### Private messages: what is covered and what is not
 
-`test_messages.gd` (53) and `test_messages_wire.gd` (14), D192-D193; three
+`test_messages.gd` (72) and `test_messages_wire.gd` (18), D192-D193, D195-D196; three
 `--game` cases in `test_launch_args.gd`; the DEV panel's game button (D194) in
 `test_title_screen_shape.gd` (it names and switches the game, HOST carries it) and
 `test_lobby_screen.gd` (HOST opens a StalkleHeads lobby with its market).
@@ -444,6 +444,13 @@ a bankrupt row's word is not clipped.
 - **The relay rules**: unknown recipient, unknown sender, a note to yourself.
 - **The book**: unread counts, sent lines never unread, one ordered conversation per
   player, cleaning on arrival, the 200-line cap, clearing.
+- **The ALL PLAYERS room** (D195): it may be relayed to and can never be a player's
+  id; a room arrival lands in the room, not the sender's chat; your own copy is kept
+  and not unread; sending to it is rate limited.
+- **Blocking** (D196): a blocked player's private and room messages are dropped;
+  everybody else is still heard; blocking marks their chat read and keeps what was
+  said; unblocking hears them again but not what was dropped; `changed` fires;
+  clearing forgets blocks.
 - **The send path** on a `LocalSession`: notes stay local and are not limited, text
   is cleaned, empty and unknown and away recipients are refused, the player's own
   limit refuses with a reason, and the match's snapshot is unchanged by messages.
@@ -452,7 +459,11 @@ a bankrupt row's word is not clipped.
   the match unchanged on both sides; and the hostile cases sent straight through
   `_rpc_send_message`, skipping the client's checks - a forged sender, unknown and
   overlong recipients, addressing yourself, dirty text, a flood past the host's
-  limit, and a client asked to relay.
+  limit, and a client asked to relay. With three players: a room message reaches
+  everybody but its sender, and is not echoed; the host's own room message reaches
+  every client once; the host cleans room messages; a blocked player can keep
+  sending, is still heard by the others, and nothing about the block reaches the
+  host or them.
 - **The tab**, on the real playing screen: the caption; the tab's dot and each
   name's dot, grey and yellow, and their size and colours; every player listed
   including you; opening a chat reads it and puts the dot out; a line arriving in an
@@ -460,7 +471,10 @@ a bankrupt row's word is not clipped.
   box; a refusal keeps the text and says why; the box's length cap; two chats and
   the third replacing the less recent, by clicking and by typing; every line a
   `Label` and no `RichTextLabel` on the tab; a solo game lists only your notes; a
-  base-game screen has no tab.
+  base-game screen has no tab. ALL PLAYERS listed first, absent in a solo game,
+  with its own dot and header; BLOCK? on a chat with a player and not on notes or
+  the room; pressing it blocks, turns it to UNBLOCK and marks the header and the
+  name; pressing again undoes all of it; the `BlockedName` look is in the theme.
 
 **Not covered, and why.**
 
@@ -470,6 +484,9 @@ a bankrupt row's word is not clipped.
 - **Two real processes.** The ENet tests run both ends in one process;
   section O runs two copies of an exported build.
 - **History across a rejoin or a host migration**: none is kept, by design (D192).
+  Blocks are lost the same way (D196).
+- **That the grey of a blocked name is readable**: frame 31 of
+  `tools/messages_shot.tscn`, by eye; section Q.
 
 ### StalkleHeads balance: the tool and its smoke test
 

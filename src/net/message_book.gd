@@ -11,11 +11,17 @@ extends RefCounted
 ##
 ## A conversation is keyed by **the other player's id**: what you sent to Ann
 ## and what Ann sent you are one list, in order. Your notes are keyed by your
-## own id.
+## own id, and the ALL PLAYERS room by `MessageRules.ALL_PLAYERS` (D195).
+##
+## **Blocking lives here, and only here** (D196). A blocked player's messages
+## are dropped on arrival, in private chats and in the room alike. Nobody else
+## is told - not the host, not the blocked player - so there is nothing to
+## sync and nothing that could tell them. It lasts as long as the book.
 
 
-## A line was added or the book was cleared. Marking a conversation read does
-## not fire it: that is the reader's own act, and the reader redraws.
+## A line was added, a player was blocked or unblocked, or the book was
+## cleared. Marking a conversation read does not fire it: that is the reader's
+## own act, and the reader redraws.
 signal changed
 
 
@@ -37,6 +43,7 @@ class Line:
 
 var _chats: Dictionary[StringName, Array] = {}
 var _unread: Dictionary[StringName, int] = {}
+var _blocked: Dictionary[StringName, bool] = {}
 
 
 ## Something this machine's player wrote to `recipient_id` - or a note, when
@@ -46,15 +53,37 @@ func record_sent(writer_id: StringName, recipient_id: StringName, text: String) 
 	changed.emit()
 
 
-## A message from `sender_id`, as it arrived. Cleaned again here: the host
-## cleans first, and this is the second check before anything is shown.
-func record_received(sender_id: StringName, raw: String) -> void:
+## A message from `sender_id`, as it arrived: to this player alone, or to
+## the ALL PLAYERS room when `in_room`. Cleaned again here: the host cleans
+## first, and this is the second check before anything is shown. Dropped,
+## without a trace, when the sender is blocked.
+func record_received(sender_id: StringName, raw: String, in_room: bool = false) -> void:
+	if is_blocked(sender_id):
+		return
 	var text: String = MessageRules.clean(raw)
 	if text.is_empty():
 		return
-	_append(sender_id, Line.new(sender_id, text))
-	_unread[sender_id] = _unread.get(sender_id, 0) + 1
+	var chat_id: StringName = sender_id
+	if in_room:
+		chat_id = MessageRules.ALL_PLAYERS
+	_append(chat_id, Line.new(sender_id, text))
+	_unread[chat_id] = _unread.get(chat_id, 0) + 1
 	changed.emit()
+
+
+## Blocks or unblocks `player_id`. Blocking also marks their chat read, so
+## nothing from them is left lighting a dot. What they already said stays.
+func set_blocked(player_id: StringName, blocked: bool) -> void:
+	if blocked:
+		_blocked[player_id] = true
+		_unread.erase(player_id)
+	else:
+		_blocked.erase(player_id)
+	changed.emit()
+
+
+func is_blocked(player_id: StringName) -> bool:
+	return _blocked.get(player_id, false)
 
 
 ## The conversation with `other_id`, oldest first.
@@ -90,6 +119,7 @@ func mark_read(other_id: StringName) -> bool:
 func clear() -> void:
 	_chats.clear()
 	_unread.clear()
+	_blocked.clear()
 	changed.emit()
 
 

@@ -463,3 +463,179 @@ func test_a_base_game_screen_has_no_messages_tab() -> void:
 	screen.setup(session)
 	add_child_autofree(screen)
 	assert_null(screen.market_tabs())
+
+
+# ------------------------------------------- the ALL PLAYERS room (D195)
+
+func test_the_room_may_be_relayed_to() -> void:
+	assert_eq(MessageRules.why_not_relay(&"p1", MessageRules.ALL_PLAYERS, _three_players()), "")
+
+
+func test_the_room_id_can_never_be_a_players() -> void:
+	assert_true(String(MessageRules.ALL_PLAYERS).begins_with("*"))
+	assert_null(_three_players().player_by_id(MessageRules.ALL_PLAYERS))
+
+
+func test_a_room_arrival_goes_into_the_room_not_the_senders_chat() -> void:
+	var book: MessageBook = MessageBook.new()
+	book.record_received(&"p1", "to everyone", true)
+	assert_eq(book.lines(MessageRules.ALL_PLAYERS).size(), 1)
+	assert_eq(book.lines(MessageRules.ALL_PLAYERS)[0].from_id, &"p1")
+	assert_eq(book.lines(&"p1").size(), 0)
+	assert_eq(book.unread_from(MessageRules.ALL_PLAYERS), 1)
+	assert_eq(book.unread_from(&"p1"), 0)
+
+
+func test_sending_to_the_room_keeps_your_copy_in_the_room() -> void:
+	var session: LocalSession = _local()
+	assert_eq(session.send_message(MessageRules.ALL_PLAYERS, "hello all"), "")
+	var room: Array[MessageBook.Line] = session.messages().lines(MessageRules.ALL_PLAYERS)
+	assert_eq(room.size(), 1)
+	assert_eq(room[0].from_id, &"p0")
+	assert_false(session.messages().has_unread())
+
+
+func test_sending_to_the_room_is_rate_limited() -> void:
+	var session: LocalSession = _local()
+	for index: int in MessageRules.SEND_LIMIT:
+		assert_eq(session.send_message(MessageRules.ALL_PLAYERS, "m%d" % index), "")
+	assert_ne(session.send_message(MessageRules.ALL_PLAYERS, "one too many"), "")
+
+
+# ------------------------------------------------------ blocking (D196)
+
+func test_a_blocked_players_messages_are_dropped() -> void:
+	var book: MessageBook = MessageBook.new()
+	book.set_blocked(&"p1", true)
+	book.record_received(&"p1", "direct")
+	book.record_received(&"p1", "in the room", true)
+	assert_eq(book.lines(&"p1").size(), 0)
+	assert_eq(book.lines(MessageRules.ALL_PLAYERS).size(), 0)
+	assert_false(book.has_unread())
+
+
+func test_blocking_one_player_leaves_the_others_heard() -> void:
+	var book: MessageBook = MessageBook.new()
+	book.set_blocked(&"p1", true)
+	book.record_received(&"p2", "still here")
+	book.record_received(&"p2", "and here", true)
+	assert_eq(book.lines(&"p2").size(), 1)
+	assert_eq(book.lines(MessageRules.ALL_PLAYERS).size(), 1)
+
+
+func test_blocking_marks_their_chat_read_and_keeps_what_was_said() -> void:
+	var book: MessageBook = MessageBook.new()
+	book.record_received(&"p1", "before")
+	book.set_blocked(&"p1", true)
+	assert_eq(book.unread_from(&"p1"), 0)
+	assert_eq(book.lines(&"p1").size(), 1)
+
+
+func test_unblocking_hears_them_again_but_not_what_was_dropped() -> void:
+	var book: MessageBook = MessageBook.new()
+	book.set_blocked(&"p1", true)
+	book.record_received(&"p1", "dropped")
+	book.set_blocked(&"p1", false)
+	book.record_received(&"p1", "heard")
+	assert_false(book.is_blocked(&"p1"))
+	assert_eq(book.lines(&"p1").size(), 1)
+	assert_eq(book.lines(&"p1")[0].text, "heard")
+
+
+func test_blocking_fires_changed() -> void:
+	var book: MessageBook = MessageBook.new()
+	watch_signals(book)
+	book.set_blocked(&"p1", true)
+	assert_signal_emitted(book, "changed")
+
+
+func test_clearing_forgets_blocks() -> void:
+	var book: MessageBook = MessageBook.new()
+	book.set_blocked(&"p1", true)
+	book.clear()
+	assert_false(book.is_blocked(&"p1"))
+
+
+# ------------------------------------------- the room and blocking on screen
+
+func test_the_room_is_listed_first() -> void:
+	var tab: MessagesTab = _show()
+	_screen.market_tabs().select_tab(MarketTabs.Tab.MESSAGES)
+	var room: Button = tab.player_button(MessageRules.ALL_PLAYERS)
+	assert_not_null(room)
+	assert_eq(room.text, "ALL PLAYERS")
+	assert_eq(room.get_index(), 0)
+
+
+func test_a_solo_game_has_no_room() -> void:
+	var tab: MessagesTab = _show(["You"])
+	_screen.market_tabs().select_tab(MarketTabs.Tab.MESSAGES)
+	assert_null(tab.player_button(MessageRules.ALL_PLAYERS))
+
+
+func test_the_room_has_its_own_unread_dot_and_header() -> void:
+	var tab: MessagesTab = _show()
+	_screen.market_tabs().select_tab(MarketTabs.Tab.MESSAGES)
+	_session.messages().record_received(&"p1", "hi all", true)
+	assert_eq(tab.player_button(MessageRules.ALL_PLAYERS).icon, StatusDot.unread(true))
+	assert_eq(tab.player_button(&"p1").icon, StatusDot.unread(false))
+	tab.open_chat(MessageRules.ALL_PLAYERS)
+	assert_eq(tab.chat_with(MessageRules.ALL_PLAYERS).title_text(), "Chat with all players")
+	assert_eq(tab.chat_with(MessageRules.ALL_PLAYERS).line_texts(), PackedStringArray([
+		"Ann: hi all",
+	]))
+	assert_false(_session.messages().has_unread())
+
+
+func test_a_chat_with_a_player_has_a_block_button() -> void:
+	var tab: MessagesTab = _show()
+	_screen.market_tabs().select_tab(MarketTabs.Tab.MESSAGES)
+	tab.open_chat(&"p1")
+	var button: Button = tab.chat_with(&"p1").block_button()
+	assert_true(button.visible)
+	assert_eq(button.text, "BLOCK?")
+
+
+func test_notes_and_the_room_have_no_block_button() -> void:
+	var tab: MessagesTab = _show()
+	_screen.market_tabs().select_tab(MarketTabs.Tab.MESSAGES)
+	tab.open_chat(&"p0")
+	tab.open_chat(MessageRules.ALL_PLAYERS)
+	assert_false(tab.chat_with(&"p0").block_button().visible)
+	assert_false(tab.chat_with(MessageRules.ALL_PLAYERS).block_button().visible)
+
+
+func test_pressing_block_blocks_and_marks_the_name() -> void:
+	var tab: MessagesTab = _show()
+	_screen.market_tabs().select_tab(MarketTabs.Tab.MESSAGES)
+	tab.open_chat(&"p2")
+	tab.chat_with(&"p2").block_button().pressed.emit()
+
+	assert_true(_session.messages().is_blocked(&"p2"))
+	var chat: ChatPanel = tab.chat_with(&"p2")
+	assert_eq(chat.block_button().text, "UNBLOCK")
+	assert_eq(chat.title_text(), "Chat with Bob (blocked)")
+	var listed: Button = tab.player_button(&"p2")
+	assert_string_contains(listed.text, "(blocked)")
+	assert_eq(listed.theme_type_variation, &"BlockedName")
+	assert_eq(tab.player_button(&"p1").theme_type_variation, &"")
+
+
+func test_pressing_unblock_undoes_it() -> void:
+	var tab: MessagesTab = _show()
+	_screen.market_tabs().select_tab(MarketTabs.Tab.MESSAGES)
+	tab.open_chat(&"p2")
+	tab.chat_with(&"p2").block_button().pressed.emit()
+	tab.chat_with(&"p2").block_button().pressed.emit()
+
+	assert_false(_session.messages().is_blocked(&"p2"))
+	assert_eq(tab.chat_with(&"p2").block_button().text, "BLOCK?")
+	assert_eq(tab.chat_with(&"p2").title_text(), "Chat with Bob")
+	assert_false(tab.player_button(&"p2").text.contains("(blocked)"))
+	assert_eq(tab.player_button(&"p2").theme_type_variation, &"")
+
+
+func test_the_blocked_look_is_in_the_theme() -> void:
+	var theme: Theme = load("res://assets/themes/stalks_theme.tres")
+	assert_eq(theme.get_type_variation_base(&"BlockedName"), &"Button")
+	assert_true(theme.get_color(&"font_color", &"BlockedName").is_equal_approx(Palette.TEXT_FAINT))

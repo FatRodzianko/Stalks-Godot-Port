@@ -7266,7 +7266,8 @@ work could go on beside it.
 host takes the sender from the peer id, as every other request does (D45), checks
 the recipient is a player in the match, cleans the text (D193), applies a per-sender
 rate limit, and passes it to that one recipient (`_rpc_message`, `authority`). It is
-never broadcast. The host keeps a copy only when it is the recipient. A message to
+never broadcast; the ALL PLAYERS room (D195), added later the same day, is one
+`rpc_id` per recipient rather than a broadcast. The host keeps a copy only when it is the recipient. A message to
 an away player has no peer to go to; the sender's own machine refuses it first, with
 a reason.
 
@@ -7371,3 +7372,70 @@ game is readable without a theme.
 **Nothing in the networking changes.** A StalkleHeads match over a direct ENet
 connection was already possible (`--game=stalkleheads`, D192) and is what
 `test_wire.gd` plays; the lobby takes up to ten players either way.
+
+### D195 - ALL PLAYERS: one room every player can write in
+**2026-11-23 · Accepted** (the owner's request and the owner's name for it)
+
+The MESSAGES tab's list starts with **ALL PLAYERS**, a chat whose every message
+goes to everybody else in the match. It is listed only when there is anybody else;
+a solo game shows notes alone.
+
+**It is a recipient, not a new channel.** `MessageRules.ALL_PLAYERS` (`&"*all"`) is
+sent where a player's id would be, through the same `_rpc_send_message`, the same
+cleaning and the same rate limits as a private message. It starts with `*`, which
+no player id does, so it can never be mistaken for a seat. In a `MessageBook` the
+room is one more conversation, keyed by that id; `record_received` takes an
+`in_room` flag to put a line there rather than in the sender's private chat, and
+`_rpc_message` carries that flag.
+
+**The host fans it out one peer at a time** (`HostSession._route_to_room`): one
+`rpc_id` to each present player's peer except the sender's, and into the host's
+own book unless the host wrote it. Not `rpc()`: a broadcast would reach the sender
+too, and skipping them by name is what makes "not echoed back" true by
+construction. The sender keeps their own copy, as with any message. An away player
+has no peer and misses what is said while they are gone, which is the same known
+limit as a rejoin (D192).
+
+**One room, not groups.** Picking members, naming groups and keeping their lists in
+step across machines is far more than was asked for.
+
+**Rules out:** a separate RPC or a separate rate limit for the room; `rpc()` for
+it; sending the room to the sender.
+
+### D196 - Blocking is silent and lives only on the blocker's machine
+**2026-11-23 · Accepted** (the owner's design: silent, and kept on the client)
+
+A chat with one other player has a button at the right of its header: **BLOCK?**,
+and once pressed, **UNBLOCK** - the owner's words, kept as written (two constants
+in `ChatPanel`, if they are ever changed). Notes and the ALL PLAYERS room have
+nobody to block and show no button.
+
+**Blocking is a set in `MessageBook`, and nothing else.** `record_received` drops
+a blocked player's message before it is cleaned or counted, in their private chat
+and in the room alike. Blocking also marks their chat read, so nothing of theirs is
+left lighting a dot; what they had already said stays. Unblocking does not bring
+back what was dropped, because it was never kept.
+
+**Silent, so nothing is sent.** The host is not told and neither is the blocked
+player: their sends succeed, the host relays as before, and the message is dropped
+on arrival. This is the simplest design that keeps the secret, because there is no
+message that could leak it - not a refused send, not a flag in a snapshot. The cost
+is the host delivering what will be thrown away, which at 8 messages per 10 seconds
+per sender is nothing.
+
+**How a blocked player looks in the list:** greyed (theme type variation
+`BlockedName`: `TEXT_FAINT`, the away colour) and with "(blocked)" after the name,
+as "(away)" is written. The chat header says "Chat with Bob (blocked)". The owner
+suggested italics or a strikethrough. Neither is available with this font:
+Terminus is drawn from bitmaps, and Godot's synthetic slant (a `FontVariation`
+transform) leaves bitmap glyphs upright - it was tried, and a screenshot showed no
+slant. A `Button` has no strikethrough. Grey plus the word reads without either.
+
+**Known limit:** blocks last as long as the book. A rejoin, a host migration or a
+rematch starts a new book, and the player is unblocked. Keeping blocks would mean
+saving them on disk keyed by something that outlives a match (a Steam id), which is
+more than was asked for.
+
+**Rules out:** telling the host (it would have to keep the secret, and a host is
+just another player); refusing a blocked player's send (that would tell them);
+blocking the room as a whole.

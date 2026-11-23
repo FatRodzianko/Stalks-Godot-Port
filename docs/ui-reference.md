@@ -215,6 +215,14 @@ second chat beside the first; a third replaces whichever was used less recently.
 With no chat open, a faint line says how to open one. Text is plain printable ASCII,
 200 characters at most (D193).
 
+**ALL PLAYERS** (D195) heads the list whenever anybody else is in the match: a
+chat whose every message goes to everybody else, with its own square and the
+header "Chat with all players". **Blocking** (D196): a chat with one other player
+has **BLOCK?** at the right of its header, and **UNBLOCK** once pressed. A blocked
+player's name in the list is grey (theme variation `BlockedName`) with "(blocked)"
+after it, and their chat's header ends "(blocked)". Notes and the room have no
+button.
+
 **Capitals.** Captions and phrases on the StalkleHeads screens start with a capital
 ("Index level", "Year 2", "Biggest earnings surprise"); all-capital headings and
 buttons stay so; the mood words keep the original's `BULL!!!` and `bear...`

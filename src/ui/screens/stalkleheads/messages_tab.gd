@@ -3,10 +3,17 @@ extends HBoxContainer
 ## The MESSAGES tab: private messages between the players in this match
 ## (decisions.md D192).
 ##
-## On the right, every player in the match **including this one**, each with
-## the unread dot the MESSAGES tab itself carries (StatusDot). Clicking a name
-## opens the chat with that player; this player's own name opens notes, which
-## are kept on this machine and never sent.
+## On the right, ALL PLAYERS - a room every message in which goes to everybody
+## else in the match (D195), shown when there is anybody else - then every
+## player in the match **including this one**, each with the unread dot the
+## MESSAGES tab itself carries (StatusDot). Clicking a name opens the chat with
+## that player; this player's own name opens notes, which are kept on this
+## machine and never sent.
+##
+## **Blocking** (D196): a chat with one other player has BLOCK? at its top.
+## Their messages are then dropped on this machine, and their name in the list
+## is greyed (theme variation `BlockedName`) and says "(blocked)".
+## Nobody else is told.
 ##
 ## **Two chats at once.** A first name opens one chat across the left side, a
 ## second opens a second beside it. A third replaces whichever of the two was
@@ -30,6 +37,9 @@ signal lines_read
 ## How many chats can be open side by side.
 const MAX_OPEN: int = 2
 
+## The room's name in the list, the owner's words (D195).
+const ALL_PLAYERS_CAPTION: String = "ALL PLAYERS"
+
 
 ## The chat in each panel, left to right. At most MAX_OPEN.
 var _open: Array[StringName] = []
@@ -52,6 +62,7 @@ func _ready() -> void:
 	for panel: ChatPanel in _panels():
 		panel.message_submitted.connect(_on_chat_message_submitted)
 		panel.used.connect(_on_chat_used)
+		panel.block_toggled.connect(_on_chat_block_toggled)
 
 
 ## Redraws the list and the open chats, and marks the open chats read. Called
@@ -118,10 +129,13 @@ func _panels() -> Array[ChatPanel]:
 	return [_first_chat, _second_chat]
 
 
-## One button per player, in roster order. Rebuilt only when the roster
+## One button per conversation: ALL PLAYERS when anybody else is in the
+## match, then each player in roster order. Rebuilt only when the roster
 ## changes, which in a match is never: an away player keeps their seat.
 func _rebuild_list_if_needed() -> void:
 	var ids: Array[StringName] = []
+	if _state.players.size() > 1:
+		ids.append(MessageRules.ALL_PLAYERS)
 	for player: PlayerState in _state.players:
 		ids.append(player.id)
 	if ids == _roster:
@@ -131,7 +145,7 @@ func _rebuild_list_if_needed() -> void:
 		_player_list.remove_child(child)
 		child.queue_free()
 	_buttons.clear()
-	for player: PlayerState in _state.players:
+	for chat_id: StringName in _roster:
 		var button: Button = Button.new()
 		button.toggle_mode = true
 		button.focus_mode = Control.FOCUS_NONE
@@ -139,9 +153,9 @@ func _rebuild_list_if_needed() -> void:
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		button.clip_text = true
-		button.pressed.connect(_on_player_button_pressed.bind(player.id))
+		button.pressed.connect(_on_player_button_pressed.bind(chat_id))
 		_player_list.add_child(button)
-		_buttons[player.id] = button
+		_buttons[chat_id] = button
 	for player_id: StringName in _open.duplicate():
 		if not _roster.has(player_id):
 			_open.erase(player_id)
@@ -162,16 +176,29 @@ func _draw_chats() -> void:
 			other_id, _title_for(other_id, names), other_id == _local_id,
 			_book.lines(other_id), names, _local_id,
 		)
+		if other_id != _local_id and other_id != MessageRules.ALL_PLAYERS:
+			panel.show_block_state(_book.is_blocked(other_id))
 	_no_chat.visible = _open.is_empty()
 
 
 func _title_for(other_id: StringName, names: Dictionary[StringName, String]) -> String:
 	if other_id == _local_id:
 		return "Notes - only you see these"
+	if other_id == MessageRules.ALL_PLAYERS:
+		return "Chat with all players"
+	if _book.is_blocked(other_id):
+		return "Chat with %s (blocked)" % names.get(other_id, "?")
 	return "Chat with %s" % names.get(other_id, "?")
 
 
 func _draw_dots() -> void:
+	var room: Button = _buttons.get(MessageRules.ALL_PLAYERS, null)
+	if room != null:
+		var room_unread: int = _book.unread_from(MessageRules.ALL_PLAYERS)
+		room.text = ALL_PLAYERS_CAPTION
+		room.icon = StatusDot.unread(room_unread > 0)
+		room.set_pressed_no_signal(_open.has(MessageRules.ALL_PLAYERS))
+		room.tooltip_text = "Everybody else in the match sees these"
 	for player: PlayerState in _state.players:
 		var button: Button = _buttons.get(player.id, null)
 		if button == null:
@@ -184,6 +211,12 @@ func _draw_dots() -> void:
 				label += " (you)"
 		elif player.is_away:
 			label += " (away)"
+		var blocked: bool = _book.is_blocked(player.id)
+		if blocked:
+			label += " (blocked)"
+			button.theme_type_variation = &"BlockedName"
+		else:
+			button.theme_type_variation = &""
 		button.text = label
 		button.icon = StatusDot.unread(unread > 0)
 		button.set_pressed_no_signal(_open.has(player.id))
@@ -205,3 +238,10 @@ func _on_chat_message_submitted(recipient_id: StringName, text: String) -> void:
 
 func _on_chat_used(recipient_id: StringName) -> void:
 	_last_used = recipient_id
+
+
+## Blocking is this machine's alone (D196), so the tab writes it straight into
+## the book, as it marks chats read; the book's `changed` redraws the tab.
+func _on_chat_block_toggled(player_id: StringName, blocked: bool) -> void:
+	if _book != null:
+		_book.set_blocked(player_id, blocked)

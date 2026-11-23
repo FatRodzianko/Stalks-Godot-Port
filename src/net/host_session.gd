@@ -621,13 +621,31 @@ func _deliver_message(recipient_id: StringName, text: String) -> void:
 ## To exactly one place: this machine's book if the host is the recipient,
 ## otherwise the recipient's peer and no other. A recipient who is away has
 ## no peer, and the message goes nowhere.
+##
+## **The ALL PLAYERS room** goes to everybody present except the sender: one
+## `rpc_id` per peer, never `rpc()`, so the sender is skipped by name rather
+## than by luck (D195). The host's own book gets it unless the host sent it.
 func _route_message(sender_id: StringName, recipient_id: StringName, text: String) -> void:
+	if recipient_id == MessageRules.ALL_PLAYERS:
+		_route_to_room(sender_id, text)
+		return
 	if _is_host_player(recipient_id):
 		_messages.record_received(sender_id, text)
 		return
 	var peer: int = _peer_by_player.get(recipient_id, 0)
 	if peer != 0:
-		_rpc_message.rpc_id(peer, String(sender_id), text)
+		_rpc_message.rpc_id(peer, String(sender_id), text, false)
+
+
+func _route_to_room(sender_id: StringName, text: String) -> void:
+	for peer: int in _player_by_peer:
+		var player_id: StringName = _player_by_peer[peer]
+		if player_id == sender_id:
+			continue
+		if peer == HOST_PEER_ID:
+			_messages.record_received(sender_id, text, true)
+		else:
+			_rpc_message.rpc_id(peer, String(sender_id), text, true)
 
 
 # ------------------------------------------------------------ one path per action
