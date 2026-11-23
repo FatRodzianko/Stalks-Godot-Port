@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/ui/screens/stalkleheads/market_tab.gd" id="1_tab"]
-[ext_resource type="PackedScene" path="res://src/ui/widgets/chart_widget.tscn" id="2_chart"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/drawn_chart.tscn" id="2_chart"]
 
 [node name="MarketTab" type="ScrollContainer"]
 size_flags_horizontal = 3
@@ -27,6 +27,11 @@ text = "THE MARKET"
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"TightVBox"
+
+[node name="IndexTitle" type="Label" parent="Columns/Left"]
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "INDEX, BY YEAR"
 
 [node name="IndexChart" parent="Columns/Left" instance=ExtResource("2_chart")]
 unique_name_in_owner = true

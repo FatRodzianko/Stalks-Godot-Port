@@ -6806,7 +6806,8 @@ have duplicated the top and bottom bars and every handler, which then drift.
 of the playing screen.
 
 ### D181 - Charts are text, and text tables are measured in characters
-**2026-11-22 · Accepted** (design §15 N)
+**2026-11-22 · Accepted** (design §15 N) · *Charts partly superseded by D188: line and
+candlestick charts are drawn; the industry chart stays text.*
 
 `TextChart` (`src/ui/text_chart.gd`) draws bar charts as strings from the font's
 eighth-block ramp, ` ▁▂▃▄▅▆▇█`: one character an eighth of a cell tall at a time.
@@ -7118,3 +7119,74 @@ goal for the tooltip, are recorded in stalkleheads-design.md §14.
 **Asked, not yet answered:** a line chart for the index, candlestick charts, and
 tabs of charts on the Company tab. They are design questions about D181 (charts are
 text) and about what price data exists, so they wait for the owner's answer.
+*Answered and built in D188.*
+
+### D188 - Drawn charts: the index as a line, and a company's charts
+**2026-11-22 · Accepted** (the owner, after section I)
+
+The owner asked whether the index chart should be a line rather than bars,
+whether candlestick charts were possible, and for the Company tab's earnings area
+to offer charts of a company's performance. Built as proposed and agreed.
+
+**Some charts are now drawn, not written.** D181 made every chart text: eighth
+blocks on the character grid. That suits bars, but text cannot draw a line between
+two points or a candle's body between two prices. `DrawnChart`
+(`src/ui/widgets/drawn_chart.gd`) draws them in `_draw()` with Godot's own
+`draw_line`, `draw_polyline` and `draw_rect`: no art and no plugin. It keeps what
+mattered about text charts:
+
+- colours and font from the Theme (the `DrawnChart` type), so it looks like
+  everything else;
+- whole-pixel positions, so one-pixel lines stay sharp on the 640 x 360 picture
+  under the CRT effect;
+- tested by numbers, not by eye. `ChartGeometry` (`src/ui/chart_geometry.gd`) does
+  all the placing - the scale, each year's slot, each candle and bar - as pure
+  static functions, and the widget only draws what it decides.
+
+The industry chart stays a text chart (coloured in D187). It is signed bars,
+which text does well.
+
+**The index is a line.** A level is read for its path, up and down over the years,
+not compared bar against bar.
+
+**Candles have no wicks.** A candlestick shows a period's open, high, low and close.
+The match has one price per company per year: the open is last year's close, and
+there is no high or low within a year. The choices were:
+
+- candles without wicks, honest about the data (**chosen**);
+- invented wicks, which would draw numbers that never happened (ruled out);
+- prices that move within the year, which changes the simulation and its balance
+  (ruled out for a chart).
+
+**The Company tab's earnings area has six views**, chosen with buttons above it:
+
+| Button | Chart |
+|---|---|
+| TABLE | the five-year earnings table, as before; the default |
+| PRICE | candles, one a year from year 1 |
+| SALES | revenue and profit, bars side by side |
+| MARGIN | margin, a line |
+| PER SHARE | earnings and dividend per share, bars side by side |
+| P/E | the company's P/E and its industry's average, two lines |
+
+Charts cover the whole match, from year 0 (from year 1 for the price, whose first
+candle needs a year before it). The table still shows five years. The view chosen
+is kept while stepping between companies. Resting the mouse on a year shows its
+figures. The bond and the index are not companies and get no buttons.
+
+**Per-share charts are split-adjusted.** A split doubles a company's shares and
+halves its price, so an unadjusted price chart would show every split as a crash.
+`MarketReadouts.per_share_adjusted` restates a year's price, earnings per share and
+dividend on today's share count, as real price charts do. The tooltips and the
+table keep the figures as they were, and the table marks the split.
+
+**New readouts.** `MarketReadouts.dividend_in` (a company's dividend in a given
+year) and `MarketReadouts.industry_average_pe_in` (an industry's mean P/E at the
+end of a given year). Both read history, not the live board, so a client draws the
+same charts as the host from what it already has.
+
+**Not built:** a waterfall chart of why the price moved. The ledger beside the
+earnings area already lists the latest year's parts as text.
+
+**Rules out.** Invented highs and lows; per-share charts that are not
+split-adjusted; a charting library or plugin.

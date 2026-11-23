@@ -2145,6 +2145,59 @@ checkout before exporting: the file `src/ui/widgets/chart_widget.gd` contains
 17. Rest the mouse on a trader's name.
 18. Check no tooltip appears.
 
+### K - StalkleHeads drawn charts (decisions.md D188) — **not yet run**
+
+One machine, no Steam. Run on a locally exported build containing D188. To check a
+checkout before exporting: the file `src/ui/widgets/drawn_chart.gd` exists. Can be
+run before or after section J.
+
+#### K1. The index line
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Click **START**.
+5. Press **Ready for New Year** five times, closing the news each time.
+6. Click **MARKET**.
+7. Check **INDEX, BY YEAR** is a green line with a dot for each year, and year numbers under it.
+8. Rest the mouse over the dot for year 3.
+9. Check a tooltip says **Year 3** and the index level.
+
+#### K2. The Company tab's charts
+
+10. Click **COMPANY**.
+11. Check a row of buttons reads **TABLE**, **PRICE**, **SALES**, **MARGIN**, **PER SHARE**, **P/E**, with **TABLE** lit.
+12. Check the earnings table is shown as before.
+13. Click **PRICE**.
+14. Check only **PRICE** is lit, and the table is replaced by one bar per year from year 1: green where the price rose, red where it fell.
+15. Check each bar starts at the height where the bar before it ended.
+16. Rest the mouse over one bar.
+17. Check a tooltip gives that year and the price it moved from and to.
+18. Click **SALES**.
+19. Check two bars per year, named **Revenue** and **Profit** above the chart.
+20. Click **MARGIN**.
+21. Check one line, a point for each year.
+22. Click **PER SHARE**.
+23. Check two bars per year, named **Earnings/share** and **Dividend**.
+24. Click **P/E**.
+25. Check two lines, named **P/E** and **Industry**.
+26. Click **>**.
+27. Check the next company is shown and **P/E** is still the chart shown.
+28. Click **TABLE**.
+29. Check the earnings table is back and nothing below it has moved.
+
+#### K3. The bond
+
+30. Click **COMPANIES**.
+31. Click **BERRY BONDS**.
+32. Check there is no row of chart buttons.
+
+#### What a failure here means
+
+- **Step 14 showing more than one button lit**: the buttons are not releasing each other.
+- **Step 15 showing a gap or a jump**: write down the company and the year.
+- **Step 29 showing the tab below moved**: the chart and the table are different heights.
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until

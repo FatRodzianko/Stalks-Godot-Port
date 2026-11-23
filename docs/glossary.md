@@ -265,6 +265,10 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **Text chart** — a bar chart drawn in characters, using the font's eighth-block characters so a bar can end an eighth of a cell up. Every chart in StalkleHeads is one (decisions.md D181). Code: `TextChart`.
 
+**Candlestick (candle)** — a chart mark for one period: a bar from the price the period opened at to the price it closed at, green if it closed higher, red if lower. Real candles also have thin "wicks" to the period's high and low; StalkleHeads' have none, because a company has one price a year (decisions.md D188).
+
+**Split-adjusted** — a per-share figure from before a split, restated as if the split had already happened, so a chart does not show a split as a crash. Code: `MarketReadouts.per_share_adjusted` (D188).
+
 **Readouts (on screen)** — every number the StalkleHeads tabs show that is worked out rather than stored: P/E, market share, averages, breadth. All come from `MarketReadouts` in `src/sim/`, never from a node (decisions.md D179).
 
 ---

@@ -1138,7 +1138,7 @@ GameplayScreen (base game's, unchanged around the boards)
   %MarketSlot      MarketTabs, built the first time state.market exists
     TopRow           tab strip, then HOLDINGS / RANKINGS / DESK buttons
     ExchangeTab      CompanyRow per board row, under group CompanyRows
-    MarketTab        CellRow lines, TextChart index chart, mood row
+    MarketTab        CellRow lines, DrawnChart index line, mood row
     IndustriesTab    CellRow table, signed TextChart, members as TradeLines
     CompanyTab       pinned title line (COMPANIES < name >), then a scroll:
                      identity line with a TradeBox, CellRow earnings table,
@@ -1163,7 +1163,9 @@ on the wire; `test_stalkleheads_screen.gd` compares all four tabs line by line.
 **The widgets.** `CellRow` is one line of a text table, its columns a whole number of
 characters wide (D181). `CompanyRow` is a board row, an industry header or the column
 headings, in one scene so the three line up. `ChartWidget` shows a `TextChart`
-string, `LedgerWidget` the price ledger, `YearDigestPanel` the year in review. Each
+string (the industry chart); `DrawnChart` draws line, candle and bar charts, placed
+by the pure `ChartGeometry` (D188: the index line and the Company tab's charts);
+`LedgerWidget` the price ledger, `YearDigestPanel` the year in review. Each
 emits signals with ids and knows nothing of the tab holding it.
 
 **Trading** goes through the base game's handlers: `MarketTabs.buy_requested` is

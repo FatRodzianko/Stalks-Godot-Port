@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/ui/screens/stalkleheads/company_tab.gd" id="1_tab"]
 [ext_resource type="PackedScene" path="res://src/ui/widgets/cell_row.tscn" id="2_row"]
 [ext_resource type="PackedScene" path="res://src/ui/widgets/ledger_widget.tscn" id="3_ledger"]
 [ext_resource type="PackedScene" path="res://src/ui/widgets/trade_box.tscn" id="4_trade"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/drawn_chart.tscn" id="5_chart"]
 
 [node name="CompanyTab" type="VBoxContainer"]
 size_flags_horizontal = 3
@@ -87,11 +88,24 @@ autowrap_mode = 3
 [node name="Middle" type="HBoxContainer" parent="Scroll/Body"]
 layout_mode = 2
 
-[node name="Earnings" type="VBoxContainer" parent="Scroll/Body/Middle"]
-unique_name_in_owner = true
+[node name="EarningsArea" type="VBoxContainer" parent="Scroll/Body/Middle"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"TightVBox"
+
+[node name="Views" type="HBoxContainer" parent="Scroll/Body/Middle/EarningsArea"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Earnings" type="VBoxContainer" parent="Scroll/Body/Middle/EarningsArea"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TightVBox"
+
+[node name="CompanyChart" parent="Scroll/Body/Middle/EarningsArea" instance=ExtResource("5_chart")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
 
 [node name="Ledger" parent="Scroll/Body/Middle" instance=ExtResource("3_ledger")]
 unique_name_in_owner = true

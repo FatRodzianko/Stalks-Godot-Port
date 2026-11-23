@@ -173,7 +173,8 @@ side, and closed again by the same button or a change of tab (decisions.md D183,
 D184).
 
 **MARKET**: index level and move, market P/E, mood and bull years, breadth,
-risk-free rate; the index by year (a text chart 38 wide, 7 tall); the year's news
+risk-free rate; the index by year (a drawn line, at least 38 characters wide and 7
+tall, decisions.md D188); the year's news
 (at least 240 px wide);
 the mood of each year as B (bull) or b (bear).
 
@@ -187,8 +188,12 @@ below the title line (SYM 6, NAME, NPC 4: how many desk traders hold it; click a
 heading to sort); `<` and
 `>` walk the companies in the match's order; ticker (6), industry (20) and earnings
 regime ("SLOWING, 1st year"), then "HELD N" and a trade box; the company's description,
-whole, however many lines it takes; five years of revenue, expenses, profit, margin,
-earnings per share, price and P/E, with `^split` under a year it split; the ledger
+whole, however many lines it takes; buttons TABLE, PRICE, SALES, MARGIN, PER SHARE,
+P/E choosing what the earnings area shows (D188): five years of revenue, expenses,
+profit, margin, earnings per share, price and P/E, with `^split` under a year it split
+(TABLE, the default), or a drawn chart of the whole match the same size - price
+candles without wicks, revenue and profit bars, a margin line, earnings and dividend
+per share bars, P/E against the industry's; per-share charts split-adjusted; the ledger
 "why the price moved", whose first line gives the price move as a percentage; earnings yield against risk-free; investors by name; which
 of the desk's traders traded it last year, as a table (TRADER 30, LAST YEAR 10,
 NOW 10, framed heading); its short interest.

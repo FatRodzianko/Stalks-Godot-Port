@@ -12,7 +12,10 @@ extends VBoxContainer
 ## - the name, industry and **earnings regime, named** - "SLOWING, 2nd year"
 ##   (§14 q8) - and the description;
 ## - **five years of earnings**: revenue, expenses, profit, margin, earnings per
-##   share, price and P/E, with a mark under a year it split;
+##   share, price and P/E, with a mark under a year it split - or, chosen with
+##   the buttons above it, **a chart** of the whole match: the price as candles,
+##   revenue and profit, the margin, earnings and dividend per share, or the
+##   P/E against its industry's (decisions.md D188);
 ## - **why the price moved** - the ledger widget, every point attributed;
 ## - its earnings yield against the risk-free rate;
 ## - **who holds it**: the players, by name only (D103), and the NPC traders who
@@ -47,6 +50,36 @@ const CAPTION_CHARS: int = 16
 const YEAR_CHARS: int = 7
 
 const SPLIT_MARK: String = "^split"
+
+## What the earnings area shows: the table, or one of the charts.
+enum View { TABLE, PRICE, SALES, MARGIN, PER_SHARE, PE }
+
+const VIEW_CAPTIONS: Dictionary[View, String] = {
+	View.TABLE: "TABLE",
+	View.PRICE: "PRICE",
+	View.SALES: "SALES",
+	View.MARGIN: "MARGIN",
+	View.PER_SHARE: "PER SHARE",
+	View.PE: "P/E",
+}
+
+const VIEW_TIPS: Dictionary[View, String] = {
+	View.TABLE: "The last five years of earnings, as figures.",
+	View.PRICE: "The price each year as a candle, from where it opened to where it closed: green if it rose, red if it fell. Adjusted for splits.",
+	View.SALES: "Revenue and profit each year.",
+	View.MARGIN: "Profit as a percentage of revenue, each year.",
+	View.PER_SHARE: "Earnings per share and dividend per share each year. Adjusted for splits.",
+	View.PE: "This company's P/E each year, against its industry's average.",
+}
+
+## The charts take the table's place, so they take its width: the caption
+## column and five year columns. Their height is the table's, measured once its
+## rows exist, so switching between them moves nothing below (manual-testing.md
+## K2).
+const CHART_WIDTH: int = (CAPTION_CHARS + YEARS_SHOWN * YEAR_CHARS) * 6
+
+## Shown instead of the price chart before a year has been played.
+const NO_YEARS_YET: String = "Charts start once a year has been played."
 
 enum Line { REVENUE, EXPENSES, PROFIT, MARGIN, EPS, PRICE, PE }
 
@@ -92,6 +125,8 @@ var _year_row: CellRow
 var _lines: Dictionary[Line, CellRow] = {}
 var _split_row: CellRow
 var _context: TradeContext
+var _view: View = View.TABLE
+var _view_buttons: Dictionary[View, Button] = {}
 
 @onready var _pick: Button = %PickButton
 @onready var _previous: Button = %PreviousButton
@@ -101,7 +136,9 @@ var _context: TradeContext
 @onready var _held_label: Label = %HeldLabel
 @onready var _trade: TradeBox = %Trade
 @onready var _description: Label = %Description
+@onready var _views: HBoxContainer = %Views
 @onready var _earnings: VBoxContainer = %Earnings
+@onready var _chart: DrawnChart = %CompanyChart
 @onready var _ledger: LedgerWidget = %Ledger
 @onready var _yield: Label = %YieldLine
 @onready var _investors: Label = %Investors
@@ -143,6 +180,20 @@ func _ready() -> void:
 	_split_row = _add_earnings_row(widths, aligns)
 	_split_row.set_row_variation(&"Faint")
 
+	_chart.custom_minimum_size = Vector2(CHART_WIDTH, _earnings.get_combined_minimum_size().y)
+	var group: ButtonGroup = ButtonGroup.new()
+	for view: View in VIEW_CAPTIONS:
+		var button: Button = Button.new()
+		button.text = VIEW_CAPTIONS[view]
+		button.toggle_mode = true
+		button.button_group = group
+		button.focus_mode = Control.FOCUS_NONE
+		button.tooltip_text = TermTips.fit(VIEW_TIPS[view])
+		button.pressed.connect(_on_view_button_pressed.bind(view))
+		_views.add_child(button)
+		_view_buttons[view] = button
+	_view_buttons[View.TABLE].set_pressed_no_signal(true)
+
 
 ## The company to show, drawn at the next refresh.
 func show_company(stalk_id: StringName) -> void:
@@ -172,6 +223,9 @@ func refresh(context: TradeContext) -> void:
 	_held_label.text = "HELD %d " % context.held(_stalk_id)
 	context.prepare(_trade, _stalk_id)
 
+	_views.visible = company != null
+	_earnings.visible = company == null or _view == View.TABLE
+	_chart.visible = company != null and _view != View.TABLE
 	if company == null:
 		_identity.set_texts([String(stalk.definition.ticker), "", ""])
 		_show_no_earnings()
@@ -188,6 +242,7 @@ func refresh(context: TradeContext) -> void:
 			MarketReadouts.regime_caption(state, company),
 		])
 		_show_earnings(state, company)
+		_show_chart(state, company)
 		var latest: EarningsYearResult = state.latest_result() as EarningsYearResult
 		var ledger: PriceLedger = null
 		if latest != null:
@@ -234,6 +289,90 @@ func _show_earnings(state: GameState, company: CompanyState) -> void:
 			MarketReadouts.price_earnings(record.price, record.earnings_per_share()), 1
 		))
 		_split_row.set_cell(cell, SPLIT_MARK if record.did_split else "")
+
+
+## Puts the chart chosen with the buttons on the chart, over the whole match.
+func _show_chart(state: GameState, company: CompanyState) -> void:
+	if _view == View.TABLE:
+		return
+	var records: Array[CompanyState] = MarketReadouts.company_history(state, company.id, state.year + 1)
+	var years: Array[int] = MarketReadouts.history_years(state, state.year + 1)
+	if records.is_empty():
+		_chart.show_message(NO_YEARS_YET)
+		return
+	var shares_now: int = records[records.size() - 1].shares_outstanding
+	var captions: PackedStringArray = []
+	var tips: PackedStringArray = []
+	match _view:
+		View.PRICE:
+			if records.size() < 2:
+				_chart.show_message(NO_YEARS_YET)
+				return
+			var opens: PackedFloat32Array = []
+			var closes: PackedFloat32Array = []
+			for index: int in range(1, records.size()):
+				var before: CompanyState = records[index - 1]
+				var after: CompanyState = records[index]
+				opens.append(MarketReadouts.per_share_adjusted(before.price, before.shares_outstanding, shares_now))
+				closes.append(MarketReadouts.per_share_adjusted(after.price, after.shares_outstanding, shares_now))
+				captions.append(str(years[index]))
+				var tip: String = "Year %d\nPrice %d -> %d" % [years[index], before.price, after.price]
+				if after.did_split:
+					tip += "\nSplit this year"
+				tips.append(tip)
+			_chart.show_candles(opens, closes, captions, tips)
+		View.SALES:
+			var revenue: PackedFloat32Array = []
+			var profit: PackedFloat32Array = []
+			for index: int in records.size():
+				var record: CompanyState = records[index]
+				revenue.append(record.revenue)
+				profit.append(record.profit)
+				captions.append(str(years[index]))
+				tips.append("Year %d\nRevenue %s\nProfit %s" % [
+					years[index],
+					Palette.format_decimal(record.revenue, 0),
+					Palette.format_decimal(record.profit, 0),
+				])
+			var sales: Array[PackedFloat32Array] = [revenue, profit]
+			_chart.show_bars(sales, PackedStringArray(["Revenue", "Profit"]), captions, tips)
+		View.MARGIN:
+			var margin: PackedFloat32Array = []
+			for index: int in records.size():
+				margin.append(records[index].margin_percent)
+				captions.append(str(years[index]))
+				tips.append("Year %d\nMargin %s" % [years[index], Palette.format_percent(records[index].margin_percent)])
+			var margins: Array[PackedFloat32Array] = [margin]
+			_chart.show_lines(margins, PackedStringArray(["Margin"]), captions, tips)
+		View.PER_SHARE:
+			var eps: PackedFloat32Array = []
+			var dividend: PackedFloat32Array = []
+			for index: int in records.size():
+				var record: CompanyState = records[index]
+				var paid: int = MarketReadouts.dividend_in(state, company.id, years[index])
+				eps.append(MarketReadouts.per_share_adjusted(record.earnings_per_share(), record.shares_outstanding, shares_now))
+				dividend.append(MarketReadouts.per_share_adjusted(paid, record.shares_outstanding, shares_now))
+				captions.append(str(years[index]))
+				tips.append("Year %d\nEarnings/share %s\nDividend %d" % [
+					years[index], Palette.format_decimal(record.earnings_per_share(), 2), paid,
+				])
+			var per_share: Array[PackedFloat32Array] = [eps, dividend]
+			_chart.show_bars(per_share, PackedStringArray(["Earnings/share", "Dividend"]), captions, tips)
+		View.PE:
+			var own: PackedFloat32Array = []
+			var industry: PackedFloat32Array = []
+			for index: int in records.size():
+				var record: CompanyState = records[index]
+				var pe: float = MarketReadouts.price_earnings(record.price, record.earnings_per_share())
+				var average: float = MarketReadouts.industry_average_pe_in(state, company.profile.industry, years[index])
+				own.append(pe)
+				industry.append(average)
+				captions.append(str(years[index]))
+				tips.append("Year %d\nP/E %s\nIndustry %s" % [
+					years[index], Palette.format_decimal(pe, 1), Palette.format_decimal(average, 1),
+				])
+			var pes: Array[PackedFloat32Array] = [own, industry]
+			_chart.show_lines(pes, PackedStringArray(["P/E", "Industry"]), captions, tips)
 
 
 func _show_no_earnings() -> void:
@@ -305,6 +444,23 @@ func _add_activity_row() -> CellRow:
 
 # ---------------------------------------------------------------- for tests
 
+## Shows the table or a chart, as pressing its button would.
+func select_view(view: View) -> void:
+	# Setting a button pressed without its signal does not release the rest of
+	# its group, so each is set by hand.
+	for each: View in _view_buttons:
+		_view_buttons[each].set_pressed_no_signal(each == view)
+	_on_view_button_pressed(view)
+
+
+func shown_view() -> View:
+	return _view
+
+
+func company_chart() -> DrawnChart:
+	return _chart
+
+
 func shown_id() -> StringName:
 	return _stalk_id
 
@@ -358,6 +514,12 @@ func activity_lines() -> PackedStringArray:
 
 
 # --------------------------------------------------------------- handlers
+
+func _on_view_button_pressed(view: View) -> void:
+	_view = view
+	if _context != null:
+		refresh(_context)
+
 
 func _on_pick_pressed() -> void:
 	picker_requested.emit()

@@ -16,9 +16,14 @@ extends ScrollContainer
 
 const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
 
-## The index chart's size in cells (design §7.6).
+## The index chart's size in cells (design §7.6): the plot, plus the scale
+## labels left of it and the year captions under it. A line since D188.
 const CHART_WIDTH: int = 38
 const CHART_HEIGHT: int = 7
+const CHART_SIZE: Vector2 = Vector2(
+	(CHART_WIDTH + ChartGeometry.LABEL_CHARS + 1) * ChartGeometry.CELL_WIDTH,
+	(CHART_HEIGHT + 2) * ChartGeometry.LINE_HEIGHT,
+)
 
 ## How many years the mood row shows.
 const MOOD_YEARS: int = 10
@@ -36,13 +41,14 @@ enum Line { INDEX, PE, MOOD, BREADTH, RISK_FREE }
 var _lines: Dictionary[Line, CellRow] = {}
 
 @onready var _stats: VBoxContainer = %Stats
-@onready var _chart: ChartWidget = %IndexChart
+@onready var _chart: DrawnChart = %IndexChart
 @onready var _event_text: Label = %EventText
 @onready var _event_effect: Label = %EventEffect
 @onready var _mood_chart: Label = %MoodChart
 
 
 func _ready() -> void:
+	_chart.custom_minimum_size = CHART_SIZE
 	var captions: Dictionary[Line, String] = {
 		Line.INDEX: "Index level",
 		Line.PE: "Market P/E",
@@ -112,12 +118,19 @@ func _refresh_stats(state: GameState) -> void:
 		_lines[Line.RISK_FREE].set_cell(3, "  " + bond.definition.display_name)
 
 
+## The index level each year as a line: a level is read for its path, not
+## compared bar against bar (decisions.md D188).
 func _refresh_chart(state: GameState) -> void:
 	var levels: Array[float] = MarketReadouts.index_levels(state)
+	var values: PackedFloat32Array = []
 	var captions: PackedStringArray = []
+	var tips: PackedStringArray = []
 	for year: int in levels.size():
+		values.append(levels[year])
 		captions.append(str(year))
-	_chart.show_bars("INDEX, BY YEAR", levels, captions, CHART_WIDTH, CHART_HEIGHT)
+		tips.append("Year %d\nIndex %d" % [year, roundi(levels[year])])
+	var series: Array[PackedFloat32Array] = [values]
+	_chart.show_lines(series, PackedStringArray(["Index"]), captions, tips)
 
 
 ## Two lines: the latest ten year numbers, and under each the mood it was -
@@ -138,7 +151,7 @@ static func mood_chart_text(state: GameState) -> String:
 	return "%s\n%s" % [numbers.rstrip(" "), marks.rstrip(" ")]
 
 
-func index_chart() -> ChartWidget:
+func index_chart() -> DrawnChart:
 	return _chart
 
 

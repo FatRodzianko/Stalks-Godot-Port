@@ -353,7 +353,7 @@ comparisons in `test_wire.gd` are what guard the two halves from here.
 
 ### StalkleHeads on screen: what S7 covers and what it does not
 
-`test_market_readouts.gd` (32) and `test_stalkleheads_screen.gd` (55), D179-D187.
+`test_market_readouts.gd` (32) and `test_stalkleheads_screen.gd` (60), `test_drawn_chart.gd` (13), D179-D188.
 
 **After the first play (D183)**, tests for each finding: the arrows walk the board's
 order; the identity line keeps the industry whole; one tab lit after opening a
@@ -382,6 +382,17 @@ visible and no trimming; every board heading's style has a margin either side, a
 colour and below in the loss colour, and leaves the axis and captions plain; the
 industry chart shows colour while `chart_text()` stays plain. The placeholder
 descriptions are not tested, at the owner's word.
+
+**Drawn charts (D188)**: `test_drawn_chart.gd` tests `ChartGeometry`'s placing -
+the scale (NAN skipped, bars reaching zero, a flat scale widened), the top and
+bottom of the plot, slots and finding the slot under the mouse, candles never
+vanishing, bars side by side from zero, captions thinning, labels within five
+characters, the legend's room - plus `DrawnChart`'s tooltip, its message, and
+split adjustment. The screen tests: the index chart is a line of the index levels;
+each Company tab view shows its kind of chart at the table's size with one button
+lit; switching to a chart moves nothing below (it takes the table's measured height); candles open at last year's close and today's price is not restated; the bond
+has no buttons; dividends and industry P/E by year. **Not tested:** the drawing
+itself (checked by eye, manual-testing.md section K).
 
 **The rule they protect.** No node works out a figure. So the numbers are tested in
 `test_market_readouts.gd` without a window, and the screen test checks that each tab

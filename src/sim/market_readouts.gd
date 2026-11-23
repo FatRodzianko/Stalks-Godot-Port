@@ -145,6 +145,49 @@ static func company_history(state: GameState, company_id: StringName, count: int
 	return series
 
 
+## A per-share figure from a year when the company had `shares_then` shares,
+## restated on today's `shares_now`: what it would read had every split since
+## already happened. A split doubles the shares and halves the price, so an
+## unadjusted chart would show a split as a crash. Charts adjust, as real price
+## charts do; the earnings table does not, and marks the split instead
+## (decisions.md D188).
+static func per_share_adjusted(value: float, shares_then: int, shares_now: int) -> float:
+	if shares_now <= 0 or is_nan(value):
+		return value
+	return value * float(shares_then) / float(shares_now)
+
+
+## The dividend per share a company paid in `year`. Year 0 paid none.
+static func dividend_in(state: GameState, company_id: StringName, year: int) -> int:
+	var result: EarningsYearResult = result_for_year(state, year)
+	if result == null:
+		return 0
+	return result.dividend_per_share.get(company_id, 0)
+
+
+## The mean P/E of an industry's companies at the end of `year`, on that
+## year's prices and earnings; companies with no earnings or no price are left
+## out. `NONE` if none count. `industry_average_pe` is this for the latest year,
+## on the board's posted prices.
+static func industry_average_pe_in(state: GameState, industry_id: StringName, year: int) -> float:
+	var total: float = 0.0
+	var counted: int = 0
+	for company: CompanyState in state.market.companies:
+		if company.profile.industry != industry_id:
+			continue
+		var record: CompanyState = company_in_year(state, company.id, year)
+		if record == null:
+			continue
+		var pe: float = price_earnings(record.price, record.earnings_per_share())
+		if is_nan(pe):
+			continue
+		total += pe
+		counted += 1
+	if counted == 0:
+		return NONE
+	return total / float(counted)
+
+
 ## The year numbers `company_history` covers, in the same order.
 static func history_years(state: GameState, count: int) -> Array[int]:
 	var years: Array[int] = []

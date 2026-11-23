@@ -11,10 +11,12 @@ extends Control
 ##     $dir = "$env:TEMP\stalks_frames"
 ##     New-Item -ItemType Directory -Force $dir | Out-Null
 ##     & $g --path . res://tools/stalkleheads_shot.tscn --write-movie "$dir\f.png" `
-##          --quit-after 30 --fixed-fps 10
+##          --quit-after 55 --fixed-fps 10
 ##
 ## Frames 6, 11, 16, 21 and 26 are the five pictures (`f00000006.png` and so
-## on). A developer tool: `tools/` is not exported.
+## on). Then the Company tab's five charts (decisions.md D188): frames 31
+## (PRICE), 36 (SALES), 41 (MARGIN), 46 (PER SHARE) and 51 (P/E). A developer
+## tool: `tools/` is not exported.
 
 const StageScene: PackedScene = preload("res://src/ui/stage.tscn")
 
@@ -62,3 +64,15 @@ func _process(_delta: float) -> void:
 			tabs.company_tab().pick_button().pressed.emit()
 		23:
 			screen.get_node("%EventFlavour").more_requested.emit()
+		28:
+			screen.news_panel().close()
+			tabs.company_tab().pick_button().pressed.emit()
+			tabs.company_tab().select_view(CompanyTab.View.PRICE)
+		33:
+			tabs.company_tab().select_view(CompanyTab.View.SALES)
+		38:
+			tabs.company_tab().select_view(CompanyTab.View.MARGIN)
+		43:
+			tabs.company_tab().select_view(CompanyTab.View.PER_SHARE)
+		48:
+			tabs.company_tab().select_view(CompanyTab.View.PE)

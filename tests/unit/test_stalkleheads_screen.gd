@@ -641,13 +641,14 @@ func test_the_market_tab_charts_the_index_by_year() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 6)
 	_tabs().select_tab(MarketTabs.Tab.MARKET)
 	var levels: Array[float] = MarketReadouts.index_levels(_state())
-	var captions: PackedStringArray = []
+	var chart: DrawnChart = _tabs().market_tab().index_chart()
+	assert_eq(chart.kind(), DrawnChart.Kind.LINES, "a line since D188")
+	assert_eq(chart.series().size(), 1)
+	assert_eq(chart.series()[0].size(), levels.size())
 	for year: int in levels.size():
-		captions.append(str(year))
-	assert_eq(
-		_tabs().market_tab().index_chart().chart_text(),
-		TextChart.bars(levels, captions, MarketTab.CHART_WIDTH, MarketTab.CHART_HEIGHT),
-	)
+		assert_almost_eq(chart.series()[0][year], levels[year], 0.01)
+	assert_eq(chart.captions()[0], "0")
+	assert_eq(chart.size, MarketTab.CHART_SIZE)
 
 
 func test_the_market_tabs_mood_row_marks_each_year() -> void:
@@ -775,7 +776,7 @@ func _everything_shown(state: GameState) -> PackedStringArray:
 	lines.append_array(tabs.side_panel().desk_lines())
 	lines.append_array(tabs.side_panel().short_interest_lines())
 	tabs.select_tab(MarketTabs.Tab.MARKET)
-	lines.append(tabs.market_tab().index_chart().chart_text())
+	lines.append(tabs.market_tab().index_chart().summary())
 	for line: MarketTab.Line in MarketTab.Line.values():
 		lines.append(tabs.market_tab().stat_line(line))
 	tabs.select_tab(MarketTabs.Tab.INDUSTRIES)
@@ -1016,3 +1017,93 @@ func test_the_industry_chart_is_coloured() -> void:
 	var chart: ChartWidget = _tabs().industries_tab().industry_chart()
 	assert_string_contains(chart.shown_bbcode(), "[color=#")
 	assert_false(chart.chart_text().contains("[color"), "chart_text stays plain")
+
+
+## D188: the earnings area opens on the table; each button swaps in its chart,
+## the same size, over every year played.
+func test_the_company_tab_charts_each_view() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 4)
+	var company: CompanyState = _first_living_company()
+	_tabs().show_company(company.id)
+	_tabs().select_tab(MarketTabs.Tab.COMPANY)
+	var tab: CompanyTab = _tabs().company_tab()
+	var chart: DrawnChart = tab.company_chart()
+	assert_eq(tab.shown_view(), CompanyTab.View.TABLE)
+	assert_false(chart.visible)
+	var kinds: Dictionary[CompanyTab.View, DrawnChart.Kind] = {
+		CompanyTab.View.PRICE: DrawnChart.Kind.CANDLES,
+		CompanyTab.View.SALES: DrawnChart.Kind.BARS,
+		CompanyTab.View.MARGIN: DrawnChart.Kind.LINES,
+		CompanyTab.View.PER_SHARE: DrawnChart.Kind.BARS,
+		CompanyTab.View.PE: DrawnChart.Kind.LINES,
+	}
+	for view: CompanyTab.View in kinds:
+		tab.select_view(view)
+		assert_true(chart.visible, str(view))
+		assert_false(tab.get_node("%Earnings").visible, "the table makes way")
+		assert_eq(chart.kind(), kinds[view], str(view))
+		assert_eq(chart.custom_minimum_size.x, float(CompanyTab.CHART_WIDTH))
+		for each: CompanyTab.View in CompanyTab.View.values():
+			var button: Button = tab.get_node("%Views").get_child(each)
+			assert_eq(button.button_pressed, each == view, "one button lit")
+	tab.select_view(CompanyTab.View.PRICE)
+	assert_eq(chart.captions().size(), _state().year, "a candle a year, from year 1")
+	tab.select_view(CompanyTab.View.SALES)
+	assert_eq(chart.captions().size(), _state().year + 1, "from year 0")
+	tab.select_view(CompanyTab.View.TABLE)
+	assert_false(chart.visible)
+	assert_true(tab.get_node("%Earnings").visible)
+
+
+## D188: a candle opens where the year before closed, both restated on today's
+## shares, so a split is not drawn as a crash.
+func test_price_candles_join_up_and_are_split_adjusted() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 6)
+	var company: CompanyState = _first_living_company()
+	_tabs().show_company(company.id)
+	_tabs().select_tab(MarketTabs.Tab.COMPANY)
+	var tab: CompanyTab = _tabs().company_tab()
+	tab.select_view(CompanyTab.View.PRICE)
+	var opens: PackedFloat32Array = tab.company_chart().series()[0]
+	var closes: PackedFloat32Array = tab.company_chart().series()[1]
+	for index: int in range(1, opens.size()):
+		assert_almost_eq(opens[index], closes[index - 1], 0.001, "year %d opens at last close" % (index + 1))
+	var records: Array[CompanyState] = MarketReadouts.company_history(_state(), company.id, _state().year + 1)
+	var last: CompanyState = records[records.size() - 1]
+	assert_almost_eq(closes[closes.size() - 1], float(last.price), 0.001, "today's price is not restated")
+
+
+func test_the_bond_has_no_chart_buttons() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 2)
+	_tabs().show_company(EarningsMarket.BOND_ID)
+	_tabs().select_tab(MarketTabs.Tab.COMPANY)
+	var tab: CompanyTab = _tabs().company_tab()
+	assert_false(tab.get_node("%Views").visible)
+	assert_false(tab.company_chart().visible)
+
+
+func test_dividends_and_industry_pe_by_year() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 3)
+	var company: CompanyState = _first_living_company()
+	assert_eq(MarketReadouts.dividend_in(_state(), company.id, 0), 0, "year 0 paid none")
+	var latest: EarningsYearResult = _state().latest_result() as EarningsYearResult
+	assert_eq(MarketReadouts.dividend_in(_state(), company.id, _state().year), latest.dividend_per_share.get(company.id, 0))
+	var pe: float = MarketReadouts.industry_average_pe_in(_state(), company.profile.industry, _state().year)
+	assert_false(is_nan(pe))
+	assert_gt(pe, 0.0)
+
+
+## D188: a chart takes exactly the table's height, so switching moves nothing
+## below it.
+func test_a_chart_is_as_tall_as_the_table() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 3)
+	_tabs().show_company(_first_living_company().id)
+	_tabs().select_tab(MarketTabs.Tab.COMPANY)
+	var tab: CompanyTab = _tabs().company_tab()
+	await wait_process_frames(2)
+	var table: Control = tab.get_node("%Earnings")
+	var before: float = tab.get_node("%YieldLine").global_position.y
+	tab.select_view(CompanyTab.View.PRICE)
+	await wait_process_frames(2)
+	assert_eq(tab.company_chart().size.y, table.get_combined_minimum_size().y)
+	assert_eq(tab.get_node("%YieldLine").global_position.y, before, "nothing below moved")
