@@ -1107,3 +1107,27 @@ func test_a_chart_is_as_tall_as_the_table() -> void:
 	await wait_process_frames(2)
 	assert_eq(tab.company_chart().size.y, table.get_combined_minimum_size().y)
 	assert_eq(tab.get_node("%YieldLine").global_position.y, before, "nothing below moved")
+
+
+## D189: the Market tab shows the year in review too, narrow, under the mood,
+## on a right half that scrolls on its own. Same lines as the news panel's, laid
+## out in two columns of industries and two-line outliers.
+func test_the_market_tab_shows_the_year_in_review() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 3)
+	_tabs().select_tab(MarketTabs.Tab.MARKET)
+	var review: YearDigestPanel = _tabs().market_tab().review()
+	assert_true(review.visible)
+	var lines: PackedStringArray = review.lines_text()
+	assert_string_contains(lines[0], "THE YEAR IN REVIEW")
+	assert_string_contains(lines[0], "Year %d" % _state().year)
+	assert_string_contains(lines[1], "The Market:")
+	assert_string_contains(lines[2], "Market P/E")
+	assert_eq(review.get_node("%Industries").columns, 2)
+	var scroll: ScrollContainer = _tabs().market_tab().get_node("%RightScroll")
+	assert_true(scroll.is_ancestor_of(review), "inside the right half's own scroll")
+
+
+func test_year_zero_has_no_review_on_the_market_tab() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 0)
+	_tabs().select_tab(MarketTabs.Tab.MARKET)
+	assert_false(_tabs().market_tab().review().visible)

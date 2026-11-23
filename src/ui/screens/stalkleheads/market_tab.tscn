@@ -1,17 +1,18 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/ui/screens/stalkleheads/market_tab.gd" id="1_tab"]
 [ext_resource type="PackedScene" path="res://src/ui/widgets/drawn_chart.tscn" id="2_chart"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/year_digest_panel.tscn" id="3_digest"]
 
-[node name="MarketTab" type="ScrollContainer"]
+[node name="MarketTab" type="MarginContainer"]
 size_flags_horizontal = 3
 size_flags_vertical = 3
-horizontal_scroll_mode = 0
 script = ExtResource("1_tab")
 
 [node name="Columns" type="HBoxContainer" parent="."]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 
 [node name="Left" type="VBoxContainer" parent="Columns"]
 layout_mode = 2
@@ -37,43 +38,55 @@ text = "INDEX, BY YEAR"
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Right" type="VBoxContainer" parent="Columns"]
-custom_minimum_size = Vector2(240, 0)
+[node name="RightScroll" type="ScrollContainer" parent="Columns"]
+unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 4
+
+[node name="Right" type="VBoxContainer" parent="Columns/RightScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"TightVBox"
 
-[node name="NewsTitle" type="Label" parent="Columns/Right"]
+[node name="NewsTitle" type="Label" parent="Columns/RightScroll/Right"]
 layout_mode = 2
 theme_type_variation = &"SubHeading"
 text = "THIS YEAR'S NEWS"
 
-[node name="EventText" type="Label" parent="Columns/Right"]
+[node name="EventText" type="Label" parent="Columns/RightScroll/Right"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(240, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"EventFlavour"
 text = ""
 autowrap_mode = 3
-max_lines_visible = 6
 
-[node name="EventEffect" type="Label" parent="Columns/Right"]
+[node name="EventEffect" type="Label" parent="Columns/RightScroll/Right"]
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
 autowrap_mode = 3
 
-[node name="MoodTitle" type="Label" parent="Columns/Right"]
+[node name="MoodTitle" type="Label" parent="Columns/RightScroll/Right"]
 layout_mode = 2
 theme_type_variation = &"SubHeading"
 text = "MOOD, BY YEAR"
 
-[node name="MoodChart" type="Label" parent="Columns/Right"]
+[node name="MoodChart" type="Label" parent="Columns/RightScroll/Right"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Chart"
 text = ""
 
-[node name="MoodKey" type="Label" parent="Columns/Right"]
+[node name="MoodKey" type="Label" parent="Columns/RightScroll/Right"]
 layout_mode = 2
 theme_type_variation = &"Faint"
 text = "B bull, b bear"
+
+[node name="Review" parent="Columns/RightScroll/Right" instance=ExtResource("3_digest")]
+unique_name_in_owner = true
+layout_mode = 2

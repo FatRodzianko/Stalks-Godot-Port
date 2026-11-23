@@ -172,11 +172,12 @@ other tabs only after one of its buttons is pressed, **over** the tab's right-ha
 side, and closed again by the same button or a change of tab (decisions.md D183,
 D184).
 
-**MARKET**: index level and move, market P/E, mood and bull years, breadth,
-risk-free rate; the index by year (a drawn line, at least 38 characters wide and 7
-tall, decisions.md D188); the year's news
-(at least 240 px wide);
-the mood of each year as B (bull) or b (bear).
+**MARKET**, in two halves (decisions.md D189). Left: index level and move, market
+P/E, mood and bull years, breadth, risk-free rate (rows 12, 7, 6 characters, then the
+rest); the index by year (a drawn line, at least 38 characters wide and 7 tall,
+D188). Right, scrolling on its own: the year's news; the mood of each year as B
+(bull) or b (bear); the year in review, laid out narrow - the market on two lines,
+the industries in two columns, each outlier's caption above its company and figure.
 
 **INDUSTRIES**: one line per industry (this year, three years, standing, average
 P/E, revenue share and a bar, member count); click one for its by-year chart (22

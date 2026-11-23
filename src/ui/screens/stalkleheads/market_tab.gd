@@ -1,9 +1,14 @@
 class_name MarketTab
-extends ScrollContainer
+extends MarginContainer
 ## Tab 2 of a StalkleHeads match: Market Analysis (docs/stalkleheads-design.md
 ## §7.3). The market as a whole - the index, its P/E, the mood and how often it
 ## has been bull, breadth, the risk-free rate - with the index charted by year
 ## and the moods by year beside it.
+##
+## **Two halves** (decisions.md D189): the market's figures and its chart on
+## the left; on the right, scrolling on its own, the year's news, the mood by
+## year, and the year in review the news panel showed when the year turned.
+## The tab itself does not scroll, so the left half stays put.
 ##
 ## **Nothing here changes while anybody trades** (§6.2): every figure is last
 ## year's published data, so a player can read this while the others trade and
@@ -45,10 +50,12 @@ var _lines: Dictionary[Line, CellRow] = {}
 @onready var _event_text: Label = %EventText
 @onready var _event_effect: Label = %EventEffect
 @onready var _mood_chart: Label = %MoodChart
+@onready var _review: YearDigestPanel = %Review
 
 
 func _ready() -> void:
 	_chart.custom_minimum_size = CHART_SIZE
+	_review.set_narrow()
 	var captions: Dictionary[Line, String] = {
 		Line.INDEX: "Index level",
 		Line.PE: "Market P/E",
@@ -66,13 +73,14 @@ func _ready() -> void:
 	for line: Line in captions:
 		var row: CellRow = CellRowScene.instantiate()
 		_stats.add_child(row)
-		row.configure([14, 8, 6, 0], [CellRow.LEFT, CellRow.RIGHT, CellRow.RIGHT, CellRow.LEFT])
+		row.configure([12, 7, 6, 0], [CellRow.LEFT, CellRow.RIGHT, CellRow.RIGHT, CellRow.LEFT])
 		row.set_cell(0, captions[line])
 		row.set_cell_tooltip(0, tips[line])
 		row.set_cell_variation(0, &"Faint")
 		row.set_cell_variation(3, &"Faint")
 		_lines[line] = row
-	ReservedLines.reserve(_event_text)
+	# No reserved height: the right half scrolls, so the event takes the lines
+	# it needs and nothing below waits under a gap (decisions.md D189).
 
 
 ## `event_text` and `event_effect` are the two lines the top strip already
@@ -83,6 +91,7 @@ func refresh(state: GameState, event_text: String, event_effect: String) -> void
 	_event_text.text = event_text
 	_event_effect.text = event_effect
 	_mood_chart.text = mood_chart_text(state)
+	_refresh_review(state)
 
 
 func _refresh_stats(state: GameState) -> void:
@@ -149,6 +158,20 @@ static func mood_chart_text(state: GameState) -> String:
 			mark = BULL_MARK if result.mood == MarketMood.Value.BULL else BEAR_MARK
 		marks += mark.rpad(MOOD_CELL)
 	return "%s\n%s" % [numbers.rstrip(" "), marks.rstrip(" ")]
+
+
+## The year in review, as the news panel shows it when the year turns, kept
+## here under the mood so it can be read again (decisions.md D189). Hidden in
+## year 0, which has no year to review.
+func _refresh_review(state: GameState) -> void:
+	var digest: YearDigest = YearDigest.for_latest_year(state)
+	_review.visible = digest != null
+	if digest != null:
+		_review.show_digest(digest, state)
+
+
+func review() -> YearDigestPanel:
+	return _review
 
 
 func index_chart() -> DrawnChart:

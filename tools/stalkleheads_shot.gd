@@ -11,12 +11,13 @@ extends Control
 ##     $dir = "$env:TEMP\stalks_frames"
 ##     New-Item -ItemType Directory -Force $dir | Out-Null
 ##     & $g --path . res://tools/stalkleheads_shot.tscn --write-movie "$dir\f.png" `
-##          --quit-after 55 --fixed-fps 10
+##          --quit-after 65 --fixed-fps 10
 ##
 ## Frames 6, 11, 16, 21 and 26 are the five pictures (`f00000006.png` and so
 ## on). Then the Company tab's five charts (decisions.md D188): frames 31
-## (PRICE), 36 (SALES), 41 (MARGIN), 46 (PER SHARE) and 51 (P/E). A developer
-## tool: `tools/` is not exported.
+## (PRICE), 36 (SALES), 41 (MARGIN), 46 (PER SHARE) and 51 (P/E). Frame 56 is
+## the Market tab with the side panel closed, the year in review on its right
+## (D189), and frame 61 the same scrolled to the bottom of the right half. A developer tool: `tools/` is not exported.
 
 const StageScene: PackedScene = preload("res://src/ui/stage.tscn")
 
@@ -76,3 +77,8 @@ func _process(_delta: float) -> void:
 			tabs.company_tab().select_view(CompanyTab.View.PER_SHARE)
 		48:
 			tabs.company_tab().select_view(CompanyTab.View.PE)
+		53:
+			tabs.select_tab(MarketTabs.Tab.MARKET)
+		58:
+			var right: ScrollContainer = tabs.market_tab().get_node("%RightScroll")
+			right.scroll_vertical = 10000

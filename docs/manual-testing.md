@@ -2198,6 +2198,36 @@ run before or after section J.
 - **Step 15 showing a gap or a jump**: write down the company and the year.
 - **Step 29 showing the tab below moved**: the chart and the table are different heights.
 
+### L - StalkleHeads year in review on the Market tab (decisions.md D189) — **not yet run**
+
+A trial: if it is not wanted, it is one commit to revert. One machine, no Steam.
+Run on a locally exported build containing D189. To check a checkout before
+exporting: the file `src/ui/widgets/year_digest_panel.gd` contains `set_narrow`.
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Click **START**.
+5. Click **MARKET**.
+6. Check there is no **THE YEAR IN REVIEW** yet.
+7. Press **Ready for New Year**.
+8. Click **Close** on the news.
+9. Check the left half shows **THE MARKET** and the index chart, and the right half shows **THIS YEAR'S NEWS** and **MOOD, BY YEAR**.
+10. Check **THE YEAR IN REVIEW** is under the mood, with **Year 1** at its right.
+11. Scroll down with the mouse over the right half.
+12. Check only the right half moves, and the left half stays put.
+13. Check the industries are in two columns.
+14. Check each line such as **Biggest earnings surprise** has the company and its figure on the line below it.
+15. Check the lines match the ones the news panel showed.
+16. Click **... MORE** in the top strip.
+17. Check the news panel's year in review looks as it did before.
+18. Click **Close**.
+
+#### What a failure here means
+
+- **Step 12 showing the whole tab moving**: the tab, not the right half, is scrolling.
+- **Step 15 showing different figures**: write down which line differs.
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until

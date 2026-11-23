@@ -7190,3 +7190,35 @@ earnings area already lists the latest year's parts as text.
 
 **Rules out.** Invented highs and lows; per-share charts that are not
 split-adjusted; a charting library or plugin.
+
+### D189 - The year in review on the Market tab too (a trial)
+**2026-11-22 · Accepted as a trial** (the owner, after D188)
+
+The owner asked whether the year in review, shown in the "Breaking Market News!"
+panel when the year turns, could also live on the Market tab, and asked for it to
+be tried in a way that is easy to revert. There was no reason against it: the
+panel closes and its figures were gone until the next year.
+
+**The Market tab is two halves.** Left: THE MARKET's figures and the index chart,
+as before. Right: THIS YEAR'S NEWS (the event), MOOD, BY YEAR, then THE YEAR IN
+REVIEW, in a `ScrollContainer` of its own. The tab as a whole no longer scrolls;
+only the right half does.
+
+**The same widget, narrow.** `YearDigestPanel.set_narrow()` lays the review out for
+half the tab: the market line becomes two (the move and the mood; the P/E and next
+year's sentiment), the industries two columns, and each outlier two lines, its
+caption above the company and the figure. The news panel's wide layout is
+unchanged, and so is the news panel.
+
+**Also changed to fit:**
+
+- the event text no longer reserves six lines, because the right half scrolls;
+- the Market tab's figure rows are 12, 7 and 6 characters (were 14, 8 and 6), so
+  "BERRY BONDS FROM DIE HARD" fits in the left half.
+
+**Naming.** It stays "THE YEAR IN REVIEW" with "Year N" at the right. It reviews
+the year that has just been played, which is the year the top bar shows. "The
+previous year" would contradict the top bar.
+
+**How to revert.** This decision is a single commit. `git revert` of that commit
+restores the Market tab, the digest panel and these docs as they were.

@@ -1138,7 +1138,9 @@ GameplayScreen (base game's, unchanged around the boards)
   %MarketSlot      MarketTabs, built the first time state.market exists
     TopRow           tab strip, then HOLDINGS / RANKINGS / DESK buttons
     ExchangeTab      CompanyRow per board row, under group CompanyRows
-    MarketTab        CellRow lines, DrawnChart index line, mood row
+    MarketTab        two halves: CellRow lines and DrawnChart index line; a
+                     scrolling right half with the event, mood row and a
+                     narrow YearDigestPanel (D189)
     IndustriesTab    CellRow table, signed TextChart, members as TradeLines
     CompanyTab       pinned title line (COMPANIES < name >), then a scroll:
                      identity line with a TradeBox, CellRow earnings table,

@@ -353,7 +353,7 @@ comparisons in `test_wire.gd` are what guard the two halves from here.
 
 ### StalkleHeads on screen: what S7 covers and what it does not
 
-`test_market_readouts.gd` (32) and `test_stalkleheads_screen.gd` (60), `test_drawn_chart.gd` (13), D179-D188.
+`test_market_readouts.gd` (32) and `test_stalkleheads_screen.gd` (62), `test_drawn_chart.gd` (13), D179-D189.
 
 **After the first play (D183)**, tests for each finding: the arrows walk the board's
 order; the identity line keeps the industry whole; one tab lit after opening a
@@ -393,6 +393,10 @@ each Company tab view shows its kind of chart at the table's size with one butto
 lit; switching to a chart moves nothing below (it takes the table's measured height); candles open at last year's close and today's price is not restated; the bond
 has no buttons; dividends and industry P/E by year. **Not tested:** the drawing
 itself (checked by eye, manual-testing.md section K).
+
+**The year in review on the Market tab (D189)**: it is shown, narrow (two industry
+columns, the market on two lines), inside the right half's own scroll; year 0 hides
+it.
 
 **The rule they protect.** No node works out a figure. So the numbers are tested in
 `test_market_readouts.gd` without a window, and the screen test checks that each tab
