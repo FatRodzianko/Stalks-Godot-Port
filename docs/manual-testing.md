@@ -2269,7 +2269,7 @@ contains `OWNED_MARK`.
 10. Check the other names line up with the starred one's first letter.
 11. Click **COMPANIES** to close the list.
 
-### O - StalkleHeads private messages (decisions.md D192, D193) — **not yet run**
+### O - StalkleHeads private messages (decisions.md D192, D193) — **passed 2026-11-23**
 
 One machine, two copies of the game, no Steam. Run on a locally exported debug build
 containing D192 (a release build ignores the launch flags). To check a checkout
@@ -2345,7 +2345,7 @@ called **A** (the host) and **B**.
   (`HostSession._route_message`).
 - Step 27 opening anything is a security fault: stop and report it before playing on.
 
-### P - StalkleHeads from the DEV panel, three players (decisions.md D194) — **not yet run**
+### P - StalkleHeads from the DEV panel, three players (decisions.md D194) — **passed 2026-11-23**
 
 One machine, three copies of the game, no Steam. Run on a locally exported debug
 build containing D194 (a release build has no DEV panel). To check a checkout before
@@ -2387,7 +2387,7 @@ copies are called **A** (the host), **B** and **C**.
 33. On A, check nothing from C arrived: every square is grey.
 34. Close all three windows.
 
-### Q - StalkleHeads ALL PLAYERS and blocking (decisions.md D195, D196) — **not yet run**
+### Q - StalkleHeads ALL PLAYERS and blocking (decisions.md D195, D196) — **passed 2026-11-23**
 
 One machine, three copies of the game, no Steam. Run on a locally exported debug
 build containing D195 and D196. To check a checkout before exporting: the file
@@ -2438,7 +2438,7 @@ build containing D195 and D196. To check a checkout before exporting: the file
 42. On C, check **again** arrived from A, and **secret** did not.
 43. Close all three windows.
 
-### R - Messages kept through a host migration (decisions.md D197, D198) — **not yet run**
+### R - Messages kept through a host migration (decisions.md D197, D198) — **passed 2026-11-23**
 
 Needs Steam: a host migration happens only in a Steam lobby. Three computers (or
 accounts), each with a locally exported build containing D197; to check a checkout
