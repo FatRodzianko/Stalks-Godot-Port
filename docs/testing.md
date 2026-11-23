@@ -353,7 +353,7 @@ comparisons in `test_wire.gd` are what guard the two halves from here.
 
 ### StalkleHeads on screen: what S7 covers and what it does not
 
-`test_market_readouts.gd` (32) and `test_stalkleheads_screen.gd` (62), `test_drawn_chart.gd` (13), D179-D189.
+`test_market_readouts.gd` (32) and `test_stalkleheads_screen.gd` (63), `test_drawn_chart.gd` (13), D179-D191.
 
 **After the first play (D183)**, tests for each finding: the arrows walk the board's
 order; the identity line keeps the industry whole; one tab lit after opening a
@@ -397,6 +397,9 @@ itself (checked by eye, manual-testing.md section K).
 **The year in review on the Market tab (D189)**: it is shown, narrow (two industry
 columns, the market on two lines), inside the right half's own scroll; year 0 hides
 it.
+
+**Owned companies (D191)**: the company list stars exactly the companies the player
+holds, and its heading reads NAME (* OWNED).
 
 **The rule they protect.** No node works out a figure. So the numbers are tested in
 `test_market_readouts.gd` without a window, and the screen test checks that each tab

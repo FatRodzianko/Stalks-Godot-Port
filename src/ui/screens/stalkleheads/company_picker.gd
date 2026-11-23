@@ -10,6 +10,10 @@ extends ScrollContainer
 ## hold it or are short it now, blank for none. That column answers "which
 ## companies has the desk got into" without opening each one.
 ##
+## **A company you own has `*` before its name**, and the heading says so:
+## NAME (* OWNED). Every other name has a space there, so the names line up
+## (decisions.md D191).
+##
 ## **Click a heading to sort** by it; again to reverse. The mark goes after the
 ## caption, as on the board (decisions.md D185). The sort is this viewer's
 ## alone and is kept while the list is open and closed.
@@ -30,7 +34,11 @@ const WIDTH_CHARS: int = SYM_CHARS + NAME_CHARS + NPC_CHARS
 const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
 
 ## The headings, by column index, and the sort marks (as on the board).
-const CAPTIONS: Array[String] = ["SYM", "NAME", "NPC"]
+const CAPTIONS: Array[String] = ["SYM", "NAME (* OWNED)", "NPC"]
+
+## Before a company's name: owned, or not.
+const OWNED_MARK: String = "*"
+const NOT_OWNED_MARK: String = " "
 const SORT_UP: String = "^"
 const SORT_DOWN: String = "v"
 const NO_SORT: int = -1
@@ -53,7 +61,7 @@ func _ready() -> void:
 	_header.set_row_variation(&"Faint")
 	_header.set_framed(&"HeaderCard")
 	_header.set_cell_tooltip(0, "%s\nClick to sort." % TermTips.SYM)
-	_header.set_cell_tooltip(1, "The company's name.\nClick to sort.")
+	_header.set_cell_tooltip(1, "The company's name; * before it if you own shares in it.\nClick to sort.")
 	_header.set_cell_tooltip(2, "%s\nClick to sort." % TermTips.NPC_HOLDERS)
 	for index: int in CAPTIONS.size():
 		_header.set_cell_clickable(index)
@@ -61,8 +69,10 @@ func _ready() -> void:
 	_show_sort_marks()
 
 
-## Redraws every line; `shown_id` is the company on the tab, which is marked.
-func refresh(state: GameState, shown_id: StringName) -> void:
+## Redraws every line; `shown_id` is the company on the tab, which is marked,
+## and `context` says what you hold.
+func refresh(context: TradeContext, shown_id: StringName) -> void:
+	var state: GameState = context.state
 	_order.clear()
 	for stalk: StalkState in state.stalks:
 		_order.append(stalk.id)
@@ -80,7 +90,10 @@ func refresh(state: GameState, shown_id: StringName) -> void:
 		var npc: String = ""
 		if holders > 0:
 			npc = str(holders)
-		row.set_texts([String(stalk.definition.ticker), stalk.definition.display_name, npc])
+		var mark: String = NOT_OWNED_MARK
+		if context.held(stalk.id) > 0:
+			mark = OWNED_MARK
+		row.set_texts([String(stalk.definition.ticker), mark + stalk.definition.display_name, npc])
 		row.set_framed(&"Card" if stalk.id == shown_id else &"BareRow")
 		_keys[stalk.id] = [String(stalk.definition.ticker), stalk.definition.display_name.to_lower(), holders]
 	_apply_sort()
@@ -92,6 +105,14 @@ func shown_order() -> Array[StringName]:
 	for child: Node in _list.get_children():
 		ids.append((child as CellRow).key)
 	return ids
+
+
+## Every company's line, in the order shown. For tests.
+func lines_text() -> PackedStringArray:
+	var lines: PackedStringArray = []
+	for child: Node in _list.get_children():
+		lines.append((child as CellRow).line_text())
+	return lines
 
 
 func header_text() -> String:

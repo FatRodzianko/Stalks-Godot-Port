@@ -161,7 +161,7 @@ func refresh(
 	_side.refresh(_context, _exchange.board_order(), ranking_order, local_id, host_id)
 	_refresh_page(_current)
 	if _picker_open:
-		_picker.refresh(_state, _company.shown_id())
+		_picker.refresh(_context, _company.shown_id())
 
 
 ## The year's event, as the top strip shows it.
@@ -297,14 +297,14 @@ func _set_picker_open(is_open: bool) -> void:
 	# Below the Company tab's title line, so COMPANIES stays clickable.
 	_picker_top.custom_minimum_size.y = _company.title_height()
 	_company.pick_button().set_pressed_no_signal(is_open)
-	if is_open and _state != null:
-		_picker.refresh(_state, _company.shown_id())
+	if is_open and _context != null:
+		_picker.refresh(_context, _company.shown_id())
 
 
 func _on_company_changed(_stalk_id: StringName) -> void:
 	_refresh_page(Tab.COMPANY)
 	if _picker_open:
-		_picker.refresh(_state, _company.shown_id())
+		_picker.refresh(_context, _company.shown_id())
 
 
 func _on_company_picker_requested() -> void:

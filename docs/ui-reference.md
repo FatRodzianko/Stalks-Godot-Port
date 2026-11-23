@@ -187,8 +187,8 @@ wide, signed: bars green above zero and red below, decisions.md D187) and its co
 
 **COMPANY**: the title line (COMPANIES, `<`, the name, `>`) is pinned; the rest
 scrolls. **COMPANIES** opens the list of every company over the tab's left side,
-below the title line (SYM 6, NAME, NPC 4: how many desk traders hold it; click a
-heading to sort); `<` and
+below the title line (SYM 6, NAME (* OWNED) with `*` before each company you own,
+NPC 4: how many desk traders hold it; click a heading to sort); `<` and
 `>` walk the companies in the match's order; ticker (6), industry (20) and earnings
 regime ("SLOWING, 1st year"), then "HELD N" and a trade box; the company's description,
 whole, however many lines it takes; buttons TABLE, PRICE, SALES, MARGIN, PER SHARE,

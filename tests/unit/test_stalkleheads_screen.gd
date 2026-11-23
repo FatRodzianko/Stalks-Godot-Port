@@ -538,7 +538,10 @@ func test_the_company_list_picks_a_company() -> void:
 	for company: CompanyState in _state().market.companies:
 		var holders: int = MarketReadouts.npc_holder_count(_state(), company.id)
 		var stalk: StalkState = _state().stalk_by_id(company.id)
-		var expected: String = "%s %s" % [stalk.definition.ticker, stalk.definition.display_name]
+		var mark: String = CompanyPicker.NOT_OWNED_MARK
+		if _player().shares_of(company.id) > 0:
+			mark = CompanyPicker.OWNED_MARK
+		var expected: String = "%s %s%s" % [stalk.definition.ticker, mark, stalk.definition.display_name]
 		if holders > 0:
 			expected += " %d" % holders
 			counted += 1
@@ -939,14 +942,14 @@ func test_the_company_list_sorts_by_its_headings() -> void:
 		tickers.append(String(stalk.definition.ticker))
 	tickers.sort()
 	picker.press_heading(0)
-	assert_eq(picker.header_text(), "SYM^ NAME NPC")
+	assert_eq(picker.header_text(), "SYM^ NAME (* OWNED) NPC")
 	var shown: Array[String] = []
 	for id: StringName in picker.shown_order():
 		shown.append(String(_state().stalk_by_id(id).definition.ticker))
 	assert_eq(shown, tickers)
 	picker.press_heading(2)
 	picker.press_heading(2)
-	assert_eq(picker.header_text(), "SYM NAME NPCv")
+	assert_eq(picker.header_text(), "SYM NAME (* OWNED) NPCv")
 	var counts: Array[int] = []
 	for id: StringName in picker.shown_order():
 		counts.append(MarketReadouts.npc_holder_count(_state(), id))
@@ -1131,3 +1134,23 @@ func test_year_zero_has_no_review_on_the_market_tab() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 0)
 	_tabs().select_tab(MarketTabs.Tab.MARKET)
 	assert_false(_tabs().market_tab().review().visible)
+
+
+## D191: the company list marks what you own with * and says so in its heading.
+func test_the_company_list_stars_what_you_own() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 1)
+	var owned: CompanyState = _first_living_company()
+	_session.request_buy(_session.local_player_id(), owned.id, 1)
+	var tabs: MarketTabs = _tabs()
+	tabs.select_tab(MarketTabs.Tab.COMPANY)
+	tabs.company_tab().pick_button().pressed.emit()
+	var picker: CompanyPicker = tabs.company_picker()
+	assert_string_contains(picker.header_text(), "NAME (* OWNED)")
+	var owned_name: String = _state().stalk_by_id(owned.id).definition.display_name
+	var starred: int = 0
+	for line: String in picker.lines_text():
+		if line.contains("*" + owned_name):
+			starred += 1
+		elif line.contains("*"):
+			fail_test("only owned companies are starred: %s" % line)
+	assert_eq(starred, 1)

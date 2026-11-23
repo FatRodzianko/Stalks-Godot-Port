@@ -7242,3 +7242,12 @@ sections.
 
 **Rules out.** Section dividers in the faint line colour, which the year in review
 already uses for its sub-sections.
+
+### D191 - The company list marks what you own
+**2026-11-23 · Accepted** (the owner, after section M)
+
+The Company tab's list of companies puts `*` before the name of every company you
+hold shares in, and the NAME heading reads **NAME (* OWNED)**, so the mark explains
+itself. Every other name has a space in that place, so the names stay in line.
+Sorting by name ignores the mark. The list now takes the same `TradeContext` as the
+rest of the tabs, which is what knows your holdings.

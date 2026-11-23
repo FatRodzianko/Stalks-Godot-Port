@@ -2251,6 +2251,24 @@ checkout before exporting: the file `assets/themes/stalks_theme.tres` contains
 11. Check the lines inside the year in review are the faint ones, as before.
 12. Check no lines of text touch the lines above or below them, on either half.
 
+### N - StalkleHeads owned companies in the company list (decisions.md D191) — **not yet run**
+
+One machine, no Steam. Run on a locally exported build containing D191. To check a
+checkout before exporting: the file `src/ui/screens/stalkleheads/company_picker.gd`
+contains `OWNED_MARK`.
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Click **START**.
+5. On **EXCHANGE**, click **BUY** on any company's row.
+6. Click **COMPANY**.
+7. Click **COMPANIES**.
+8. Check the name heading reads **NAME (* OWNED)**.
+9. Check the company you bought has **\*** before its name, and no other company does.
+10. Check the other names line up with the starred one's first letter.
+11. Click **COMPANIES** to close the list.
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until
