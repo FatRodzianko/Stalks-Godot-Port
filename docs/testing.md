@@ -429,7 +429,7 @@ a bankrupt row's word is not clipped.
 
 ### Private messages: what is covered and what is not
 
-`test_messages.gd` (72) and `test_messages_wire.gd` (18), D192-D193, D195-D196; three
+`test_messages.gd` (74) and `test_messages_wire.gd` (18), D192-D193, D195-D196; three
 `--game` cases in `test_launch_args.gd`; the DEV panel's game button (D194) in
 `test_title_screen_shape.gd` (it names and switches the game, HOST carries it) and
 `test_lobby_screen.gd` (HOST opens a StalkleHeads lobby with its market).
@@ -468,7 +468,7 @@ a bankrupt row's word is not clipped.
   name's dot, grey and yellow, and their size and colours; every player listed
   including you; opening a chat reads it and puts the dot out; a line arriving in an
   open chat is read at once and on another tab is not; the header; send empties the
-  box; a refusal keeps the text and says why; the box's length cap; two chats and
+  box; Enter (a real key event) and SEND both leave the cursor in the box (D198); a refusal keeps the text and says why; the box's length cap; two chats and
   the third replacing the less recent, by clicking and by typing; every line a
   `Label` and no `RichTextLabel` on the tab; a solo game lists only your notes; a
   base-game screen has no tab. ALL PLAYERS listed first, absent in a solo game,
@@ -483,8 +483,11 @@ a bankrupt row's word is not clipped.
   at the top of its script), checked by eye; manual-testing.md section O.
 - **Two real processes.** The ENet tests run both ends in one process;
   section O runs two copies of an exported build.
-- **History across a rejoin or a host migration**: none is kept, by design (D192).
-  Blocks are lost the same way (D196).
+- **History across a rejoin**: none is kept, by design (D192). Blocks are lost
+  the same way (D196).
+- **Across a host migration** (D197): `test_host_migration.gd` checks a new host
+  keeps an adopted book, lines and blocks, and that later messages land in it. The
+  `Main` plumbing that hands the book over needs Steam: section R.
 - **That the grey of a blocked name is readable**: frame 31 of
   `tools/messages_shot.tscn`, by eye; section Q.
 

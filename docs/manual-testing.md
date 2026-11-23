@@ -2438,6 +2438,43 @@ build containing D195 and D196. To check a checkout before exporting: the file
 42. On C, check **again** arrived from A, and **secret** did not.
 43. Close all three windows.
 
+### R - Messages kept through a host migration (decisions.md D197, D198) — **not yet run**
+
+Needs Steam: a host migration happens only in a Steam lobby. Three computers (or
+accounts), each with a locally exported build containing D197; to check a checkout
+before exporting, `src/ui/screens/main/main.gd` contains `_migrating_messages`.
+The players are **A** (the host), **B** and **C**.
+
+1. On A, host a StalkleHeads match over Steam.
+2. On B, join it.
+3. On C, join it.
+4. On A, click **START** once B and C are ready.
+5. On all three, click **MESSAGES**.
+6. On B, click **C**'s name.
+7. Click the message box, type `one` and press **Enter**.
+8. Check the cursor is still in the box.
+9. Type `two` and press **Enter**.
+10. Type `three` and click **SEND**.
+11. Check the cursor is still in the box.
+12. On C, click **B**'s name.
+13. Check **one**, **two** and **three** are there.
+14. On C, click **ALL PLAYERS**, type `room` and press **Enter**.
+15. On B, click **C**'s name, then click **BLOCK?**.
+16. On A, close the game window.
+17. Wait until B and C are back on the playing screen.
+18. On whichever of B or C is now the host, click **MESSAGES**.
+19. Check its chat with the other one still holds **one**, **two** and **three**.
+20. Check **ALL PLAYERS** still holds **room**.
+21. On the other of B or C, click **MESSAGES**.
+22. Check the same two things.
+23. On B, check **C**'s name is still grey and ends **(blocked)**.
+24. On C, send B `after`.
+25. Check B shows nothing new from C.
+26. On B, click **C**'s name, then **UNBLOCK**.
+27. On C, send B `again`.
+28. Check B shows **again**.
+29. Close all the game windows.
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until

@@ -571,7 +571,9 @@ line is added or a block changes). The screen: `src/ui/screens/stalkleheads/mess
 
 **The book lives on the session**, because the session is what receives. The
 screen listens to `messages().changed` and redraws the tab and its dot. A session
-replaced by a rejoin or a host migration starts an empty book: a known limit.
+replaced by a host migration is handed the old one's book
+(`GameSession.adopt_messages`, from `Main`, D197); one replaced by a rejoin starts
+an empty book: a known limit.
 
 **What was considered, and how each is handled:**
 

@@ -209,7 +209,8 @@ characters wide, PLAYERS: every player including you ("(you)" after your name,
 for messages from that player. Clicking a name opens its chat on the left: a header
 ("Chat with Ann", or "Notes - only you see these" for your own name), the history
 oldest first, "Name: text" per line with your own lines muted and written "You",
-scrolling to the newest; then the message box and SEND. A refusal shows in red under
+scrolling to the newest; then the message box and SEND. After Enter or SEND the
+cursor stays in the box (D198). A refusal shows in red under
 the box as "Not sent: " and the reason, and the text stays. A second name opens a
 second chat beside the first; a third replaces whichever was used less recently.
 With no chat open, a faint line says how to open one. Text is plain printable ASCII,

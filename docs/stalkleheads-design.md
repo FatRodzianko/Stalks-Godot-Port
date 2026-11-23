@@ -2680,11 +2680,8 @@ word, and waiting on design or content:
   variable).
 - **Messages in the base game.** The networking and the book are on `GameSession`,
   so only a place on the base screen is missing, which has no tab strip (D192).
-- **Keeping history across a host migration.** Each client could hand its own book
-  to the session that replaces it; nothing would cross the wire. Not done because
-  migration is only reachable over Steam and could not be tested here.
 - **Keeping blocks beyond one match** ([D196](decisions.md)). A block lasts as long
-  as the book, so a rejoin, a migration or a rematch unblocks. Keeping it would mean
+  as the book, so a rejoin or a rematch unblocks. Keeping it would mean
   saving it on disk against something that outlives a match, such as a Steam id.
 
 Every question raised by this document has an answer. What remains is

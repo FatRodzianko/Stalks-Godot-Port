@@ -359,3 +359,34 @@ func test_a_stranger_is_told_a_finished_match_has_finished() -> void:
 	session.state().is_over = true
 
 	assert_eq(session.why_not_rejoin(99999), "That game has finished.")
+
+
+# ------------------------------------------------ messages carry over (D197)
+
+## Main hands the departing session's book to the session that replaces it.
+## The plumbing that does it needs Steam (manual-testing.md section R); this is
+## the half that can be tested: a new host carrying on with an adopted book.
+func test_a_new_host_keeps_the_conversations_it_adopts() -> void:
+	var book: MessageBook = MessageBook.new()
+	book.record_received(&"p0", "said before the host left")
+	book.record_sent(&"p1", &"p0", "my reply")
+	book.set_blocked(&"p0", true)
+	var session: HostSession = _taken_over(_match_in_progress())
+	session.adopt_messages(book)
+
+	assert_same(session.messages(), book)
+	assert_eq(session.messages().lines(&"p0").size(), 2)
+	assert_true(session.messages().is_blocked(&"p0"))
+
+
+func test_an_adopted_book_is_the_one_new_messages_go_into() -> void:
+	var book: MessageBook = MessageBook.new()
+	book.record_received(&"p0", "old")
+	var session: HostSession = _taken_over(_match_in_progress())
+	session.adopt_messages(book)
+	# A message relayed to the new host after the handover, as one from a
+	# returning player would be. Seated as `attach_peer` would seat it.
+	session._seat(NetworkedSession.HOST_PEER_ID, &"p1")
+	session._route_message(&"p0", &"p1", "new")
+	assert_eq(book.lines(&"p0").size(), 2)
+	assert_eq(book.lines(&"p0")[1].text, "new")

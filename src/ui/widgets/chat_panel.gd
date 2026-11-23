@@ -187,8 +187,14 @@ func _on_block_button_pressed() -> void:
 	block_toggled.emit(_recipient_id, not _is_blocked)
 
 
+## SEND puts the cursor back in the box, as Enter leaves it there
+## (`keep_editing_on_text_submit` in the scene), so a second message can be
+## typed straight away. SEND takes no focus itself, but clicking it ends the
+## box's editing, so it has to be started again.
 func _on_send_button_pressed() -> void:
 	_submit()
+	_field.grab_focus()
+	_field.edit()
 
 
 func _on_field_text_submitted(_text: String) -> void:

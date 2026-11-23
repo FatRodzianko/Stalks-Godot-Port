@@ -7274,9 +7274,9 @@ a reason.
 **Each machine keeps its own book** (`MessageBook`, on `GameSession`), in memory
 only. One conversation per other player, keyed by their id, both directions in one
 list, at most 200 lines. A note is a conversation keyed by your own id and never
-leaves the machine. **Known limits, accepted:** a player who rejoins, and every
-client of a host that migrates, starts with an empty book, because a new session
-object is built and nothing is synced; quitting loses it; a rematch clears it on
+leaves the machine. **Known limits, accepted:** a player who rejoins starts with
+an empty book, because a new session object is built and nothing is synced (a host
+migration no longer loses it: D197); quitting loses it; a rematch clears it on
 purpose, because the new match's seats are filled in arrival order and "p1" need
 not be the same person.
 
@@ -7431,11 +7431,54 @@ Terminus is drawn from bitmaps, and Godot's synthetic slant (a `FontVariation`
 transform) leaves bitmap glyphs upright - it was tried, and a screenshot showed no
 slant. A `Button` has no strikethrough. Grey plus the word reads without either.
 
-**Known limit:** blocks last as long as the book. A rejoin, a host migration or a
-rematch starts a new book, and the player is unblocked. Keeping blocks would mean
+**Known limit:** blocks last as long as the book. A rejoin or a rematch starts a
+new book, and the player is unblocked (a host migration keeps the book: D197). Keeping blocks would mean
 saving them on disk keyed by something that outlives a match (a Steam id), which is
 more than was asked for.
 
 **Rules out:** telling the host (it would have to keep the secret, and a host is
 just another player); refusing a blocked player's send (that would tell them);
 blocking the room as a whole.
+
+### D197 - A host migration keeps everybody's messages
+**2026-11-23 · Accepted** (reported from play: the new host's history vanished)
+
+**The fault.** The book lived on the session object, and a host migration throws
+every session away: the new host builds a `HostSession` from its own copy of the
+match, and every other player builds a new `ClientSession` to reach it. Each new
+session started with an empty book, so the new host and every client lost their
+conversations, though nothing about them was on the departed host's machine.
+
+**The fix: the machine hands its own book to its own next session.**
+`Main._begin_migration` keeps the departing session's `MessageBook` beside the
+match state it already kept, and `GameSession.adopt_messages` gives it to the
+replacement: in `_start_hosting_the_moved_lobby` for the new host, in
+`_settle_in_behind_the_new_host` for everybody else. Nothing crosses the wire, so
+D192's "each machine keeps its own" still holds. Blocks are in the book (D196),
+so they carry over too. It is adopted before the screen is built, because a
+screen keeps the book it was handed.
+
+**Only for the same seat in the same match.** The book is keyed by player id. A
+taken-over match keeps every id; a client is handed the book only when the seat
+it got back is the one it had. A lobby re-hosted before the match began has had
+no MESSAGES tab, so nothing is handed over.
+
+**Still lost, as before:** the departed host's own book, when they come back -
+they start a new game process or a new session, and there is nothing on their
+machine to hand over - and anything that arrived between a client reconnecting and
+the handover, a moment with nothing to show it.
+
+**Tested** in `test_host_migration.gd`: a taken-over host keeps an adopted book,
+lines and blocks, and what is relayed to it afterwards lands in that book. The
+`Main` plumbing needs Steam: manual-testing.md section R.
+
+### D198 - The cursor stays in the message box after sending
+**2026-11-23 · Accepted** (the owner, to send several messages without clicking)
+
+Pressing **Enter** sends and leaves the cursor in the box:
+`keep_editing_on_text_submit` on the `LineEdit` in `chat_panel.tscn`. Without it,
+Godot ends editing on Enter and the box has to be clicked again. Clicking **SEND**
+does the same: SEND takes no focus (`focus_mode` none), but clicking it still ends
+the box's editing, so `_on_send_button_pressed` calls `grab_focus()` and `edit()`
+on the box after sending. It happens whether the send went or was refused; a
+refusal keeps the text, which is then ready to correct.

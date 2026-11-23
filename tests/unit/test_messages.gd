@@ -376,6 +376,43 @@ func test_send_puts_the_line_in_the_chat_and_empties_the_box() -> void:
 	assert_eq(chat.refusal_text(), "")
 
 
+func _press_enter() -> void:
+	var key: InputEventKey = InputEventKey.new()
+	key.keycode = KEY_ENTER
+	key.physical_keycode = KEY_ENTER
+	key.pressed = true
+	get_viewport().push_input(key)
+	key = key.duplicate()
+	key.pressed = false
+	get_viewport().push_input(key)
+
+
+func test_enter_sends_and_leaves_the_cursor_in_the_box() -> void:
+	var tab: MessagesTab = _show()
+	_screen.market_tabs().select_tab(MarketTabs.Tab.MESSAGES)
+	tab.open_chat(&"p1")
+	var chat: ChatPanel = tab.chat_with(&"p1")
+	chat.field().grab_focus()
+	chat.field().edit()
+	chat.field().text = "first"
+	_press_enter()
+	await wait_process_frames(2)
+	assert_eq(chat.line_texts(), PackedStringArray(["You: first"]))
+	assert_true(chat.field().has_focus(), "the box keeps focus")
+	assert_true(chat.field().is_editing(), "and can be typed in at once")
+
+
+func test_send_puts_the_cursor_back_in_the_box() -> void:
+	var tab: MessagesTab = _show()
+	_screen.market_tabs().select_tab(MarketTabs.Tab.MESSAGES)
+	tab.open_chat(&"p1")
+	var chat: ChatPanel = tab.chat_with(&"p1")
+	chat.field().text = "first"
+	chat.send_button().pressed.emit()
+	assert_true(chat.field().has_focus())
+	assert_true(chat.field().is_editing())
+
+
 func test_a_refused_send_keeps_the_text_and_says_why() -> void:
 	var tab: MessagesTab = _show()
 	_screen.market_tabs().select_tab(MarketTabs.Tab.MESSAGES)

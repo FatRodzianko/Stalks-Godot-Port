@@ -704,6 +704,7 @@ func _begin_migration(departed_steam_id: int) -> void:
 	_migrating_state = client.state()
 	_migrating_rng_state = client.rng_state()
 	_migrating_player_id = client.local_player_id()
+	_migrating_messages = client.messages()
 	_migration = LobbyMigration.new(local_steam_id(), departed_steam_id)
 	_reconnect_attempted = false
 	print(MIGRATION_LOG, "host %d left lobby %d. Asking Steam who owns it now." % [
@@ -791,6 +792,7 @@ func _start_hosting_the_moved_lobby() -> void:
 	var state: GameState = _migrating_state
 	var rng_state: int = _migrating_rng_state
 	var my_player_id: StringName = _migrating_player_id
+	var messages: MessageBook = _migrating_messages
 	_end_migration()
 
 	_is_online_match = true
@@ -831,6 +833,10 @@ func _start_hosting_the_moved_lobby() -> void:
 
 	_listening_port = 0
 	var session: HostSession = result["session"]
+	# Same seat, same match, so the conversations carry on (D197). A re-hosted
+	# lobby has had no match to talk in yet.
+	if in_match and messages != null:
+		session.adopt_messages(messages)
 	_mount_session(session)
 	session.attach_peer(result["peer"])
 	print(MIGRATION_LOG, "now hosting the moved %s as %s." % [
@@ -890,10 +896,17 @@ func _try_the_new_host(lobby_id: int, owner_steam_id: int) -> void:
 func _settle_in_behind_the_new_host() -> void:
 	print(MIGRATION_LOG, "reconnected to the new host.")
 	var client: ClientSession = _session as ClientSession
+	var messages: MessageBook = _migrating_messages
+	var my_player_id: StringName = _migrating_player_id
 	_end_migration()
 	if client == null:
 		show_menu()
 		return
+	# Back in the same seat, so this player's conversations come with them
+	# (D197). Before the screen is built, because the screen keeps the book it
+	# is handed.
+	if messages != null and client.local_player_id() == my_player_id:
+		client.adopt_messages(messages)
 	_show_the_screen_for(client.state(), client.match_is_on())
 
 
@@ -940,6 +953,7 @@ func _end_migration() -> void:
 	_migrating_state = null
 	_migrating_rng_state = 0
 	_migrating_player_id = &""
+	_migrating_messages = null
 	_migrating_in_match = false
 
 
@@ -998,6 +1012,11 @@ var _migration: LobbyMigration = null
 var _migrating_state: GameState = null
 var _migrating_rng_state: int = 0
 var _migrating_player_id: StringName = &""
+
+## This machine's messages, kept from the departing session so the one that
+## replaces it can carry on with them (D197). Nothing crosses the wire: each
+## machine keeps its own, as it always did.
+var _migrating_messages: MessageBook = null
 
 ## Whether the match had actually started. A lobby has no position to preserve,
 ## so it migrates by re-hosting; a match in progress is taken over.

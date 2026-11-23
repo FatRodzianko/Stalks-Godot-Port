@@ -132,6 +132,15 @@ func messages() -> MessageBook:
 	return _messages
 
 
+## Takes over the book a previous session on this machine kept, so a host
+## migration does not wipe this player's conversations and blocks (D197). Only
+## for the same player in the same match: the book is keyed by player id, and
+## the ids mean the same people only while the seats do. Call it before a
+## screen reads `messages()`, because a screen holds on to the book it was given.
+func adopt_messages(book: MessageBook) -> void:
+	_messages = book
+
+
 ## Sends `raw` from this machine's player to `recipient_id`, or writes it as a
 ## note when the recipient is this player. Returns why it was not sent, or an
 ## empty string - and what was sent is in `messages()` straight away.

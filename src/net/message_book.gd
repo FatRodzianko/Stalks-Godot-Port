@@ -4,10 +4,10 @@ extends RefCounted
 ## notes to yourself, and which conversations have unread lines.
 ##
 ## **Held only here, in memory.** Nothing in it is sent anywhere, saved to
-## disk, or part of the match. Each player's machine keeps its own, so a host
-## migration has nothing to hand over - and a player who rejoins, or a client
-## whose host migrates, starts with an empty book. That is a known limit, not a
-## fault (decisions.md D192).
+## disk, or part of the match. Each player's machine keeps its own. A host
+## migration hands this machine's book to its next session (D197); a player who
+## rejoins starts with an empty one. That is a known limit, not a fault
+## (decisions.md D192).
 ##
 ## A conversation is keyed by **the other player's id**: what you sent to Ann
 ## and what Ann sent you are one list, in order. Your notes are keyed by your
