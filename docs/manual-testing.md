@@ -2567,7 +2567,9 @@ the outcome it foretells for next year.
 29. Check its **NEWS** section shows the same whisper, with its source before it.
 30. Close the game window.
 
-### U - No StalkleHeads whispers in year 0 (decisions.md D207) — **not yet run**
+### U - No StalkleHeads whispers in year 0 (decisions.md D207) — **passed 2026-11-23**
+
+**Run on 2026-11-23.** Every step passed.
 
 One machine, no Steam. Run on a locally exported build containing D207; to check a
 checkout before exporting, `src/sim/news_selector.gd` contains `FIRST_WHISPER_YEAR`.
