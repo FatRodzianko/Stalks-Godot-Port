@@ -2521,7 +2521,15 @@ not the words.
 27. Check the headline still sits above the event, and nothing overlaps.
 28. Close the game window.
 
-### T - StalkleHeads whispers that foretell next year (decisions.md D205, D206) — **not yet run**
+### T - StalkleHeads whispers that foretell next year (decisions.md D205, D206) — **passed 2026-11-23, with findings**
+
+**Run on 2026-11-23.** Every whisper step passed. What came back:
+
+- **Steps 6 and 13:** whispers showed in year 0, and again in the history as ABOUT
+  YEAR 1. Nobody can trade in year 0, so a whisper about year 1 cannot be used.
+  Fixed by D207 (none before the end of year 1), checked as section U. The steps
+  below are as run; with D207, steps 6-14 now find no whispers.
+
 
 One machine, no Steam. Run on a locally exported build containing D205; to check a
 checkout before exporting, the file `src/sim/whisper_rules.gd` exists. Every whisper
@@ -2558,6 +2566,26 @@ the outcome it foretells for next year.
 28. Click **>** until the company you noted is shown.
 29. Check its **NEWS** section shows the same whisper, with its source before it.
 30. Close the game window.
+
+### U - No StalkleHeads whispers in year 0 (decisions.md D207) — **not yet run**
+
+One machine, no Steam. Run on a locally exported build containing D207; to check a
+checkout before exporting, `src/sim/news_selector.gd` contains `FIRST_WHISPER_YEAR`.
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Click **START**.
+5. Click **MARKET**.
+6. Check there is no **WHISPERS** heading.
+7. Check there is no **VIEW HISTORY** button.
+8. Press **Ready for New Year**.
+9. Click **Close** on the news.
+10. Click **MARKET**.
+11. Check **WHISPERS** shows two lines.
+12. Click **VIEW HISTORY**.
+13. Check only **ABOUT YEAR 2** is listed.
+14. Close the game window.
 
 ### Known gaps, so they are not surprises
 

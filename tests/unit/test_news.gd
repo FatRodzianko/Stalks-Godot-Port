@@ -259,7 +259,8 @@ func test_a_slot_nothing_matches_stays_empty() -> void:
 		assert_eq(news.headline, "", "year %d" % year)
 		assert_true(news.industry_reports.is_empty())
 		assert_true(news.commentary.is_empty())
-		assert_true(NewsSelector.whispers_for(played.state, year - 1).lines.is_empty(), "heard after year %d" % (year - 1))
+		var round: WhisperRound = NewsSelector.whispers_for(played.state, year)
+		assert_true(round == null or round.lines.is_empty(), "heard after year %d" % year)
 		assert_true(news.chatter.is_empty())
 
 
@@ -365,18 +366,24 @@ func test_next_years_draws_are_kept_and_then_used() -> void:
 
 ## Whispers are heard from the match's start, about year 1, and not at the end
 ## of the last year, which has no next year.
-func test_whispers_are_heard_from_the_start_and_not_after_the_last_year() -> void:
+## Nobody can trade in year 0, so there are no whispers then (D207): the
+## first round is heard at the end of year 1, and none after the last year.
+func test_whispers_start_after_year_one_and_stop_before_the_last() -> void:
 	var fresh: WireMatch = WireMatch.start(SEED, 3, 5)
-	var opening: WhisperRound = NewsSelector.latest_whispers(fresh.state)
-	assert_not_null(opening)
-	assert_eq(opening.year, 0)
-	assert_eq(opening.about_year(), 1)
-	assert_eq(opening.lines.size(), NewsSelector.WHISPERS_PER_YEAR)
-	assert_false(opening.is_settled(fresh.state))
-	fresh.play(5)
+	assert_null(NewsSelector.latest_whispers(fresh.state), "none in year 0")
+	assert_eq(_rounds(fresh.state).size(), 0)
+	fresh.play(1)
+	var first: WhisperRound = NewsSelector.latest_whispers(fresh.state)
+	assert_not_null(first)
+	assert_eq(first.year, 1)
+	assert_eq(first.about_year(), 2)
+	assert_eq(first.lines.size(), NewsSelector.WHISPERS_PER_YEAR)
+	assert_false(first.is_settled(fresh.state))
+	fresh.play(4)
 	assert_null(NewsSelector.whispers_for(fresh.state, 5))
-	assert_eq(_rounds(fresh.state).size(), 5, "rounds 0 to 4")
-	assert_true(opening.is_settled(fresh.state))
+	assert_null(NewsSelector.whispers_for(fresh.state, 0))
+	assert_eq(_rounds(fresh.state).size(), 4, "rounds 1 to 4")
+	assert_true(first.is_settled(fresh.state))
 
 
 ## The truth a whisper carries is next year's real outcome, worked out again

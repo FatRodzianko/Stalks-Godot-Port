@@ -1189,7 +1189,7 @@ func test_view_history_lists_every_round_with_its_outcome() -> void:
 	assert_true(tab.is_history_open())
 	var expected: PackedStringArray = []
 	var rounds: Array[WhisperRound] = NewsSelector.whisper_history(_state())
-	assert_eq(rounds.size(), 4, "heard at the start and after years 1, 2 and 3")
+	assert_eq(rounds.size(), 3, "heard after years 1, 2 and 3")
 	rounds.reverse()
 	for round: WhisperRound in rounds:
 		expected.append("ABOUT YEAR %d" % round.about_year())
@@ -1207,12 +1207,13 @@ func test_view_history_lists_every_round_with_its_outcome() -> void:
 	assert_false(tab.is_history_open(), "the tab opens on the current whispers")
 
 
-## Whispers are heard before the first year is played, about year 1.
-func test_whispers_show_before_the_first_year() -> void:
+## Nobody can trade in year 0, so no whispers then (decisions.md D207).
+func test_no_whispers_before_trading_opens() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 0)
 	_tabs().select_tab(MarketTabs.Tab.MARKET)
-	assert_eq(_tabs().market_tab().whisper_texts().size(), NewsSelector.WHISPERS_PER_YEAR)
-	assert_eq(_tabs().market_tab().headline_text(), "", "no year, no headline")
+	assert_eq(_tabs().market_tab().whisper_texts(), PackedStringArray())
+	assert_false(_tabs().market_tab().get_node("%WhisperSection").visible)
+	assert_eq(_tabs().market_tab().history_texts(), PackedStringArray())
 
 
 func test_the_industries_tab_shows_the_selected_industrys_report() -> void:

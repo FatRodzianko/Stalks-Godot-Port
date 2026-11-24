@@ -152,8 +152,11 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearR
 	return result
 
 
-## A fresh match: year 1's draws, made before anybody sees year 0, so the
-## first whispers have a year to foreshadow (`YearPipeline.open_match`).
+## A fresh match: year 1's draws, made before anybody sees year 0, so a match
+## holds next year's draws from its first snapshot on, as it does every later
+## year (`YearPipeline.open_match`). They take the same place in the stream as
+## drawing them at year 1's start would. No whisper reads them: there is none
+## in year 0 (D207).
 func open_match(state: GameState, rng: RandomNumberGenerator) -> void:
 	if state.market != null and state.market.next_draws == null:
 		state.market.next_draws = draw_ahead(state, rng)

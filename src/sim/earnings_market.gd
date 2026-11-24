@@ -89,7 +89,7 @@ var news: NewsContent = NewsContent.new()
 var next_draws: KeptDraws = null
 
 ## The whispers worked out so far, by the year they were heard at the end of
-## (0 for the match's start). A cache for `NewsSelector.whispers_for`, never
+## (from 1). A cache for `NewsSelector.whispers_for`, never
 ## sent: every peer works them out for itself from the history and
 ## `next_draws`.
 var whisper_rounds: Dictionary[int, WhisperRound] = {}

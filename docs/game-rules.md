@@ -325,7 +325,7 @@ of them moves a price; they are things to read. The rules, as built
 | Market headline | at most one | the year's mood, and the index's move band |
 | Industry report | at most one per industry | that industry's move band (and mood, if a line names one) |
 | Earnings commentary | at most one per company alive at the year's start | its regime this year, and its surprise band |
-| Whisper | two a round, heard at each year's end (and the match's start) about the next year | next year's real outcome for a company or industry, bent by a source; see below |
+| Whisper | two a round, heard at each year's end from year 1, about the next year | next year's real outcome for a company or industry, bent by a source; see below |
 | NPC chatter | at most one per desk trader | what the trader did: bought, sold, shorted, covered or held |
 
 - **Move bands** (percent): CRASH at -15 or below; DOWN below -3; FLAT -3 to +3;
@@ -336,7 +336,9 @@ of them moves a price; they are things to read. The rules, as built
   more MUCH BETTER or MUCH WORSE.
 - **Whispers foretell next year** (§8.4, D205). Next year's industry swings and
   every living company's regime and growth roll are drawn a year early - at the end
-  of each year, and at the match's start for year 1 - and kept. A round of whispers
+  of each year, and at the match's start for year 1 - and kept. The first whispers
+  are heard at the end of year 1, about year 2: nobody can trade in year 0, so a
+  whisper then could not be acted on (D207). A round of whispers
   picks two different subjects evenly from every industry and every company still
   trading. Each one's **true outcome** is in the surprise bands: a company's own
   growth from its kept growth roll against what its current regime leads one to

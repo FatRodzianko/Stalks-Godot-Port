@@ -518,7 +518,8 @@ a bankrupt row's word is not clipped.
   regime.
 - **Whispers (D205).** Next year's draws are made when the match opens and at each
   year's end, and the next year uses exactly them; none is made after the last
-  year. A round is heard at the start, about year 1, and none after the last year.
+  year. No round in year 0; the first is heard after year 1, about year 2, and none
+  after the last year (D207).
   Over thirty years, every whisper's true outcome equals one worked out again from
   the next year's record; two a round, never about one subject twice, about both
   companies and industries, each naming its subject. The line heard is written
@@ -533,7 +534,7 @@ a bankrupt row's word is not clipped.
   welcomed client makes the host's news for thirty years; a promoted host goes on
   making the news the departed host would have.
 - **On screen.** The Market tab shows the headline and the whispers with their
-  sources, also before year 1; VIEW HISTORY lists every round newest first with its
+  sources, and nothing in year 0 (`test_no_whispers_before_trading_opens`); VIEW HISTORY lists every round newest first with its
   outcomes once known, CLOSE and leaving the tab shut it (D206); the Industries tab
   each industry's report; the Company tab each company's commentary and the
   whispers about it or its industry;

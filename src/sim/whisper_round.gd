@@ -4,8 +4,9 @@ extends RefCounted
 ## (docs/stalkleheads-design.md §8.4, decisions.md D205). Chosen by
 ## `NewsSelector.whispers_for`; pure data, read by the screens.
 ##
-## Round 0 is heard at the match's start, about year 1. The last year has no
-## round: there is no next year to whisper about.
+## The first round is heard at the end of year 1, about year 2: trading opens
+## in year 1, so there is nothing to act on before it (decisions.md D207). The
+## last year has no round: there is no next year to whisper about.
 ##
 ## **Never sent.** Every peer works it out from the history and the kept draws
 ## it already holds, and caches it on `EarningsMarket.whisper_rounds`.
@@ -28,7 +29,7 @@ class Line:
 	var text: String = ""
 
 
-## The year whose end it was heard at; 0 for the match's start.
+## The year whose end it was heard at; 1 or more.
 var year: int = 0
 
 ## In the order they were drawn. May be empty.

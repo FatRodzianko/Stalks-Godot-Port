@@ -281,7 +281,7 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **Earnings commentary** — one line about a company's earnings, chosen by its regime and its surprise band. On the Company tab under NEWS.
 
-**Whisper** — a rumor about a company or an industry, heard at the end of a year (or at the match's start) and about **the next year**: whether it will do much worse, worse, as expected, better or much better than everyone expects. Two a round, on the Market tab with their sources, and on the Company tab of a company they name or its industry. A whisper can be wrong, and how often depends on its **source** (decisions.md D205).
+**Whisper** — a rumor about a company or an industry, heard at the end of a year (from year 1; none in year 0) and about **the next year**: whether it will do much worse, worse, as expected, better or much better than everyone expects. Two a round, on the Market tab with their sources, and on the Company tab of a company they name or its industry. A whisper can be wrong, and how often depends on its **source** (decisions.md D205).
 
 **Source (of a whisper)** — who a whisper came from, which says how far to trust it: Rock Solid, Credible, Hit-or-miss, Questionable or Gossip. Rock Solid is right 85% of the time and never far out; Gossip is right 20% of the time. The table is in game-rules.md §5.1; the code is `WhisperRules`.
 

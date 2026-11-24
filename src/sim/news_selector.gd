@@ -38,6 +38,10 @@ extends RefCounted
 ## industry (design §8.4).
 const WHISPERS_PER_YEAR: int = 2
 
+## The first year at whose end whispers are heard. Not 0: trading opens in
+## year 1, so a whisper about year 1 could not be acted on (D207).
+const FIRST_WHISPER_YEAR: int = 1
+
 ## Move band edges, in percent (§8.1): CRASH at or below -15, DOWN below -3,
 ## FLAT from -3 to +3, UP below +15, SURGE at or above +15.
 const CRASH_AT: float = -15.0
@@ -295,10 +299,12 @@ static func _select_chatter(
 
 # --------------------------------------------------------------- whispers
 
-## The whispers heard at the end of `year` (0: the match's start), about the
-## next year, worked out now if no screen has asked before. Null outside
-## StalkleHeads, for a year not yet reached, and for the last year, which has
-## no next year to whisper about.
+## The whispers heard at the end of `year`, about the next year, worked out
+## now if no screen has asked before. Null outside StalkleHeads, for a year not
+## yet reached, for the last year, which has no next year to whisper about, and
+## for year 0: nobody can trade in year 0, so a whisper about year 1 could
+## never be acted on (decisions.md D207). The first round is heard at the end
+## of year 1.
 ##
 ## Rounds are worked out in order and cached on `EarningsMarket.whisper_rounds`,
 ## because a round's bag counts the lines drawn in the rounds before it. A
@@ -306,7 +312,7 @@ static func _select_chatter(
 ## draws are the same numbers, read from the kept draws before and from that
 ## year's record after (`draws_about`).
 static func whispers_for(state: GameState, year: int) -> WhisperRound:
-	if state == null or state.market == null or year < 0 or year > state.year:
+	if state == null or state.market == null or year < FIRST_WHISPER_YEAR or year > state.year:
 		return null
 	var market: EarningsMarket = state.market
 	if market.whisper_rounds.has(year):
@@ -314,7 +320,7 @@ static func whispers_for(state: GameState, year: int) -> WhisperRound:
 	if draws_about(state, year + 1) == null:
 		return null
 	var counts: Dictionary[StringName, int] = {}
-	for each: int in range(0, year + 1):
+	for each: int in range(FIRST_WHISPER_YEAR, year + 1):
 		var round: WhisperRound = market.whisper_rounds.get(each, null)
 		if round == null:
 			var draws: KeptDraws = draws_about(state, each + 1)
@@ -327,8 +333,8 @@ static func whispers_for(state: GameState, year: int) -> WhisperRound:
 	return market.whisper_rounds.get(year, null)
 
 
-## The whispers heard most recently: at the end of the year just played, or at
-## the start of the match.
+## The whispers heard most recently: at the end of the year just played. Null
+## in year 0.
 static func latest_whispers(state: GameState) -> WhisperRound:
 	if state == null:
 		return null
@@ -340,7 +346,7 @@ static func whisper_history(state: GameState) -> Array[WhisperRound]:
 	var rounds: Array[WhisperRound] = []
 	if state == null or state.market == null:
 		return rounds
-	for year: int in range(0, state.year + 1):
+	for year: int in range(FIRST_WHISPER_YEAR, state.year + 1):
 		var round: WhisperRound = whispers_for(state, year)
 		if round != null:
 			rounds.append(round)

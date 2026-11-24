@@ -7742,8 +7742,8 @@ conviction and the source says how far to trust it.
 
 **How many.** Two a round, about two different subjects picked evenly from every
 industry and every company still trading, so that a whisper appearing at all says
-nothing. A round is heard at the end of every year but the last, and at the match's
-start. Chosen by `NewsSelector.whispers_for` with its own generator, seeded from the
+nothing. A round is heard at the end of every year but the last, from year 1 on
+(none in year 0: D207). Chosen by `NewsSelector.whispers_for` with its own generator, seeded from the
 draws it is about, never the match's (D200); the bag counts earlier rounds' lines;
 a line written for one subject beats a general one; with no line for the told
 outcome, that whisper is not heard. Rounds are cached on
@@ -7763,8 +7763,8 @@ the draws from clients (the generator's state already travels).
 **2026-11-23 · Accepted** (after manual section S) · **amends D203**
 
 - **Market tab, WHISPERS:** the latest round, each whisper's source in a faint
-  column before its words (`WhisperRow`). Shown before year 1 too, since round 0 is
-  heard at the start.
+  column before its words (`WhisperRow`). Not shown in year 0 (D207): the first
+  round is heard at the end of year 1.
 - **VIEW HISTORY**, under the whispers (the owner's mockup): every round so far
   opens over the right half of the Market tab, newest first, headed ABOUT YEAR N,
   each whisper with its source and, once its year has been played, **what really
@@ -7776,3 +7776,25 @@ the draws from clients (the generator's state already travels).
   with their sources, after the earnings commentary.
 - The outcome is never shown before its year is played: it is next year's earnings.
 - The WHISPERS heading's tooltip is the owner's words (D203).
+
+### D207 - No whispers before the end of year 1
+**2026-11-23 · Accepted** (found in manual section T) · **amends D205, D206**
+
+As first built, a round of whispers was heard at the match's start, in year 0, about
+year 1. The owner found it in play: nobody can buy or sell in year 0, and a whisper
+is only worth anything if a player can act on it before the year it foretells. By
+the time year 1's trading opens, year 1 is the year being played, and its whisper
+also sat in the history as ABOUT YEAR 1.
+
+So the first round is heard at the end of year 1, about year 2
+(`NewsSelector.FIRST_WHISPER_YEAR`). `whispers_for` returns null for year 0, the
+history starts at year 1, and the Market tab shows no WHISPERS heading and no VIEW
+HISTORY in year 0. A five-year match has rounds after years 1 to 4.
+
+`YearPipeline.open_match` still draws year 1's numbers at match start. No whisper
+reads them now, but keeping it means a match holds next year's draws from its first
+snapshot on, as it does every later year, and it is the same place in the random
+stream either way, so no seed changes.
+
+**Rules out:** a year-0 round (it cannot be acted on); dropping the year-1 draws at
+match start (it would leave year 0 the one year without kept draws, for nothing).
