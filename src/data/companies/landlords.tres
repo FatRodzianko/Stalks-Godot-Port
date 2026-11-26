@@ -1,17 +1,14 @@
-[gd_resource type="Resource" script_class="CompanyProfile" format=3]
+[gd_resource type="Resource" script_class="CompanyProfile" format=3 uid="uid://bysnaradrv0ec"]
 
-[ext_resource type="Script" path="res://src/data/company_profile.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://cbsfpjy1cgfgn" path="res://src/data/company_profile.gd" id="1_script"]
 
 [resource]
 script = ExtResource("1_script")
 id = &"landlords"
 display_name = "Landlords United"
-ticker = &"FINA"
+ticker = &"LORD"
 industry = &"financial"
-description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris."
+description = "Tired of fixing leaky faucets? Worrying about deferring maintainence on the boiler for another year? Evicting another elderly woman who reminds you of your Grandma? Stop. You don't have to. Join Landlords United and you'll never work a day in your life, just as God intended. It's time to put the LORD back in Landlord!"
 starting_earnings_per_share = 10.4
-starting_margin_percent = 12.0
-shares_outstanding = 1000
-quality = 50
 industry_beta_percent = 115
 payout_policy_percent = 70

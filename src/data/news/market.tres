@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="NewsBook" format=3]
+[gd_resource type="Resource" script_class="NewsBook" format=3 uid="uid://dnc6lmvjfi5uy"]
 
-[ext_resource type="Script" path="res://src/data/npc_chatter.gd" id="1_b4nbk"]
-[ext_resource type="Script" path="res://src/data/earnings_commentary.gd" id="2_clpi7"]
-[ext_resource type="Script" path="res://src/data/market_headline.gd" id="3_x0qgy"]
-[ext_resource type="Script" path="res://src/data/industry_report.gd" id="4_14ohu"]
-[ext_resource type="Script" path="res://src/data/news_book.gd" id="5_asjd0"]
-[ext_resource type="Script" path="res://src/data/whisper.gd" id="6_1ixhk"]
+[ext_resource type="Script" uid="uid://hdwh1gbiv1nl" path="res://src/data/npc_chatter.gd" id="1_b4nbk"]
+[ext_resource type="Script" uid="uid://3xrws76tycdl" path="res://src/data/earnings_commentary.gd" id="2_clpi7"]
+[ext_resource type="Script" uid="uid://b5x0tvlm2eash" path="res://src/data/market_headline.gd" id="3_x0qgy"]
+[ext_resource type="Script" uid="uid://bn57xwtijt6bb" path="res://src/data/industry_report.gd" id="4_14ohu"]
+[ext_resource type="Script" uid="uid://dbw7v33qp1gq1" path="res://src/data/news_book.gd" id="5_asjd0"]
+[ext_resource type="Script" uid="uid://bo8a8il38w0ac" path="res://src/data/whisper.gd" id="6_1ixhk"]
 
 [sub_resource type="Resource" id="Resource_k83mj"]
 script = ExtResource("2_clpi7")
@@ -182,47 +182,95 @@ regime = 5
 surprise = 5
 text = "EARNINGS: {company}, distress, much better than expected"
 
+[sub_resource type="Resource" id="Resource_bnv30"]
+script = ExtResource("3_x0qgy")
+id = &"mkt_bull_flat_2"
+mood = 2
+move = 3
+text = "MARKET HEADLINE: Is Blue Chew the Answer This Economy Needs?"
+metadata/_custom_type_script = "uid://b5x0tvlm2eash"
+
 [sub_resource type="Resource" id="Resource_k7pkw"]
 script = ExtResource("3_x0qgy")
 id = &"mkt_bull_flat_1"
 mood = 1
 move = 3
-text = "MARKET HEADLINE: bull, flat"
+text = "MARKET HEADLINE: Will Mr. Market Find the Energy to Stand Back Up?"
 
 [sub_resource type="Resource" id="Resource_83jh5"]
 script = ExtResource("3_x0qgy")
 id = &"mkt_bull_up_1"
 mood = 1
 move = 4
-text = "MARKET HEADLINE: bull, up"
+text = "MARKET HEADLINE: Citizens Take to the Streets as the War on Christmas Ends"
+
+[sub_resource type="Resource" id="Resource_x5kpj"]
+script = ExtResource("3_x0qgy")
+id = &"mkt_bull_up_2"
+mood = 1
+move = 4
+text = "MARKET HEADLINE: Mr. Market Rejoices as More Federal Holidays are Cut"
+metadata/_custom_type_script = "uid://b5x0tvlm2eash"
 
 [sub_resource type="Resource" id="Resource_twyq3"]
 script = ExtResource("3_x0qgy")
 id = &"mkt_bull_surge_1"
 mood = 1
 move = 5
-text = "MARKET HEADLINE: bull, surge"
+text = "MARKET HEADLINE: IT'S THE FUTURE WE ALWAYS DREAMED OF!"
+
+[sub_resource type="Resource" id="Resource_c3n7b"]
+script = ExtResource("3_x0qgy")
+id = &"mkt_bull_surge_2"
+mood = 1
+move = 5
+text = "MARKET HEADLINE: Papal Bull Declares CryptoKatz \"Soulfull\""
+metadata/_custom_type_script = "uid://b5x0tvlm2eash"
 
 [sub_resource type="Resource" id="Resource_vjnyj"]
 script = ExtResource("3_x0qgy")
 id = &"mkt_bear_flat_1"
 mood = 2
 move = 3
-text = "MARKET HEADLINE: bear, flat"
+text = "MARKET HEADLINE: Sleepy Mr. Market Sleeps in Again"
+
+[sub_resource type="Resource" id="Resource_knovx"]
+script = ExtResource("3_x0qgy")
+id = &"mkt_bear_flat_2"
+mood = 2
+move = 3
+text = "MARKET HEADLINE: FLATLINED - Not Dead, but the Line is Flat"
+metadata/_custom_type_script = "uid://b5x0tvlm2eash"
 
 [sub_resource type="Resource" id="Resource_uy8my"]
 script = ExtResource("3_x0qgy")
 id = &"mkt_bear_down_1"
 mood = 2
 move = 2
-text = "MARKET HEADLINE: bear, down"
+text = "MARKET HEADLINE: Can this Economy Bear (heh) Another Tumble?"
+
+[sub_resource type="Resource" id="Resource_5r1o3"]
+script = ExtResource("3_x0qgy")
+id = &"mkt_bear_down_2"
+mood = 2
+move = 2
+text = "MARKET HEADLINE: Is It Over?"
+metadata/_custom_type_script = "uid://b5x0tvlm2eash"
 
 [sub_resource type="Resource" id="Resource_agwpq"]
 script = ExtResource("3_x0qgy")
 id = &"mkt_bear_crash_1"
 mood = 2
 move = 1
-text = "MARKET HEADLINE: bear, crash"
+text = "MARKET HEADLINE: If you're not panicking, you should be!"
+
+[sub_resource type="Resource" id="Resource_pum6f"]
+script = ExtResource("3_x0qgy")
+id = &"mkt_bear_crash_2"
+mood = 2
+move = 1
+text = "MARKET HEADLINE: It's Over"
+metadata/_custom_type_script = "uid://b5x0tvlm2eash"
 
 [sub_resource type="Resource" id="Resource_wh_com_much_worse"]
 script = ExtResource("6_1ixhk")
@@ -239,7 +287,6 @@ text = "WHISPER: {company}, worse"
 [sub_resource type="Resource" id="Resource_wh_com_as_expected"]
 script = ExtResource("6_1ixhk")
 id = &"whisp_company_as_expected_1"
-outcome = 3
 text = "WHISPER: {company}, as expected"
 
 [sub_resource type="Resource" id="Resource_wh_com_better"]
@@ -272,7 +319,6 @@ text = "WHISPER: {industry}, worse"
 script = ExtResource("6_1ixhk")
 id = &"whisp_industry_as_expected_1"
 about = 1
-outcome = 3
 text = "WHISPER: {industry}, as expected"
 
 [sub_resource type="Resource" id="Resource_wh_ind_better"]
@@ -291,6 +337,6 @@ text = "WHISPER: {industry}, much better"
 
 [resource]
 script = ExtResource("5_asjd0")
-headlines = Array[ExtResource("3_x0qgy")]([SubResource("Resource_k7pkw"), SubResource("Resource_83jh5"), SubResource("Resource_twyq3"), SubResource("Resource_vjnyj"), SubResource("Resource_uy8my"), SubResource("Resource_agwpq")])
+headlines = Array[ExtResource("3_x0qgy")]([SubResource("Resource_bnv30"), SubResource("Resource_k7pkw"), SubResource("Resource_83jh5"), SubResource("Resource_x5kpj"), SubResource("Resource_twyq3"), SubResource("Resource_c3n7b"), SubResource("Resource_vjnyj"), SubResource("Resource_knovx"), SubResource("Resource_uy8my"), SubResource("Resource_5r1o3"), SubResource("Resource_agwpq"), SubResource("Resource_pum6f")])
 earnings_commentary = Array[ExtResource("2_clpi7")]([SubResource("Resource_k83mj"), SubResource("Resource_8fniq"), SubResource("Resource_cqruv"), SubResource("Resource_6kowi"), SubResource("Resource_vjevv"), SubResource("Resource_3flbp"), SubResource("Resource_4pb57"), SubResource("Resource_qp0ru"), SubResource("Resource_we72o"), SubResource("Resource_8dfnl"), SubResource("Resource_43xbp"), SubResource("Resource_v7gr0"), SubResource("Resource_mocb1"), SubResource("Resource_6r24g"), SubResource("Resource_jjeg3"), SubResource("Resource_ykawe"), SubResource("Resource_dp4nk"), SubResource("Resource_fg4dq"), SubResource("Resource_ecmgq"), SubResource("Resource_43meh"), SubResource("Resource_hwutl"), SubResource("Resource_6fcun"), SubResource("Resource_cc2ni"), SubResource("Resource_suc43"), SubResource("Resource_7yahk")])
 whispers = Array[ExtResource("6_1ixhk")]([SubResource("Resource_wh_com_much_worse"), SubResource("Resource_wh_com_worse"), SubResource("Resource_wh_com_as_expected"), SubResource("Resource_wh_com_better"), SubResource("Resource_wh_com_much_better"), SubResource("Resource_wh_ind_much_worse"), SubResource("Resource_wh_ind_worse"), SubResource("Resource_wh_ind_as_expected"), SubResource("Resource_wh_ind_better"), SubResource("Resource_wh_ind_much_better")])

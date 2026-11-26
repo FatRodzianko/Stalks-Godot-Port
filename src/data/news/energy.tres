@@ -1,47 +1,71 @@
-[gd_resource type="Resource" script_class="NewsBook" format=3]
+[gd_resource type="Resource" script_class="NewsBook" format=3 uid="uid://brgul7aj6n5j6"]
 
-[ext_resource type="Script" path="res://src/data/npc_chatter.gd" id="1_txeaf"]
-[ext_resource type="Script" path="res://src/data/earnings_commentary.gd" id="2_8uo47"]
-[ext_resource type="Script" path="res://src/data/market_headline.gd" id="3_bcv2j"]
-[ext_resource type="Script" path="res://src/data/industry_report.gd" id="4_qenhj"]
-[ext_resource type="Script" path="res://src/data/news_book.gd" id="5_mgci2"]
-[ext_resource type="Script" path="res://src/data/whisper.gd" id="6_rtxvw"]
+[ext_resource type="Script" uid="uid://hdwh1gbiv1nl" path="res://src/data/npc_chatter.gd" id="1_txeaf"]
+[ext_resource type="Script" uid="uid://3xrws76tycdl" path="res://src/data/earnings_commentary.gd" id="2_8uo47"]
+[ext_resource type="Script" uid="uid://b5x0tvlm2eash" path="res://src/data/market_headline.gd" id="3_bcv2j"]
+[ext_resource type="Script" uid="uid://bn57xwtijt6bb" path="res://src/data/industry_report.gd" id="4_qenhj"]
+[ext_resource type="Script" uid="uid://dbw7v33qp1gq1" path="res://src/data/news_book.gd" id="5_mgci2"]
+[ext_resource type="Script" uid="uid://bo8a8il38w0ac" path="res://src/data/whisper.gd" id="6_rtxvw"]
 
 [sub_resource type="Resource" id="Resource_hguuk"]
 script = ExtResource("4_qenhj")
 id = &"ind_energy_crash_1"
 industry_id = &"energy"
 move = 1
-text = "INDUSTRY REPORT: energy, crash"
+text = "\"The strategic oil reserve is empty. Wait, are you recording this?\""
 
 [sub_resource type="Resource" id="Resource_12cwi"]
 script = ExtResource("4_qenhj")
 id = &"ind_energy_down_1"
 industry_id = &"energy"
 move = 2
-text = "INDUSTRY REPORT: energy, down"
+text = "For the first time in 70 years, the United States invests in public transport infrastructure"
+
+[sub_resource type="Resource" id="Resource_txeaf"]
+script = ExtResource("4_qenhj")
+id = &"ind_energy_down_2"
+industry_id = &"energy"
+move = 2
+text = "Space pirates hijack satellite swarm strategically blocking out the sun above solar farms"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [sub_resource type="Resource" id="Resource_ix588"]
 script = ExtResource("4_qenhj")
 id = &"ind_energy_flat_1"
 industry_id = &"energy"
 move = 3
-text = "INDUSTRY REPORT: energy, flat"
+text = "World leaders at the Climate For a Future You Can Live In Without a Respirator summit agree that now is time to wait and see what happens"
 
 [sub_resource type="Resource" id="Resource_fs6i7"]
 script = ExtResource("4_qenhj")
 id = &"ind_energy_up_1"
 industry_id = &"energy"
 move = 4
-text = "INDUSTRY REPORT: energy, up"
+text = "5 year old child charged with reckless endangerment of his own life after being run over by a lifted truck. \"He was too small to see, what could I do?\" said the driver"
+
+[sub_resource type="Resource" id="Resource_8uo47"]
+script = ExtResource("4_qenhj")
+id = &"ind_energy_up_2"
+industry_id = &"energy"
+move = 4
+text = "\"The Year's of Lead, doesn't that sound nice?\" President Trundle announces all gasoline to be leaded. "
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [sub_resource type="Resource" id="Resource_2ih1y"]
 script = ExtResource("4_qenhj")
 id = &"ind_energy_surge_1"
 industry_id = &"energy"
 move = 5
-text = "INDUSTRY REPORT: energy, surge"
+text = "Satellite swarm strategically blocking out the sun above solar farms proves to be a roaring success"
+
+[sub_resource type="Resource" id="Resource_lid0y"]
+script = ExtResource("4_qenhj")
+id = &"ind_energy_surge_2"
+industry_id = &"energy"
+move = 5
+text = "Gasoline deemed safe to drink, says FDA. \"It's better than water!\" Cheaper, too"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [resource]
 script = ExtResource("5_mgci2")
-industry_reports = Array[ExtResource("4_qenhj")]([SubResource("Resource_hguuk"), SubResource("Resource_12cwi"), SubResource("Resource_ix588"), SubResource("Resource_fs6i7"), SubResource("Resource_2ih1y")])
+industry_reports = Array[ExtResource("4_qenhj")]([SubResource("Resource_hguuk"), SubResource("Resource_12cwi"), SubResource("Resource_txeaf"), SubResource("Resource_ix588"), SubResource("Resource_fs6i7"), SubResource("Resource_8uo47"), SubResource("Resource_2ih1y"), SubResource("Resource_lid0y")])

@@ -1,47 +1,72 @@
-[gd_resource type="Resource" script_class="NewsBook" format=3]
+[gd_resource type="Resource" script_class="NewsBook" format=3 uid="uid://dyl8nibnglk62"]
 
-[ext_resource type="Script" path="res://src/data/npc_chatter.gd" id="1_twtjr"]
-[ext_resource type="Script" path="res://src/data/earnings_commentary.gd" id="2_7gvo8"]
-[ext_resource type="Script" path="res://src/data/market_headline.gd" id="3_wrsyq"]
-[ext_resource type="Script" path="res://src/data/industry_report.gd" id="4_5syx3"]
-[ext_resource type="Script" path="res://src/data/news_book.gd" id="5_umhtt"]
-[ext_resource type="Script" path="res://src/data/whisper.gd" id="6_ji1e1"]
+[ext_resource type="Script" uid="uid://hdwh1gbiv1nl" path="res://src/data/npc_chatter.gd" id="1_twtjr"]
+[ext_resource type="Script" uid="uid://3xrws76tycdl" path="res://src/data/earnings_commentary.gd" id="2_7gvo8"]
+[ext_resource type="Script" uid="uid://b5x0tvlm2eash" path="res://src/data/market_headline.gd" id="3_wrsyq"]
+[ext_resource type="Script" uid="uid://bn57xwtijt6bb" path="res://src/data/industry_report.gd" id="4_5syx3"]
+[ext_resource type="Script" uid="uid://dbw7v33qp1gq1" path="res://src/data/news_book.gd" id="5_umhtt"]
+[ext_resource type="Script" uid="uid://bo8a8il38w0ac" path="res://src/data/whisper.gd" id="6_ji1e1"]
 
 [sub_resource type="Resource" id="Resource_3sdgj"]
 script = ExtResource("4_5syx3")
 id = &"ind_financial_crash_1"
 industry_id = &"financial"
 move = 1
-text = "INDUSTRY REPORT: financial, crash"
+text = "How to know if your window is high enough to jump out of"
 
-[sub_resource type="Resource" id="Resource_bpidn"]
+[sub_resource type="Resource" id="Resource_vm4xm"]
 script = ExtResource("4_5syx3")
 id = &"ind_financial_down_1"
 industry_id = &"financial"
 move = 2
-text = "INDUSTRY REPORT: financial, down"
+text = "Half-zip fleece sales plummet to all time lows"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
+
+[sub_resource type="Resource" id="Resource_bpidn"]
+script = ExtResource("4_5syx3")
+id = &"ind_financial_down_2"
+industry_id = &"financial"
+move = 2
+text = "It's time to bring back overdraft fees"
 
 [sub_resource type="Resource" id="Resource_aq61y"]
 script = ExtResource("4_5syx3")
 id = &"ind_financial_flat_1"
 industry_id = &"financial"
 move = 3
-text = "INDUSTRY REPORT: financial, flat"
+text = "People are still keeping their money in money, for now"
 
 [sub_resource type="Resource" id="Resource_jvh8b"]
 script = ExtResource("4_5syx3")
 id = &"ind_financial_up_1"
 industry_id = &"financial"
 move = 4
-text = "INDUSTRY REPORT: financial, up"
+text = "New loan products are a major hit with the unemployed and homeless"
+
+[sub_resource type="Resource" id="Resource_o2qpq"]
+script = ExtResource("4_5syx3")
+id = &"ind_financial_up_2"
+industry_id = &"financial"
+move = 4
+text = "President Trundle annouces \"Serve to Save\" initiative making it illegal to collect interest on a savings account unless you can prove prior military service"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [sub_resource type="Resource" id="Resource_4ohan"]
 script = ExtResource("4_5syx3")
 id = &"ind_financial_surge_1"
 industry_id = &"financial"
 move = 5
-text = "INDUSTRY REPORT: financial, surge"
+text = "Federal Government passes \"Don't ask, don't tell\" banking regulations"
+
+[sub_resource type="Resource" id="Resource_y53mo"]
+script = ExtResource("4_5syx3")
+id = &"ind_financial_surge_2"
+industry_id = &"financial"
+mood = 1
+move = 4
+text = "Unable to keep up with new applications, country clubs return to pre-Jim Crow era membership policies"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [resource]
 script = ExtResource("5_umhtt")
-industry_reports = Array[ExtResource("4_5syx3")]([SubResource("Resource_3sdgj"), SubResource("Resource_bpidn"), SubResource("Resource_aq61y"), SubResource("Resource_jvh8b"), SubResource("Resource_4ohan")])
+industry_reports = Array[ExtResource("4_5syx3")]([SubResource("Resource_3sdgj"), SubResource("Resource_vm4xm"), SubResource("Resource_bpidn"), SubResource("Resource_aq61y"), SubResource("Resource_jvh8b"), SubResource("Resource_o2qpq"), SubResource("Resource_4ohan"), SubResource("Resource_y53mo")])

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CompanyProfile" format=3 uid="uid://cjk430u6sdxcq"]
+
+[ext_resource type="Script" uid="uid://cbsfpjy1cgfgn" path="res://src/data/company_profile.gd" id="1_p5l8x"]
+
+[resource]
+script = ExtResource("1_p5l8x")
+id = &"ginkgo_pals"
+display_name = "GinkgoPals"
+ticker = &"GINK"
+industry = &"consumer"
+description = "Remeber your favorite cartoon character from your childhood? We got them. Your favorite action hero from a movie made before you were born? We got them. Your favorite adult entertainment star that won't reply back no matter how much money you send them? Yeah, we got them too. Anything you can imagine, we can provide in a dimunitive plastic form. Don't mind the smell."
+industry_beta_percent = 80

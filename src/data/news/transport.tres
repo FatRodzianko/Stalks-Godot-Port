@@ -1,47 +1,87 @@
-[gd_resource type="Resource" script_class="NewsBook" format=3]
+[gd_resource type="Resource" script_class="NewsBook" format=3 uid="uid://dmol0g56f7x8m"]
 
-[ext_resource type="Script" path="res://src/data/npc_chatter.gd" id="1_fxtt6"]
-[ext_resource type="Script" path="res://src/data/earnings_commentary.gd" id="2_2pk8y"]
-[ext_resource type="Script" path="res://src/data/market_headline.gd" id="3_k8r6o"]
-[ext_resource type="Script" path="res://src/data/industry_report.gd" id="4_wd3ii"]
-[ext_resource type="Script" path="res://src/data/news_book.gd" id="5_8hyv7"]
-[ext_resource type="Script" path="res://src/data/whisper.gd" id="6_vqce2"]
+[ext_resource type="Script" uid="uid://hdwh1gbiv1nl" path="res://src/data/npc_chatter.gd" id="1_fxtt6"]
+[ext_resource type="Script" uid="uid://3xrws76tycdl" path="res://src/data/earnings_commentary.gd" id="2_2pk8y"]
+[ext_resource type="Script" uid="uid://b5x0tvlm2eash" path="res://src/data/market_headline.gd" id="3_k8r6o"]
+[ext_resource type="Script" uid="uid://bn57xwtijt6bb" path="res://src/data/industry_report.gd" id="4_wd3ii"]
+[ext_resource type="Script" uid="uid://dbw7v33qp1gq1" path="res://src/data/news_book.gd" id="5_8hyv7"]
+[ext_resource type="Script" uid="uid://bo8a8il38w0ac" path="res://src/data/whisper.gd" id="6_vqce2"]
 
 [sub_resource type="Resource" id="Resource_nhyto"]
 script = ExtResource("4_wd3ii")
 id = &"ind_transport_crash_1"
 industry_id = &"transport"
 move = 1
-text = "INDUSTRY REPORT: transport, crash"
+text = "Runaway Train, starring Jon Voight and Eric Roberts, has been in the news a lot lately..."
+
+[sub_resource type="Resource" id="Resource_5syx3"]
+script = ExtResource("4_wd3ii")
+id = &"ind_transport_crash_2"
+industry_id = &"transport"
+move = 1
+text = "Some experts say it will take decades for the industry to recover from the Wile E. Coyote gang's recent vandalism"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [sub_resource type="Resource" id="Resource_kcmhr"]
 script = ExtResource("4_wd3ii")
 id = &"ind_transport_down_1"
 industry_id = &"transport"
 move = 2
-text = "INDUSTRY REPORT: transport, down"
+text = "Some in the industry say it is an issue with messaging. Don't say, \"The planes are not falling out of the sky.\" Instead, say, \"The ground lept toward them.\""
+
+[sub_resource type="Resource" id="Resource_bgesv"]
+script = ExtResource("4_wd3ii")
+id = &"ind_transport_down_2"
+industry_id = &"transport"
+move = 2
+text = "Pilot takes matters into his own hands after being called \"Shirley\" one too many times"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
+
+[sub_resource type="Resource" id="Resource_7gvo8"]
+script = ExtResource("4_wd3ii")
+id = &"ind_transport_down_3"
+industry_id = &"transport"
+move = 2
+text = "\"Last train to Clarksville!\" shouts a conductor to an empty train platform"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
+
+[sub_resource type="Resource" id="Resource_twtjr"]
+script = ExtResource("4_wd3ii")
+id = &"ind_transport_down_4"
+industry_id = &"transport"
+move = 2
+text = "300 souls join the Mile High Club tonight as Flight 616 crashes into Denver"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [sub_resource type="Resource" id="Resource_83ukl"]
 script = ExtResource("4_wd3ii")
 id = &"ind_transport_flat_1"
 industry_id = &"transport"
 move = 3
-text = "INDUSTRY REPORT: transport, flat"
+text = "One captain said, \"Not a great turnout at Hedonism 2: In The Sky this year, but I'll keep coming back.\""
+
+[sub_resource type="Resource" id="Resource_wrsyq"]
+script = ExtResource("4_wd3ii")
+id = &"ind_transport_flat_2"
+industry_id = &"transport"
+move = 3
+text = "Maybe the real Ghost Train were the friends who died along the way"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [sub_resource type="Resource" id="Resource_pgq4s"]
 script = ExtResource("4_wd3ii")
 id = &"ind_transport_up_1"
 industry_id = &"transport"
 move = 4
-text = "INDUSTRY REPORT: transport, up"
+text = "The new trains are clean, energy efficient, and run on time, but at what cost?"
 
 [sub_resource type="Resource" id="Resource_606gk"]
 script = ExtResource("4_wd3ii")
 id = &"ind_transport_surge_1"
 industry_id = &"transport"
 move = 5
-text = "INDUSTRY REPORT: transport, surge"
+text = "Their surprise, scientist discover it is possible to make Thomas the Tank Engine come to life"
 
 [resource]
 script = ExtResource("5_8hyv7")
-industry_reports = Array[ExtResource("4_wd3ii")]([SubResource("Resource_nhyto"), SubResource("Resource_kcmhr"), SubResource("Resource_83ukl"), SubResource("Resource_pgq4s"), SubResource("Resource_606gk")])
+industry_reports = Array[ExtResource("4_wd3ii")]([SubResource("Resource_nhyto"), SubResource("Resource_5syx3"), SubResource("Resource_kcmhr"), SubResource("Resource_bgesv"), SubResource("Resource_7gvo8"), SubResource("Resource_twtjr"), SubResource("Resource_83ukl"), SubResource("Resource_wrsyq"), SubResource("Resource_pgq4s"), SubResource("Resource_606gk")])

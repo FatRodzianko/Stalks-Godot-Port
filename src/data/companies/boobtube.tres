@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CompanyProfile" format=3 uid="uid://i1vv5735ekwf"]
+
+[ext_resource type="Script" uid="uid://cbsfpjy1cgfgn" path="res://src/data/company_profile.gd" id="1_b73gg"]
+
+[resource]
+script = ExtResource("1_b73gg")
+id = &"boobtube"
+display_name = "BoobTube"
+ticker = &"BBBB"
+industry = &"tech"
+description = "There has never been a better time to be a content creator than now. Imagine, you spend all day in front of your computer, monitored by strangers over camera, all while you defecate into your adult baby diaper for fear your viewership will drop if you leave your chair for one waking moment. Who needs work? You've got life to live! And other people need to see it!"
+industry_beta_percent = 130

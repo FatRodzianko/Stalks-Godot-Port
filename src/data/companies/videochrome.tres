@@ -1,17 +1,15 @@
-[gd_resource type="Resource" script_class="CompanyProfile" format=3]
+[gd_resource type="Resource" script_class="CompanyProfile" format=3 uid="uid://cikli3smu2rb1"]
 
-[ext_resource type="Script" path="res://src/data/company_profile.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://cbsfpjy1cgfgn" path="res://src/data/company_profile.gd" id="1_script"]
 
 [resource]
 script = ExtResource("1_script")
 id = &"videochrome"
 display_name = "Video Chrome"
-ticker = &"TECB"
+ticker = &"VDEO"
 industry = &"tech"
-description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris."
+description = "A Hi-Tech company whose tech is so high you can't even see the top of our tech stack. One day our Hi Tech will stack so high it will reach God, who will welcome us into the kingdom of heaven with open arms. It is alarmingly hot at the top of the Hi-Tech stack, and it smells like rotten eggs."
 starting_earnings_per_share = 8.8
-starting_margin_percent = 12.0
-shares_outstanding = 1000
 quality = 60
 industry_beta_percent = 130
 payout_policy_percent = 10

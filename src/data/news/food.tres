@@ -1,47 +1,72 @@
-[gd_resource type="Resource" script_class="NewsBook" format=3]
+[gd_resource type="Resource" script_class="NewsBook" format=3 uid="uid://y7m4xebvumpp"]
 
-[ext_resource type="Script" path="res://src/data/npc_chatter.gd" id="1_lid0y"]
-[ext_resource type="Script" path="res://src/data/earnings_commentary.gd" id="2_tt38t"]
-[ext_resource type="Script" path="res://src/data/market_headline.gd" id="3_bav1i"]
-[ext_resource type="Script" path="res://src/data/industry_report.gd" id="4_vuphu"]
-[ext_resource type="Script" path="res://src/data/news_book.gd" id="5_oh1kf"]
-[ext_resource type="Script" path="res://src/data/whisper.gd" id="6_mvauw"]
+[ext_resource type="Script" uid="uid://hdwh1gbiv1nl" path="res://src/data/npc_chatter.gd" id="1_lid0y"]
+[ext_resource type="Script" uid="uid://3xrws76tycdl" path="res://src/data/earnings_commentary.gd" id="2_tt38t"]
+[ext_resource type="Script" uid="uid://b5x0tvlm2eash" path="res://src/data/market_headline.gd" id="3_bav1i"]
+[ext_resource type="Script" uid="uid://bn57xwtijt6bb" path="res://src/data/industry_report.gd" id="4_vuphu"]
+[ext_resource type="Script" uid="uid://dbw7v33qp1gq1" path="res://src/data/news_book.gd" id="5_oh1kf"]
+[ext_resource type="Script" uid="uid://bo8a8il38w0ac" path="res://src/data/whisper.gd" id="6_mvauw"]
 
 [sub_resource type="Resource" id="Resource_2dcyq"]
 script = ExtResource("4_vuphu")
 id = &"ind_food_crash_1"
 industry_id = &"food"
 move = 1
-text = "INDUSTRY REPORT: food, crash"
+text = "The lab grown meat has become sentient and is holding us hostage"
 
 [sub_resource type="Resource" id="Resource_lshmo"]
 script = ExtResource("4_vuphu")
 id = &"ind_food_down_1"
 industry_id = &"food"
 move = 2
-text = "INDUSTRY REPORT: food, down"
+text = "Fourth meal disappears after cannabis recriminalized"
+
+[sub_resource type="Resource" id="Resource_twtjr"]
+script = ExtResource("4_vuphu")
+id = &"ind_food_down_2"
+industry_id = &"food"
+move = 2
+text = "In a PR stunt gone awry, the reanimated New Wendy screamed, \"I need to go back!\" before dunking her head in a deep frier"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [sub_resource type="Resource" id="Resource_hcc02"]
 script = ExtResource("4_vuphu")
 id = &"ind_food_flat_1"
 industry_id = &"food"
 move = 3
-text = "INDUSTRY REPORT: food, flat"
+text = "Health initiatives to make the population healthier offset by price increases"
 
 [sub_resource type="Resource" id="Resource_vhnkv"]
 script = ExtResource("4_vuphu")
 id = &"ind_food_up_1"
 industry_id = &"food"
 move = 4
-text = "INDUSTRY REPORT: food, up"
+text = "Franchises can't keep up with demand for the MacBugBurger"
+
+[sub_resource type="Resource" id="Resource_oxki7"]
+script = ExtResource("4_vuphu")
+id = &"ind_food_up_2"
+industry_id = &"food"
+mood = 1
+move = 4
+text = "Americans finally convinced that cabbage is \"cool.\" Other vegetables on the table"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [sub_resource type="Resource" id="Resource_4il5a"]
 script = ExtResource("4_vuphu")
 id = &"ind_food_surge_1"
 industry_id = &"food"
 move = 5
-text = "INDUSTRY REPORT: food, surge"
+text = "New form of microplastics discovered thats even sweeter than Aspartame"
+
+[sub_resource type="Resource" id="Resource_7gvo8"]
+script = ExtResource("4_vuphu")
+id = &"ind_food_surge_2"
+industry_id = &"food"
+move = 5
+text = "\"We love our Code Red, don't we folks?\" President Trundle said at a rally annoucing the deregulation of all food dye additives. \"Well, I don't, but you do.\""
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [resource]
 script = ExtResource("5_oh1kf")
-industry_reports = Array[ExtResource("4_vuphu")]([SubResource("Resource_2dcyq"), SubResource("Resource_lshmo"), SubResource("Resource_hcc02"), SubResource("Resource_vhnkv"), SubResource("Resource_4il5a")])
+industry_reports = Array[ExtResource("4_vuphu")]([SubResource("Resource_2dcyq"), SubResource("Resource_lshmo"), SubResource("Resource_twtjr"), SubResource("Resource_hcc02"), SubResource("Resource_vhnkv"), SubResource("Resource_oxki7"), SubResource("Resource_4il5a"), SubResource("Resource_7gvo8")])

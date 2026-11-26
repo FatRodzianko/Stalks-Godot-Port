@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CompanyProfile" format=3 uid="uid://bqt0a21kp1pgg"]
+
+[ext_resource type="Script" uid="uid://cbsfpjy1cgfgn" path="res://src/data/company_profile.gd" id="1_s3uso"]
+
+[resource]
+script = ExtResource("1_s3uso")
+id = &"easy-breezy-air"
+display_name = "Easy Breezy Airways"
+ticker = &"TRNB"
+industry = &"transport"
+description = "Our planes fly, in the sky. Can you believe that? We aren't sure how it works, but you can trust us to get you where your going. Relax, buckle into your standing seat, and let us transport you to destinations unknown. You might not like where you end up, if you're lucky enough to get off the tarmac, but isn't that just the beginning of a great adventure?"
+starting_earnings_per_share = 6.0

@@ -1,47 +1,79 @@
-[gd_resource type="Resource" script_class="NewsBook" format=3]
+[gd_resource type="Resource" script_class="NewsBook" format=3 uid="uid://2cxlekhcrg71"]
 
-[ext_resource type="Script" path="res://src/data/npc_chatter.gd" id="1_bgesv"]
-[ext_resource type="Script" path="res://src/data/earnings_commentary.gd" id="2_jqyp0"]
-[ext_resource type="Script" path="res://src/data/market_headline.gd" id="3_1yehi"]
-[ext_resource type="Script" path="res://src/data/industry_report.gd" id="4_hcxdw"]
-[ext_resource type="Script" path="res://src/data/news_book.gd" id="5_llmmf"]
-[ext_resource type="Script" path="res://src/data/whisper.gd" id="6_k3k66"]
+[ext_resource type="Script" uid="uid://hdwh1gbiv1nl" path="res://src/data/npc_chatter.gd" id="1_bgesv"]
+[ext_resource type="Script" uid="uid://3xrws76tycdl" path="res://src/data/earnings_commentary.gd" id="2_jqyp0"]
+[ext_resource type="Script" uid="uid://b5x0tvlm2eash" path="res://src/data/market_headline.gd" id="3_1yehi"]
+[ext_resource type="Script" uid="uid://bn57xwtijt6bb" path="res://src/data/industry_report.gd" id="4_hcxdw"]
+[ext_resource type="Script" uid="uid://dbw7v33qp1gq1" path="res://src/data/news_book.gd" id="5_llmmf"]
+[ext_resource type="Script" uid="uid://bo8a8il38w0ac" path="res://src/data/whisper.gd" id="6_k3k66"]
 
 [sub_resource type="Resource" id="Resource_4yia1"]
 script = ExtResource("4_hcxdw")
 id = &"ind_tech_crash_1"
 industry_id = &"tech"
 move = 1
-text = "INDUSTRY REPORT: tech, crash"
+text = "The singularity has not chosen us to be the one surviving lifeform in the galaxy"
+
+[sub_resource type="Resource" id="Resource_j5p02"]
+script = ExtResource("4_hcxdw")
+id = &"ind_tech_crash_2"
+industry_id = &"tech"
+move = 1
+text = "For one beautiful moment we all existed as one on The Net. Then, He arrived..."
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [sub_resource type="Resource" id="Resource_l11eu"]
 script = ExtResource("4_hcxdw")
 id = &"ind_tech_down_1"
 industry_id = &"tech"
 move = 2
-text = "INDUSTRY REPORT: tech, down"
+text = "Sea datacenters beseiged by killer whales"
+
+[sub_resource type="Resource" id="Resource_fwv65"]
+script = ExtResource("4_hcxdw")
+id = &"ind_tech_down_2"
+industry_id = &"tech"
+move = 2
+text = "Mayor of New York City advises citizens to avoid the subway after cybernetically enhanced rats escape containment"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [sub_resource type="Resource" id="Resource_itm56"]
 script = ExtResource("4_hcxdw")
 id = &"ind_tech_flat_1"
 industry_id = &"tech"
 move = 3
-text = "INDUSTRY REPORT: tech, flat"
+text = "New phone, same as the old phone, flies off the shelves in numbers not seen since last year"
 
 [sub_resource type="Resource" id="Resource_8m4sl"]
 script = ExtResource("4_hcxdw")
 id = &"ind_tech_up_1"
 industry_id = &"tech"
 move = 4
-text = "INDUSTRY REPORT: tech, up"
+text = "As a child, he listened to Computer Love. Now, he makes love to a computer."
+
+[sub_resource type="Resource" id="Resource_og2sm"]
+script = ExtResource("4_hcxdw")
+id = &"ind_tech_up_2"
+industry_id = &"tech"
+move = 4
+text = "President Trundle signs the New Voting Rights Act requiring voters to provide proof of a Microsoft Live account before receiving a ballot"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [sub_resource type="Resource" id="Resource_a7m0i"]
 script = ExtResource("4_hcxdw")
 id = &"ind_tech_surge_1"
 industry_id = &"tech"
 move = 5
-text = "INDUSTRY REPORT: tech, surge"
+text = "The singularity has chosen us to be the one surviving lifeform in the galaxy"
+
+[sub_resource type="Resource" id="Resource_x32vk"]
+script = ExtResource("4_hcxdw")
+id = &"ind_tech_surge_2"
+industry_id = &"tech"
+move = 5
+text = "The collective knowledge of all humankind has coalesced to create the most realistic jiggle physics you've ever seen"
+metadata/_custom_type_script = "uid://bn57xwtijt6bb"
 
 [resource]
 script = ExtResource("5_llmmf")
-industry_reports = Array[ExtResource("4_hcxdw")]([SubResource("Resource_4yia1"), SubResource("Resource_l11eu"), SubResource("Resource_itm56"), SubResource("Resource_8m4sl"), SubResource("Resource_a7m0i")])
+industry_reports = Array[ExtResource("4_hcxdw")]([SubResource("Resource_4yia1"), SubResource("Resource_j5p02"), SubResource("Resource_l11eu"), SubResource("Resource_fwv65"), SubResource("Resource_itm56"), SubResource("Resource_8m4sl"), SubResource("Resource_og2sm"), SubResource("Resource_a7m0i"), SubResource("Resource_x32vk")])

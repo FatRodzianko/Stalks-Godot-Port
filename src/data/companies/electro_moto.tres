@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="CompanyProfile" format=3 uid="uid://c07hcgrhvwfjn"]
+
+[ext_resource type="Script" uid="uid://cbsfpjy1cgfgn" path="res://src/data/company_profile.gd" id="1_5omym"]
+
+[resource]
+script = ExtResource("1_5omym")
+id = &"electro_moto"
+display_name = "ElectroMotorTronics"
+ticker = &"EMTR"
+industry = &"transport"
+description = "Yes, we make electronic cars, but that's not really our \"thing,\" you know? I can't tell you what our thing is, but it better start making money to make up for these cars. The doors don't open, the steering wheel keeps flying off, and every time I drive in the rain my bottom tingles. Some find it pleasurable. Will you?"

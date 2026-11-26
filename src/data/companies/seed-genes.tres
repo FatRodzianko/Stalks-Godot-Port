@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CompanyProfile" format=3 uid="uid://dk54go7e2qhlo"]
+
+[ext_resource type="Script" uid="uid://cbsfpjy1cgfgn" path="res://src/data/company_profile.gd" id="1_2a7dh"]
+
+[resource]
+script = ExtResource("1_2a7dh")
+id = &"seed_genes"
+display_name = "Seed Genes"
+ticker = &"SGNX"
+industry = &"food"
+description = "Every seed has genes, and we've patented them all. There isn't a plant on this Earth that we don't own. Nothing grows without our say so. Whether its in the fields or in your home, we made it, and we will collect our due. Water+ to be released later this year."
+industry_beta_percent = 60
