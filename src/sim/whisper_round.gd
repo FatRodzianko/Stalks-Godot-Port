@@ -12,7 +12,9 @@ extends RefCounted
 ## it already holds, and caches it on `EarningsMarket.whisper_rounds`.
 
 
-## One whisper as heard.
+## One whisper as heard. A squeeze or crash whisper foretells an event, not
+## an outcome band, so `said` and `truth` mean nothing for it; whether it came
+## true is `NewsSelector.squeeze_whisper_came_true` (D214).
 class Line:
 	extends RefCounted
 	var id: StringName = &""
@@ -27,6 +29,10 @@ class Line:
 	## earnings, which no player may see.
 	var truth: NewsBands.Surprise = NewsBands.Surprise.AS_EXPECTED
 	var text: String = ""
+
+	## True for a squeeze or crash whisper (D214).
+	func is_about_squeeze() -> bool:
+		return about == NewsBands.Subject.SQUEEZE or about == NewsBands.Subject.CRASH
 
 
 ## The year whose end it was heard at; 1 or more.

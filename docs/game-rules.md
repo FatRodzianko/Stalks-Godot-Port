@@ -288,26 +288,33 @@ Each event carries: **target stalk name**, **flavour text**, **price change**.
   > no-op. Keep the skip decision inside the event-selection strategy, not baked into
   > the year pipeline, so the advanced mode can choose differently.
   >
-  > **StalkleHeads, as built (S3):** no shipped event has an industry or market effect
-  > yet, so StalkleHeads keeps this rule unchanged. It also draws from last year's
-  > mood's bag, and leaves out events aimed at My Mutuals and Me Inc. (decisions.md
-  > D154).
+  > **StalkleHeads has no special events (decisions.md D209).** Its year has
+  > **market news** in their place (§5.1): a headline, optional words, and an
+  > optional effect on one company or on every living member of one industry,
+  > drawn from **last year's** mood and index move. The base game's events are
+  > shown in StalkleHeads as **company news** with no effect (D211).
   >
-  > **StalkleHeads, as built (S4): the short squeeze.** One event is not in either
-  > bag. While some company's short interest (the shares the NPC desk has sold
-  > short) is at least 10% of its shares outstanding, a roll of 1-100 made every
-  > year comes up at most 25 one year in four, and then the year's event is a
-  > short squeeze on the most shorted such company, +25 to its price, **instead
-  > of** a draw from the bag; the bag is left untouched that year. With nothing
-  > flagged it cannot happen. Players cannot sell short. See decisions.md D165
-  > and stalkleheads-design.md §5.3. The base game has no squeeze.
+  > **StalkleHeads: the short squeeze (decisions.md D213).** While some company's
+  > short interest (the shares the NPC desk has sold short) is at least 10% of its
+  > shares outstanding - FLAGGED - a roll of 1-100 made every year fires a squeeze on
+  > the most shorted such company when it comes up 25 or less. With nothing flagged
+  > it cannot happen. Players cannot sell short. The squeeze:
   >
-  > **When the host changes (S6).** The bag rule above holds across a host
-  > migration in StalkleHeads: the bags travel with the match, so the player who
-  > takes over deals from what was left (decisions.md D177). **In the base game it
-  > does not:** a new host reshuffles every bag, so an event can come round again
-  > before its cycle is over. A known gap, left alone because fixing it changes the
-  > base game's network data.
+  > - lifts the price by **5% for every point of short interest, at most 150%**;
+  > - and on top of that adds back anything the rest of the year took off, so the
+  >   price **does not fall in the squeeze year**;
+  > - stays in the price while the short sellers buy back, in equal parts over a
+  >   **hold of 1 to 3 years** (a roll made every year), and stop shorting it;
+  > - **comes off all at once the year after short interest reaches 0**.
+  >
+  > The short interest list shows the percent with FLAGGED or SQUEEZED. The market
+  > news still draws in a squeeze year. The base game has no squeeze.
+  >
+  > **When the host changes.** In StalkleHeads every year's market news is in the
+  > history, so the player who takes over draws from the same bag. **In the base
+  > game it does not hold:** a new host reshuffles every bag, so an event can come
+  > round again before its cycle is over. A known gap, left alone because fixing it
+  > changes the base game's network data.
   >
   > **A company that fails has no valuation.** In StalkleHeads a bankrupt company's
   > price is 0 and its multiple, fair value, sentiment and the other valuation
@@ -316,16 +323,20 @@ Each event carries: **target stalk name**, **flavour text**, **price change**.
 
 ### 5.1 StalkleHeads news — **not in the original**
 
-StalkleHeads (phase S8) adds five kinds of news line beside the special event. None
-of them moves a price; they are things to read. The rules, as built
-(stalkleheads-design.md §8, decisions.md D199-D206):
+StalkleHeads (phase S8) adds news. Only **market news** can move a price; every
+other kind is there to read. The rules, as built (stalkleheads-design.md §8,
+decisions.md D199-D214):
 
 | Line | How many a year | Chosen by |
 |---|---|---|
-| Market headline | at most one | the year's mood, and the index's move band |
-| Industry report | at most one per industry | that industry's move band (and mood, if a line names one) |
+| Market news | at most one | **last year's** mood and index move band; drawn by the host, and may move one company or one industry (D209) |
+| Industry headline (FROM THE HEADLINES) | at most one per industry | that industry's move band (and mood, if a line names one) |
+| Industry report, the year | at most one per industry | its move band, how its roll compared with what was expected, and optionally last year's move band (D212) |
+| Industry report, the outlook | at most one per industry | the band of its expected move next year with no surprise (D212) |
+| EARNINGS | one per company alive at the year's start | worked out, not written: its regime, then its surprise band (D211) |
 | Earnings commentary | at most one per company alive at the year's start | its regime this year, and its surprise band |
-| Whisper | two a round, heard at each year's end from year 1, about the next year | next year's real outcome for a company or industry, bent by a source; see below |
+| Company news (IN THE NEWS) | at most one per company alive at the year's start | its own price move band that year (D211) |
+| Whisper | two a round, heard at each year's end from year 1, about the next year | next year's real outcome for a company or industry, bent by a source; or a squeeze or crash; see below |
 | NPC chatter | at most one per desk trader | what the trader did: bought, sold, shorted, covered or held |
 
 - **Move bands** (percent): CRASH at -15 or below; DOWN below -3; FLAT -3 to +3;
@@ -358,17 +369,28 @@ of them moves a price; they are things to read. The rules, as built
   picks evenly among the bands that far away. The line shown is one written for the
   outcome told. A whisper predicts the company's or industry's own year, not the
   price: the industry's year, events and trading still move it.
+- **Squeeze and crash whispers** (D214). When a company is FLAGGED at a year's end,
+  one of the two whispers is about a squeeze on the most shorted one; when one is
+  SQUEEZED, about the squeeze ending instead. Always from a **Questionable** source.
+  Its outcome is whether it happened next year.
 - **The last year has no whispers**, having no next year. A round's outcomes are
   shown in the Market tab's whisper history once the year it was about is played.
 - **Without replacement.** A line is not repeated while another line that could fill
   the same slot has been shown fewer times.
+- **Follow-ups** (D210). A line may require other lines, of any kind, to have been
+  shown in an earlier year. Until then it is never shown; the first year it may be,
+  it is chosen ahead of every other line that fits.
 - **Nothing matches, nothing shows.** No stand-in line, and the section's heading
   hides with it.
-- **The same for everybody.** Every machine chooses the same lines; they never take a
-  draw from the match's random numbers, so news cannot change a price.
+- **The same for everybody.** Every machine chooses the same lines. The market news
+  is drawn by the host from the match's random numbers, like the special event it
+  replaces, and sent by id; every other line is chosen on each machine from what the
+  year drew, never taking a draw from the match's random numbers.
 
 All the shipped text is placeholder - the category in capitals, then the conditions
-(`INDUSTRY REPORT: energy, down`) - until the owner writes it.
+(`INDUSTRY REPORT: {industry}, crash, much worse than expected`) - until the owner
+writes it. Exceptions: the owner's twelve market news headlines, the owner's
+industry headlines, and the company news ported from the base game's events.
 
 ---
 

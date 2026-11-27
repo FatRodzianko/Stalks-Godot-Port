@@ -83,6 +83,42 @@ static func make_event(
 	return e
 
 
+## A StalkleHeads market news line for tests (D209): any mood and any move
+## unless given, aimed at a company or an industry when one is named.
+static func make_market_news(
+	news_id: StringName,
+	target_company: StringName = &"",
+	amount: int = 0,
+	mood: NewsBands.Mood = NewsBands.Mood.ANY,
+	move: NewsBands.Move = NewsBands.Move.ANY,
+	target_industry: StringName = &"",
+) -> MarketNews:
+	var line: MarketNews = MarketNews.new()
+	line.id = news_id
+	line.headline = "Headline %s" % news_id
+	line.target_company = target_company
+	line.target_industry = target_industry
+	line.amount = amount
+	line.mood = mood
+	line.move = move
+	return line
+
+
+## `shipped` with its market news replaced by `lines`. Every other kind of
+## news is kept, so only the market news a test names can be drawn.
+static func news_with_market(shipped: NewsContent, lines: Array[MarketNews]) -> NewsContent:
+	var content: NewsContent = NewsContent.new()
+	content.market_news = lines
+	content.industry_reports = shipped.industry_reports
+	content.industry_years = shipped.industry_years
+	content.industry_outlooks = shipped.industry_outlooks
+	content.earnings_commentary = shipped.earnings_commentary
+	content.company_news = shipped.company_news
+	content.whispers = shipped.whispers
+	content.chatter = shipped.chatter
+	return content
+
+
 static func make_settings(max_years: int = 10) -> GameSettings:
 	var s: GameSettings = GameSettings.new()
 	s.max_years = max_years

@@ -311,9 +311,6 @@ func _validate_fundamentals() -> void:
 	_validate_transition_matrix()
 	_validate_news(members.keys(), seen_ids.keys())
 	if short_squeeze != null:
-		if short_squeeze.price_change <= 0:
-			errors.append("The short squeeze must raise the price; its price_change is %d."
-				% short_squeeze.price_change)
 		if short_squeeze.target_stalk_id != &"":
 			errors.append("The short squeeze names a target (%s); it must leave it empty."
 				% short_squeeze.target_stalk_id)
@@ -367,50 +364,83 @@ func _validate_transition_matrix() -> void:
 				% [EarningsRegime.name_of(regime), row.size(), total, EarningsRegime.ALL.size()])
 
 
-## The news (design §8.1, §8.2). Every id unique across all six categories;
-## every company, industry, trader and subject it names exists; every band is
-## a known value, and a whisper's outcome is not ANY; every line has text,
-## and uses only the `{...}` tokens its category fills in - a misspelt token
-## would otherwise reach the screen as written.
+## The news (design §8.1, §8.2). Every id unique across every category;
+## every company, industry, trader and subject it names exists; every id a line
+## requires is a news line too (D210); every band is a known value, and a
+## company or industry whisper's outcome is not ANY; every line has text, and
+## uses only the `{...}` tokens its category fills in - a misspelt token would
+## otherwise reach the screen as written. Market news must name at most one
+## target, and a target for any amount it has (D209).
 func _validate_news(industry_ids: Array, company_ids: Array) -> void:
 	var trader_ids: Array[StringName] = []
 	for trader: NpcTraderDefinition in traders:
 		trader_ids.append(trader.id)
 	var seen: Dictionary[StringName, bool] = {}
+	var company_tokens: Array[String] = [NewsSelector.COMPANY_TOKEN, NewsSelector.INDUSTRY_TOKEN]
+	var industry_tokens: Array[String] = [NewsSelector.INDUSTRY_TOKEN]
 
-	for line: MarketHeadline in news.headlines:
-		var label: String = _news_label(line, "headline", seen)
-		_check_text(line.text, label, [])
+	for line: MarketNews in news.market_news:
+		var label: String = _news_label(line, "market news", seen)
+		_check_text(line.headline, label, [])
+		if not line.text.strip_edges().is_empty():
+			_check_text(line.text, label, company_tokens)
 		_check_band(line.mood, NewsBands.Mood.values(), label, "mood")
 		_check_band(line.move, NewsBands.Move.values(), label, "move")
+		if not line.target_company.is_empty() and not line.target_industry.is_empty():
+			errors.append("News %s names both a company and an industry; it may hit one." % label)
+		if not line.target_company.is_empty() and not company_ids.has(line.target_company):
+			errors.append("News %s names company %s, which does not exist." % [label, line.target_company])
+		if not line.target_industry.is_empty() and not industry_ids.has(line.target_industry):
+			errors.append("News %s names industry %s, which does not exist." % [label, line.target_industry])
+		if line.amount != 0 and not line.has_target():
+			errors.append("News %s has an amount but nothing for it to hit." % label)
 
 	for line: IndustryReport in news.industry_reports:
 		var label: String = _news_label(line, "industry report", seen)
-		_check_text(line.text, label, [NewsSelector.INDUSTRY_TOKEN])
+		_check_text(line.text, label, industry_tokens)
 		_check_band(line.mood, NewsBands.Mood.values(), label, "mood")
 		_check_band(line.move, NewsBands.Move.values(), label, "move")
-		if not line.industry_id.is_empty() and not industry_ids.has(line.industry_id):
-			errors.append("News %s names industry %s, which does not exist." % [label, line.industry_id])
+		_check_industry(line.industry_id, industry_ids, label)
+
+	for line: IndustryYearLine in news.industry_years:
+		var label: String = _news_label(line, "industry year", seen)
+		_check_text(line.text, label, industry_tokens)
+		_check_band(line.move, NewsBands.Move.values(), label, "move")
+		_check_band(line.surprise, NewsBands.Surprise.values(), label, "surprise")
+		_check_band(line.last_move, NewsBands.Move.values(), label, "last move")
+		_check_industry(line.industry_id, industry_ids, label)
+
+	for line: IndustryOutlookLine in news.industry_outlooks:
+		var label: String = _news_label(line, "industry outlook", seen)
+		_check_text(line.text, label, industry_tokens)
+		_check_band(line.outlook, NewsBands.Move.values(), label, "outlook")
+		_check_industry(line.industry_id, industry_ids, label)
 
 	for line: EarningsCommentary in news.earnings_commentary:
 		var label: String = _news_label(line, "earnings commentary", seen)
-		_check_text(line.text, label, [NewsSelector.COMPANY_TOKEN, NewsSelector.INDUSTRY_TOKEN])
+		_check_text(line.text, label, company_tokens)
 		_check_band(line.regime, NewsBands.Regime.values(), label, "regime")
 		_check_band(line.surprise, NewsBands.Surprise.values(), label, "surprise")
-		if not line.company_id.is_empty() and not company_ids.has(line.company_id):
-			errors.append("News %s names company %s, which does not exist." % [label, line.company_id])
+		_check_company(line.company_id, company_ids, label)
+
+	for line: CompanyNews in news.company_news:
+		var label: String = _news_label(line, "company news", seen)
+		_check_text(line.text, label, company_tokens)
+		_check_band(line.move, NewsBands.Move.values(), label, "move")
+		_check_company(line.company_id, company_ids, label)
 
 	for line: Whisper in news.whispers:
 		var label: String = _news_label(line, "whisper", seen)
 		_check_band(line.about, NewsBands.Subject.values(), label, "subject kind")
 		_check_band(line.outcome, NewsBands.Surprise.values(), label, "outcome")
-		if line.outcome == NewsBands.Surprise.ANY:
-			errors.append("News %s has no outcome; a whisper must foretell one." % label)
 		var about_industry: bool = line.about == NewsBands.Subject.INDUSTRY
+		var about_earnings: bool = about_industry or line.about == NewsBands.Subject.COMPANY
+		if about_earnings and line.outcome == NewsBands.Surprise.ANY:
+			errors.append("News %s has no outcome; a whisper must foretell one." % label)
 		if about_industry:
-			_check_text(line.text, label, [NewsSelector.INDUSTRY_TOKEN])
+			_check_text(line.text, label, industry_tokens)
 		else:
-			_check_text(line.text, label, [NewsSelector.COMPANY_TOKEN, NewsSelector.INDUSTRY_TOKEN])
+			_check_text(line.text, label, company_tokens)
 		if line.subject.is_empty():
 			continue
 		if about_industry and not industry_ids.has(line.subject):
@@ -426,6 +456,24 @@ func _validate_news(industry_ids: Array, company_ids: Array) -> void:
 			_check_band(line.strategy, NpcStrategy.ALL, label, "strategy")
 		elif not trader_ids.has(line.npc_id):
 			errors.append("News %s names trader %s, which does not exist." % [label, line.npc_id])
+
+	for line: Resource in news.all_lines():
+		var required: Array[StringName] = line.get("requires")
+		for id: StringName in required:
+			if not seen.has(id):
+				errors.append("News %s requires %s, which is not a news line." % [line.get("id"), id])
+			elif id == line.get("id"):
+				errors.append("News %s requires itself, so it could never be shown." % id)
+
+
+func _check_industry(industry_id: StringName, industry_ids: Array, label: String) -> void:
+	if not industry_id.is_empty() and not industry_ids.has(industry_id):
+		errors.append("News %s names industry %s, which does not exist." % [label, industry_id])
+
+
+func _check_company(company_id: StringName, company_ids: Array, label: String) -> void:
+	if not company_id.is_empty() and not company_ids.has(company_id):
+		errors.append("News %s names company %s, which does not exist." % [label, company_id])
 
 
 ## A news line's id for messages, recording it and reporting a missing or

@@ -222,25 +222,25 @@ func test_a_promoted_host_makes_the_years_the_old_host_would_have() -> void:
 				return
 
 
-## Why the event bags travel (D177). Without them a promoted host deals its
-## events from freshly shuffled bags, and sooner or later the year it makes is
-## not the year the old host would have made. This is that fault, put back.
-func test_without_the_bags_a_promoted_host_deals_a_different_match() -> void:
+## The market news travels by id beside the year's inputs (D209): a client
+## holds the same line as the host for every year, so the bag a promoted host
+## draws from next is the one the old host would have drawn from.
+func test_every_year_s_market_news_reaches_the_client_by_id() -> void:
 	var played: WireMatch = WireMatch.start(4242)
 	played.play(10)
 	var replica: GameState = _welcomed(played.state, _client_library())
-	replica.market.event_bags = {}
-
-	var promoted: MatchAuthority = _take_over(replica, played.authority.rng_state())
-
-	var parted: bool = false
-	for _year: int in 30:
-		var expected: EarningsYearResult = WireMatch.play_year(played.authority)
-		var actual: EarningsYearResult = WireMatch.play_year(promoted)
-		if WireMatch.result_lines(expected) != WireMatch.result_lines(actual):
-			parted = true
-			break
-	assert_true(parted, "forgetting the bags should change the match")
+	var drawn: int = 0
+	for index: int in played.state.history.size():
+		var sent: MarketNews = (played.state.history[index] as EarningsYearResult).market_news
+		var held: MarketNews = (replica.history[index] as EarningsYearResult).market_news
+		if sent == null:
+			assert_null(held, "year %d" % (index + 1))
+			continue
+		drawn += 1
+		assert_not_null(held, "year %d" % (index + 1))
+		if held != null:
+			assert_eq(held.id, sent.id, "year %d" % (index + 1))
+	assert_gt(drawn, 0, "the shipped content drew some market news")
 
 
 ## The new host's random stream carries on, its draws now the same as the old
@@ -425,7 +425,7 @@ func test_either_width_reads_back_the_same() -> void:
 ## other end is a silent disagreement about what every number means.
 func test_the_layout_widths_are_pinned() -> void:
 	assert_eq(MarketSync.COMPANY_REALS, 6)
-	assert_eq(MarketSync.COMPANY_INTS, 7)
+	assert_eq(MarketSync.COMPANY_INTS, 9, "with the squeeze's premium and years left (D213)")
 	assert_eq(MarketSync.MARKET_REALS, 3)
 	assert_eq(MarketSync.YEAR_COMPANY_INTS, 3)
 	assert_eq(MarketSync.YEAR_TRADER_INTS, 3)

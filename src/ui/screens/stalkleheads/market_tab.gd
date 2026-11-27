@@ -61,6 +61,11 @@ const UNPLAYED_MARK: String = "."
 enum Line { INDEX, PE, MOOD, BREADTH, RISK_FREE }
 
 
+## What THIS YEAR'S NEWS says in a year with neither market news nor a squeeze,
+## as the top strip says it.
+const NO_EVENT: String = "No special event this year."
+
+
 var _lines: Dictionary[Line, CellRow] = {}
 
 @onready var _stats: VBoxContainer = %Stats
@@ -75,6 +80,8 @@ var _lines: Dictionary[Line, CellRow] = {}
 @onready var _close_history_button: Button = %CloseHistoryButton
 @onready var _event_text: Label = %EventText
 @onready var _event_effect: Label = %EventEffect
+@onready var _squeeze_text: Label = %SqueezeText
+@onready var _squeeze_effect: Label = %SqueezeEffect
 @onready var _mood_chart: Label = %MoodChart
 @onready var _review: YearDigestPanel = %Review
 
@@ -114,26 +121,41 @@ func _ready() -> void:
 	# it needs and nothing below waits under a gap (decisions.md D189).
 
 
-## `event_text` and `event_effect` are the two lines the top strip already
-## shows, so the strip and this tab can never say different things.
-func refresh(state: GameState, event_text: String, event_effect: String) -> void:
+func refresh(state: GameState) -> void:
 	_refresh_stats(state)
 	_refresh_chart(state)
-	_event_text.text = event_text
-	_event_effect.text = event_effect
+	_refresh_events(state)
 	_mood_chart.text = mood_chart_text(state)
 	_refresh_news(state)
 	_refresh_review(state)
 
 
-## The headline and the whispers, or nothing where none was chosen.
-func _refresh_news(state: GameState) -> void:
-	var news: YearNews = NewsSelector.latest(state)
-	_headline.text = ""
-	if news != null:
-		_headline.text = news.headline
-	_headline.visible = not _headline.text.is_empty()
+## THIS YEAR'S NEWS: the market news - headline, event text, what it did - and
+## then the short squeeze, if one fired or ended, as its own item (D209, D213).
+## The same words as the top strip, from the same helper.
+func _refresh_events(state: GameState) -> void:
+	var words: YearEventText = YearEventText.of(state, state.latest_result() as EarningsYearResult)
+	_show_line(_headline, words.headline)
+	_show_line(_event_text, words.body)
+	_show_line(_event_effect, words.effect)
+	if not words.effect.is_empty():
+		_event_effect.add_theme_color_override("font_color", Palette.for_change(words.effect_change))
+	_show_line(_squeeze_text, words.squeeze_text)
+	_show_line(_squeeze_effect, "\n".join(words.squeeze_effects))
+	if not words.squeeze_effects.is_empty():
+		_squeeze_effect.add_theme_color_override("font_color", Palette.for_change(words.squeeze_change))
+	if words.is_empty() and state.year > 0:
+		_show_line(_event_effect, NO_EVENT)
+		_event_effect.remove_theme_color_override("font_color")
 
+
+static func _show_line(label: Label, text: String) -> void:
+	label.text = text
+	label.visible = not text.is_empty()
+
+
+## The whispers, or nothing where none was heard.
+func _refresh_news(state: GameState) -> void:
 	_clear(_whispers)
 	var current: WhisperRound = NewsSelector.latest_whispers(state)
 	if current != null:
@@ -162,10 +184,12 @@ func _refresh_history(state: GameState) -> void:
 		_history_list.add_child(heading)
 		for line: WhisperRound.Line in round.lines:
 			var row: WhisperRow = _add_whisper(_history_list, line)
-			if round.is_settled(state):
-				row.show_outcome(line.truth)
-			else:
+			if not round.is_settled(state):
 				row.show_outcome_unknown()
+			elif line.is_about_squeeze():
+				row.show_squeeze_outcome(NewsSelector.squeeze_whisper_came_true(state, round, line))
+			else:
+				row.show_outcome(line.truth)
 
 
 func _add_whisper(parent: VBoxContainer, line: WhisperRound.Line) -> WhisperRow:
@@ -277,6 +301,15 @@ func _refresh_review(state: GameState) -> void:
 
 func headline_text() -> String:
 	return _headline.text if _headline.visible else ""
+
+
+## THIS YEAR'S NEWS as shown, one entry per visible line, top to bottom.
+func event_texts() -> PackedStringArray:
+	var out: PackedStringArray = []
+	for label: Label in [_headline, _event_text, _event_effect, _squeeze_text, _squeeze_effect]:
+		if label.visible and not label.text.is_empty():
+			out.append(label.text)
+	return out
 
 
 ## The current whispers as shown, `source | words` per line; empty when the

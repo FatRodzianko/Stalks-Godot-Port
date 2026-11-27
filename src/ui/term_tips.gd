@@ -137,8 +137,9 @@ const DESK: String = (
 ## Short interest, with the flag's threshold read from the rule itself.
 static func short_interest() -> String:
 	return (
-		"Shares the desk's short sellers have sold without owning, betting the price falls.\n"
-		+ "At %d%% of a company's shares it is flagged, and a short squeeze can make its price jump."
+		"The share of a company sold short by the desk's short sellers, betting its price falls.\n"
+		+ "At %d%% it is FLAGGED: a short squeeze can make its price jump.\n"
+		+ "Squeezed, the shorts buy back over a few years. When they reach 0%%, the jump comes off."
 	) % roundi(ShortInterestRules.FLAG_AT_PERCENT)
 
 

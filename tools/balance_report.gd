@@ -179,7 +179,7 @@ func _print_report(
 	print("=== StalkleHeads balance: %d years, %d seeds from %d, %s ===" % [
 		years, seeds, first_seed, flow_note,
 	])
-	print("market: EarningsYearResolver (src/sim), events from the shipped EventPool, the shipped NPC desk")
+	print("market: EarningsYearResolver (src/sim), the shipped market news and NPC desk")
 	print("levers: %s" % levers.describe())
 
 	var splits: float = 0.0

@@ -19,6 +19,11 @@ extends RefCounted
 ## Pure: static functions only, no state, no nodes.
 
 
+## Where a company stands with the squeeze: SQUEEZED while a squeeze is in its
+## price, FLAGGED when it could be squeezed this year, else NONE (D213).
+enum ShortStatus { NONE, FLAGGED, SQUEEZED }
+
+
 ## How a figure that does not exist is reported: a P/E with no earnings, an
 ## average of nothing. The screens print it as "--".
 const NONE: float = NAN
@@ -406,6 +411,25 @@ static func short_interest(state: GameState) -> Array[Array]:
 			rows.append([company.id, shares])
 	rows.sort_custom(_by_shares_then_id)
 	return rows
+
+
+## A company's short interest as a percent of its shares outstanding (D213).
+static func short_interest_percent(state: GameState, company_id: StringName) -> float:
+	var company: CompanyState = state.market.company_by_id(company_id)
+	if company == null:
+		return 0.0
+	return ShortInterestRules.percent_of(state.market.desk.short_interest(company_id), company.shares_outstanding)
+
+
+static func short_status(state: GameState, company_id: StringName) -> ShortStatus:
+	var company: CompanyState = state.market.company_by_id(company_id)
+	if company == null:
+		return ShortStatus.NONE
+	if company.in_squeeze():
+		return ShortStatus.SQUEEZED
+	if state.market.desk.flagged_companies(state).has(company_id):
+		return ShortStatus.FLAGGED
+	return ShortStatus.NONE
 
 
 ## What the desk did about one company last year, trader by trader, in the

@@ -75,9 +75,7 @@ static func new_game_state(settings: GameSettings, library: ContentLibrary) -> G
 ## it takes a match over, so the year after a migration is the same game.
 static func new_pipeline(settings: GameSettings, library: ContentLibrary) -> YearPipeline:
 	if settings.mode == GameMode.Value.STALKLEHEADS:
-		return EarningsYearResolver.new(
-			EarningsMarket.build_event_pool(library), library.short_squeeze
-		)
+		return EarningsYearResolver.new(library.short_squeeze)
 	return YearResolver.new(RandomRangePriceModel.new(), library.build_event_pool())
 
 

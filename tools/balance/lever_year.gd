@@ -4,7 +4,7 @@ extends EarningsYearResolver
 ## the game may use it (decisions.md D144, D150).
 ##
 ## Replaced S2's `stand_in_year.gd` in S3 (decisions.md D161). Everything the
-## year does - industries, earnings, the event from the real `EventPool`, the
+## year does - industries, earnings, the market news, the
 ## identity, the index, the derived mood, bankruptcy, splits, dividends, the
 ## settlement - is the game's own code. This file changes only:
 ##
@@ -15,8 +15,8 @@ extends EarningsYearResolver
 ##   is set, shifted so the multiple comes out as if the premium table had the
 ##   override (`Levers.valuation_performance`);
 ## - **the squeeze chance**, when that lever is set, still 0 in a year with
-##   nothing flagged. The squeeze's size is a copy of the template, made by
-##   `balance_match.gd`, and its on/off switch is whether a template is passed.
+##   nothing flagged; and **the squeeze's size**, its lift per point of short
+##   interest (D213). Its on/off switch is whether a template is passed.
 ##
 ## With every lever at its default both seams call straight through, and
 ## `test_balance_smoke.gd` checks the override path reproduces that exactly.
@@ -28,11 +28,10 @@ var levers: Levers
 
 
 func _init(
-	event_pool: EventPool,
 	overrides: Levers = null,
 	short_squeeze: SpecialEventDefinition = null,
 ) -> void:
-	super(event_pool, short_squeeze)
+	super(short_squeeze)
 	levers = overrides
 	if levers == null:
 		levers = Levers.new()
@@ -62,3 +61,14 @@ func squeeze_chance_percent(any_flagged: bool) -> int:
 
 func valuation_performance(market: EarningsMarket, company: CompanyState) -> float:
 	return levers.valuation_performance(company.regime, market.performance_of(company))
+
+
+## The squeeze's lift, at the lever's percent per point of short interest when
+## it is set, capped as the rule caps it.
+func squeeze_spike(price: int, short_percent: float) -> int:
+	if levers.squeeze_size < 0:
+		return super(price, short_percent)
+	if price <= 0 or short_percent <= 0.0:
+		return 0
+	var lift: float = minf(ShortInterestRules.SPIKE_MAX_PERCENT, short_percent * float(levers.squeeze_size))
+	return int(float(price) * lift / 100.0)

@@ -78,10 +78,6 @@ var _buy_check: Callable
 var _sell_check: Callable
 var _context: TradeContext
 
-## The year's event as the top strip shows it, for the Market tab.
-var _event_text: String = ""
-var _event_effect: String = ""
-
 ## This machine's messages (GameSession.messages), and whose machine it is.
 var _book: MessageBook
 var _local_id: StringName = &""
@@ -197,10 +193,9 @@ func refresh(
 	_draw_unread_dot()
 
 
-## The year's event, as the top strip shows it.
-func set_event(text: String, effect: String) -> void:
-	_event_text = text
-	_event_effect = effect
+## The year's event has been shown in the top strip. The Market tab reads the
+## same words from the state (`YearEventText`), so it only needs redrawing.
+func set_event(_text: String, _effect: String) -> void:
 	if _current == Tab.MARKET and _state != null:
 		_refresh_page(Tab.MARKET)
 
@@ -297,7 +292,7 @@ func _refresh_page(tab: Tab) -> void:
 		return
 	match tab:
 		Tab.MARKET:
-			_market.refresh(_state, _event_text, _event_effect)
+			_market.refresh(_state)
 		Tab.INDUSTRIES:
 			_industries.refresh(_context)
 		Tab.COMPANY:

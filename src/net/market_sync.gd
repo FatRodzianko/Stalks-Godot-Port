@@ -15,13 +15,13 @@ extends RefCounted
 ## - **The snapshot** carries the market's *state*: every number the next year
 ##   or the desk reads that cannot be worked out from the others - revenue,
 ##   margin, shares, regime, event carry, flow, every NPC trader's book, the
-##   flow input, the event bags, and next year's kept earnings draws
+##   flow input, each company's squeeze, and next year's kept earnings draws
 ##   (`KeptDraws`, D205). It does not carry profit, the multiple, fair
 ##   value or anything else `CompanyState.derive_readouts` rebuilds. It must be
 ##   enough on its own for a client to take the match over (D105).
 ## - **The year record** carries only the year's *draws* - the industry rolls,
 ##   each company's regime and growth roll, the net shares its price read, the
-##   squeeze and the event - plus what the desk did. A client replays the year
+##   squeeze and the market news - plus what the desk did. A client replays the year
 ##   from the market before it (`EarningsYearResolver.replay_year`), and every
 ##   price change, ledger, index move, mood and dividend comes out of that.
 ##
@@ -43,7 +43,7 @@ extends RefCounted
 ## order is the wire format**: change it and old and new builds disagree about
 ## what every number means. `test_wire.gd` pins both widths.
 const COMPANY_REALS: int = 6   # revenue, margin_percent, profit_before_season, revenue_growth_percent, event_carry, flow
-const COMPANY_INTS: int = 7    # shares_outstanding, regime, years_in_regime, growth_roll, event_delta, price, did_split
+const COMPANY_INTS: int = 9    # shares_outstanding, regime, years_in_regime, growth_roll, event_delta, price, did_split, squeeze_premium, squeeze_years_left
 const MARKET_REALS: int = 3    # sentiment, sentiment_used, index_level
 
 ## Next year's kept draws (`KeptDraws`, decisions.md D205), when there are
@@ -79,6 +79,7 @@ static func encode_market(state: GameState) -> Dictionary:
 		company_ints.append_array([
 			company.shares_outstanding, int(company.regime), company.years_in_regime,
 			company.growth_roll, company.event_delta, company.price, int(company.did_split),
+			company.squeeze_premium, company.squeeze_years_left,
 		])
 	var industry_rolls: Array[int] = []
 	for industry: IndustryState in market.industries:
@@ -96,7 +97,6 @@ static func encode_market(state: GameState) -> Dictionary:
 		"companies": _pack(company_ints),
 		"industries": _pack(industry_rolls),
 		"flow": _pack(flow),
-		"bags": _encode_bags(market.event_bags),
 		"desk": _pack(_encode_desk(market.desk, state)),
 		"next": _pack(_encode_next(market)),
 	}
@@ -161,6 +161,8 @@ static func apply_market(state: GameState, data: Dictionary, library: ContentLib
 		company.event_delta = int(company_ints[at + 4])
 		company.price = int(company_ints[at + 5])
 		company.did_split = company_ints[at + 6] != 0
+		company.squeeze_premium = int(company_ints[at + 7])
+		company.squeeze_years_left = int(company_ints[at + 8])
 		if state.year > 0:
 			var row: StalkState = state.stalk_by_id(company.id)
 			company.derive_readouts(
@@ -174,10 +176,6 @@ static func apply_market(state: GameState, data: Dictionary, library: ContentLib
 		if flow[index] != 0:
 			market.net_shares_traded[state.stalks[index].id] = int(flow[index])
 
-	var bags: Variant = _decode_bags(_ints(data.get("bags")))
-	if bags == null:
-		return MALFORMED
-	market.event_bags = bags
 	if not _apply_desk(market.desk, _ints(data.get("desk")), state):
 		return MALFORMED
 	if not _apply_next(market, _ints(data.get("next"))):
@@ -267,42 +265,12 @@ static func _apply_desk(desk: NpcDesk, data: PackedInt64Array, state: GameState)
 	return reader.ok and reader.is_done()
 
 
-## `[bull count, bull positions..., bear count, bear positions...]`, or nothing
-## before the first event has been drawn.
-static func _encode_bags(bags: Dictionary[int, PackedInt32Array]) -> PackedInt32Array:
-	var out: PackedInt32Array = []
-	if bags.is_empty():
-		return out
-	for mood: int in [MarketMood.Value.BULL, MarketMood.Value.BEAR]:
-		var positions: PackedInt32Array = bags.get(mood, PackedInt32Array())
-		out.append(positions.size())
-		out.append_array(positions)
-	return out
-
-
-## The bags back as a dictionary, or null if the block is malformed. Positions
-## are not checked against the pool here; `EventPool.restore_bags` drops any
-## that are out of range, and `content_key` has already said the pool matches.
-static func _decode_bags(data: PackedInt64Array) -> Variant:
-	var bags: Dictionary[int, PackedInt32Array] = {}
-	if data.is_empty():
-		return bags
-	var reader: IntReader = IntReader.new(data)
-	for mood: int in [MarketMood.Value.BULL, MarketMood.Value.BEAR]:
-		var positions: PackedInt32Array = []
-		for _entry: int in reader.count(data.size()):
-			positions.append(reader.next())
-		bags[mood] = positions
-	if not reader.ok or not reader.is_done():
-		return null
-	return bags
-
-
 # ------------------------------------------------------------ the year record
 
 ## Adds a StalkleHeads year's inputs to `data`, the year as `StateSync` encoded
 ## it, and removes what the inputs determine: every row's change and the mood.
-## What stays is what the market cannot rebuild - the event's id and the
+## What stays is what the market cannot rebuild - the market news id (as
+## `news_id`, beside the block) and the
 ## players' part (dividends, loans, net worths, standings), as the base game
 ## sends them.
 ##
@@ -312,7 +280,7 @@ static func _decode_bags(data: PackedInt64Array) -> Variant:
 ## |---|---|
 ## | industries | count, then each industry's roll |
 ## | companies | count, then per company: regime, growth roll, net shares priced (`YEAR_COMPANY_INTS`); zeros for a company already bankrupt |
-## | squeeze | the roll, 1 if it fired, the flagged count, each flagged company's position |
+## | squeeze | the roll, the hold roll, 1 if it fired, the lift, the flagged count, each flagged company's position |
 ## | desk | trader count, then per trader: appetite, target row (-1 for none), action (`YEAR_TRADER_INTS`) |
 ## | desk flow | count, then (row, net shares) for each row the desk traded |
 static func encode_year_into(data: Dictionary, result: EarningsYearResult, state: GameState) -> void:
@@ -335,7 +303,10 @@ static func encode_year_into(data: Dictionary, result: EarningsYearResult, state
 			result.net_shares_priced.get(company.id, 0),
 		])
 
-	out.append_array([result.squeeze_roll, int(result.squeezed), result.short_interest_flagged.size()])
+	out.append_array([
+		result.squeeze_roll, result.squeeze_hold_roll, int(result.squeezed), result.squeeze_spike,
+		result.short_interest_flagged.size(),
+	])
 	for company_id: StringName in result.short_interest_flagged:
 		out.append(company_of.get(company_id, -1))
 
@@ -359,6 +330,8 @@ static func encode_year_into(data: Dictionary, result: EarningsYearResult, state
 		out.append_array([row_of.get(stalk_id, -1), desk.net_shares[stalk_id]])
 
 	data["inputs"] = _pack(out)
+	if result.market_news != null:
+		data["news_id"] = String(result.market_news.id)
 
 
 ## A StalkleHeads year back from its record, replayed on `replay`: a match
@@ -399,7 +372,9 @@ static func decode_year_into(
 		result.net_shares_priced[company.id] = priced
 
 	result.squeeze_roll = reader.next()
+	result.squeeze_hold_roll = reader.next()
 	result.squeezed = reader.next() != 0
+	result.squeeze_spike = reader.next()
 	for _flagged: int in reader.count(market.companies.size()):
 		var position: int = reader.position(market.companies.size())
 		if reader.ok:
@@ -429,16 +404,13 @@ static func decode_year_into(
 	if not reader.ok or not reader.is_done():
 		return MALFORMED
 
-	# The event: the host's squeeze is rebuilt from the template, as the host
-	# built it, because it was never authored content to look up.
-	var event_id: StringName = StringName(data.get("event_id", ""))
-	if result.squeezed and not result.short_interest_flagged.is_empty() and library.short_squeeze != null:
-		var squeezed_id: StringName = result.short_interest_flagged[0]
-		result.event = ShortInterestRules.squeeze_event(
-			library.short_squeeze, squeezed_id, replay.stalk_by_id(squeezed_id).definition.display_name
-		)
-	elif not event_id.is_empty():
-		result.event = library.event_by_id(event_id)
+	# The market news, by id. The squeeze needs nothing looked up: its fields
+	# above are all a replay reads.
+	var news_id: StringName = StringName(data.get("news_id", ""))
+	if not news_id.is_empty():
+		result.market_news = library.news.market_news_by_id(news_id)
+		if result.market_news == null:
+			return MISMATCH
 
 	EarningsYearResolver.new(null).replay_year(replay, result)
 	return ""

@@ -205,9 +205,11 @@ stock rather than a better one (§3.10a).
 
 **Short interest** — the number of shares the desk is short in a company, summed over its traders. A real figure, not a hint, published on the Company tab (S7). Code: `NpcDesk.short_interest`.
 
-**Flagged** — a company whose short interest is at least 10% of its shares outstanding. Only while some company is flagged can a short squeeze happen (decisions.md D165).
+**Flagged / FLAGGED** — a company whose short interest is at least 10% of its shares outstanding, and not already squeezed. Only while some company is flagged can a short squeeze happen (decisions.md D165). Shown as FLAGGED after the percent in the short interest list and on the Company tab (D213).
 
-**Short squeeze** — in StalkleHeads, a special event aimed at the most shorted flagged company: its price jumps (+25 as shipped), and the short sellers lose. In a year with a company flagged it replaces the year's ordinary event 25% of the time; with none flagged it never happens.
+**Short squeeze** — in StalkleHeads, what happens to the most shorted flagged company 25% of the time: its price jumps by 5% for every point of short interest (at most 150%), and does not fall that year. The jump stays while the short sellers buy back over one to three years, and comes off all at once the year after short interest reaches 0. Modeled on a meme stock (decisions.md D213). With nothing flagged it never happens.
+
+**Squeezed / SQUEEZED** — a company whose price holds a squeeze's jump (`CompanyState.squeeze_premium`). Shown as SQUEEZED after its short interest percent. A SHORT trader does not short it again.
 
 **Chatter** — a one-line remark a trader makes about what it did this year (bought, sold, shorted, covered, held). Shown under its name on the Company tab and on the side panel's DESK page (S8). Written on the trader's own file, or for a whole strategy in a news book; placeholders until the owner writes them.
 
@@ -229,7 +231,7 @@ stock rather than a better one (§3.10a).
 
 **Packed block** — a list of numbers sent as one typed array (`PackedInt32Array`, `PackedInt64Array`, `PackedFloat64Array`) where each number's position says what it is, instead of a dictionary per company with named keys. An eighth of the size (decisions.md D178).
 
-**Event bags (as match state)** — what is left of each mood's shuffled bag of events this cycle. In StalkleHeads they are kept on the market (`EarningsMarket.event_bags`) and sent to clients, so a host that takes a match over deals from the same bags (decisions.md D177). In the base game they are not, and are reshuffled when the host changes.
+**Event bags (as match state)** — what is left of each mood's shuffled bag of events this cycle. In the base game they are not sent, and are reshuffled when the host changes. StalkleHeads kept them on the market until it replaced special events with market news, whose bag is the history itself (decisions.md D177, D209).
 
 **Sentiment used** — the market sentiment a year's prices were valued on (`EarningsMarket.sentiment_used`). By the time a snapshot is sent, `sentiment` has already moved on to next year's, so this is kept to let a client rebuild the valuation.
 
@@ -271,15 +273,25 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **Readouts (on screen)** — every number the StalkleHeads tabs show that is worked out rather than stored: P/E, market share, averages, breadth. All come from `MarketReadouts` in `src/sim/`, never from a node (decisions.md D179).
 
-**News (StalkleHeads)** — the lines a StalkleHeads year shows besides its numbers: a market headline, an industry report per industry, earnings commentary per company, each desk trader's chatter, plus the special event; and, heard at each year's end about the next, two whispers. None of them moves a price. Chosen by `NewsSelector` (design §8, decisions.md D199-D206; rules in game-rules.md §5.1).
+**News (StalkleHeads)** — the lines a StalkleHeads year shows besides its numbers: the market news, an industry headline and an industry report per industry, the EARNINGS line, commentary and company news per company, each desk trader's chatter; and, heard at each year's end about the next, two whispers. Only market news moves a price. Chosen by `NewsSelector`, the market news by `MarketNewsRules` (design §8, decisions.md D199-D214; rules in game-rules.md §5.1).
 
 **News book** — a `.tres` file in `src/data/news/` holding news lines of any kind (`NewsBook`). The game loads every one in the folder.
 
-**Market headline** — one line about the whole market, chosen by the year's mood and how far the index moved. On the Market tab, above the event.
+**Market news** — StalkleHeads' one news item a year about the market: a headline, optional words, and an optional effect - coins added to one company, or the same coins to every living company in one industry. Chosen by **last year's** mood and index move. In the top strip and THIS YEAR'S NEWS. Replaces the base game's special events in this mode (decisions.md D209). Code: `MarketNews`.
 
-**Industry report** — one line about an industry's year, chosen by how far it moved. On the Industries tab under the selected industry.
+**Follow-up** — a news line with a `requires` list: it is never shown until every line it names has been shown in an earlier year, and the first year it may be, it comes first (decisions.md D210).
+
+**Industry headline** — one line about an industry's year, chosen by how far it moved, under FROM THE HEADLINES on the Industries tab. Code: `IndustryReport` (its name before D212).
+
+**Industry report** — the automated INDUSTRY REPORT under it: how the industry's year went against what was expected (`IndustryYearLine`), then what is expected of it next year (`IndustryOutlookLine`) (decisions.md D212).
+
+**Company news** — one line a year about a company, under IN THE NEWS on its Company tab, chosen by its own price move. The base game's events for the eight companies it shares are these lines now (decisions.md D211). Code: `CompanyNews`.
+
+**EARNINGS line** — the Company tab's worked-out line, such as "Distress. Much worse than expected.": the regime, then how growth compared with what it led one to expect (decisions.md D211).
 
 **Earnings commentary** — one line about a company's earnings, chosen by its regime and its surprise band. On the Company tab under NEWS.
+
+**Squeeze whisper / crash whisper** — a whisper that a flagged company is about to be squeezed, or that a squeezed one's jump is about to come off. Always from a Questionable source, in one of the two whisper slots; its outcome is whether it happened (decisions.md D214).
 
 **Whisper** — a rumor about a company or an industry, heard at the end of a year (from year 1; none in year 0) and about **the next year**: whether it will do much worse, worse, as expected, better or much better than everyone expects. Two a round, on the Market tab with their sources, and on the Company tab of a company they name or its industry. A whisper can be wrong, and how often depends on its **source** (decisions.md D205).
 

@@ -94,12 +94,13 @@ func short_interest(company_id: StringName) -> int:
 
 ## Living companies whose short interest is flagged
 ## (`ShortInterestRules.is_flagged`), most shorted first by percent of shares
-## outstanding, ties by id.
+## outstanding, ties by id. A company already in a squeeze is not flagged: its
+## short sellers are buying back, and it cannot be squeezed twice (D213).
 func flagged_companies(state: GameState) -> Array[StringName]:
 	var scored: Array[Array] = []
 	for company: CompanyState in state.market.companies:
 		var row: StalkState = state.stalk_by_id(company.id)
-		if row == null or row.is_bankrupt:
+		if row == null or row.is_bankrupt or company.in_squeeze():
 			continue
 		var interest: int = short_interest(company.id)
 		if ShortInterestRules.is_flagged(interest, company.shares_outstanding):
@@ -167,7 +168,8 @@ func choose_target(strategy: NpcStrategy.Value, state: GameState, pick: int) -> 
 ##
 ## - VALUE / SHORT: lowest / highest P/E (price over earnings per share),
 ##   positive earnings only. SHORT bets against the most expensive company on
-##   the board (decisions.md D169).
+##   the board (decisions.md D169), but never one in a squeeze, whose P/E is
+##   the squeeze's and which its short sellers are leaving (D213).
 ## - MOMENTUM / CONTRARIAN: highest / lowest Yearly Change.
 ## - INCOME: highest dividend yield, from this year's dividend per share.
 ## - INDEXER: My Mutuals and Me Inc., while it is not bankrupt.
@@ -205,6 +207,8 @@ static func target_for(strategy: NpcStrategy.Value, state: GameState, pick: int)
 					continue
 				var pe: float = float(company.price) / eps
 				if strategy == NpcStrategy.Value.SHORT:
+					if company.in_squeeze():
+						continue
 					pe = -pe
 				scored.append([pe, company.id])
 		NpcStrategy.Value.MOMENTUM, NpcStrategy.Value.CONTRARIAN:
@@ -274,7 +278,10 @@ func _trade_long(
 
 ## Buy back every short not on the target, then bring the target's short to
 ## `worth * conviction * appetite / 10000` of shares at the posted price.
-## With no target, every short is left as it is.
+## A short in a company being squeezed is bought back only in part, an equal
+## share each year for as long as the squeeze runs (`ShortInterestRules.cover_now`,
+## D213), with or without a target. With no target, every other short is left
+## as it is.
 func _trade_short(
 	trader: NpcTraderState,
 	target: StringName,
@@ -282,20 +289,30 @@ func _trade_short(
 	state: GameState,
 	year: NpcDeskYear,
 ) -> NpcTraderDefinition.Situation:
-	if target == &"":
-		return NpcTraderDefinition.Situation.HELD
-
 	var covered: bool = false
 	for company_id: StringName in trader.shorted_ids():
 		if company_id == target:
 			continue
+		var squeezed: CompanyState = state.market.company_by_id(company_id)
+		var squeezing: bool = squeezed != null and squeezed.in_squeeze()
+		if target == &"" and not squeezing:
+			continue
 		var owed: int = trader.short_of(company_id)
+		var buying: int = owed
+		if squeezing:
+			buying = ShortInterestRules.cover_now(owed, squeezed.squeeze_years_left)
 		var row: StalkState = state.stalk_by_id(company_id)
 		if row != null and row.price > 0:
-			trader.cash -= owed * row.price
-			year.add_net(company_id, owed)
+			trader.cash -= buying * row.price
+			year.add_net(company_id, buying)
 			covered = true
-		trader.set_short(company_id, 0)
+			trader.set_short(company_id, owed - buying)
+		else:
+			trader.set_short(company_id, 0)
+	if target == &"":
+		if covered:
+			return NpcTraderDefinition.Situation.COVERED
+		return NpcTraderDefinition.Situation.HELD
 
 	var price: int = state.stalk_by_id(target).price
 	var wanted: int = 0

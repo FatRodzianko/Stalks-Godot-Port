@@ -36,7 +36,8 @@ var squeeze: bool = true
 ## (`ShortInterestRules.SQUEEZE_CHANCE_PERCENT`).
 var squeeze_chance: int = -1
 
-## The squeeze's price change. -1 = the authored template's (+25).
+## The squeeze's lift, in percent of the price per point of short interest.
+## -1 = the rule's (`ShortInterestRules.SPIKE_PERCENT_PER_POINT`, 5; D213).
 var squeeze_size: int = -1
 
 ## What the desk's SHORT traders bet against: `highpe` (the published rule,
@@ -156,7 +157,7 @@ func describe() -> String:
 	if squeeze_chance >= 0:
 		parts.append("squeeze chance %d%%" % squeeze_chance)
 	if squeeze_size >= 0:
-		parts.append("squeeze size %+d" % squeeze_size)
+		parts.append("squeeze %d%% a point" % squeeze_size)
 	if short_target != &"highpe":
 		parts.append("SHORT target %s" % short_target)
 	return ", ".join(parts)

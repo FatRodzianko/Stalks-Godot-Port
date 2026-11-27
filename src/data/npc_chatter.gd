@@ -29,3 +29,7 @@ extends Resource
 ## May contain `{trader}`, the trader's display name, and `{company}`, the
 ## company it picked (empty when it picked nothing).
 @export_multiline var text: String = ""
+
+## Ids of news lines, of any kind, that must have been shown in an earlier
+## year before this one can be (decisions.md D210).
+@export var requires: Array[StringName] = []

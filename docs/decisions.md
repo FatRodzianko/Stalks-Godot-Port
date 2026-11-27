@@ -7798,3 +7798,184 @@ stream either way, so no seed changes.
 
 **Rules out:** a year-0 round (it cannot be acted on); dropping the year-1 draws at
 match start (it would leave year 0 the one year without kept draws, for nothing).
+
+### D208 - Exchange clicks, the industry chart and the whisper heading
+**2026-11-27 · Accepted** (the owner's news notes, after manual section U)
+
+- **Only a row's ticker and name open the Company tab.** Clicking anywhere on an
+  Exchange row used to open it, so a missed click on BUY or a share count took the
+  player away from the board. `CompanyRow.opens_company_at` is the test; the rest of
+  the row does nothing.
+- **The Industries tab's BY YEAR chart shows the latest years that fit**, every bar
+  with its year under it (`DrawnChart.show_signed_bars`, `ChartGeometry.slots_that_fit`).
+  It used to be a text chart 22 cells wide, so a long match lost its early years
+  at a fixed point whatever the window. A wide window shows the whole match; a narrow one
+  drops the oldest years first, because the latest are what a player trades on. Bars
+  are colored by sign, gain or loss.
+- **WHISPERS FROM THE AVENUE** is the whisper heading, on the Market tab and the
+  Company tab. The owner's words.
+
+**Rules out:** a whole-row click target on the Exchange; a scrolling chart (it would
+hide the latest year behind a scroll position).
+
+### D209 - Market news replaces the headline and the special events
+**2026-11-27 · Accepted** · **supersedes** the StalkleHeads half of D154 and D165's
+squeeze-as-event · **amends** D199
+
+The base game's special events and S8's market headline said overlapping things in
+two places: a headline about the market, and a special event about one stalk. In
+StalkleHeads they are now one thing, **market news** (`MarketNews`, in a `NewsBook`):
+
+- a **headline**, the owner's words;
+- optional **event text** under it, which may name its company with `{company}`;
+- an optional **effect**: a company **or** an industry, and an amount in coins. An
+  industry effect gives the **same** amount to every living member, not a share of it
+  (the owner's answer).
+
+It is drawn once a year by the host, as the special event was, **from last year's
+mood and last year's index move** (`MarketNewsRules.draw`; the mood half is D154's
+rule, kept). Like every news bag, the lines drawn fewest times come first, so no line
+repeats until every line that fits has had a turn. A line whose target is dead is
+not drawn. It travels **by id** beside the year's inputs (`MarketSync`), and a client
+that does not have that id refuses the snapshot as a mismatch.
+
+The amount enters the price exactly where a special event's did: as the year's event
+term of the price identity, on the ledger's event line, carried and faded the same
+way. So nothing in the price path changed.
+
+**The owner's twelve headlines moved over** (`src/data/news/market.tres`): the
+"MARKET HEADLINE:" prefix dropped, the event text empty, the amount 0, the mood and
+move kept (now read as last year's). `mkt_bull_flat_2` is a bull line, as the owner
+fixed it.
+
+**The base game is untouched.** Its special events, `EventPool` and bags are as
+they were, and the golden history hash does not move. StalkleHeads no longer builds
+an `EventPool` and no longer keeps event bags on the market (D177's bags are gone
+from the snapshot; the history holds what was drawn).
+
+**Consequence: every StalkleHeads seed plays a different match from before.** The
+special event no longer draws from the RNG; the market news does.
+
+**Rules out:** keeping special events in StalkleHeads alongside market news (two
+things for one slot); an industry effect split between members (a big industry
+would feel a headline less).
+
+### D210 - Prerequisites: `requires`
+**2026-11-27 · Accepted**
+
+Every kind of news line has a `requires` list of other news line ids. A line may be
+shown only once **every** id it requires has been shown **in an earlier year** - not
+the same year, so a follow-up never sits beside its cause. Ids from any kind of news
+count, so a company line can follow a market headline or a whisper.
+
+**A follow-up comes first.** Among the lines that fit a slot, one that requires
+something, may now be shown, and **has never been shown itself** is drawn ahead of
+every other. Once shown it is an ordinary line in the bag. Without that last
+condition a follow-up, once eligible, would be drawn every year from then on.
+
+What has been shown is worked out from the history, not stored
+(`NewsSelector.shown_through`): the year news, the market news and the whisper
+rounds of every year up to the one before. The host's resolver works it out only
+when some market news line has a `requires`, so content without any costs nothing.
+
+The validator refuses an id that is not a news line and a line that requires itself.
+
+**Rules out:** signals or stored "was drawn" flags (the history already says it, and
+a stored flag would be one more thing to send); same-year follow-ups.
+
+### D211 - Company news: EARNINGS and IN THE NEWS, and the base events ported
+**2026-11-27 · Accepted**
+
+The Company tab's NEWS section now reads, top to bottom:
+
+1. **EARNINGS** - an automated line, "Distress. Much worse than expected.": the
+   company's regime, then how its revenue growth compared with what that regime led
+   one to expect (the same surprise band the commentary is chosen by). The earnings
+   commentary, the owner's words, sits under it. The line is worked out, not
+   written, so it shows even where no commentary is written.
+2. **IN THE NEWS** - one `CompanyNews` line per company per year, chosen by the
+   company's **own price move** that year, in the five move bands (CRASH to SURGE).
+3. **WHISPERS FROM THE AVENUE** - the whispers about the company or its industry.
+
+**Every base-game special event of a StalkleHeads company is its company news**
+(`src/data/news/companies.tres`, ids `cnews_<event id>`), 80 lines for eight
+companies, the words as written. Each company's five bear events go to CRASH,
+CRASH, DOWN, DOWN, FLAT by size, the biggest fall first; its five bull events to
+SURGE, SURGE, UP, UP, FLAT. So each band has two lines per company: spread evenly,
+as the owner asked, with FLAT taking one of each. Five general placeholders, one
+per band, cover the other ten companies.
+
+**Rules out:** keeping the events' price changes (company news has no effect; only
+market news moves a price, D209).
+
+### D212 - The industry report
+**2026-11-27 · Accepted**
+
+The Industries tab's NEWS heading is now **FROM THE HEADLINES**, over the industry's
+existing headline line. Under it, a new automated **INDUSTRY REPORT** of two lines:
+
+- **The year** (`IndustryYearLine`): chosen by the industry's own move band that
+  year, by how its roll compared with what was expected (the surprise band of the
+  roll against 0), and optionally by **last year's** move band, so a line can say
+  "a second bad year".
+- **The outlook** (`IndustryOutlookLine`): chosen by the band of the industry's
+  expected move next year, `IndustryState.performance_after` with a roll of 0 and
+  this year's sentiment - what the model expects with no surprise.
+
+"Industry mood" in the owner's notes means the industry's own move band; an
+industry has no mood of its own. The shipped lines are plain factual placeholders
+("INDUSTRY REPORT: {industry}, crash, much worse than expected"); the owner writes
+the real ones.
+
+**Rules out:** an outlook that reads next year's draws (that is what whispers are
+for, D205; the outlook must be what anyone could work out).
+
+### D213 - The short squeeze is a meme stock
+**2026-11-27 · Accepted** · **supersedes** D165's +25 event
+
+As shipped in S4 the squeeze was a +25 special event. It is now modeled on a meme
+stock (the owner pointed at GameStop, January 2021):
+
+- **When:** as before, a 25% chance in a year when some company is FLAGGED (short
+  interest at least 10% of its shares), on the most shorted one.
+- **How big:** 5% of the price for every point of short interest, capped at 150%
+  (`ShortInterestRules.spike_for`). 20% short is a 100% jump.
+- **No loss that year:** whatever the rest of the year would have taken off the
+  price is added back, so a squeezed price never falls in its squeeze year.
+- **How long:** a hold roll of 1 to 3 years, drawn every year so the stream does not
+  depend on whether a squeeze fired. The SHORT traders buy back **in equal parts**
+  over the hold (`cover_now`), and stop shorting a squeezed company. **The year
+  after short interest reaches 0, the whole lift comes off** in one go, on the
+  ledger's own `squeeze` line, and THIS YEAR'S NEWS says "Short squeeze over".
+- **It is not hidden.** The desk's short interest list and the Company tab show the
+  percent, with **FLAGGED** while a squeeze can fire and **SQUEEZED** while one is
+  in the price. A player watching the percent fall knows the crash is coming.
+- **Its own item** in THIS YEAR'S NEWS, beside the market news, which still draws.
+
+The lift is kept on the company (`squeeze_premium`, `squeeze_years_left`), added on
+top of the price identity, halved by a split, and sent in the snapshot. The squeeze
+template's `price_change` is no longer read; only its words are.
+
+**Rules out:** a squeeze that fades a little each year (the owner wanted the crash);
+a squeeze that can lose money in its own year; a fixed size (a barely flagged company
+and a 40%-shorted one would jump alike).
+
+### D214 - Squeeze and crash whispers
+**2026-11-27 · Accepted** (the owner chose option 3 for the crash)
+
+Two new kinds of whisper (`NewsBands.Subject` SQUEEZE and CRASH), each always from a
+**Questionable** source, and taking **one of the two** whisper slots, not a third:
+
+- **A squeeze whisper** when some company is flagged at the end of the year: about
+  the most shorted one. A squeeze is never certain, so the source is never better
+  than Questionable.
+- **A crash whisper** ("the party's over") when a company is squeezed at the end of
+  the year, in place of a squeeze whisper.
+
+Neither foretells an outcome band, so the history says "Outcome: it happened" or
+"Outcome: it did not happen" (`NewsSelector.squeeze_whisper_came_true`): for a
+squeeze, whether that company was squeezed next year; for a crash, whether its lift
+came off next year. The ordinary whisper is about some other subject.
+
+**Rules out:** a third whisper slot; a Rock Solid squeeze whisper (it would make the
+25% roll look certain).

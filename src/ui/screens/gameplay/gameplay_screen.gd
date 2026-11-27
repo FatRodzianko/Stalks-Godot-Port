@@ -1216,7 +1216,11 @@ func _on_more_requested() -> void:
 	if _news_panel == null:
 		return
 	_refresh_digest()
-	_news_panel.show_news(_event_flavour.full_text(), _event_effect.text)
+	var description: String = _event_flavour.full_text()
+	var latest: EarningsYearResult = _session.state().latest_result() as EarningsYearResult
+	if latest != null:
+		description = YearEventText.of(_session.state(), latest).full_text()
+	_news_panel.show_news(description, _event_effect.text)
 
 
 ## Puts the year's event in front of the player.
@@ -1230,7 +1234,9 @@ func _announce_the_news(result: YearResult) -> void:
 		return
 	_refresh_digest()
 	var description: String = ""
-	if result.event != null:
+	if result is EarningsYearResult:
+		description = YearEventText.of(_session.state(), result as EarningsYearResult).full_text()
+	elif result.event != null:
 		description = result.event.flavour_text
 	_news_panel.show_news(description, _event_effect.text)
 
@@ -1247,6 +1253,9 @@ func _refresh_digest() -> void:
 ## Two labels, matching the original: the flavour text, then what it did.
 func _show_event(result: YearResult) -> void:
 	_shown_event_year = result.year
+	if result is EarningsYearResult:
+		_show_stalkleheads_events(result as EarningsYearResult)
+		return
 	if result.event == null:
 		_event_flavour.set_full_text("")
 		_event_effect.text = "No special event this year."
@@ -1271,6 +1280,22 @@ func _show_event(result: YearResult) -> void:
 	_event_effect.add_theme_color_override(
 		"font_color", Palette.for_change(result.event.price_change)
 	)
+	_tell_market_tabs_the_event()
+
+
+## A StalkleHeads year in the strip: the market news headline (or the squeeze's
+## words, in a year without news), and every effect (D209, D213).
+func _show_stalkleheads_events(result: EarningsYearResult) -> void:
+	var words: YearEventText = YearEventText.of(_session.state(), result)
+	_event_flavour.set_full_text(words.strip_text())
+	if words.strip_effect().is_empty():
+		# A headline that moves nothing stands alone; only a year with no news
+		# at all says so, as the Market tab does.
+		_event_effect.text = MarketTab.NO_EVENT if words.is_empty() else ""
+		_event_effect.remove_theme_color_override("font_color")
+	else:
+		_event_effect.text = words.strip_effect()
+		_event_effect.add_theme_color_override("font_color", Palette.for_change(words.strip_change()))
 	_tell_market_tabs_the_event()
 
 

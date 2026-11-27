@@ -90,6 +90,15 @@ func _click(control: Control) -> void:
 	control._gui_input(press)
 
 
+## A click on a board row's name, which is what opens the Company tab.
+func _click_name(row: CompanyRow) -> void:
+	var press: InputEventMouseButton = InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.global_position = row.name_cell().get_global_rect().get_center()
+	row._gui_input(press)
+
+
 # ------------------------------------------------------------- which screen
 
 ## §14 q1: the base game's board is left alone. No tabs, no HELD column.
@@ -337,8 +346,27 @@ func test_the_side_panel_lists_short_interest() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 8)
 	var expected: PackedStringArray = []
 	for entry: Array in MarketReadouts.short_interest(_state()):
-		expected.append("%s %d shares" % [_state().stalk_by_id(entry[0]).definition.ticker, entry[1]])
+		expected.append("%s %s" % [
+			_state().stalk_by_id(entry[0]).definition.ticker, SidePanel.short_interest_words(_state(), entry[0]),
+		])
 	assert_eq(_tabs().side_panel().short_interest_lines(), expected)
+	for line: String in expected:
+		assert_true(line.contains("%"), "a percent of the company, not a share count (D213)")
+
+
+func test_short_interest_words_say_flagged_and_squeezed() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 1)
+	var company: CompanyState = _state().market.company_by_id(&"stryker")
+	var desk: NpcDesk = _state().market.desk
+	for trader: NpcTraderState in desk.traders:
+		trader.set_short(&"stryker", 0)
+	desk.traders[0].set_short(&"stryker", roundi(float(company.shares_outstanding) * 0.2))
+	assert_eq(SidePanel.short_interest_words(_state(), &"stryker"), "20% FLAGGED")
+	company.squeeze_premium = 10
+	company.squeeze_years_left = 1
+	assert_eq(SidePanel.short_interest_words(_state(), &"stryker"), "20% SQUEEZED")
+	desk.traders[0].set_short(&"stryker", 0)
+	assert_eq(SidePanel.short_interest_words(_state(), &"stryker"), "0% SQUEEZED", "covered, the lift still in")
 
 
 ## D183: on the board the panel is always open; elsewhere it starts closed, a
@@ -451,12 +479,26 @@ func test_the_sorted_heading_shows_its_direction() -> void:
 
 # ---------------------------------------------------------- the company tab
 
+## Only the symbol and the name open the Company tab: a click on the HELD
+## figure or the trade box, at the row's far end, leaves the board (D208).
+func test_clicking_a_row_away_from_its_name_stays_on_the_exchange() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 3)
+	var row: CompanyRow = _exchange().row_for(_first_living_company().id)
+	var press: InputEventMouseButton = InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.global_position = row.get_global_rect().end - Vector2(2, 2)
+	assert_false(row.opens_company_at(press.global_position))
+	row._gui_input(press)
+	assert_eq(_tabs().current_tab(), MarketTabs.Tab.EXCHANGE)
+
+
 ## Clicking a row on the board opens that company on the Company tab (D103's
 ## gesture), with its regime named (§14 q8).
 func test_clicking_a_row_opens_its_company_with_the_regime_named() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 3)
 	var company: CompanyState = _first_living_company()
-	_click(_exchange().row_for(company.id))
+	_click_name(_exchange().row_for(company.id))
 
 	assert_eq(_tabs().current_tab(), MarketTabs.Tab.COMPANY)
 	var tab: CompanyTab = _tabs().company_tab()
@@ -675,7 +717,7 @@ func test_clicking_an_industry_selects_it_for_the_chart_and_the_breakdown() -> v
 			row = child
 	_click(row)
 	assert_eq(tab.selected(), industry.id)
-	assert_string_contains(tab.industry_chart().title_text(), industry.definition.display_name.to_upper())
+	assert_string_contains(tab.industry_chart_title(), industry.definition.display_name.to_upper())
 	assert_eq(tab.member_lines().size(), MarketReadouts.industry_members(_state(), industry.id).size())
 
 
@@ -1019,12 +1061,30 @@ func test_a_signed_chart_colours_its_bars_by_sign() -> void:
 	assert_false(lines[3].contains("[color"), "the captions are not coloured")
 
 
-func test_the_industry_chart_is_coloured() -> void:
+## D208: the industry's moves are drawn bars, every year played while they
+## fit, each captioned.
+func test_the_industry_chart_draws_every_year_that_fits() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 4)
 	_tabs().select_tab(MarketTabs.Tab.INDUSTRIES)
-	var chart: ChartWidget = _tabs().industries_tab().industry_chart()
-	assert_string_contains(chart.shown_bbcode(), "[color=#")
-	assert_false(chart.chart_text().contains("[color"), "chart_text stays plain")
+	var chart: DrawnChart = _tabs().industries_tab().industry_chart()
+	assert_eq(chart.kind(), DrawnChart.Kind.BARS)
+	assert_eq(chart.captions(), PackedStringArray(["1", "2", "3", "4"]))
+	assert_eq(chart.years_shown(), 4)
+
+
+## Narrower than the years need, the chart keeps the latest ones.
+func test_a_narrow_industry_chart_keeps_the_latest_years() -> void:
+	var chart: DrawnChart = preload("res://src/ui/widgets/drawn_chart.tscn").instantiate()
+	add_child_autofree(chart)
+	var values: PackedFloat32Array = []
+	var captions: PackedStringArray = []
+	for year: int in range(1, 41):
+		values.append(float(year % 7) - 3.0)
+		captions.append(str(year))
+	chart.size = Vector2(ChartGeometry.LABEL_CHARS * ChartGeometry.CELL_WIDTH + ChartGeometry.AXIS_GAP + 1 + 18 * 10, 96)
+	chart.show_signed_bars(values, captions, captions)
+	assert_eq(chart.years_shown(), 10)
+	assert_eq(chart.captions()[9], "40", "the latest year is kept")
 
 
 ## D188: the earnings area opens on the table; each button swaps in its chart,
@@ -1167,9 +1227,10 @@ func test_the_company_list_stars_what_you_own() -> void:
 func test_the_market_tab_shows_the_headline_and_the_whispers() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 6)
 	_tabs().select_tab(MarketTabs.Tab.MARKET)
-	var news: YearNews = NewsSelector.latest(_state())
-	assert_false(news.headline.is_empty(), "the shipped content has a headline for every year")
-	assert_eq(_tabs().market_tab().headline_text(), news.headline)
+	var latest: EarningsYearResult = _state().latest_result() as EarningsYearResult
+	assert_not_null(latest.market_news, "the shipped market news fits every mood and move")
+	assert_eq(_tabs().market_tab().headline_text(), latest.market_news.headline)
+	assert_eq(_tabs().market_tab().event_texts()[0], latest.market_news.headline, "first in THIS YEAR'S NEWS")
 	var expected: PackedStringArray = []
 	for whisper: WhisperRound.Line in NewsSelector.latest_whispers(_state()).lines:
 		expected.append("%s | %s" % [WhisperRules.SOURCE_NAMES[whisper.source], whisper.text])
@@ -1226,23 +1287,62 @@ func test_the_industries_tab_shows_the_selected_industrys_report() -> void:
 			if (child as CellRow).key == industry.id:
 				_click(child)
 		assert_eq(tab.report_text(), news.industry_reports[industry.id])
-		assert_string_contains(tab.report_text(), "INDUSTRY REPORT: %s," % industry.id)
+		assert_eq(tab.outlook_text(), news.industry_report(industry.id), "the INDUSTRY REPORT (D212)")
+		assert_false(tab.outlook_text().is_empty(), "the placeholders cover every band")
 
 
-func test_the_company_tab_shows_its_commentary_and_whispers() -> void:
+func test_the_industry_report_is_the_year_line_then_the_outlook() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 4)
+	var news: YearNews = NewsSelector.latest(_state())
+	for industry: IndustryState in _state().market.industries:
+		assert_true(news.industry_years.has(industry.id), String(industry.id))
+		assert_true(news.industry_outlooks.has(industry.id), String(industry.id))
+		var report: String = news.industry_report(industry.id)
+		assert_true(report.begins_with(news.industry_years[industry.id]), report)
+		assert_true(report.ends_with(news.industry_outlooks[industry.id]), report)
+		assert_true(report.contains(industry.definition.display_name), "the token is filled in")
+
+
+func test_the_company_tab_shows_earnings_news_and_whispers() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 8)
 	var news: YearNews = NewsSelector.latest(_state())
+	var latest: EarningsYearResult = _state().latest_result() as EarningsYearResult
 	for company: CompanyState in _state().market.companies:
 		_tabs().show_company(company.id)
 		var expected: PackedStringArray = []
-		if news.commentary.has(company.id):
-			expected.append(news.commentary[company.id])
+		if news.earnings_surprise.has(company.id):
+			expected.append("EARNINGS")
+			expected.append(CompanyTab.earnings_news_line(latest.regimes[company.id], news.earnings_surprise[company.id]))
+			if news.commentary.has(company.id):
+				expected.append(news.commentary[company.id])
+		if news.company_news.has(company.id):
+			expected.append("IN THE NEWS")
+			expected.append(news.company_news[company.id])
 		var whispers: WhisperRound = NewsSelector.latest_whispers(_state())
 		var about: Array[WhisperRound.Line] = whispers.lines_about(company.id)
 		about.append_array(whispers.lines_about(company.profile.industry))
+		if not about.is_empty():
+			expected.append(CompanyTab.WHISPERS_HEADING)
 		for whisper: WhisperRound.Line in about:
 			expected.append("%s | %s" % [WhisperRules.SOURCE_NAMES[whisper.source], whisper.text])
 		assert_eq(_tabs().company_tab().news_lines(), expected, String(company.id))
+
+
+func test_the_earnings_line_names_the_regime_and_the_surprise() -> void:
+	assert_eq(CompanyTab.earnings_news_line(EarningsRegime.Value.DISTRESS, NewsBands.Surprise.MUCH_WORSE),
+		"Distress. Much worse than expected.")
+	assert_eq(CompanyTab.earnings_news_line(EarningsRegime.Value.GROWTH, NewsBands.Surprise.AS_EXPECTED),
+		"Growth. As expected.")
+
+
+func test_a_living_company_has_its_own_news_every_year() -> void:
+	# D211: the ported events and the general lines cover every move band.
+	_start(GameMode.Value.STALKLEHEADS, 5)
+	for year: int in range(1, 6):
+		var news: YearNews = NewsSelector.news_for(_state(), year)
+		var result: EarningsYearResult = MarketReadouts.result_for_year(_state(), year)
+		for company_id: StringName in result.regimes:
+			assert_true(news.company_news.has(company_id), "%s in year %d" % [company_id, year])
 
 
 func test_chatter_sits_under_each_trader_and_on_the_desk_page() -> void:
@@ -1284,7 +1384,8 @@ func test_news_nobody_has_written_shows_nothing() -> void:
 	assert_eq(_tabs().industries_tab().report_text(), "")
 	assert_false(_tabs().industries_tab().get_node("%ReportTitle").visible)
 	_tabs().show_company(_first_living_company().id)
-	assert_eq(_tabs().company_tab().news_lines(), PackedStringArray())
+	# The EARNINGS line is worked out, not written, so it is all that is left.
+	assert_eq(_tabs().company_tab().news_lines().size(), 2)
+	assert_eq(_tabs().company_tab().news_lines()[0], "EARNINGS")
 	assert_eq(_tabs().company_tab().chatter_lines(), PackedStringArray())
-	assert_false(_tabs().company_tab().get_node("%NewsSection").visible)
 	assert_eq(_tabs().side_panel().chatter_lines(), PackedStringArray())

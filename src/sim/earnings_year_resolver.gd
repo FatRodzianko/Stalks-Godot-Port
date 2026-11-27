@@ -11,7 +11,9 @@ extends YearPipeline
 ##   1. Industry year       each industry rolls, leaning on last year's sentiment
 ##   2. Earnings season     each living company's regime, revenue and margin move
 ##   3. Valuation           inside `CompanyState.reprice`, from last year's sentiment
-##   4. The event           drawn from **last year's** mood bag (bull in year 1)
+##   4. The event           the market news, drawn from **last year's** mood and
+##                          index move (D209), and a short squeeze when one fires
+##                          (D213); a squeeze that ran its course comes off
 ##   5. Prices              the identity, once, with the event and last year's flow
 ##   6. The index           My Mutuals and Me Inc., from pre-split moves
 ##   7. The mood            reported from the index move; next year's sentiment set
@@ -47,7 +49,7 @@ extends YearPipeline
 ##
 ## **One circularity must never come back (§4).** Nothing before step 7 may read
 ## this year's mood or this year's index move. Multiples read last year's
-## sentiment; the event bag is last year's mood. If a future change wants this
+## sentiment; the market news is chosen by last year's mood and move. If a future change wants this
 ## year's mood before prices exist, the design is broken, not the code.
 ##
 ## This is a separate pipeline rather than hooks in `YearResolver`, so neither
@@ -55,8 +57,8 @@ extends YearPipeline
 ##
 ## **Two halves, so a client can replay a year (decisions.md D176).** Every draw
 ## a year makes before the desk is made first and written into the result: the
-## industry rolls, each company's regime and growth roll, the squeeze roll and
-## the event. Everything after that is arithmetic on those inputs, in
+## industry rolls, each company's regime and growth roll, the squeeze rolls and
+## lift, and the market news. Everything after that is arithmetic on those inputs, in
 ## `_settle_prices`. `advance_year` is the host's way in: draw, then settle.
 ## `replay_year` is the client's: take the draws the host sent, then settle with
 ## the same code. That is how "inputs travel, readouts are derived" (design
@@ -64,33 +66,32 @@ extends YearPipeline
 ## are supposed to agree.
 
 
-var _event_pool: EventPool
-
-## The short-squeeze template (`ContentLibrary.short_squeeze`), or null for no
-## squeezes at all. The squeeze roll is drawn either way.
+## The short-squeeze template (`ContentLibrary.short_squeeze`): its words, for
+## the year's news. Null for no squeezes at all. The squeeze rolls are drawn
+## either way.
 var _short_squeeze: SpecialEventDefinition
 
 
-func _init(event_pool: EventPool, short_squeeze: SpecialEventDefinition = null) -> void:
-	_event_pool = event_pool
+func _init(short_squeeze: SpecialEventDefinition = null) -> void:
 	_short_squeeze = short_squeeze
 
 
 ## Advances `state` by one year and returns what happened. `state.market` must
 ## be set (see `EarningsMarket.new_game_state`). All randomness comes from
-## `rng`, in a fixed order: the squeeze roll, the event pool's draws (when no
-## squeeze fired), two draws per NPC trader in id order, then next year's draws
-## (`draw_ahead`) unless this was the last year. This year's industry and
-## earnings draws were made the year before; a market nobody opened draws them
-## first.
+## `rng`, in a fixed order: the squeeze roll, the hold roll, one draw for the
+## market news when any can be drawn, two draws per NPC trader in id order,
+## then next year's draws (`draw_ahead`) unless this was the last year. This
+## year's industry and earnings draws were made the year before; a market
+## nobody opened draws them first.
 func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearResult:
 	var market: EarningsMarket = state.market
 	var result: EarningsYearResult = EarningsYearResult.new()
-	# The bags as the snapshot left them, so a host that took the match over
-	# deals the departed host's next event, not a freshly shuffled one. On a
-	# host that has run every year itself this puts back exactly what is there.
-	if not market.event_bags.is_empty():
-		_event_pool.restore_bags(market.event_bags)
+	# What news has been shown before this year, for market news that requires
+	# some (D210). Read before the year opens, while `next_draws` still holds
+	# this year's draws for the last whisper round.
+	var shown: Dictionary[StringName, bool] = {}
+	if MarketNewsRules.any_requires(market.news):
+		shown = NewsSelector.shown_through(state, state.year)
 	if market.next_draws == null:
 		# A market `open_match` never saw: a test, or the balance tool.
 		market.next_draws = draw_ahead(state, rng)
@@ -115,23 +116,23 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearR
 		result.regimes[company.id] = company.regime
 		result.growth_rolls[company.id] = company.growth_roll
 
-	# 4. The event, so it is an input to the price rather than a correction to
+	# 4. The events, so they are inputs to the price rather than corrections to
 	#    it. A short squeeze when a company's short interest is flagged and the
-	#    roll comes up (§5.3); otherwise from last year's mood bag, where a target
-	#    already bankrupt is skipped and left in the bag (EventPool, D24). The
-	#    squeeze roll is drawn every year, flagged or not.
+	#    roll comes up (§5.3, D213); its two rolls are drawn every year, flagged
+	#    or not. Then, squeeze or no squeeze, the market news (D209).
 	result.squeeze_roll = rng.randi_range(1, 100)
+	result.squeeze_hold_roll = rng.randi_range(ShortInterestRules.HOLD_YEARS_MIN, ShortInterestRules.HOLD_YEARS_MAX)
 	result.short_interest_flagged = market.desk.flagged_companies(state)
 	var any_flagged: bool = not result.short_interest_flagged.is_empty()
 	if _short_squeeze != null and result.squeeze_roll <= squeeze_chance_percent(any_flagged):
-		var squeezed_id: StringName = result.short_interest_flagged[0]
-		result.event = ShortInterestRules.squeeze_event(
-			_short_squeeze, squeezed_id, state.stalk_by_id(squeezed_id).definition.display_name
-		)
 		result.squeezed = true
-	else:
-		result.event = _event_pool.draw(market.last_mood, state, rng)
-	market.event_bags = _event_pool.bag_state()
+		var squeezed_id: StringName = result.short_interest_flagged[0]
+		var squeezed: CompanyState = market.company_by_id(squeezed_id)
+		var percent: float = ShortInterestRules.percent_of(
+			market.desk.short_interest(squeezed_id), squeezed.shares_outstanding
+		)
+		result.squeeze_spike = squeeze_spike(squeezed.price, percent)
+	result.market_news = MarketNewsRules.draw(state, shown, rng)
 
 	# Last year's net buying, as this year's price reads it: the last input.
 	for company: CompanyState in year.alive:
@@ -267,17 +268,33 @@ func _settle_prices(state: GameState, result: EarningsYearResult, year: YearInPr
 	var changes: Dictionary[StringName, StalkYearChange] = year.changes
 	var alive: Array[CompanyState] = year.alive
 	var before: Dictionary[StringName, CompanyState] = year.before
-	var event_target: StringName = &""
-	if result.event != null:
-		event_target = result.event.target_stalk_id
+	var hits: Dictionary[StringName, int] = MarketNewsRules.hits(state, result.market_news)
+	var squeezed_id: StringName = result.squeeze_target()
+
+	# A squeeze that has run its course comes off now, before the price is
+	# set; one still running counts down a year (D213).
+	for company: CompanyState in alive:
+		if not company.in_squeeze():
+			continue
+		if company.squeeze_years_left <= 0:
+			result.squeeze_moves[company.id] = -company.squeeze_premium
+			company.squeeze_premium = 0
+			company.squeeze_years_left = 0
+		else:
+			company.squeeze_years_left -= 1
 
 	# 3 and 5. Valuation, then the price identity, once.
 	for company: CompanyState in alive:
-		var event_delta: int = 0
-		if company.id == event_target:
-			event_delta = result.event.price_change
 		var traded: int = result.net_shares_priced.get(company.id, 0)
-		company.reprice(market.sentiment, valuation_performance(market, company), event_delta, traded)
+		company.reprice(market.sentiment, valuation_performance(market, company), hits.get(company.id, 0), traded)
+		if company.id == squeezed_id:
+			# The lift, plus whatever the rest of the year would have taken off:
+			# a squeezed price never falls in the year it is squeezed.
+			var lift: int = result.squeeze_spike + maxi(0, before[company.id].price - company.price)
+			company.squeeze_premium = lift
+			company.squeeze_years_left = result.squeeze_hold_roll - 1
+			company.price += lift
+			result.squeeze_moves[company.id] = lift
 
 		var ledger: PriceLedger = PriceLedger.between(before[company.id], company)
 		result.ledgers[company.id] = ledger
@@ -349,6 +366,14 @@ func draw_company_earnings(
 ## D166); nothing in the game overrides it.
 func squeeze_chance_percent(any_flagged: bool) -> int:
 	return ShortInterestRules.squeeze_chance_percent(any_flagged)
+
+
+## The squeeze's lift for a company priced at `price` with `short_percent`
+## of its shares sold short (`ShortInterestRules.spike_for`). **A seam for the
+## balance tool only**, which overrides it to sweep the size; nothing in the
+## game overrides it.
+func squeeze_spike(price: int, short_percent: float) -> int:
+	return ShortInterestRules.spike_for(price, short_percent)
 
 
 ## The industry performance a company is valued on at step 3: its industry's.

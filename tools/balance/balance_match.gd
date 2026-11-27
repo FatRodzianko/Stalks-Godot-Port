@@ -120,10 +120,7 @@ static func play(
 	var squeeze: SpecialEventDefinition = library.short_squeeze
 	if not levers.squeeze:
 		squeeze = null
-	elif squeeze != null and levers.squeeze_size >= 0:
-		squeeze = squeeze.duplicate() as SpecialEventDefinition
-		squeeze.price_change = levers.squeeze_size
-	var resolver: LeverYear = LeverYear.new(EarningsMarket.build_event_pool(library), levers, squeeze)
+	var resolver: LeverYear = LeverYear.new(levers, squeeze)
 	for strategy: StringName in strategies:
 		view.state.players.append(PlayerState.new(strategy, String(strategy), settings.starting_cash))
 

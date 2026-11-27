@@ -6,12 +6,16 @@ extends Resource
 ## between files is a matter of convenience; the game ships one file for the
 ## market and one per industry (decisions.md D199).
 ##
-## The sixth category, special events, is not here: it is the existing
-## `SpecialEventDefinition`, carried on a stalk (D29).
+## The base game's special events are not used in StalkleHeads: market news
+## takes their place (D209), and those for the companies both games share were
+## carried over as company news (D211).
 
 
-@export var headlines: Array[MarketHeadline] = []
+@export var market_news: Array[MarketNews] = []
 @export var industry_reports: Array[IndustryReport] = []
+@export var industry_years: Array[IndustryYearLine] = []
+@export var industry_outlooks: Array[IndustryOutlookLine] = []
 @export var earnings_commentary: Array[EarningsCommentary] = []
+@export var company_news: Array[CompanyNews] = []
 @export var whispers: Array[Whisper] = []
 @export var chatter: Array[NpcChatter] = []

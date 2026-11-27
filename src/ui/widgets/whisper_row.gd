@@ -47,6 +47,12 @@ func show_outcome(truth: NewsBands.Surprise) -> void:
 	_outcome.visible = true
 
 
+## What came of a squeeze or crash whisper: whether it happened (D214).
+func show_squeeze_outcome(happened: bool) -> void:
+	_outcome.text = "Outcome: it happened" if happened else "Outcome: it did not happen"
+	_outcome.visible = true
+
+
 ## Says the outcome is not known yet: the year it is about is still to come.
 func show_outcome_unknown() -> void:
 	_outcome.text = "Outcome: not known yet"

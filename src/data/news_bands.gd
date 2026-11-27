@@ -17,7 +17,8 @@ extends RefCounted
 ## The year's reported mood.
 enum Mood { ANY, BULL, BEAR }
 
-## A move in percent: the index's for a headline, an industry's for a report.
+## A move in percent: the index's last year for market news, an industry's for
+## its reports, a company's price for company news.
 ## The edges are `NewsSelector.move_band`'s: CRASH at -15 or below, DOWN below
 ## -3, FLAT from -3 to +3, UP below +15, SURGE at +15 or above.
 enum Move { ANY, CRASH, DOWN, FLAT, UP, SURGE }
@@ -30,8 +31,10 @@ enum Regime { ANY, GROWTH, STEADY, SLOWING, DECLINE, DISTRESS }
 ## Also what a whisper foretells for next year (design §8.4).
 enum Surprise { ANY, MUCH_WORSE, WORSE, AS_EXPECTED, BETTER, MUCH_BETTER }
 
-## What a whisper is about (design §8.4).
-enum Subject { COMPANY, INDUSTRY }
+## What a whisper is about (design §8.4): next year's earnings of a company or
+## an industry, or a short squeeze - one coming (SQUEEZE), or one about to end
+## (CRASH) - on a company (D214).
+enum Subject { COMPANY, INDUSTRY, SQUEEZE, CRASH }
 
 
 ## The band for an `EarningsRegime` value.

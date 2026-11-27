@@ -24,3 +24,7 @@ extends Resource
 
 ## May contain `{company}` and `{industry}`.
 @export_multiline var text: String = ""
+
+## Ids of news lines, of any kind, that must have been shown in an earlier
+## year before this one can be (decisions.md D210).
+@export var requires: Array[StringName] = []

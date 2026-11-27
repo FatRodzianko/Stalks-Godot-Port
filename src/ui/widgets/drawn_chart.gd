@@ -39,9 +39,20 @@ var _captions: PackedStringArray = []
 var _tips: PackedStringArray = []
 var _message: String = ""
 
+## A signed bar chart (`show_signed_bars`): each bar in the gain or loss
+## colour by its sign, and only the latest years that fit with every year
+## written under its bar.
+var _signed: bool = false
+
+## Everything `show_signed_bars` was given, before trimming to what fits.
+var _all_values: PackedFloat32Array = []
+var _all_captions: PackedStringArray = []
+var _all_tips: PackedStringArray = []
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
+	resized.connect(_on_resized)
 
 
 ## One line per series (oldest year first), each in its own colour, with a
@@ -77,6 +88,29 @@ func show_bars(
 	tips: PackedStringArray,
 ) -> void:
 	_show(Kind.BARS, series, names, captions, tips)
+
+
+## One bar per year from zero, in the gain colour above it and the loss colour
+## below. Only the latest years that fit are drawn, so that every year keeps its
+## caption: how many depends on the chart's width, and is worked out again
+## when it is resized (`years_shown`).
+func show_signed_bars(
+	values: PackedFloat32Array,
+	captions: PackedStringArray,
+	tips: PackedStringArray,
+) -> void:
+	_all_values = values
+	_all_captions = captions
+	_all_tips = tips
+	_show(Kind.BARS, [], PackedStringArray(), PackedStringArray(), PackedStringArray())
+	_signed = true
+	_fit_signed()
+
+
+## How many years a signed bar chart is showing: all of them, or the latest
+## that fit.
+func years_shown() -> int:
+	return _captions.size()
 
 
 ## No chart, and a line saying why: no years played yet, say.
@@ -160,12 +194,37 @@ func _show(
 	tips: PackedStringArray,
 ) -> void:
 	_kind = chart_kind
+	_signed = false
 	_series = series
 	_names = names
 	_captions = captions
 	_tips = tips
 	_message = ""
 	queue_redraw()
+
+
+## Trims a signed bar chart to the latest years that fit at the current width.
+func _fit_signed() -> void:
+	if not _signed:
+		return
+	var longest: int = 1
+	for caption: String in _all_captions:
+		longest = maxi(longest, caption.length())
+	# Before its first layout the chart has no room for even one caption: show
+	# every year until `resized` says how many fit.
+	var first: int = 0
+	var plot: Rect2i = plot_rect()
+	if plot.size.x >= (longest + 1) * ChartGeometry.CELL_WIDTH:
+		var fit: int = ChartGeometry.slots_that_fit(longest, plot)
+		first = maxi(0, _all_values.size() - fit)
+	_series = [_all_values.slice(first)]
+	_captions = _all_captions.slice(first)
+	_tips = _all_tips.slice(first)
+	queue_redraw()
+
+
+func _on_resized() -> void:
+	_fit_signed()
 
 
 func _has_legend() -> bool:
@@ -253,6 +312,8 @@ func _draw_bars(plot: Rect2i, scale: Vector2) -> void:
 			var value: float = _series[which][index]
 			if is_nan(value):
 				continue
+			if _signed:
+				colour = get_theme_color(&"gain" if value >= 0.0 else &"loss", THEME_TYPE)
 			var rect: Rect2i = ChartGeometry.bar_rect(index, count, which, _series.size(), value, scale, plot)
 			draw_rect(Rect2(rect), colour)
 

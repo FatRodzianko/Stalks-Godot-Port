@@ -113,8 +113,6 @@ static func market_lines(market: EarningsMarket) -> PackedStringArray:
 		market.last_mood, market.content_key,
 	])
 	lines.append("market flow in %s" % _sorted(market.net_shares_traded))
-	for mood: int in [MarketMood.Value.BULL, MarketMood.Value.BEAR]:
-		lines.append("market bag %d %s" % [mood, market.event_bags.get(mood, "none")])
 	for company: CompanyState in market.companies:
 		lines.append_array(company_lines(company))
 	for industry: IndustryState in market.industries:
@@ -160,6 +158,8 @@ static func company_lines(company: CompanyState) -> PackedStringArray:
 		"flow": bits(company.flow),
 		"price": company.price,
 		"did_split": company.did_split,
+		"squeeze_premium": company.squeeze_premium,
+		"squeeze_years_left": company.squeeze_years_left,
 	}
 	var lines: PackedStringArray = []
 	for field: String in fields:
@@ -197,9 +197,14 @@ static func result_lines(result: YearResult) -> PackedStringArray:
 	lines.append("result index %s sentiment %s bag %d" % [
 		bits(earnings.index_move_percent), bits(earnings.sentiment_used), earnings.event_bag,
 	])
-	lines.append("result squeeze %d %s flagged %s" % [
-		earnings.squeeze_roll, earnings.squeezed, earnings.short_interest_flagged,
+	lines.append("result squeeze %d hold %d %s spike %d flagged %s moves %s" % [
+		earnings.squeeze_roll, earnings.squeeze_hold_roll, earnings.squeezed, earnings.squeeze_spike,
+		earnings.short_interest_flagged, _sorted(earnings.squeeze_moves),
 	])
+	var news_id: String = "none"
+	if earnings.market_news != null:
+		news_id = String(earnings.market_news.id)
+	lines.append("result market news %s" % news_id)
 	lines.append("result per share %s" % _sorted(earnings.dividend_per_share))
 	lines.append("result inputs rolls %s regimes %s growth %s priced %s" % [
 		_sorted(earnings.industry_rolls), _sorted(earnings.regimes),

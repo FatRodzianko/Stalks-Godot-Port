@@ -16,6 +16,7 @@ extends RefCounted
 ## | `this_years_event` | this year's event delta |
 ## | `last_years_event_faded` | the half of last year's carry that decayed away |
 ## | `flow` | change in flow |
+## | `squeeze` | change in the squeeze's lift (D213): up the year it fires, down the year it comes off |
 ##
 ## **How the lines become whole coins (D133).** Each line is the change in
 ## `int(running total)` as the float terms are added one at a time, starting from
@@ -39,6 +40,7 @@ var valuation_limits: int = 0
 var this_years_event: int = 0
 var last_years_event_faded: int = 0
 var flow: int = 0
+var squeeze: int = 0
 
 
 ## The ledger between `before` (a `copy()` taken before the year's earnings
@@ -69,13 +71,14 @@ static func between(before: CompanyState, after: CompanyState) -> PriceLedger:
 	var event_term: float = float(after.event_delta)
 	var faded_term: float = after.event_carry - before.event_carry - event_term
 	var flow_term: float = after.flow - before.flow
+	var squeeze_term: float = float(after.squeeze_premium - before.squeeze_premium)
 
 	var terms: Array[float] = [
 		earnings_term, sentiment_term, standing_term, premium_term,
-		limits_term, event_term, faded_term, flow_term,
+		limits_term, event_term, faded_term, flow_term, squeeze_term,
 	]
 	var lines: Array[int] = []
-	var running: float = before.fair_value + before.event_carry + before.flow
+	var running: float = before.fair_value + before.event_carry + before.flow + float(before.squeeze_premium)
 	var posted: int = before.price
 	for index: int in terms.size():
 		var reached: int = after.price
@@ -93,13 +96,14 @@ static func between(before: CompanyState, after: CompanyState) -> PriceLedger:
 	ledger.this_years_event = lines[5]
 	ledger.last_years_event_faded = lines[6]
 	ledger.flow = lines[7]
+	ledger.squeeze = lines[8]
 	return ledger
 
 
 func total() -> int:
 	return (
 		earnings + sentiment + industry_standing + regime_premium
-		+ valuation_limits + this_years_event + last_years_event_faded + flow
+		+ valuation_limits + this_years_event + last_years_event_faded + flow + squeeze
 	)
 
 
@@ -117,7 +121,7 @@ func is_balanced() -> bool:
 
 
 func _to_string() -> String:
-	return "PriceLedger(%d -> %d: earnings %+d, sentiment %+d, standing %+d, regime %+d, limits %+d, event %+d, faded %+d, flow %+d)" % [
+	return "PriceLedger(%d -> %d: earnings %+d, sentiment %+d, standing %+d, regime %+d, limits %+d, event %+d, faded %+d, flow %+d, squeeze %+d)" % [
 		price_before, price_after, earnings, sentiment, industry_standing, regime_premium,
-		valuation_limits, this_years_event, last_years_event_faded, flow,
+		valuation_limits, this_years_event, last_years_event_faded, flow, squeeze,
 	]

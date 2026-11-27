@@ -130,6 +130,13 @@ static func bar_rect(index: int, count: int, which: int, of_count: int, value: f
 	return Rect2i(left, mini(zero, end), bar, maxi(1, absi(end - zero)))
 
 
+## How many slots fit in `plot` with a caption of `caption_chars` under every
+## one, at least 1.
+static func slots_that_fit(caption_chars: int, plot: Rect2i) -> int:
+	@warning_ignore("integer_division")
+	return maxi(1, plot.size.x / ((caption_chars + 1) * CELL_WIDTH))
+
+
 ## Every how many years a caption is written, so captions `caption_chars`
 ## long never touch: 1 when they all fit, 2 for every other year, and so on.
 static func caption_step(count: int, caption_chars: int, plot: Rect2i) -> int:

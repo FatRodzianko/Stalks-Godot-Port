@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://src/ui/screens/stalkleheads/industries_tab.gd" id="1_tab"]
 [ext_resource type="PackedScene" path="res://src/ui/widgets/cell_row.tscn" id="2_row"]
-[ext_resource type="PackedScene" path="res://src/ui/widgets/chart_widget.tscn" id="3_chart"]
+[ext_resource type="PackedScene" path="res://src/ui/widgets/drawn_chart.tscn" id="3_chart"]
 
 [node name="IndustriesTab" type="ScrollContainer"]
 size_flags_horizontal = 3
@@ -27,7 +27,18 @@ theme_type_variation = &"TightVBox"
 [node name="Lower" type="HBoxContainer" parent="Body"]
 layout_mode = 2
 
-[node name="IndustryChart" parent="Body/Lower" instance=ExtResource("3_chart")]
+[node name="ChartBox" type="VBoxContainer" parent="Body/Lower"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightVBox"
+
+[node name="ChartTitle" type="Label" parent="Body/Lower/ChartBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = ""
+
+[node name="IndustryChart" parent="Body/Lower/ChartBox" instance=ExtResource("3_chart")]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -56,9 +67,22 @@ theme_type_variation = &"TightVBox"
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"SubHeading"
-text = "NEWS"
+text = "FROM THE HEADLINES"
 
 [node name="Report" type="Label" parent="Body/Lower/Within"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = ""
+autowrap_mode = 3
+
+[node name="OutlookTitle" type="Label" parent="Body/Lower/Within"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SubHeading"
+text = "INDUSTRY REPORT"
+
+[node name="Outlook" type="Label" parent="Body/Lower/Within"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2

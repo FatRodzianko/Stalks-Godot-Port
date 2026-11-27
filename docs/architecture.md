@@ -395,7 +395,7 @@ recipient, and the host builds one snapshot and sends the same one to everybody.
 | Net worth | yes |
 | Display name, ready flag, bankruptcy, Steam ID | yes |
 | How far the match's random stream has run | yes |
-| In StalkleHeads: the market's state - companies, industries, the desk's books, the flow input, the event bags (§9, D176, D177) | yes |
+| In StalkleHeads: the market's state - companies (with any squeeze in their price), industries, the desk's books, the flow input (§9, D176, D213); the event bags until D209 replaced special events with market news | yes |
 
 **Two reasons, and the second is the one that decided it.** There was never
 much worth protecting - the board already publishes net worth, which is the
@@ -985,9 +985,11 @@ flow, and short interest, which makes a short squeeze possible. Phase S5 made th
 mode selectable: the title screen, the lobby, and `MatchSetup` choosing the board and
 the year at match start. Phase S6 put the market on the wire, so a client holds the
 whole match, can rejoin it and can take it over. Phase S7 put it on screen. Phase S8
-added the news: headlines, industry reports, earnings commentary, whispers and NPC
-chatter, as content, chosen each year by a pure selector. Its whispers foretell next
-year, from next year's draws made a year early (D205).
+added the news: market news, industry headlines and reports, the EARNINGS line,
+earnings commentary, company news, whispers and NPC chatter, as content, chosen
+each year by a pure selector. Its whispers foretell next year, from next year's
+draws made a year early (D205). After S8's play the market news replaced the
+special events in this mode, and the short squeeze became a meme stock (D209-D214).
 
 ### The files
 
@@ -998,7 +1000,7 @@ year, from next year's draws made a year early (D205).
 | data | `company_profile.gd` + `companies/*.tres` | A company's authored fundamentals: industry, opening EPS, margin, shares, quality, beta, payout policy. Eighteen of them, placeholder values from §3.2.4 |
 | data | `npc_strategy.gd` | **S4.** `NpcStrategy.Value`: the eight published trading rules. An enum because the desk branches on each |
 | data | `npc_trader_definition.gd` + `traders/*.tres` | **S4.** An NPC trader as content: id, name, strategy, starting cash, conviction, and a chatter line per `Situation`. Twenty-four of them, names and chatter placeholders (D162) |
-| data | `squeeze/short_squeeze.tres` | **S4.** The short-squeeze template: a `SpecialEventDefinition` with no target, +25, placeholder text (D165) |
+| data | `squeeze/short_squeeze.tres` | **S4.** The short-squeeze template: a `SpecialEventDefinition` with no target and placeholder text. Since D213 only its words are read; the size comes from the short interest |
 | data | `content_library.gd` | `load_fundamentals()` loads companies, industries, traders, the squeeze template and the news; `validate()` checks them, the transition matrix included (D128, D162, D204) |
 | sim | `regime_rules.gd` | The transition matrix and every per-regime table; the regime roll; the damping ladder |
 | sim | `company_state.gd` | One company during a match: accounts, regime, valuation, the three price terms, the posted price |
@@ -1007,21 +1009,22 @@ year, from next year's draws made a year early (D205).
 | sim | `price_identity.gd` | Event carry, flow, the price, the split threshold and the split price |
 | sim | `price_ledger.gd` | Why a price moved, in whole coins that sum to the move |
 | sim | `dividend_rules.gd` | Payout ratio, dividend per share, the retention factor |
-| sim | `earnings_market.gd` | **S3.** `GameState.market`: the companies, industries, sentiment, last year's mood, the index level, the flow input. Builds a match's board and its event pool. The bond's yardstick readouts (D160, D156) |
-| sim | `earnings_year_result.gd` | **S3.** `YearResult` plus the ledgers, the index move, the sentiment used, the event bag, industry figures and every row's dividend per share |
+| sim | `earnings_market.gd` | **S3.** `GameState.market`: the companies, industries, sentiment, last year's mood, the index level, the flow input. Builds a match's board. The bond's yardstick readouts (D160, D156) |
+| sim | `earnings_year_result.gd` | **S3.** `YearResult` plus the ledgers, the index move, the sentiment used, industry figures and every row's dividend per share; since D209 the market news, and since D213 the squeeze's hold roll, spike and moves |
+| sim | `market_news_rules.gd` | **D209.** Draws the year's market news (last year's mood and move, follow-ups first, the bag), and what it hits |
 | sim | `earnings_year_resolver.gd` | **S3.** The StalkleHeads year, §4 steps 1-10, ending in `YearSettlement` |
 | sim | `year_settlement.gd` | **S3.** The back half both pipelines share: loans, net worth and standings, game end, closing the year (D152) |
 | sim | `npc_trader_state.gd` | **S4.** One trader during a match: cash, shares held, shares short, and its worth at the posted prices |
 | sim | `npc_desk.gd` | **S4.** `EarningsMarket.desk`: every trader in id order; `act()` (§4 step 13), each strategy's pick, short interest, the flagged companies, and what bankruptcy, splits and dividends do to traders (D162-D164, D169) |
 | sim | `npc_desk_year.gd` | **S4.** What the desk did in a year: each trader's appetite, target and action, and the net shares traded |
-| sim | `short_interest_rules.gd` | **S4.** The flag threshold, the squeeze chance and building a squeeze event from the template (D165) |
+| sim | `short_interest_rules.gd` | **S4.** The flag threshold and the squeeze chance (D165); since D213 the spike, the hold and how fast shorts cover |
 | data | `game_mode.gd` | **S5.** `GameMode.Value`: BASE or STALKLEHEADS. Each mode's name and lobby word (D171) |
 | sim | `year_pipeline.gd` | **S5.** The base class of `YearResolver` and `EarningsYearResolver`: `advance_year` and `record_trade` (D171) |
 | sim | `match_setup.gd` | **S5.** The one place the mode is read: content, board, pipeline, forced settings, take-over refusal (D171) |
 | net | `market_sync.gd` | **S6.** The StalkleHeads half of the wire: the market block of a snapshot, and a year as its draws, both as packed rows; called only by `StateSync` (D176-D178) |
 | tools | `wire_report.gd` | **S6.** Measures the snapshot, the year packet and the welcome in both modes, in bytes (D178) |
 | data | `news_bands.gd` | **S8.** `NewsBands`: the named conditions news is chosen by - mood, move, regime, surprise - and whether a whisper is about a company or an industry. Enums, `ANY` first (§8.1) |
-| data | `market_headline.gd`, `industry_report.gd`, `earnings_commentary.gd`, `whisper.gd`, `npc_chatter.gd` | **S8.** One resource type per news category: an id, its conditions and its text (D199) |
+| data | `market_news.gd`, `industry_report.gd`, `industry_year_line.gd`, `industry_outlook_line.gd`, `earnings_commentary.gd`, `company_news.gd`, `whisper.gd`, `npc_chatter.gd` | **S8.** One resource type per news category: an id, its conditions, its text and its `requires` (D199, D209-D212) |
 | data | `news_book.gd` + `news/*.tres` | **S8.** A file of news lines of any category. Every `.tres` in `src/data/news/` is loaded; seven ship, all placeholders (D199) |
 | data | `news_content.gd` | **S8.** Every news line, one sorted list per category, the traders' own chatter turned into `NpcChatter` lines. `ContentLibrary.news`, `EarningsMarket.news` |
 | sim | `news_selector.gd` | **S8.** Chooses a year's news from the history (bands, the bag), and each round of whispers (`whispers_for`). Its own seeded generators, never the match's (D200, D205) |
@@ -1030,6 +1033,7 @@ year, from next year's draws made a year early (D205).
 | sim | `whisper_rules.gd` | **S8.** A whisper's true outcome (a company's or industry's next year against expectations) and its five sources' odds (D205) |
 | sim | `whisper_round.gd` | **S8.** The whispers heard at one year's end, with source, told outcome and true outcome; cached on `EarningsMarket.whisper_rounds`, never sent (D205) |
 | ui | `widgets/whisper_row.tscn` | **S8.** One whisper as shown: faint source column, words, and in the history its outcome (D206) |
+| ui | `year_event_text.gd` | **D209.** The year's market news and squeeze as words - headline, event text, effect - for the top strip, the news panel, THIS YEAR'S NEWS and the game-over history, so they never disagree |
 | tests | `fixtures/wire_match.gd` | **S6.** A seeded StalkleHeads match with scripted players, and every field of a match or a year written as lines, so two copies compare field by field |
 
 `CompanyState` pairs with `CompanyProfile` the way `StalkState` pairs with
@@ -1046,21 +1050,23 @@ draw-then-settle; `replay_year`, which a client runs, takes the host's draws and
 settles with the same code.
 
 ```
-restore the event pool from market.event_bags (D177)
+shown = NewsSelector.shown_through(state, year)   # only when some market news has requires (D210)
 year += 1; open a StalkYearChange per row; copy() every living company
 market.sentiment_used = market.sentiment       # what this year is valued on
 
 1   IndustryState.advance_all(industries, market.sentiment, rng)  # one draw each, id order
 2   company.advance_earnings(performance, max_years, rng)         # two draws each, id order
 4   roll = rng.randi_range(1, 100)                                # the squeeze roll, every year
+    hold = rng.randi_range(1, 3)                                  # the hold roll, every year (D213)
     flagged = desk.flagged_companies(state)                       # short interest, as last year left it
-    if template and roll <= squeeze_chance(flagged): event = squeeze on flagged[0]
-    else: event = EventPool.draw(market.last_mood, state, rng)    # last year's bag; bull in year 1
-    market.event_bags = pool.bag_state()
+    if template and roll <= squeeze_chance(flagged): squeezed = flagged[0], spike = spike_for(price, short %)
+    market_news = MarketNewsRules.draw(state, shown, rng)         # last year's mood and move; one draw if any fits
     result.net_shares_priced[id] = market.net_shares_traded[id]  # the last input
 --- _settle_prices: everything below draws nothing, and replay_year runs it too ---
-3,5 company.reprice(market.sentiment, performance, event_delta,  # no draws
+    a squeeze whose years ran out comes off (squeeze_moves = -premium); others count down
+3,5 company.reprice(market.sentiment, performance, news amount,   # no draws; adds any squeeze premium
                     result.net_shares_priced[id])
+    the squeezed company: premium = spike + whatever the year took off; price += premium
     ledger = PriceLedger.between(copy, company); row.price = company.price
 6   index move = mean pre-split % move (bankrupt this year = -100)
     index_level *= (100 + move) / 100
@@ -1097,10 +1103,11 @@ balance tool records its own players' trades the same way.
 `NpcDesk.choose_target` is one that `tools/balance/lever_desk.gd` overrides (D168).
 The game never overrides them.
 
-**The squeeze template is passed in.** `EarningsYearResolver.new(pool, squeeze)`
-takes `ContentLibrary.short_squeeze` as its second argument; without it no squeeze
-can fire, and the roll is drawn anyway so the stream is the same (D165).
-`MatchSetup.new_pipeline` passes it (S5, D171).
+**The squeeze template is passed in.** `EarningsYearResolver.new(squeeze)` takes
+`ContentLibrary.short_squeeze`; without it no squeeze can fire, and both rolls are
+drawn anyway so the stream is the same (D165, D213). `MatchSetup.new_pipeline`
+passes it (S5, D171). There is no event pool in this mode since D209: the market
+news comes from `state.market.news`. `squeeze_spike` is a fifth balance seam.
 
 ### The NPC desk (phase S4)
 

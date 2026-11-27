@@ -65,13 +65,33 @@ var short_interest_flagged: Array[StringName] = []
 ## flagged. A squeeze fires when it is at most the squeeze chance.
 var squeeze_roll: int = 0
 
-## True when `event` is a short squeeze rather than a draw from the mood bag.
+## True when a short squeeze fired this year, on the first flagged company.
+## Since D213 it comes **as well as** the year's market news, not instead.
 var squeezed: bool = false
+
+## The squeeze's hold roll, 1-3, drawn every year after the squeeze roll: how
+## many years the lift stays in the price if a squeeze fired (D213).
+var squeeze_hold_roll: int = 0
+
+## The squeeze's lift before the no-loss top-up, in coins: a share of the
+## company's price that grows with its short interest
+## (`ShortInterestRules.spike_for`). 0 when no squeeze fired. Sent, because a
+## client's replay has no desk to read the short interest from.
+var squeeze_spike: int = 0
+
+## The year's market news (D209), or null when none was drawn. The base game's
+## `event` is always null in this mode.
+var market_news: MarketNews = null
+
+## A readout: every company squeezed this year with its whole lift, and every
+## company whose lift came off, with the coins it lost (negative).
+var squeeze_moves: Dictionary[StringName, int] = {}
 
 # ----------------------------------------------------------------- the inputs
 # What the year drew, kept so the year can be sent as its inputs and replayed
 # on a client (`EarningsYearResolver.replay_year`, decisions.md D176). The
-# event, the squeeze roll and the flagged list above are inputs too. Everything
+# market news, the squeeze roll, hold roll and spike and the flagged list above
+# are inputs too. Everything
 # else in this result is derived from these and the market before the year.
 
 ## Each industry's swing this year, keyed by industry id.
@@ -92,6 +112,13 @@ var net_shares_priced: Dictionary[StringName, int] = {}
 ## decisions.md D200). A readout kept here so it is worked out once; null until
 ## then. Never sent: every peer works it out from the history it holds.
 var news: YearNews = null
+
+
+## The squeezed company, or empty when no squeeze fired.
+func squeeze_target() -> StringName:
+	if not squeezed or short_interest_flagged.is_empty():
+		return &""
+	return short_interest_flagged[0]
 
 
 func ledger_for(company_id: StringName) -> PriceLedger:

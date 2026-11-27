@@ -12,9 +12,10 @@ extends ScrollContainer
 ## like the Exchange tab's collapse and sort. Each member has a trade box, and
 ## clicking its name opens it on the Company tab (decisions.md D183).
 ##
-## Under the members, the selected industry's **report** for the year, when
-## one was chosen (`NewsSelector`, design §8). No report, no NEWS heading:
-## an empty slot shows nothing (§8.2).
+## Under the members, the selected industry's headline for the year, FROM THE
+## HEADLINES, and its INDUSTRY REPORT - how its year went against what was
+## expected and what is expected next (`NewsSelector`, design §8, D212). No
+## line, no heading: an empty slot shows nothing (§8.2).
 
 
 ## A line was clicked. The host holds the state, so it redraws.
@@ -49,10 +50,9 @@ const HEADINGS: PackedStringArray = [
 ## How many cells the revenue-share bar may take, at 100%.
 const SHARE_BAR_CELLS: int = 10
 
-## The by-year chart's size in cells (design §7.6): 22 wide, 5 tall - two rows
-## above the axis, the axis, two below.
-const CHART_WIDTH: int = 22
-const CHART_HALF_HEIGHT: int = 2
+## The by-year chart's height in pixels. Its width is half the tab, and it
+## shows the latest years that fit with every year captioned (D208).
+const CHART_HEIGHT: int = 96
 
 const MEMBER_WIDTHS: Array[int] = [22, 6, 6]
 
@@ -64,15 +64,19 @@ var _context: TradeContext
 
 @onready var _header: CellRow = %Header
 @onready var _list: VBoxContainer = %IndustryList
-@onready var _chart: ChartWidget = %IndustryChart
+@onready var _chart_title: Label = %ChartTitle
+@onready var _chart: DrawnChart = %IndustryChart
 @onready var _members_title: Label = %MembersTitle
 @onready var _members_header: CellRow = %MembersHeader
 @onready var _members: VBoxContainer = %Members
 @onready var _report_title: Label = %ReportTitle
 @onready var _report: Label = %Report
+@onready var _outlook_title: Label = %OutlookTitle
+@onready var _outlook: Label = %Outlook
 
 
 func _ready() -> void:
+	_chart.custom_minimum_size.y = CHART_HEIGHT
 	_header.configure(WIDTHS, ALIGNS)
 	_header.set_texts(HEADINGS)
 	_header.set_row_variation(&"Faint")
@@ -146,12 +150,17 @@ func _refresh_selected(state: GameState) -> void:
 	if industry == null:
 		return
 	var name: String = industry.definition.display_name
-	var values: Array[float] = []
+	var values: PackedFloat32Array = []
 	var captions: PackedStringArray = []
+	var tips: PackedStringArray = []
 	for year: int in range(1, state.year + 1):
-		values.append(MarketReadouts.industry_performance_in(state, _selected, year))
+		var move: float = MarketReadouts.industry_performance_in(state, _selected, year)
+		values.append(move)
 		captions.append(str(year))
-	_chart.show_signed_bars("BY YEAR: %s" % name.to_upper(), values, captions, CHART_WIDTH, CHART_HALF_HEIGHT)
+		tips.append("Year %d
+%s %s" % [year, name, Palette.format_percent_change(move)])
+	_chart_title.text = "BY YEAR: %s" % name.to_upper()
+	_chart.show_signed_bars(values, captions, tips)
 
 	_members_title.text = "WITHIN THE INDUSTRY: %s" % name.to_upper()
 	for child: Node in _members.get_children():
@@ -180,12 +189,17 @@ func _refresh_selected(state: GameState) -> void:
 		_context.prepare(line.trade_box(), company.id)
 
 	var report: String = ""
+	var outlook: String = ""
 	var news: YearNews = NewsSelector.latest(state)
 	if news != null:
 		report = news.industry_reports.get(_selected, "")
+		outlook = news.industry_report(_selected)
 	_report.text = report
 	_report_title.visible = not report.is_empty()
 	_report.visible = not report.is_empty()
+	_outlook.text = outlook
+	_outlook_title.visible = not outlook.is_empty()
+	_outlook.visible = not outlook.is_empty()
 
 
 func selected() -> StringName:
@@ -212,8 +226,17 @@ func report_text() -> String:
 	return _report.text if _report.visible else ""
 
 
-func industry_chart() -> ChartWidget:
+## The INDUSTRY REPORT as shown (D212), or empty.
+func outlook_text() -> String:
+	return _outlook.text if _outlook.visible else ""
+
+
+func industry_chart() -> DrawnChart:
 	return _chart
+
+
+func industry_chart_title() -> String:
+	return _chart_title.text
 
 
 func _on_industry_pressed(industry_id: StringName) -> void:

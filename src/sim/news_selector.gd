@@ -1,15 +1,20 @@
 class_name NewsSelector
 extends RefCounted
-## Chooses a StalkleHeads year's news: the market headline, a report per
-## industry, earnings commentary per company and each NPC trader's chatter
-## (docs/stalkleheads-design.md §8.2); and, heard at each year's end about the
-## next, the whispers (§8.4, `whispers_for`). Pure: no nodes, no
-## autoloads, and no draw from the match's own generator.
+## Chooses a StalkleHeads year's news: a headline and an industry report per
+## industry, earnings commentary and company news per company and each NPC
+## trader's chatter (docs/stalkleheads-design.md §8.2); and, heard at each
+## year's end about the next, the whispers (§8.4, `whispers_for`). Pure: no
+## nodes, no autoloads, and no draw from the match's own generator. The one
+## kind of news that moves prices, market news, is the economy's to choose
+## (`MarketNewsRules`).
 ##
 ## **How a line is chosen (§8.2).** For each slot, gather every line whose
-## conditions match this year; prefer the lines written for this exact
-## industry, company or trader over the general ones; then draw one. **If
-## nothing matches, the slot stays empty**: no generic line stands in.
+## conditions match this year and whose required lines have all been shown in
+## an earlier year (D210); if any of those is a follow-up - a line that
+## requires another - draw from the follow-ups; otherwise prefer the lines
+## written for this exact industry, company or trader over the general ones;
+## then draw one. **If nothing matches, the slot stays empty**: no generic line
+## stands in.
 ##
 ## **The bag, kept in the history (decisions.md D200).** Lines are drawn
 ## without replacement the way `EventPool` draws events: among the matching
@@ -37,6 +42,9 @@ extends RefCounted
 ## Whispers heard at the end of each year, each about a different company or
 ## industry (design §8.4).
 const WHISPERS_PER_YEAR: int = 2
+
+## Every squeeze and crash whisper is from this source (D214).
+const SQUEEZE_WHISPER_SOURCE: WhisperRules.Source = WhisperRules.Source.QUESTIONABLE
 
 ## The first year at whose end whispers are heard. Not 0: trading opens in
 ## year 1, so a whisper about year 1 could not be acted on (D207).
@@ -82,35 +90,117 @@ static func news_for(state: GameState, year: int) -> YearNews:
 	if target.news != null:
 		return target.news
 	var counts: Dictionary[StringName, int] = {}
+	var shown: Dictionary[StringName, bool] = {}
 	for each: int in range(1, year + 1):
 		var result: EarningsYearResult = MarketReadouts.result_for_year(state, each)
 		if result == null:
 			continue
 		if result.news == null:
-			result.news = select(state, result, counts)
+			result.news = select(state, result, counts, shown)
 		for id: StringName in result.news.drawn:
 			counts[id] = counts.get(id, 0) + 1
+		_add_shown_in(state, each, shown)
 	return target.news
 
 
-## One year's news, given how many times each line was drawn before it.
-## Public for tests; screens use `news_for`.
+## The ids of every news line shown in years 1 to `last_year`: each year's
+## news, its market news and the whispers heard at its end. What a line's
+## `requires` is checked against (D210): a line may follow one shown in an
+## earlier year, never one shown in its own.
+static func shown_through(state: GameState, last_year: int) -> Dictionary[StringName, bool]:
+	var shown: Dictionary[StringName, bool] = {}
+	for year: int in range(1, last_year + 1):
+		var news: YearNews = news_for(state, year)
+		if news != null:
+			for id: StringName in news.drawn:
+				shown[id] = true
+		_add_shown_in(state, year, shown)
+	return shown
+
+
+## Adds year `year`'s market news and the whispers heard at its end to `shown`.
+static func _add_shown_in(state: GameState, year: int, shown: Dictionary[StringName, bool]) -> void:
+	var result: EarningsYearResult = MarketReadouts.result_for_year(state, year)
+	if result != null and result.market_news != null:
+		shown[result.market_news.id] = true
+	var round: WhisperRound = whispers_for(state, year)
+	if round != null:
+		for id: StringName in round.drawn:
+			shown[id] = true
+
+
+## One year's news, given how many times each line was drawn before it and
+## which lines were shown in earlier years. Public for tests; screens use
+## `news_for`.
 static func select(
 	state: GameState,
 	result: EarningsYearResult,
 	counts: Dictionary[StringName, int],
+	shown: Dictionary[StringName, bool] = {},
 ) -> YearNews:
 	var news: YearNews = YearNews.new()
 	news.year = result.year
 	var content: NewsContent = state.market.news
 	if content == null:
 		return news
-	var rng: RandomNumberGenerator = rng_for(result)
-	_select_headline(content, result, counts, rng, news)
-	_select_reports(state, content, result, counts, rng, news)
-	_select_commentary(state, content, result, counts, rng, news)
-	_select_chatter(state, content, result, counts, rng, news)
+	var pick: Pick = Pick.new(counts, shown, rng_for(result))
+	_select_reports(state, content, result, pick, news)
+	_select_industry_reports(state, content, result, pick, news)
+	_select_commentary(state, content, result, pick, news)
+	_select_company_news(state, content, result, pick, news)
+	_select_chatter(state, content, result, pick, news)
 	return news
+
+
+## What every draw in a year needs: the bag's counts, what was shown before,
+## and the year's own generator.
+class Pick:
+	extends RefCounted
+	var counts: Dictionary[StringName, int] = {}
+	var shown: Dictionary[StringName, bool] = {}
+	var rng: RandomNumberGenerator
+
+	func _init(
+		bag_counts: Dictionary[StringName, int],
+		shown_before: Dictionary[StringName, bool],
+		generator: RandomNumberGenerator,
+	) -> void:
+		counts = bag_counts
+		shown = shown_before
+		rng = generator
+
+	## One line from the candidates written for this subject (`own`) and for
+	## any (`general`): follow-ups not yet shown first, then own, then general
+	## (D210).
+	func choose(own: Array[Resource], general: Array[Resource]) -> Resource:
+		var follow_ups: Array[Resource] = []
+		var own_ready: Array[Resource] = []
+		var general_ready: Array[Resource] = []
+		for line: Resource in own:
+			if _ready(line):
+				own_ready.append(line)
+		for line: Resource in general:
+			if _ready(line):
+				general_ready.append(line)
+		for line: Resource in own_ready + general_ready:
+			if NewsSelector.is_waiting_follow_up(line, shown):
+				follow_ups.append(line)
+		if not follow_ups.is_empty():
+			return NewsSelector._draw(follow_ups, counts, rng)
+		return NewsSelector._draw(NewsSelector._preferred(own_ready, general_ready), counts, rng)
+
+	func _ready(line: Resource) -> bool:
+		var required: Array[StringName] = line.get("requires")
+		return MarketNewsRules.requirements_met(required, shown)
+
+
+## True for a follow-up that has not been shown yet: a line that requires
+## another and has never been shown itself. Such a line comes first once it
+## may be drawn; after it has been shown once it is an ordinary line, or it
+## would be drawn every year from then on (D210).
+static func is_waiting_follow_up(line: Resource, shown: Dictionary[StringName, bool]) -> bool:
+	var required: Array[StringName] = line.get("requires")
+	return not required.is_empty() and not shown.has(line.get("id"))
 
 
 ## The year's own generator: seeded from what the year drew, which every peer
@@ -178,31 +268,11 @@ static func mood_band(mood: MarketMood.Value) -> NewsBands.Mood:
 
 # ------------------------------------------------------------------ slots
 
-static func _select_headline(
-	content: NewsContent,
-	result: EarningsYearResult,
-	counts: Dictionary[StringName, int],
-	rng: RandomNumberGenerator,
-	news: YearNews,
-) -> void:
-	var mood: NewsBands.Mood = mood_band(result.mood)
-	var move: NewsBands.Move = move_band(result.index_move_percent)
-	var pool: Array[Resource] = []
-	for line: MarketHeadline in content.headlines:
-		if _mood_fits(line.mood, mood) and _move_fits(line.move, move):
-			pool.append(line)
-	var chosen: MarketHeadline = _draw(pool, counts, rng) as MarketHeadline
-	if chosen != null:
-		news.headline = chosen.text
-		news.drawn.append(chosen.id)
-
-
 static func _select_reports(
 	state: GameState,
 	content: NewsContent,
 	result: EarningsYearResult,
-	counts: Dictionary[StringName, int],
-	rng: RandomNumberGenerator,
+	pick: Pick,
 	news: YearNews,
 ) -> void:
 	var mood: NewsBands.Mood = mood_band(result.mood)
@@ -219,7 +289,7 @@ static func _select_reports(
 				own.append(line)
 			elif line.industry_id.is_empty():
 				general.append(line)
-		var chosen: IndustryReport = _draw(_preferred(own, general), counts, rng) as IndustryReport
+		var chosen: IndustryReport = pick.choose(own, general) as IndustryReport
 		if chosen != null:
 			news.industry_reports[industry.id] = _fill(chosen.text, {INDUSTRY_TOKEN: industry.definition.display_name})
 			news.drawn.append(chosen.id)
@@ -229,8 +299,7 @@ static func _select_commentary(
 	state: GameState,
 	content: NewsContent,
 	result: EarningsYearResult,
-	counts: Dictionary[StringName, int],
-	rng: RandomNumberGenerator,
+	pick: Pick,
 	news: YearNews,
 ) -> void:
 	for company: CompanyState in state.market.companies:
@@ -241,6 +310,7 @@ static func _select_commentary(
 		var regime_band: NewsBands.Regime = NewsBands.regime_band(regime)
 		var expected: float = expected_growth(regime, company.profile.payout_policy_percent, state.settings.max_years)
 		var surprise: NewsBands.Surprise = surprise_band(after.revenue_growth_percent, expected)
+		news.earnings_surprise[company.id] = surprise
 		var own: Array[Resource] = []
 		var general: Array[Resource] = []
 		for line: EarningsCommentary in content.earnings_commentary:
@@ -252,18 +322,127 @@ static func _select_commentary(
 				own.append(line)
 			elif line.company_id.is_empty():
 				general.append(line)
-		var chosen: EarningsCommentary = _draw(_preferred(own, general), counts, rng) as EarningsCommentary
+		var chosen: EarningsCommentary = pick.choose(own, general) as EarningsCommentary
 		if chosen != null:
 			news.commentary[company.id] = _fill(chosen.text, _company_tokens(state, company.id))
 			news.drawn.append(chosen.id)
+
+
+## The INDUSTRY REPORT (D212): for each industry, a line on how its year went
+## against what was expected, and one on what is expected of it next year.
+static func _select_industry_reports(
+	state: GameState,
+	content: NewsContent,
+	result: EarningsYearResult,
+	pick: Pick,
+	news: YearNews,
+) -> void:
+	for industry: IndustryState in state.market.industries:
+		if not result.industry_performance.has(industry.id):
+			continue
+		var move: NewsBands.Move = move_band(result.industry_performance[industry.id])
+		var surprise: NewsBands.Surprise = surprise_band(float(result.industry_rolls.get(industry.id, 0)), 0.0)
+		var last_move: NewsBands.Move = move_band(industry_move_in(state, industry.id, result.year - 1))
+		var tokens: Dictionary[String, String] = {INDUSTRY_TOKEN: industry.definition.display_name}
+		var own: Array[Resource] = []
+		var general: Array[Resource] = []
+		for line: IndustryYearLine in content.industry_years:
+			if not (_move_fits(line.move, move) and _surprise_fits(line.surprise, surprise) and _move_fits(line.last_move, last_move)):
+				continue
+			_sort_into(line, line.industry_id, industry.id, own, general)
+		var year_line: IndustryYearLine = pick.choose(own, general) as IndustryYearLine
+		if year_line != null:
+			news.industry_years[industry.id] = _fill(year_line.text, tokens)
+			news.drawn.append(year_line.id)
+
+		var outlook: NewsBands.Move = move_band(expected_industry_move(state, industry.id, result.year))
+		own = []
+		general = []
+		for line: IndustryOutlookLine in content.industry_outlooks:
+			if not _move_fits(line.outlook, outlook):
+				continue
+			_sort_into(line, line.industry_id, industry.id, own, general)
+		var outlook_line: IndustryOutlookLine = pick.choose(own, general) as IndustryOutlookLine
+		if outlook_line != null:
+			news.industry_outlooks[industry.id] = _fill(outlook_line.text, tokens)
+			news.drawn.append(outlook_line.id)
+
+
+## IN THE NEWS (D211): for each company that traded through the year, a line
+## chosen by how far its own price moved.
+static func _select_company_news(
+	state: GameState,
+	content: NewsContent,
+	result: EarningsYearResult,
+	pick: Pick,
+	news: YearNews,
+) -> void:
+	for company: CompanyState in state.market.companies:
+		if not result.regimes.has(company.id):
+			continue
+		var move: NewsBands.Move = move_band(company_move_percent(result, company.id))
+		var own: Array[Resource] = []
+		var general: Array[Resource] = []
+		for line: CompanyNews in content.company_news:
+			if not _move_fits(line.move, move):
+				continue
+			_sort_into(line, line.company_id, company.id, own, general)
+		var chosen: CompanyNews = pick.choose(own, general) as CompanyNews
+		if chosen != null:
+			news.company_news[company.id] = _fill(chosen.text, _company_tokens(state, company.id))
+			news.drawn.append(chosen.id)
+
+
+## A company's price move in `result`'s year, in percent: from its posted price
+## before the year to its price before any split, so a split is not a crash.
+## -100 for a company that failed.
+static func company_move_percent(result: EarningsYearResult, company_id: StringName) -> float:
+	var ledger: PriceLedger = result.ledger_for(company_id)
+	if ledger == null or ledger.price_before <= 0:
+		return 0.0
+	if ledger.price_after <= TradeRules.BANKRUPT_AT_OR_BELOW:
+		return -100.0
+	return float(ledger.price_after - ledger.price_before) * 100.0 / float(ledger.price_before)
+
+
+## An industry's move in `year`, in percent; 0 before year 1.
+static func industry_move_in(state: GameState, industry_id: StringName, year: int) -> float:
+	var result: EarningsYearResult = MarketReadouts.result_for_year(state, year)
+	if result == null:
+		return 0.0
+	return result.industry_performance.get(industry_id, 0.0)
+
+
+## What is expected of an industry the year after `year`, in percent: the part
+## of its move that carries over from `year` plus the market's lean, before the
+## next swing is drawn (`IndustryState.performance_after` with no swing). Only
+## public figures: never the kept draw (D212).
+static func expected_industry_move(state: GameState, industry_id: StringName, year: int) -> float:
+	var result: EarningsYearResult = MarketReadouts.result_for_year(state, year)
+	if result == null:
+		return 0.0
+	var sentiment: float = ValuationRules.clamp_sentiment(result.index_move_percent)
+	return IndustryState.performance_after(0, result.industry_performance.get(industry_id, 0.0), sentiment)
+
+
+static func _sort_into(
+	line: Resource,
+	line_subject: StringName,
+	subject: StringName,
+	own: Array[Resource],
+	general: Array[Resource],
+) -> void:
+	if line_subject == subject:
+		own.append(line)
+	elif line_subject.is_empty():
+		general.append(line)
 
 
 static func _select_chatter(
 	state: GameState,
 	content: NewsContent,
 	result: EarningsYearResult,
-	counts: Dictionary[StringName, int],
-	rng: RandomNumberGenerator,
+	pick: Pick,
 	news: YearNews,
 ) -> void:
 	if result.desk == null:
@@ -282,7 +461,7 @@ static func _select_chatter(
 				own.append(line)
 			elif line.npc_id.is_empty() and line.strategy == trader.definition.strategy:
 				general.append(line)
-		var chosen: NpcChatter = _draw(_preferred(own, general), counts, rng) as NpcChatter
+		var chosen: NpcChatter = pick.choose(own, general) as NpcChatter
 		if chosen == null:
 			continue
 		var target: StringName = result.desk.targets.get(trader_id, &"")
@@ -326,7 +505,7 @@ static func whispers_for(state: GameState, year: int) -> WhisperRound:
 			var draws: KeptDraws = draws_about(state, each + 1)
 			if draws == null:
 				continue
-			round = select_whispers(state, each, draws, counts)
+			round = select_whispers(state, each, draws, counts, shown_through(state, each - 1))
 			market.whisper_rounds[each] = round
 		for id: StringName in round.drawn:
 			counts[id] = counts.get(id, 0) + 1
@@ -366,19 +545,29 @@ static func draws_about(state: GameState, about_year: int) -> KeptDraws:
 	return null
 
 
-## One round, given how many times each line was drawn before it. Public for
-## tests; screens use `whispers_for`.
+## One round, given how many times each line was drawn before it and which
+## lines were shown in earlier years. Public for tests; screens use
+## `whispers_for`.
 ##
-## Up to `WHISPERS_PER_YEAR` subjects are picked evenly from every industry and
-## every company still trading, without repeats. For each: its true outcome
-## (`WhisperRules`), a source, the outcome that source tells, and a line written
-## for that outcome - one written for this very subject if there is any. With
-## no line for it, that whisper is not heard, and the rest go on.
+## **A squeeze whisper first, if there is one to hear (D214).** While a
+## company's squeeze is still in its price, one whisper says it is about to
+## end (CRASH); otherwise, while a company is flagged, one says a squeeze is
+## coming (SQUEEZE). Either is always from a Questionable source: a squeeze
+## comes in about a quarter of flagged years, and a squeeze ends in one of the
+## one to three years it runs.
+##
+## Then, for the rest of the `WHISPERS_PER_YEAR`, subjects are picked evenly
+## from every industry and every company still trading, without repeats. For
+## each: its true outcome (`WhisperRules`), a source, the outcome that source
+## tells, and a line written for that outcome - one written for this very
+## subject if there is any. With no line for it, that whisper is not heard, and
+## the rest go on.
 static func select_whispers(
 	state: GameState,
 	year: int,
 	draws: KeptDraws,
 	counts: Dictionary[StringName, int],
+	shown: Dictionary[StringName, bool] = {},
 ) -> WhisperRound:
 	var round: WhisperRound = WhisperRound.new()
 	round.year = year
@@ -386,6 +575,8 @@ static func select_whispers(
 	if content == null:
 		return round
 	var rng: RandomNumberGenerator = whisper_rng(year, draws)
+	var pick: Pick = Pick.new(counts, shown, rng)
+	var special: StringName = _select_squeeze_whisper(state, year, content, pick, round)
 	var subjects: Array[StringName] = []
 	var kinds: Array[NewsBands.Subject] = []
 	for industry: IndustryState in state.market.industries:
@@ -393,18 +584,18 @@ static func select_whispers(
 			subjects.append(industry.id)
 			kinds.append(NewsBands.Subject.INDUSTRY)
 	for company: CompanyState in state.market.companies:
-		if draws.regimes.has(company.id):
+		if draws.regimes.has(company.id) and company.id != special:
 			subjects.append(company.id)
 			kinds.append(NewsBands.Subject.COMPANY)
 
-	for _slot: int in WHISPERS_PER_YEAR:
+	for _slot: int in WHISPERS_PER_YEAR - round.lines.size():
 		if subjects.is_empty():
 			break
-		var pick: int = rng.randi_range(0, subjects.size() - 1)
-		var subject: StringName = subjects[pick]
-		var kind: NewsBands.Subject = kinds[pick]
-		subjects.remove_at(pick)
-		kinds.remove_at(pick)
+		var which: int = rng.randi_range(0, subjects.size() - 1)
+		var subject: StringName = subjects[which]
+		var kind: NewsBands.Subject = kinds[which]
+		subjects.remove_at(which)
+		kinds.remove_at(which)
 		var truth: NewsBands.Surprise = whisper_truth(state, year, draws, subject, kind)
 		var source: WhisperRules.Source = WhisperRules.roll_source(rng)
 		var said: NewsBands.Surprise = WhisperRules.distort(truth, source, rng)
@@ -417,7 +608,7 @@ static func select_whispers(
 				own.append(line)
 			elif line.subject.is_empty():
 				general.append(line)
-		var chosen: Whisper = _draw(_preferred(own, general), counts, rng) as Whisper
+		var chosen: Whisper = pick.choose(own, general) as Whisper
 		if chosen == null:
 			continue
 		var heard: WhisperRound.Line = WhisperRound.Line.new()
@@ -434,6 +625,87 @@ static func select_whispers(
 		round.lines.append(heard)
 		round.drawn.append(chosen.id)
 	return round
+
+
+## The squeeze or crash whisper of a round, if one is heard; returns the
+## company it is about, or empty.
+static func _select_squeeze_whisper(
+	state: GameState,
+	year: int,
+	content: NewsContent,
+	pick: Pick,
+	round: WhisperRound,
+) -> StringName:
+	var subject: StringName = squeezed_at_end_of(state, year)
+	var kind: NewsBands.Subject = NewsBands.Subject.CRASH
+	if subject.is_empty():
+		var flagged: Array[StringName] = flagged_at_end_of(state, year)
+		if flagged.is_empty():
+			return &""
+		subject = flagged[0]
+		kind = NewsBands.Subject.SQUEEZE
+	var own: Array[Resource] = []
+	var general: Array[Resource] = []
+	for line: Whisper in content.whispers:
+		if line.about == kind:
+			_sort_into(line, line.subject, subject, own, general)
+	var chosen: Whisper = pick.choose(own, general) as Whisper
+	if chosen == null:
+		return &""
+	var heard: WhisperRound.Line = WhisperRound.Line.new()
+	heard.id = chosen.id
+	heard.subject = subject
+	heard.about = kind
+	heard.source = SQUEEZE_WHISPER_SOURCE
+	heard.text = _fill(chosen.text, _company_tokens(state, subject))
+	round.lines.append(heard)
+	round.drawn.append(chosen.id)
+	return subject
+
+
+## The company whose squeeze was still in its price at the end of `year`,
+## lowest id first if there are several, or empty.
+static func squeezed_at_end_of(state: GameState, year: int) -> StringName:
+	var result: EarningsYearResult = MarketReadouts.result_for_year(state, year)
+	if result == null:
+		return &""
+	var ids: Array[StringName] = _sorted_keys(result.companies_after.keys())
+	for id: StringName in ids:
+		var company: CompanyState = result.companies_after[id]
+		var row: StalkState = state.stalk_by_id(id)
+		if company.in_squeeze() and row != null and not _failed_by(state, id, year):
+			return id
+	return &""
+
+
+## The companies flagged for a squeeze at the end of `year`, most shorted
+## first: as the next year's record has them once it has been played, or the
+## desk as it stands now.
+static func flagged_at_end_of(state: GameState, year: int) -> Array[StringName]:
+	var next: EarningsYearResult = MarketReadouts.result_for_year(state, year + 1)
+	if next != null:
+		return next.short_interest_flagged
+	if year == state.year:
+		return state.market.desk.flagged_companies(state)
+	var none: Array[StringName] = []
+	return none
+
+
+## Whether a squeeze or crash whisper came true: whether the year it was about
+## squeezed that company, or took its squeeze off. Null-safe; false until that
+## year has been played.
+static func squeeze_whisper_came_true(state: GameState, round: WhisperRound, line: WhisperRound.Line) -> bool:
+	var result: EarningsYearResult = MarketReadouts.result_for_year(state, round.about_year())
+	if result == null:
+		return false
+	if line.about == NewsBands.Subject.SQUEEZE:
+		return result.squeeze_target() == line.subject
+	return result.squeeze_moves.get(line.subject, 0) < 0
+
+
+static func _failed_by(state: GameState, company_id: StringName, year: int) -> bool:
+	var company: CompanyState = MarketReadouts.company_in_year(state, company_id, year)
+	return company == null or company.price <= TradeRules.BANKRUPT_AT_OR_BELOW
 
 
 ## What really comes of `subject` in the year after `year` (`WhisperRules`).
@@ -507,6 +779,10 @@ static func _mood_fits(wanted: NewsBands.Mood, actual: NewsBands.Mood) -> bool:
 
 static func _move_fits(wanted: NewsBands.Move, actual: NewsBands.Move) -> bool:
 	return wanted == NewsBands.Move.ANY or wanted == actual
+
+
+static func _surprise_fits(wanted: NewsBands.Surprise, actual: NewsBands.Surprise) -> bool:
+	return wanted == NewsBands.Surprise.ANY or wanted == actual
 
 
 static func _company_tokens(state: GameState, company_id: StringName) -> Dictionary[String, String]:

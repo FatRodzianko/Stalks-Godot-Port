@@ -382,8 +382,23 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 			group_toggled.emit(_group_id)
 		Kind.COMPANY:
+			# Only the symbol and the name open the Company tab, so a click
+			# meant for the trade box or the HELD figure does not.
+			if not opens_company_at(click.global_position):
+				return
 			accept_event()
 			info_requested.emit(_stalk_id)
+
+
+## The name cell, for tests that click it.
+func name_cell() -> Control:
+	return _name
+
+
+## True when a click at `point` (global) lands on the symbol or the name: the
+## two cells that open the Company tab. Public for tests.
+func opens_company_at(point: Vector2) -> bool:
+	return _ticker.get_global_rect().has_point(point) or _name.get_global_rect().has_point(point)
 
 
 func _on_heading_mouse_entered(column: StringName) -> void:

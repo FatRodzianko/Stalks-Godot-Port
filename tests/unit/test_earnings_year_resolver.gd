@@ -3,9 +3,10 @@ extends GutTest
 ## and market (`EarningsMarket`), and the back half it shares with the base game
 ## (`YearSettlement`). See docs/stalkleheads-design.md §3, §4, §10.2 and §12.1.
 ##
-## Every test that draws from an RNG seeds it. Tests that need a particular
-## event build their own `EventPool`; tests that must not be disturbed by an
-## event use an empty one.
+## Every test that draws from an RNG seeds it. `_new_state` holds no market
+## news, so nothing moves a price but the market itself; a test that needs a
+## particular market news line passes it in, and `_shipped_state` has the
+## shipped ones (D209).
 
 
 var _library: ContentLibrary
@@ -18,7 +19,13 @@ func before_all() -> void:
 
 # --------------------------------------------------------------------- helpers
 
-func _new_state(max_years: int = 10, player_count: int = 1) -> GameState:
+func _new_state(max_years: int = 10, player_count: int = 1, market_news: Array[MarketNews] = []) -> GameState:
+	var state: GameState = _shipped_state(max_years, player_count)
+	state.market.news = StalksFixture.news_with_market(_library.news, market_news)
+	return state
+
+
+func _shipped_state(max_years: int = 10, player_count: int = 1) -> GameState:
 	var state: GameState = EarningsMarket.new_game_state(_library, StalksFixture.make_settings(max_years))
 	for index: int in player_count:
 		state.players.append(PlayerState.new(StringName("p%d" % index), "P%d" % index, 10000))
@@ -26,15 +33,11 @@ func _new_state(max_years: int = 10, player_count: int = 1) -> GameState:
 
 
 func _shipped_resolver() -> EarningsYearResolver:
-	return EarningsYearResolver.new(EarningsMarket.build_event_pool(_library))
+	return EarningsYearResolver.new(_library.short_squeeze)
 
 
 func _quiet_resolver() -> EarningsYearResolver:
-	return EarningsYearResolver.new(EventPool.new([]))
-
-
-func _resolver_with(events: Array[SpecialEventDefinition]) -> EarningsYearResolver:
-	return EarningsYearResolver.new(EventPool.new(events))
+	return EarningsYearResolver.new()
 
 
 ## A company that will price at or below zero this year: its earnings are wiped
@@ -47,10 +50,10 @@ func _doom(state: GameState, company_id: StringName) -> void:
 	company.regime = EarningsRegime.Value.DISTRESS
 
 
-## Runs `years` years with the shipped events and returns every result.
+## Runs `years` years with the shipped news and returns every result.
 func _run(seed_value: int, years: int, state: GameState = null) -> Array[EarningsYearResult]:
 	if state == null:
-		state = _new_state(years)
+		state = _shipped_state(years)
 	var resolver: EarningsYearResolver = _shipped_resolver()
 	var rng: RandomNumberGenerator = StalksFixture.rng(seed_value)
 	var results: Array[EarningsYearResult] = []
@@ -61,8 +64,8 @@ func _run(seed_value: int, years: int, state: GameState = null) -> Array[Earning
 
 func _record(state: GameState, result: EarningsYearResult) -> String:
 	var parts: PackedStringArray = ["y%d %s %.6f" % [result.year, MarketMood.label(result.mood), result.index_move_percent]]
-	if result.event != null:
-		parts.append(String(result.event.id))
+	if result.market_news != null:
+		parts.append(String(result.market_news.id))
 	for row: StalkState in state.stalks:
 		parts.append("%s=%d" % [row.id, row.price])
 	for company: CompanyState in state.market.companies:
@@ -224,16 +227,14 @@ func test_every_ledger_balances_and_is_the_yearly_change() -> void:
 func test_yearly_change_includes_the_event() -> void:
 	# §14 q7: in this mode the board's Yearly Change is the whole move, and the
 	# ledger is what breaks it down. The base game's excludes the event.
-	var events: Array[SpecialEventDefinition] = [
-		StalksFixture.make_event(&"up", &"springfield", MarketMood.Value.BULL, 20),
-	]
-	var state: GameState = _new_state()
+	var news: Array[MarketNews] = [StalksFixture.make_market_news(&"up", &"springfield", 20)]
+	var state: GameState = _new_state(10, 1, news)
 	var before: int = state.stalk_by_id(&"springfield").price
-	var result: EarningsYearResult = _resolver_with(events).advance_year(state, StalksFixture.rng(5))
+	var result: EarningsYearResult = _quiet_resolver().advance_year(state, StalksFixture.rng(5))
 	var ledger: PriceLedger = result.ledger_for(&"springfield")
 	var row: StalkState = state.stalk_by_id(&"springfield")
 
-	assert_eq(result.event.id, &"up")
+	assert_eq(result.market_news.id, &"up")
 	assert_between(ledger.this_years_event, 19, 21, "the event's line, within one coin of truncation")
 	assert_eq(row.last_yearly_change, ledger.price_after - before, "the event is inside Yearly Change")
 	assert_eq(row.last_yearly_change, ledger.total())
@@ -297,8 +298,8 @@ func test_prices_are_valued_on_last_years_sentiment_not_this_years() -> void:
 			assert_eq(company.sentiment, carried_in, "year %d %s" % [result.year, company_id])
 
 
-func test_the_mood_label_moves_no_price_except_through_the_event_bag() -> void:
-	# Flip last year's label and keep its number. With no events to draw, the
+func test_the_mood_label_moves_no_price_except_through_the_market_news() -> void:
+	# Flip last year's label and keep its number. With no news to draw, the
 	# label has nothing left to influence, so every price must be identical.
 	var a: GameState = _new_state()
 	var b: GameState = _new_state()
@@ -332,80 +333,123 @@ func test_the_derived_bull_rate_stays_in_its_band() -> void:
 	assert_between(rate, 0.45, 0.65, "bull rate %.3f" % rate)
 
 
-# ------------------------------------------------------------- the event bag
+# ----------------------------------------------------- market news (D209, D210)
 
-func test_year_one_draws_from_the_bull_bag() -> void:
-	var events: Array[SpecialEventDefinition] = [
-		StalksFixture.make_event(&"good", &"springfield", MarketMood.Value.BULL, 10),
-		StalksFixture.make_event(&"bad", &"stryker", MarketMood.Value.BEAR, -10),
+func test_year_one_draws_bull_market_news() -> void:
+	var news: Array[MarketNews] = [
+		StalksFixture.make_market_news(&"good", &"springfield", 10, NewsBands.Mood.BULL),
+		StalksFixture.make_market_news(&"bad", &"stryker", -10, NewsBands.Mood.BEAR),
 	]
-	var result: EarningsYearResult = _resolver_with(events).advance_year(_new_state(), StalksFixture.rng(3))
+	var result: EarningsYearResult = _quiet_resolver().advance_year(_new_state(10, 1, news), StalksFixture.rng(3))
 	assert_eq(result.event_bag, MarketMood.Value.BULL)
-	assert_eq(result.event.id, &"good")
+	assert_eq(result.market_news.id, &"good")
 
 
-func test_the_event_comes_from_last_years_mood() -> void:
-	var events: Array[SpecialEventDefinition] = [
-		StalksFixture.make_event(&"good", &"springfield", MarketMood.Value.BULL, 10),
-		StalksFixture.make_event(&"bad", &"stryker", MarketMood.Value.BEAR, -10),
+func test_the_market_news_comes_from_last_years_mood() -> void:
+	var news: Array[MarketNews] = [
+		StalksFixture.make_market_news(&"good", &"springfield", 10, NewsBands.Mood.BULL),
+		StalksFixture.make_market_news(&"bad", &"stryker", -10, NewsBands.Mood.BEAR),
 	]
-	var state: GameState = _new_state()
+	var state: GameState = _new_state(10, 1, news)
 	state.market.last_mood = MarketMood.Value.BEAR
-	var result: EarningsYearResult = _resolver_with(events).advance_year(state, StalksFixture.rng(3))
+	var result: EarningsYearResult = _quiet_resolver().advance_year(state, StalksFixture.rng(3))
 	assert_eq(result.event_bag, MarketMood.Value.BEAR)
-	assert_eq(result.event.id, &"bad")
+	assert_eq(result.market_news.id, &"bad")
 
 
-func test_over_a_match_every_event_is_from_the_previous_years_mood() -> void:
+func test_over_a_match_the_shipped_news_fits_last_years_mood_and_move() -> void:
 	var results: Array[EarningsYearResult] = _run(8, 20)
 	var previous: MarketMood.Value = MarketMood.Value.BULL
+	var previous_move: float = 0.0
+	var drawn: int = 0
 	for result: EarningsYearResult in results:
 		assert_eq(result.event_bag, previous, "year %d" % result.year)
-		if result.event != null:
-			assert_eq(result.event.mood, previous, "year %d: %s" % [result.year, result.event.id])
+		var news: MarketNews = result.market_news
+		if news != null:
+			drawn += 1
+			if news.mood != NewsBands.Mood.ANY:
+				assert_eq(news.mood, NewsSelector.mood_band(previous), "year %d: %s" % [result.year, news.id])
+			if news.move != NewsBands.Move.ANY:
+				assert_eq(news.move, NewsSelector.move_band(previous_move), "year %d: %s" % [result.year, news.id])
 		previous = result.mood
+		previous_move = result.index_move_percent
+	assert_gt(drawn, 0, "the shipped market news was drawn")
 
 
-func test_the_event_is_drawn_before_prices_and_is_in_them() -> void:
-	# Same seed, same year, with and without the event: the only difference in
-	# the target's price is the event's own line.
-	var events: Array[SpecialEventDefinition] = [
-		StalksFixture.make_event(&"crash", &"pgenron", MarketMood.Value.BULL, -25),
-	]
-	var with_event: GameState = _new_state()
-	var without: GameState = _new_state()
-	# An empty pool draws nothing from the RNG; one event costs no draw to pick
-	# either once its bag of one is shuffled, so both runs see the same market.
-	var hit: EarningsYearResult = _resolver_with(events).advance_year(with_event, StalksFixture.rng(9))
+func test_the_market_news_is_drawn_before_prices_and_is_in_them() -> void:
+	# Same seed, same year, the same draws: one line that moves pgenron and
+	# one that moves nothing. The only difference is the news's own line.
+	var with_news: GameState = _new_state(10, 1, [StalksFixture.make_market_news(&"crash", &"pgenron", -25)] as Array[MarketNews])
+	var without: GameState = _new_state(10, 1, [StalksFixture.make_market_news(&"calm")] as Array[MarketNews])
+	var hit: EarningsYearResult = _quiet_resolver().advance_year(with_news, StalksFixture.rng(9))
 	_quiet_resolver().advance_year(without, StalksFixture.rng(9))
-	var moved: int = with_event.stalk_by_id(&"pgenron").price - without.stalk_by_id(&"pgenron").price
+	var moved: int = with_news.stalk_by_id(&"pgenron").price - without.stalk_by_id(&"pgenron").price
 	assert_eq(moved, hit.ledger_for(&"pgenron").this_years_event)
 	assert_between(moved, -26, -24)
 
 
-func test_an_event_aimed_at_a_bankrupt_company_is_skipped() -> void:
-	# §4: an event carrying only a company delta is skipped at a dead target
-	# and left in the bag (decisions.md D24), as in the base game.
-	var events: Array[SpecialEventDefinition] = [
-		StalksFixture.make_event(&"late", &"stryker", MarketMood.Value.BULL, 10),
-	]
-	var state: GameState = _new_state()
+func test_market_news_aimed_at_a_bankrupt_company_is_not_drawn() -> void:
+	var state: GameState = _new_state(10, 1, [StalksFixture.make_market_news(&"late", &"stryker", 10)] as Array[MarketNews])
 	state.stalk_by_id(&"stryker").is_bankrupt = true
-	var result: EarningsYearResult = _resolver_with(events).advance_year(state, StalksFixture.rng(3))
-	assert_null(result.event)
+	var result: EarningsYearResult = _quiet_resolver().advance_year(state, StalksFixture.rng(3))
+	assert_null(result.market_news)
 
 
-func test_the_index_carries_no_events_in_this_mode() -> void:
-	var pool: EventPool = EarningsMarket.build_event_pool(_library)
-	var index_events: int = _library.stalk_by_id(EarningsMarket.INDEX_ID).all_events().size()
-	assert_gt(index_events, 0, "the shipped index has events, so leaving them out is a real choice")
-	assert_eq(
-		pool.pool_size(MarketMood.Value.BULL) + pool.pool_size(MarketMood.Value.BEAR),
-		_library.all_events().size() - index_events,
-	)
+func test_industry_news_gives_every_living_member_the_same_amount() -> void:
+	var industry: StringName = _library.company_by_id(&"springfield").industry
+	var state: GameState = _new_state(10, 1, [
+		StalksFixture.make_market_news(&"boom", &"", 15, NewsBands.Mood.ANY, NewsBands.Move.ANY, industry),
+	] as Array[MarketNews])
+	var members: Array[StringName] = []
+	for company: CompanyState in state.market.companies:
+		if company.profile.industry == industry:
+			members.append(company.id)
+	assert_gt(members.size(), 1, "an industry with more than one member")
+	var dead: StringName = members[0]
+	state.stalk_by_id(dead).is_bankrupt = true
+	var result: EarningsYearResult = _quiet_resolver().advance_year(state, StalksFixture.rng(4))
+	assert_eq(result.market_news.id, &"boom")
+	var hits: Dictionary[StringName, int] = MarketNewsRules.hits(state, result.market_news)
+	assert_false(hits.has(dead), "a bankrupt member gets nothing")
+	for company_id: StringName in result.ledgers:
+		var line: int = result.ledgers[company_id].this_years_event
+		if members.has(company_id) and company_id != dead:
+			assert_true(hits.has(company_id), "%s is hit" % company_id)
+			assert_between(line, 14, 16, "%s gets the amount" % company_id)
+		else:
+			assert_eq(line, 0, "%s is not in the industry" % company_id)
+
+
+func test_a_follow_up_waits_for_an_earlier_year_then_comes_first() -> void:
+	# D210: a line that requires another is not drawn the year that one is
+	# shown, and is drawn ahead of every ordinary line once it may be.
+	var follow_up: MarketNews = StalksFixture.make_market_news(&"b_follow_up")
+	follow_up.requires = [&"a_first"] as Array[StringName]
+	var state: GameState = _new_state(10, 1, [StalksFixture.make_market_news(&"a_first"), follow_up] as Array[MarketNews])
+	var resolver: EarningsYearResolver = _quiet_resolver()
+	var rng: RandomNumberGenerator = StalksFixture.rng(5)
+	assert_eq(resolver.advance_year(state, rng).market_news.id, &"a_first", "only a_first may be drawn in year 1")
+	assert_eq(resolver.advance_year(state, rng).market_news.id, &"b_follow_up", "the follow-up comes first")
+	assert_not_null(resolver.advance_year(state, rng).market_news, "then both are ordinary lines")
+	assert_false(NewsSelector.is_waiting_follow_up(follow_up, NewsSelector.shown_through(state, state.year)),
+		"once shown, a follow-up no longer jumps the queue")
+
+
+func test_a_requirement_never_shown_keeps_the_line_out() -> void:
+	var waiting: MarketNews = StalksFixture.make_market_news(&"never")
+	waiting.requires = [&"no_such_line"] as Array[StringName]
+	var state: GameState = _new_state(10, 1, [waiting] as Array[MarketNews])
+	var resolver: EarningsYearResolver = _quiet_resolver()
+	var rng: RandomNumberGenerator = StalksFixture.rng(6)
+	for year: int in 5:
+		assert_null(resolver.advance_year(state, rng).market_news, "year %d" % (year + 1))
+
+
+func test_the_index_is_never_hit_by_market_news() -> void:
 	for result: EarningsYearResult in _run(14, 30):
-		if result.event != null:
-			assert_ne(result.event.target_stalk_id, EarningsMarket.INDEX_ID)
+		assert_false(result.ledgers.has(EarningsMarket.INDEX_ID), "the index has no ledger")
+		if result.market_news != null:
+			assert_ne(result.market_news.target_company, EarningsMarket.INDEX_ID)
 
 
 # ------------------------------------------------------------------ the index
@@ -579,7 +623,8 @@ func test_a_split_doubles_holders_and_is_value_neutral() -> void:
 func test_dividends_are_paid_on_post_split_shares_from_earnings() -> void:
 	var state: GameState = _new_state()
 	var company: CompanyState = state.market.company_by_id(&"teamsters")
-	company.profit = float(company.shares_outstanding) * 30.0
+	# Earnings far enough above a split that no year's flow can keep it under.
+	company.profit = float(company.shares_outstanding) * 40.0
 	company.revenue = company.profit * 100.0 / company.margin_percent
 	state.players[0].set_shares(&"teamsters", 10)
 	var cash_before: int = state.players[0].cash

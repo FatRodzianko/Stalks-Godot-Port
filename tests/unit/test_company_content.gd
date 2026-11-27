@@ -42,26 +42,27 @@ func test_the_industry_names_are_the_owners() -> void:
 
 
 func test_the_roster_is_the_approved_one() -> void:
-	# §3.2.3: company -> industry.
+	# §3.2.3: company -> industry, as the owner named them (f41d317 replaced
+	# the five placeholder companies).
 	var expected: Dictionary[String, StringName] = {
 		"Springfield Nuclear Power": &"energy",
 		"PG&Enron": &"energy",
 		"strYker!!!": &"energy",
 		"North Haverbrook MONORAIL": &"transport",
-		"Transportation Company A": &"transport",
-		"Transportation Company B": &"transport",
+		"Easy Breezy Airways": &"transport",
+		"ElectroMotorTronics": &"transport",
 		"Teamsters Pension Fund": &"financial",
 		"Mafia HUD Scam": &"financial",
 		"Landlords United": &"financial",
 		"My Pillow, Your Pillow, We're All Pillows!": &"consumer",
-		"Consumer Goods Company A": &"consumer",
+		"GinkgoPals": &"consumer",
 		"Unionized Submissives LLC": &"consumer",
 		"Video Chrome": &"tech",
 		"Meowly": &"tech",
-		"Technology Company A": &"tech",
-		"Chichen Pizza": &"food",
+		"BoobTube": &"tech",
+		"Chicen Pizza": &"food",
 		"Farms+": &"food",
-		"Food Company A": &"food",
+		"Seed Genes": &"food",
 	}
 	var found: Dictionary[String, StringName] = {}
 	for company: CompanyProfile in _library.companies:
@@ -69,16 +70,11 @@ func test_the_roster_is_the_approved_one() -> void:
 	assert_eq(found, expected)
 
 
-func test_the_placeholder_tickers_are_the_documented_ones() -> void:
-	var by_name: Dictionary[String, StringName] = {}
+func test_every_ticker_is_different() -> void:
+	var seen: Dictionary[StringName, StringName] = {}
 	for company: CompanyProfile in _library.companies:
-		by_name[company.display_name] = company.ticker
-	assert_eq(by_name["Transportation Company A"], &"TRNA")
-	assert_eq(by_name["Transportation Company B"], &"TRNB")
-	assert_eq(by_name["Consumer Goods Company A"], &"CONA")
-	assert_eq(by_name["Technology Company A"], &"TECA")
-	assert_eq(by_name["Food Company A"], &"FODA")
-	assert_eq(by_name["Unionized Submissives LLC"], &"SUBS")
+		assert_false(seen.has(company.ticker), "%s and %s share %s" % [seen.get(company.ticker, &""), company.id, company.ticker])
+		seen[company.ticker] = company.id
 
 
 func test_shipped_companies_keep_their_stalk_id_and_ticker() -> void:
@@ -94,24 +90,14 @@ func test_opening_prices_are_the_proposed_table() -> void:
 	# §3.2.4: opening price is EPS x 12.5, not separately authored.
 	var expected: Dictionary[StringName, int] = {
 		&"springfield": 120, &"pgenron": 80, &"stryker": 50,
-		&"monorail": 40, &"transportation_company_a": 100, &"transportation_company_b": 75,
+		&"monorail": 40, &"easy-breezy-air": 75, &"electro_moto": 100,
 		&"teamsters": 150, &"mafia": 70, &"landlords": 130,
-		&"pillows": 90, &"consumer_goods_company_a": 100, &"submissives": 75,
-		&"videochrome": 110, &"meowly": 30, &"technology_company_a": 100,
-		&"chichen": 65, &"farmsplus": 140, &"food_company_a": 100,
+		&"pillows": 90, &"ginkgo_pals": 100, &"submissives": 75,
+		&"videochrome": 110, &"meowly": 30, &"boobtube": 100,
+		&"chichen": 65, &"farmsplus": 140, &"seed_genes": 100,
 	}
 	for company: CompanyProfile in _library.companies:
-		assert_eq(CompanyState.new(company).price, expected[company.id], String(company.id))
-
-
-func test_placeholder_companies_use_the_neutral_values() -> void:
-	for company_id: StringName in [
-		&"transportation_company_a", &"transportation_company_b",
-		&"consumer_goods_company_a", &"technology_company_a", &"food_company_a",
-	]:
-		var company: CompanyProfile = _library.company_by_id(company_id)
-		assert_eq(company.quality, 50, String(company_id))
-		assert_eq(company.payout_policy_percent, 35, String(company_id))
+		assert_eq(CompanyState.new(company).price, expected.get(company.id, -1), String(company.id))
 
 
 func test_the_base_game_never_loads_the_fundamentals() -> void:

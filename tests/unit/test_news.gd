@@ -45,11 +45,12 @@ func _with_news(library: ContentLibrary, book: NewsBook) -> NewsContent:
 	return library.news
 
 
-func _headline(id: String, mood: NewsBands.Mood, move: NewsBands.Move) -> MarketHeadline:
-	var line: MarketHeadline = MarketHeadline.new()
+## An outlook line for energy alone, whatever the outlook: one is drawn for
+## energy every year, so it is what the bag tests watch.
+func _energy_outlook(id: String) -> IndustryOutlookLine:
+	var line: IndustryOutlookLine = IndustryOutlookLine.new()
 	line.id = StringName(id)
-	line.mood = mood
-	line.move = move
+	line.industry_id = &"energy"
 	line.text = id
 	return line
 
@@ -76,11 +77,47 @@ func test_the_shipped_news_loads_and_validates_clean() -> void:
 	var library: ContentLibrary = _library()
 	assert_eq(library.errors, [] as Array[String])
 	assert_eq(library.warnings, [] as Array[String])
-	assert_eq(library.news.headlines.size(), 6, "one per mood and move that can happen")
-	assert_eq(library.news.industry_reports.size(), 30, "five moves for each of six industries")
+	assert_eq(library.news.market_news.size(), 12, "the twelve headlines, moved over (D209)")
+	for line: MarketNews in library.news.market_news:
+		assert_false(line.headline.begins_with("MARKET HEADLINE"), "%s lost its old prefix" % line.id)
+		assert_eq(line.amount, 0, "%s moves nothing yet" % line.id)
+	assert_eq(library.news.industry_years.size(), 25, "five moves by five surprises")
+	assert_eq(library.news.industry_outlooks.size(), 5, "one per outlook")
 	assert_eq(library.news.earnings_commentary.size(), 25, "five regimes by five surprises")
-	assert_eq(library.news.whispers.size(), 10, "five outcomes, for a company and for an industry")
+	assert_eq(library.news.company_news.size(), 5 + 8 * 10, "one per move, and every ported event (D211)")
+	assert_eq(library.news.whispers.size(), 12, "five outcomes for a company and an industry, a squeeze and a crash")
 	assert_eq(library.news.chatter.size(), 24 * 5, "every trader's five lines")
+
+
+func test_every_base_event_of_a_stalkleheads_company_is_its_company_news() -> void:
+	# D211: two per move band, by size, bear events low and bull events high.
+	var library: ContentLibrary = _library()
+	var by_id: Dictionary[StringName, CompanyNews] = {}
+	for line: CompanyNews in library.news.company_news:
+		by_id[line.id] = line
+	var ported: int = 0
+	for company: CompanyProfile in library.companies:
+		var row: StalkDefinition = library.stalk_by_id(company.id)
+		if row == null:
+			continue
+		var bands: Dictionary[NewsBands.Move, int] = {}
+		for event: SpecialEventDefinition in row.all_events():
+			var line: CompanyNews = by_id.get(StringName("cnews_%s" % event.id), null)
+			assert_not_null(line, "%s is company news" % event.id)
+			if line == null:
+				continue
+			ported += 1
+			assert_eq(line.company_id, company.id)
+			assert_eq(line.text, event.flavour_text)
+			if event.price_change < 0:
+				assert_true(line.move in [NewsBands.Move.CRASH, NewsBands.Move.DOWN, NewsBands.Move.FLAT], "%s" % event.id)
+			else:
+				assert_true(line.move in [NewsBands.Move.SURGE, NewsBands.Move.UP, NewsBands.Move.FLAT], "%s" % event.id)
+			bands[line.move] = bands.get(line.move, 0) + 1
+		if not bands.is_empty():
+			for move: NewsBands.Move in [NewsBands.Move.CRASH, NewsBands.Move.DOWN, NewsBands.Move.FLAT, NewsBands.Move.UP, NewsBands.Move.SURGE]:
+				assert_eq(bands.get(move, 0), 2, "%s has two lines for move %d" % [company.id, move])
+	assert_eq(ported, 80)
 
 
 ## §8.3's budget: every slot that can come up has at least one line, so a
@@ -95,9 +132,25 @@ func test_every_slot_that_can_come_up_has_a_line() -> void:
 			moves = [NewsBands.Move.FLAT, NewsBands.Move.DOWN, NewsBands.Move.CRASH]
 		for move: NewsBands.Move in moves:
 			var found: bool = false
-			for line: MarketHeadline in news.headlines:
+			for line: MarketNews in news.market_news:
 				found = found or ((line.mood in [mood, NewsBands.Mood.ANY]) and (line.move in [move, NewsBands.Move.ANY]))
-			assert_true(found, "a headline for %d %d" % [mood, move])
+			assert_true(found, "market news for %d %d" % [mood, move])
+	var all_moves: Array[NewsBands.Move] = [NewsBands.Move.CRASH, NewsBands.Move.DOWN, NewsBands.Move.FLAT, NewsBands.Move.UP, NewsBands.Move.SURGE]
+	for move: NewsBands.Move in all_moves:
+		var outlook_found: bool = false
+		for line: IndustryOutlookLine in news.industry_outlooks:
+			outlook_found = outlook_found or (line.industry_id.is_empty() and line.outlook in [move, NewsBands.Move.ANY])
+		assert_true(outlook_found, "an outlook for %d" % move)
+		var company_found: bool = false
+		for line: CompanyNews in news.company_news:
+			company_found = company_found or (line.company_id.is_empty() and line.move in [move, NewsBands.Move.ANY])
+		assert_true(company_found, "company news for any company on %d" % move)
+		for surprise: NewsBands.Surprise in WhisperRules.OUTCOMES:
+			var year_found: bool = false
+			for line: IndustryYearLine in news.industry_years:
+				year_found = year_found or (line.industry_id.is_empty() and line.move in [move, NewsBands.Move.ANY]
+					and line.surprise in [surprise, NewsBands.Surprise.ANY] and line.last_move == NewsBands.Move.ANY)
+			assert_true(year_found, "an industry year for %d %d" % [move, surprise])
 	for industry: IndustryDefinition in library.industries:
 		for move: NewsBands.Move in [NewsBands.Move.CRASH, NewsBands.Move.DOWN, NewsBands.Move.FLAT, NewsBands.Move.UP, NewsBands.Move.SURGE]:
 			var found: bool = false
@@ -105,6 +158,11 @@ func test_every_slot_that_can_come_up_has_a_line() -> void:
 				var fits_industry: bool = line.industry_id in [industry.id, &""]
 				found = found or (fits_industry and line.move in [move, NewsBands.Move.ANY])
 			assert_true(found, "a report for %s %d" % [industry.id, move])
+	for about: NewsBands.Subject in [NewsBands.Subject.SQUEEZE, NewsBands.Subject.CRASH]:
+		var found: bool = false
+		for line: Whisper in news.whispers:
+			found = found or (line.about == about and line.subject.is_empty())
+		assert_true(found, "a whisper for any %d" % about)
 	for about: NewsBands.Subject in [NewsBands.Subject.COMPANY, NewsBands.Subject.INDUSTRY]:
 		for outcome: NewsBands.Surprise in WhisperRules.OUTCOMES:
 			var found: bool = false
@@ -138,9 +196,16 @@ func test_the_validator_reports_every_kind_of_mistake() -> void:
 	chatter.npc_id = &"nobody_1"
 	chatter.text = ""
 	book.chatter.append(chatter)
-	var headline: MarketHeadline = _headline("e1", NewsBands.Mood.BULL, NewsBands.Move.UP)
+	var headline: MarketNews = StalksFixture.make_market_news(&"e1", &"", 0, NewsBands.Mood.BULL, NewsBands.Move.UP)
 	headline.set("move", 99)
-	book.headlines.append(headline)
+	book.market_news.append(headline)
+	var both: MarketNews = StalksFixture.make_market_news(&"m2", &"stryker", 5, NewsBands.Mood.ANY, NewsBands.Move.ANY, &"energy")
+	book.market_news.append(both)
+	var ghost: MarketNews = StalksFixture.make_market_news(&"m3", &"nobody_inc", 5)
+	book.market_news.append(ghost)
+	var aimless: MarketNews = StalksFixture.make_market_news(&"m4", &"", 5)
+	aimless.requires = [&"m4", &"no_such_line"] as Array[StringName]
+	book.market_news.append(aimless)
 	_with_news(library, book)
 	library.validate()
 
@@ -155,6 +220,11 @@ func test_the_validator_reports_every_kind_of_mistake() -> void:
 	assert_true(_has_error(library, "c1 has no text"), "an empty line")
 	assert_true(_has_error(library, "Duplicate news id: e1"), "two lines with one id")
 	assert_true(_has_error(library, "unknown move (99)"), "a band that does not exist")
+	assert_true(_has_error(library, "m2 names both a company and an industry"), "two targets")
+	assert_true(_has_error(library, "names company nobody_inc"), "a target that does not exist")
+	assert_true(_has_error(library, "m4 has an amount but nothing"), "an amount with no target")
+	assert_true(_has_error(library, "m4 requires itself"), "a line that waits for itself")
+	assert_true(_has_error(library, "requires no_such_line"), "a requirement that is not a line")
 
 
 func test_the_validator_checks_the_transition_matrix_and_the_strategies() -> void:
@@ -227,22 +297,22 @@ func test_a_line_drawn_fewer_times_is_drawn_first() -> void:
 	var played: WireMatch = _played(SEED, 3)
 	var book: NewsBook = NewsBook.new()
 	for id: String in ["a", "b", "c"]:
-		book.headlines.append(_headline(id, NewsBands.Mood.ANY, NewsBands.Move.ANY))
+		book.industry_outlooks.append(_energy_outlook(id))
 	_rechoose(played.state, _with_news(played.library, book))
 	var result: EarningsYearResult = played.state.history[0]
 	var counts: Dictionary[StringName, int] = {&"a": 1, &"b": 0, &"c": 1}
-	assert_eq(NewsSelector.select(played.state, result, counts).headline, "b")
+	assert_eq(NewsSelector.select(played.state, result, counts).industry_outlooks[&"energy"], "b")
 
 
 func test_no_line_repeats_until_every_line_has_had_its_turn() -> void:
 	var played: WireMatch = _played(SEED, 12)
 	var book: NewsBook = NewsBook.new()
 	for id: String in ["a", "b", "c", "d"]:
-		book.headlines.append(_headline(id, NewsBands.Mood.ANY, NewsBands.Move.ANY))
+		book.industry_outlooks.append(_energy_outlook(id))
 	_rechoose(played.state, _with_news(played.library, book))
 	var seen: PackedStringArray = []
 	for year: int in range(1, 13):
-		seen.append(NewsSelector.news_for(played.state, year).headline)
+		seen.append(NewsSelector.news_for(played.state, year).industry_outlooks[&"energy"])
 	for cycle: int in 3:
 		var slice: PackedStringArray = seen.slice(cycle * 4, cycle * 4 + 4)
 		slice.sort()
@@ -252,11 +322,20 @@ func test_no_line_repeats_until_every_line_has_had_its_turn() -> void:
 func test_a_slot_nothing_matches_stays_empty() -> void:
 	var played: WireMatch = _played(SEED, 5)
 	var book: NewsBook = NewsBook.new()
-	book.headlines.append(_headline("never", NewsBands.Mood.BULL, NewsBands.Move.CRASH))
+	var never: IndustryYearLine = IndustryYearLine.new()
+	never.id = &"never"
+	never.industry_id = &"energy"
+	never.move = NewsBands.Move.CRASH
+	never.surprise = NewsBands.Surprise.MUCH_BETTER
+	never.last_move = NewsBands.Move.SURGE
+	never.text = "never"
+	book.industry_years.append(never)
 	_rechoose(played.state, _with_news(played.library, book))
 	for year: int in range(1, 6):
 		var news: YearNews = NewsSelector.news_for(played.state, year)
-		assert_eq(news.headline, "", "year %d" % year)
+		assert_true(news.industry_years.is_empty(), "year %d" % year)
+		assert_true(news.industry_outlooks.is_empty())
+		assert_true(news.company_news.is_empty())
 		assert_true(news.industry_reports.is_empty())
 		assert_true(news.commentary.is_empty())
 		var round: WhisperRound = NewsSelector.whispers_for(played.state, year)
@@ -401,6 +480,8 @@ func test_a_whispers_truth_is_what_next_year_brought() -> void:
 		for line: WhisperRound.Line in round.lines:
 			assert_false(subjects.has(line.subject), "two whispers about one subject")
 			subjects[line.subject] = true
+			if line.is_about_squeeze():
+				continue
 			var expected: NewsBands.Surprise
 			if line.about == NewsBands.Subject.INDUSTRY:
 				industries += 1
@@ -416,6 +497,69 @@ func test_a_whispers_truth_is_what_next_year_brought() -> void:
 			assert_eq(line.truth, expected, "%s heard in year %d" % [line.subject, round.year])
 	assert_gt(companies, 0)
 	assert_gt(industries, 0)
+
+
+## A match whose one SHORT trader is 400 shares short of stryker, one year in.
+func _shorted_year_one(library: ContentLibrary, seed_value: int) -> GameState:
+	var state: GameState = EarningsMarket.new_game_state(library, StalksFixture.make_settings(10))
+	state.players.append(PlayerState.new(&"p0", "P0", 10000))
+	var trader: NpcTraderDefinition = NpcTraderDefinition.new()
+	trader.id = &"short_x"
+	trader.display_name = "NPC NAME: test"
+	trader.strategy = NpcStrategy.Value.SHORT
+	trader.starting_cash = 8000
+	trader.conviction = 45
+	state.market.desk = NpcDesk.from_definitions([trader] as Array[NpcTraderDefinition])
+	state.market.desk.traders[0].set_short(&"stryker", 400)
+	EarningsYearResolver.new(library.short_squeeze).advance_year(state, StalksFixture.rng(seed_value))
+	return state
+
+
+## D214: a flagged company makes a squeeze whisper and a squeezed one a crash
+## whisper, always Questionable, in one of the two slots; next year says whether
+## it happened.
+func test_squeeze_and_crash_whispers_take_one_slot_from_a_questionable_source() -> void:
+	var library: ContentLibrary = _library()
+	var seen: Dictionary[NewsBands.Subject, int] = {}
+	for seed_value: int in 80:
+		var state: GameState = _shorted_year_one(library, seed_value)
+		var kind: NewsBands.Subject = NewsBands.Subject.CRASH
+		var subject: StringName = NewsSelector.squeezed_at_end_of(state, 1)
+		if subject.is_empty():
+			# Not squeezed: short stryker again at the year's end, as a desk might.
+			state.market.desk.traders[0].set_short(&"stryker", 400)
+			state.market.whisper_rounds.clear()
+			var flagged: Array[StringName] = NewsSelector.flagged_at_end_of(state, 1)
+			if flagged.is_empty():
+				continue
+			kind = NewsBands.Subject.SQUEEZE
+			subject = flagged[0]
+		var round: WhisperRound = NewsSelector.whispers_for(state, 1)
+		assert_eq(round.lines.size(), NewsSelector.WHISPERS_PER_YEAR, "seed %d" % seed_value)
+		var special: Array[WhisperRound.Line] = []
+		for line: WhisperRound.Line in round.lines:
+			if line.is_about_squeeze():
+				special.append(line)
+			else:
+				assert_ne(line.subject, subject, "the other whisper is about something else")
+		assert_eq(special.size(), 1, "seed %d: one squeeze or crash whisper" % seed_value)
+		if special.size() != 1:
+			continue
+		var heard: WhisperRound.Line = special[0]
+		assert_eq(heard.about, kind, "seed %d" % seed_value)
+		assert_eq(heard.subject, subject)
+		assert_eq(heard.source, WhisperRules.Source.QUESTIONABLE)
+		assert_true(heard.text.contains(state.stalk_by_id(subject).definition.display_name), heard.text)
+		seen[kind] = seen.get(kind, 0) + 1
+
+		EarningsYearResolver.new(library.short_squeeze).advance_year(state, StalksFixture.rng(seed_value + 1000))
+		var next: EarningsYearResult = MarketReadouts.result_for_year(state, 2)
+		var happened: bool = next.squeeze_target() == subject
+		if kind == NewsBands.Subject.CRASH:
+			happened = next.squeeze_moves.get(subject, 0) < 0
+		assert_eq(NewsSelector.squeeze_whisper_came_true(state, round, heard), happened, "seed %d" % seed_value)
+	assert_gt(seen.get(NewsBands.Subject.SQUEEZE, 0), 0, "some seed left stryker flagged")
+	assert_gt(seen.get(NewsBands.Subject.CRASH, 0), 0, "some seed left stryker squeezed")
 
 
 ## The line heard is one written for the outcome its source told, never for

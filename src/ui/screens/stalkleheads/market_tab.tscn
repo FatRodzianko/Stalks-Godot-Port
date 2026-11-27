@@ -63,7 +63,7 @@ unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 0
 theme_type_variation = &"SubHeading"
-text = "WHISPERS"
+text = "WHISPERS FROM THE AVENUE"
 
 [node name="Whispers" type="VBoxContainer" parent="Columns/RightHalf/RightScroll/Right/WhisperSection"]
 unique_name_in_owner = true
@@ -109,6 +109,21 @@ layout_mode = 2
 mouse_filter = 2
 
 [node name="EventEffect" type="Label" parent="Columns/RightHalf/RightScroll/Right"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+autowrap_mode = 3
+
+[node name="SqueezeText" type="Label" parent="Columns/RightHalf/RightScroll/Right"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"EventFlavour"
+text = ""
+autowrap_mode = 3
+
+[node name="SqueezeEffect" type="Label" parent="Columns/RightHalf/RightScroll/Right"]
 unique_name_in_owner = true
 layout_mode = 2
 text = ""

@@ -33,7 +33,7 @@ func _set_company(state: GameState, company_id: StringName, price: int, profit: 
 
 
 func _shipped_resolver() -> EarningsYearResolver:
-	return EarningsYearResolver.new(EarningsMarket.build_event_pool(_library), _library.short_squeeze)
+	return EarningsYearResolver.new(_library.short_squeeze)
 
 
 func _trader(strategy: NpcStrategy.Value, trader_id: StringName = &"t", cash: int = 8000) -> NpcTraderDefinition:
@@ -105,9 +105,9 @@ func test_conviction_and_cash_are_range_checked() -> void:
 	assert_string_contains(joined, "starts with 0 cash")
 
 
-func test_the_squeeze_template_is_content_that_raises_the_price() -> void:
+func test_the_squeeze_template_is_content_that_names_no_target() -> void:
+	# Its size comes from the short interest, not the file (D213).
 	assert_not_null(_library.short_squeeze)
-	assert_gt(_library.short_squeeze.price_change, 0)
 	assert_eq(_library.short_squeeze.target_stalk_id, &"", "the squeeze names its own target")
 	assert_true(_library.short_squeeze.flavour_text.begins_with("EVENT: "), "a placeholder")
 
@@ -386,7 +386,7 @@ func test_the_pipeline_settles_the_desk_through_splits_and_bankruptcy() -> void:
 	company.profit = -1000000.0
 	company.regime = EarningsRegime.Value.DISTRESS
 	state.market.desk.trader_by_id(&"value_1").set_shares(&"pillows", 50)
-	EarningsYearResolver.new(EventPool.new([])).advance_year(state, StalksFixture.rng(6))
+	EarningsYearResolver.new().advance_year(state, StalksFixture.rng(6))
 	assert_true(state.stalk_by_id(&"pillows").is_bankrupt)
 	assert_eq(state.market.desk.trader_by_id(&"value_1").shares_of(&"pillows"), 0)
 
@@ -402,7 +402,7 @@ func test_the_desks_trading_is_next_years_flow_input() -> void:
 
 func test_the_desks_buying_moves_next_years_price_through_flow_clamped() -> void:
 	var state: GameState = _new_state()
-	var resolver: EarningsYearResolver = EarningsYearResolver.new(EventPool.new([]))
+	var resolver: EarningsYearResolver = EarningsYearResolver.new()
 	resolver.advance_year(state, StalksFixture.rng(21))
 	var bought: StringName = &""
 	for stalk_id: StringName in state.market.net_shares_traded:
@@ -494,24 +494,106 @@ func test_a_squeeze_is_exactly_the_roll_against_the_chance() -> void:
 		assert_eq(result.squeezed, result.squeeze_roll <= ShortInterestRules.SQUEEZE_CHANCE_PERCENT)
 
 
-func test_a_squeeze_hits_the_most_shorted_company_through_the_ledger() -> void:
+## A state whose stryker is squeezed in year 1, with the seed that did it, or
+## null when none of the first 100 seeds squeezes.
+func _squeezed_state(shares_short: int = 400) -> Array:
 	var resolver: EarningsYearResolver = _shipped_resolver()
-	var found: bool = false
 	for seed_value: int in 100:
-		var state: GameState = _new_state()
-		_shorted(state, &"stryker", 400)
-		state.market.desk.traders[0].set_short(&"mafia", 150)
-		var result: EarningsYearResult = resolver.advance_year(state, StalksFixture.rng(seed_value))
-		if not result.squeezed:
-			continue
-		found = true
-		assert_eq(result.event.target_stalk_id, &"stryker")
-		assert_eq(result.event.price_change, _library.short_squeeze.price_change)
-		assert_eq(result.event.id, &"short_squeeze_stryker")
-		assert_false(result.event.flavour_text.contains("{company}"), "the name is filled in")
-		assert_eq(result.ledger_for(&"stryker").this_years_event, _library.short_squeeze.price_change)
-		break
-	assert_true(found, "some seed squeezed")
+		var state: GameState = _new_state(20)
+		_shorted(state, &"stryker", shares_short)
+		var before: int = state.stalk_by_id(&"stryker").price
+		var percent: float = MarketReadouts.short_interest_percent(state, &"stryker")
+		var rng: RandomNumberGenerator = StalksFixture.rng(seed_value)
+		var result: EarningsYearResult = resolver.advance_year(state, rng)
+		if result.squeezed:
+			return [state, result, before, percent, rng]
+	return []
+
+
+func test_the_spike_scales_with_short_interest_and_is_capped() -> void:
+	assert_eq(ShortInterestRules.SPIKE_PERCENT_PER_POINT, 5.0)
+	assert_eq(ShortInterestRules.SPIKE_MAX_PERCENT, 150.0)
+	assert_eq(ShortInterestRules.spike_for(100, 10.0), 50, "10 points is 50% of the price")
+	assert_eq(ShortInterestRules.spike_for(100, 20.0), 100)
+	assert_eq(ShortInterestRules.spike_for(100, 30.0), 150, "the cap")
+	assert_eq(ShortInterestRules.spike_for(100, 80.0), 150, "never past the cap")
+	assert_eq(ShortInterestRules.spike_for(0, 40.0), 0)
+
+
+func test_shorts_in_a_squeeze_cover_in_equal_parts() -> void:
+	assert_eq(ShortInterestRules.cover_now(300, 2), 100, "three years left including this one")
+	assert_eq(ShortInterestRules.cover_now(200, 1), 100)
+	assert_eq(ShortInterestRules.cover_now(100, 0), 100, "the last year covers the rest")
+	assert_eq(ShortInterestRules.cover_now(10, 2), 4, "rounding up, so nothing is left over")
+	assert_eq(ShortInterestRules.cover_now(0, 2), 0)
+
+
+func test_a_squeeze_lifts_the_most_shorted_company_through_the_ledger() -> void:
+	var found: Array = _squeezed_state()
+	assert_false(found.is_empty(), "some seed squeezed")
+	var state: GameState = found[0]
+	var result: EarningsYearResult = found[1]
+	var before: int = found[2]
+	assert_eq(result.squeeze_target(), &"stryker")
+	assert_null(result.event, "the squeeze is not a special event any more")
+	assert_eq(result.squeeze_spike, ShortInterestRules.spike_for(before, found[3]))
+	var ledger: PriceLedger = result.ledger_for(&"stryker")
+	var company: CompanyState = state.market.company_by_id(&"stryker")
+	assert_eq(ledger.squeeze, company.squeeze_premium, "the ledger's squeeze line is the lift")
+	assert_eq(result.squeeze_moves[&"stryker"], company.squeeze_premium)
+	assert_gte(company.squeeze_premium, result.squeeze_spike, "at least the spike")
+	assert_gte(state.stalk_by_id(&"stryker").price, before + result.squeeze_spike, "and no loss in the squeeze year")
+	assert_between(company.squeeze_years_left, 0, ShortInterestRules.HOLD_YEARS_MAX - 1)
+	assert_eq(company.squeeze_years_left, result.squeeze_hold_roll - 1)
+
+
+func test_the_lift_comes_off_once_the_shorts_have_covered() -> void:
+	var found: Array = _squeezed_state()
+	assert_false(found.is_empty(), "some seed squeezed")
+	var state: GameState = found[0]
+	var rng: RandomNumberGenerator = found[4]
+	var resolver: EarningsYearResolver = _shipped_resolver()
+	var company: CompanyState = state.market.company_by_id(&"stryker")
+	var premium: int = company.squeeze_premium
+	var came_off: bool = false
+	for year: int in ShortInterestRules.HOLD_YEARS_MAX + 1:
+		var short_before: int = state.market.desk.short_interest(&"stryker")
+		var result: EarningsYearResult = resolver.advance_year(state, rng)
+		if result.squeeze_moves.has(&"stryker"):
+			assert_eq(result.squeeze_moves[&"stryker"], -premium, "the whole lift comes off")
+			assert_eq(result.ledger_for(&"stryker").squeeze, -premium, "on the ledger's squeeze line")
+			assert_eq(short_before, 0, "only after the shorts reached 0%")
+			came_off = true
+			break
+		assert_true(company.in_squeeze(), "still squeezed in year %d" % state.year)
+	assert_true(came_off, "within the hold")
+	assert_false(company.in_squeeze())
+
+
+func test_a_squeezed_company_is_not_shorted_again_or_flagged() -> void:
+	var found: Array = _squeezed_state()
+	assert_false(found.is_empty(), "some seed squeezed")
+	var state: GameState = found[0]
+	var rng: RandomNumberGenerator = found[4]
+	var resolver: EarningsYearResolver = _shipped_resolver()
+	var company: CompanyState = state.market.company_by_id(&"stryker")
+	var last: int = state.market.desk.short_interest(&"stryker")
+	while company.in_squeeze():
+		assert_false(state.market.desk.flagged_companies(state).has(&"stryker"), "not flagged while squeezed")
+		assert_eq(MarketReadouts.short_status(state, &"stryker"), MarketReadouts.ShortStatus.SQUEEZED)
+		resolver.advance_year(state, rng)
+		var now: int = state.market.desk.short_interest(&"stryker")
+		assert_lte(now, last, "the shorts only cover, year %d" % state.year)
+		last = now
+
+
+func test_short_status_reads_flagged_then_none() -> void:
+	var state: GameState = _new_state()
+	_shorted(state, &"stryker", 400)
+	assert_eq(MarketReadouts.short_status(state, &"stryker"), MarketReadouts.ShortStatus.FLAGGED)
+	assert_almost_eq(MarketReadouts.short_interest_percent(state, &"stryker"),
+		ShortInterestRules.percent_of(400, state.market.company_by_id(&"stryker").shares_outstanding), 0.0001)
+	assert_eq(MarketReadouts.short_status(state, &"mafia"), MarketReadouts.ShortStatus.NONE)
 
 
 func test_without_a_template_nothing_squeezes_and_the_stream_is_unchanged() -> void:
@@ -524,7 +606,7 @@ func test_without_a_template_nothing_squeezes_and_the_stream_is_unchanged() -> v
 	var rng_a: RandomNumberGenerator = StalksFixture.rng(8)
 	var rng_b: RandomNumberGenerator = StalksFixture.rng(8)
 	_shipped_resolver().advance_year(with_template, rng_a)
-	var plain: EarningsYearResolver = EarningsYearResolver.new(EarningsMarket.build_event_pool(_library))
+	var plain: EarningsYearResolver = EarningsYearResolver.new()
 	var result: EarningsYearResult = plain.advance_year(without, rng_b)
 	assert_false(result.squeezed)
 	assert_eq(result.short_interest_flagged, [&"stryker"] as Array[StringName], "flagged, but no template")

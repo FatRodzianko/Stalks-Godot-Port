@@ -235,25 +235,30 @@ the method is in the git history for the Phase 3 commit.
 
 ### Writing StalkleHeads news
 
-Every news line in StalkleHeads - market headlines, industry reports, earnings
-commentary, whispers and NPC chatter - is a short piece of text in a `.tres` file.
-**Writing them needs no code change.** Until somebody writes them they are
-placeholders that say which slot they fill, like `INDUSTRY REPORT: energy, down`,
-so one that turns up on screen tells you exactly which line is missing. To find
-every line still to write, search `src/data/` for `MARKET HEADLINE:`,
-`INDUSTRY REPORT:`, `EARNINGS:`, `WHISPER:`, `NPC NAME:` and `NPC CHATTER:`.
+Every news line in StalkleHeads - market news, industry headlines, the industry
+report, earnings commentary, company news, whispers and NPC chatter - is a short
+piece of text in a `.tres` file. **Writing them needs no code change.** Until
+somebody writes them they are placeholders that say which slot they fill, like
+`INDUSTRY REPORT: {industry}, crash, much worse than expected`, so one that turns
+up on screen tells you exactly which line is missing. To find every line still to
+write, search `src/data/` for `INDUSTRY REPORT:`, `OUTLOOK:`, `IN THE NEWS:`,
+`EARNINGS:`, `WHISPER:`, `EVENT:`, `NPC NAME:` and `NPC CHATTER:`.
 
 What the game does with them - which line is chosen when, where it shows - is in
-[game-rules.md](game-rules.md) §5.1 and decisions.md D199-D206.
+[game-rules.md](game-rules.md) §5.1 and decisions.md D199-D214.
 
 #### Where each kind of line lives
 
 | Kind | File | One line per |
 |---|---|---|
-| Market headline | `src/data/news/market.tres`, the `headlines` list | mood and move band |
+| Market news (headline, event text, effect) | `src/data/news/market.tres`, the `market_news` list | **last year's** mood and index move band |
 | Earnings commentary | `src/data/news/market.tres`, the `earnings_commentary` list | regime and surprise band, for any company |
-| Whisper | `src/data/news/market.tres`, the `whispers` list | outcome it foretells, for a company or for an industry |
-| Industry report | `src/data/news/<industry>.tres` (`energy.tres` and so on), the `industry_reports` list | move band |
+| Company news (IN THE NEWS) | `src/data/news/companies.tres` for the ported events; the general ones in `market.tres`; the `company_news` list | the company's own price move band |
+| Industry report, the year | `src/data/news/market.tres`, the `industry_years` list | the industry's move band and surprise band, optionally last year's move band |
+| Industry report, the outlook | `src/data/news/market.tres`, the `industry_outlooks` list | the band of the industry's expected move next year |
+| Whisper | `src/data/news/market.tres`, the `whispers` list | outcome it foretells, for a company or for an industry; or a squeeze or a crash |
+| Industry headline (FROM THE HEADLINES) | `src/data/news/<industry>.tres` (`energy.tres` and so on), the `industry_reports` list | move band |
+| The short squeeze's words | `src/data/squeeze/short_squeeze.tres`, `flavour_text` | (one line; `{company}` is the squeezed company) |
 | NPC name and chatter | `src/data/traders/<trader>.tres`: `display_name` and `chatter_bought`, `chatter_sold`, `chatter_shorted`, `chatter_covered`, `chatter_held` | trader |
 
 The game loads **every** `.tres` in `src/data/news/`, so a new file there (made as
@@ -290,8 +295,8 @@ line: the id is how the game remembers which lines it has shown this match.
 
 | Token | Becomes | Allowed in |
 |---|---|---|
-| `{company}` | the company's name | earnings commentary, company whispers, chatter (the company the trader picked) |
-| `{industry}` | the industry's name (for a company line, the company's industry) | industry reports, earnings commentary, whispers |
+| `{company}` | the company's name | market news event text (its target company), earnings commentary, company news, company, squeeze and crash whispers, chatter (the company the trader picked) |
+| `{industry}` | the industry's name (for a company line, the company's industry) | industry headlines, the industry report, earnings commentary, company news, whispers |
 | `{trader}` | the trader's name | chatter |
 
 A token a kind of line does not fill (or a misspelt one, like `{compnay}`) is an
@@ -305,13 +310,15 @@ named choices instead of numbers.
 1. Open the project in the Godot editor.
 2. In the **FileSystem** panel (bottom left), open `src` > `data` > `news`.
 3. Double-click `market.tres`. The **Inspector** panel (right) shows its lists:
-   **Headlines**, **Industry Reports**, **Earnings Commentary**, **Whispers**,
-   **Chatter**.
-4. Click a list's name, for example **Headlines**, to open it. It shows its
+   **Market News**, **Industry Reports**, **Industry Years**, **Industry Outlooks**,
+   **Earnings Commentary**, **Company News**, **Whispers**, **Chatter**.
+4. Click a list's name, for example **Market News**, to open it. It shows its
    entries, numbered from 0.
-5. Click an entry's box (it reads **MarketHeadline**) to open it. Its fields show:
-   **Id**, **Mood**, **Move**, **Text**.
-6. Click in **Text** and type the new words.
+5. Click an entry's box (it reads **MarketNews**) to open it. Its fields show:
+   **Id**, **Mood**, **Move**, **Headline**, **Text**, **Target Company**,
+   **Target Industry**, **Amount**, **Requires**.
+6. Click in **Headline** (market news) or **Text** (every other kind) and type the
+   new words.
 7. At the top of the Inspector, click the floppy-disk icon, then click **Save** in
    the menu that opens.
 8. Run the tests.
@@ -339,7 +346,7 @@ slot once before showing any of them again.
 
 1. Open the file and the list as above.
 2. At the bottom of the list, click **+ Add Element**. A new empty entry appears.
-3. Click the new entry's **<empty>** box and pick **New MarketHeadline** (or
+3. Click the new entry's **<empty>** box and pick **New MarketNews** (or
    whichever kind the list holds) from the menu.
 4. Click the new entry to open it, and fill in **Id**, the conditions and **Text**.
 5. Save as above, and run the tests.
@@ -357,7 +364,43 @@ condition is. In the Inspector they are named; in the text they are numbers:
 | `surprise` | ANY | MUCH_WORSE | WORSE | AS_EXPECTED | BETTER | MUCH_BETTER |
 
 `outcome` (whispers) uses the `surprise` numbers above, but never 0: a whisper
-must foretell something. `about` (whispers): 0 COMPANY, 1 INDUSTRY.
+must foretell something. `about` (whispers): 0 COMPANY, 1 INDUSTRY, 2 SQUEEZE,
+3 CRASH; a squeeze or crash whisper has no `outcome`. `outlook` and `last_move`
+(the industry report) use the `move` numbers.
+
+#### Market news: the headline, the event text and the effect
+
+A market news line is what the top strip and THIS YEAR'S NEWS show, once a year.
+
+- **`headline`**: the line itself.
+- **`text`**: optional words under it. May use `{company}` for its target company.
+- **`target_company` or `target_industry`**: what it moves, if anything - a company
+  id (`stryker`) or an industry id (`energy`), never both.
+- **`amount`**: coins added to the price (negative to take off). An industry target
+  gives this **same** amount to every living member. An amount needs a target.
+  Leave the amount 0 for a line that only says something.
+- **`mood` and `move`** are about **last year**: a BEAR, CRASH line comes up the year
+  after the market crashed.
+
+A line aimed at a company that has gone bankrupt is not drawn.
+
+#### Follow-ups: `requires`
+
+Every kind of line has a **`requires`** list: ids of other news lines, of any kind.
+The line can only be shown once every one of them has been shown in an **earlier
+year**. When it can be, and has not been shown yet, it is chosen ahead of every
+other line that fits, so a follow-up comes the first year it can. After that it is
+an ordinary line.
+
+In a text editor, a block that requires two lines has:
+
+```
+requires = Array[StringName]([&"mkt_bear_crash_1", &"whisp_squeeze_1"])
+```
+
+In the Inspector: open the entry, click **Requires**, click **+ Add Element**, and
+type the id. The tests report an id that is not a news line, and a line that
+requires itself.
 
 `situation` (chatter): 0 BOUGHT, 1 SOLD, 2 SHORTED, 3 COVERED, 4 HELD.
 `strategy` (chatter): 0 VALUE, 1 MOMENTUM, 2 CONTRARIAN, 3 INCOME, 4 INDEXER,
@@ -507,7 +550,7 @@ it is changed there as an ordinary code change (decisions.md D150).
 | `--ageing=N` | Points a year added to the regime roll in GROWTH and SLOWING | 10 |
 | `--no-squeeze` | No short squeeze can fire (design §5.3) | squeeze on |
 | `--squeeze-chance=N` | The chance of a squeeze in a year when a company's short interest is flagged, in percent. Still 0 when nothing is flagged | 25 |
-| `--squeeze-size=N` | The squeeze's price change, in coins | 25 |
+| `--squeeze-size=N` | The squeeze's jump, in percent of the price for every point of short interest (capped at 150%) | 5 |
 | `--short-target=T` | What the NPC desk's SHORT traders bet against: `highpe` (the highest P/E, the published rule) or `slowest` (the company whose earnings grew slowest, S4's first rule). The squeeze lands on that company | `highpe` |
 
 The output's `levers:` line says what was overridden, and its last line, starting

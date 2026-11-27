@@ -40,20 +40,8 @@ var sentiment_used: float = 0.0
 ## drawn from the bull bag (§14 q14).
 var last_mood: MarketMood.Value = MarketMood.Value.BULL
 
-## What is left in each mood's event bag, as positions in that mood's pool
-## (`EventPool.bag_state`), keyed by mood. Empty until the first event is drawn.
-##
-## **The bags are the pipeline's, and they are kept here as well** so that they
-## travel with the match: a host that takes the match over builds a fresh
-## pipeline, and without this it would deal its events from freshly shuffled
-## bags - an event the old host had already dealt could come round again, and
-## the match would not be the one being played. `EarningsYearResolver` restores
-## the pool from this at the start of each year and writes it back after the
-## draw (decisions.md D177).
-var event_bags: Dictionary[int, PackedInt32Array] = {}
-
 ## A fingerprint of the content this market was built from: the companies,
-## industries and traders, and every event the pool can deal, in order. Two
+## industries and traders, and every market news line, in order. Two
 ## machines build the same market from the same content, so a client compares
 ## the host's with its own before applying a snapshot that names things only by
 ## position (`StateSync`, decisions.md D176).
@@ -76,6 +64,11 @@ var net_shares_traded: Dictionary[StringName, int] = {}
 
 ## The NPC desk (§5). Never null; empty if the content has no traders.
 var desk: NpcDesk = NpcDesk.new()
+
+## The short-squeeze template (`ContentLibrary.short_squeeze`), for its words
+## when a squeeze fires. Content, like `news`: never sent. Null in a market
+## built without it.
+var squeeze_words: SpecialEventDefinition = null
 
 ## Every news line the match can show (`ContentLibrary.news`), for
 ## `NewsSelector`. Content, not state: it never changes during a match and is
@@ -110,17 +103,18 @@ static func from_library(library: ContentLibrary) -> EarningsMarket:
 		market.companies.append(CompanyState.new(profile))
 	market.desk = NpcDesk.from_definitions(library.traders)
 	market.news = library.news
+	market.squeeze_words = library.short_squeeze
 	var index_definition: StalkDefinition = library.stalk_by_id(INDEX_ID)
 	if index_definition != null:
 		market.index_level = float(index_definition.starting_price)
-	market.content_key = content_key_of(market, build_event_pool(library))
+	market.content_key = content_key_of(market)
 	return market
 
 
 ## The fingerprint `content_key` holds: every id, in the order the wire uses,
 ## hashed. Order matters as much as membership, because a packed row means
 ## "the third company" and both ends must agree on which that is.
-static func content_key_of(market: EarningsMarket, pool: EventPool) -> int:
+static func content_key_of(market: EarningsMarket) -> int:
 	var parts: PackedStringArray = []
 	for company: CompanyState in market.companies:
 		parts.append(String(company.id))
@@ -131,7 +125,9 @@ static func content_key_of(market: EarningsMarket, pool: EventPool) -> int:
 	for trader: NpcTraderState in market.desk.traders:
 		parts.append(String(trader.id))
 	parts.append("|")
-	parts.append_array(pool.event_ids())
+	if market.news != null:
+		for line: MarketNews in market.news.market_news:
+			parts.append(String(line.id))
 	return ",".join(parts).hash()
 
 
@@ -173,9 +169,9 @@ func copy_for_replay() -> EarningsMarket:
 	twin.last_mood = last_mood
 	twin.index_level = index_level
 	twin.net_shares_traded = net_shares_traded.duplicate()
-	twin.event_bags = event_bags.duplicate(true)
 	twin.content_key = content_key
 	twin.news = news
+	twin.squeeze_words = squeeze_words
 	if next_draws != null:
 		twin.next_draws = next_draws.copy()
 	return twin
@@ -226,18 +222,6 @@ static func definition_for(profile: CompanyProfile) -> StalkDefinition:
 	return definition
 
 
-## The event pool for a StalkleHeads match: every authored event aimed at a
-## company. Events aimed at the index are left out, because the index's price is
-## its constituents' and nothing else may move it (§3.9, decisions.md D154).
-static func build_event_pool(library: ContentLibrary) -> EventPool:
-	var company_ids: Dictionary[StringName, bool] = {}
-	for profile: CompanyProfile in library.companies:
-		company_ids[profile.id] = true
-	var events: Array[SpecialEventDefinition] = []
-	for event: SpecialEventDefinition in library.all_events():
-		if company_ids.has(event.target_stalk_id):
-			events.append(event)
-	return EventPool.new(events)
 
 
 ## Adds a trade to the flow input: positive shares bought, negative sold. A

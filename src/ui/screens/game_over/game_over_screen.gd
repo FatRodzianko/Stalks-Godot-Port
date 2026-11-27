@@ -353,7 +353,11 @@ func _build_history() -> void:
 func _what_happened_in(result: YearResult) -> String:
 	var parts: PackedStringArray = PackedStringArray()
 
-	if result.event != null:
+	if result is EarningsYearResult:
+		var words: YearEventText = YearEventText.of(_state, result as EarningsYearResult)
+		if not words.strip_effect().is_empty():
+			parts.append(words.strip_effect())
+	elif result.event != null:
 		var target: StalkState = _state.stalk_by_id(result.event.target_stalk_id)
 		var target_name: String = String(result.event.target_stalk_id)
 		if target != null:

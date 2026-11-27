@@ -91,6 +91,18 @@ var event_delta: int = 0
 ## What traders did last year, persistent and clamped.
 var flow: float = 0.0
 
+## A short squeeze's lift, in whole coins, added to the price on top of the
+## identity while the desk's short sellers buy back (decisions.md D213). 0
+## when the company is not in a squeeze. It does not fade like an event: it
+## stays at full size until the year after the last short is covered, and
+## then comes off all at once.
+var squeeze_premium: int = 0
+
+## While `squeeze_premium` is held: how many more years it stays after this
+## one. At 0 the desk covers the last of its shorts this year, and next year
+## the premium comes off.
+var squeeze_years_left: int = 0
+
 var price: int = 0
 
 ## Set by `split_if_above` in the year a split happened.
@@ -230,7 +242,7 @@ func reprice(
 	event_delta = this_year_event_delta
 	event_carry = PriceIdentity.carry_after(event_carry, this_year_event_delta)
 	flow = PriceIdentity.flow_after(flow, net_shares_traded, shares_outstanding, fair_value)
-	price = PriceIdentity.price_of(fair_value, event_carry, flow)
+	price = PriceIdentity.price_of(fair_value, event_carry, flow) + squeeze_premium
 	did_split = false
 
 
@@ -249,6 +261,8 @@ func split_if_above() -> bool:
 	fair_value /= 2.0
 	event_carry /= 2.0
 	flow /= 2.0
+	@warning_ignore("integer_division")
+	squeeze_premium /= 2
 	did_split = true
 	return true
 
@@ -271,6 +285,8 @@ func dividend_per_share() -> int:
 ## the host's field for field (decisions.md D176).
 func fail() -> void:
 	price = 0
+	squeeze_premium = 0
+	squeeze_years_left = 0
 	sentiment = 0.0
 	industry_standing = 0.0
 	regime_premium = 0.0
@@ -319,6 +335,11 @@ func derive_readouts(sentiment_valued_on: float, industry_performance: float, ha
 		fair_value /= 2.0
 
 
+## True while a short squeeze's lift is in the price (D213).
+func in_squeeze() -> bool:
+	return squeeze_premium > 0
+
+
 ## A detached copy, for the ledger's "before" and for tests. Shares the profile,
 ## which is immutable content.
 func copy() -> CompanyState:
@@ -342,6 +363,8 @@ func copy() -> CompanyState:
 	twin.event_carry = event_carry
 	twin.event_delta = event_delta
 	twin.flow = flow
+	twin.squeeze_premium = squeeze_premium
+	twin.squeeze_years_left = squeeze_years_left
 	twin.price = price
 	twin.did_split = did_split
 	return twin

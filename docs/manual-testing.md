@@ -2589,6 +2589,81 @@ checkout before exporting, `src/sim/news_selector.gd` contains `FIRST_WHISPER_YE
 13. Check only **ABOUT YEAR 2** is listed.
 14. Close the game window.
 
+### V - StalkleHeads news redesign (decisions.md D208-D214) — **not yet run**
+
+One machine, no Steam. Run on a locally exported build containing D209; to check a
+checkout before exporting, the file `src/sim/market_news_rules.gd` exists. Every
+line except the twelve market news headlines, the industry headlines and the
+company news ported from the base game's events is still a placeholder, such as
+**INDUSTRY REPORT: Energy, up, better than expected**.
+
+**The headline and the Exchange**
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads** and **Years** to 30.
+4. Click **START**.
+5. Press **Ready for New Year**.
+6. Check the news panel shows one of the twelve market headlines, with no **MARKET HEADLINE:** in front of it.
+7. Click **Close** on the news.
+8. Check the top strip shows the same headline.
+9. Check the line under it is empty, not "No special event this year."
+10. Click **MARKET**.
+11. Check **THIS YEAR'S NEWS** shows the same headline.
+12. Check the whisper heading reads **WHISPERS FROM THE AVENUE**.
+13. Click **EXCHANGE**.
+14. Click on a company row's price, away from its ticker and name.
+15. Check the Exchange is still shown.
+16. Click the same row's ticker.
+17. Check the **COMPANY** tab opens on that company.
+
+**The Company tab**
+
+18. Check **NEWS** starts with a faint **EARNINGS** heading.
+19. Check the line under it names a regime and a surprise, such as "Steady. As expected."
+20. Check the regime matches the one shown at the top of the tab.
+21. Check a faint **IN THE NEWS** heading follows, with one line under it.
+22. Click **>** until **Mafia HUD Scam** is shown.
+23. Check its **IN THE NEWS** line is one of the base game's Mafia events, with no price change written after it.
+
+**The Industries tab**
+
+24. Click **INDUSTRIES**.
+25. Check a **FROM THE HEADLINES** heading is shown, with the industry's headline under it.
+26. Check an **INDUSTRY REPORT** heading follows, with a line that starts **INDUSTRY REPORT:** and also contains **OUTLOOK:**.
+27. Check the **BY YEAR** chart shows one bar, captioned **1**.
+28. Press **Ready for New Year**.
+29. Click **Close** on the news.
+30. Repeat steps 28 and 29 five more times, to year 7.
+31. Click **INDUSTRIES**.
+32. Check **BY YEAR** shows a bar for each year from 1 to 7, each captioned with its year.
+33. Hover over the year 7 bar.
+34. Check the tooltip names year 7 and the industry's move.
+
+**Short interest and the squeeze**
+
+35. Look at **SHORT INTEREST** in the side panel.
+36. Check each entry is a ticker and a percent, such as **STRYK 12%**, not a share count.
+37. Hover over a percent.
+38. Check the tooltip gives the number of shares sold short.
+39. If no entry ends **FLAGGED** or **SQUEEZED**, press **Ready for New Year**, click **Close**, and repeat until one does, up to year 20.
+40. If none did by year 20, write down "no squeeze seen" and skip to step 52.
+41. Note the company and whether it says **FLAGGED** or **SQUEEZED**.
+42. Click **MARKET**.
+43. Check one of the two whispers names that company and has the source **Questionable**.
+44. Check the other whisper is about something else.
+45. If it said **FLAGGED**, press **Ready for New Year**, click **Close**, and repeat until **THIS YEAR'S NEWS** shows a short squeeze or the company is no longer FLAGGED, up to five years.
+46. When a squeeze shows, check **THIS YEAR'S NEWS** has the market headline first and the squeeze as its own item under it.
+47. Check the squeezed company's entry under **SHORT INTEREST** now ends **SQUEEZED**.
+48. Press **Ready for New Year**, click **Close**, and repeat, watching that company's percent, until **THIS YEAR'S NEWS** says **Short squeeze over**, up to five years.
+49. Check the percent fell each year, and the company had left the **SHORT INTEREST** list the year before the squeeze came off.
+50. Click **MARKET**.
+51. Click **VIEW HISTORY**, and check the squeeze whisper shows **Outcome: it happened** or **Outcome: it did not happen**.
+52. Close the game window.
+
+**Not checked here:** a market news line that moves a price. No shipped line has an
+amount yet; `test_earnings_year_resolver.gd` covers company and industry effects.
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until

@@ -50,6 +50,9 @@ signal sell_requested(stalk_id: StringName, shares: int)
 const CellRowScene: PackedScene = preload("res://src/ui/widgets/cell_row.tscn")
 const WhisperRowScene: PackedScene = preload("res://src/ui/widgets/whisper_row.tscn")
 
+## The heading over the whispers in NEWS, as on the Market tab.
+const WHISPERS_HEADING: String = "WHISPERS FROM THE AVENUE"
+
 ## The earnings table: a caption column, then one column per year.
 const YEARS_SHOWN: int = 5
 const CAPTION_CHARS: int = 16
@@ -400,27 +403,51 @@ func _show_no_earnings() -> void:
 
 # ------------------------------------------------------------------ news
 
-## The commentary on this company, then each current whisper about it or its
-## industry.
+## EARNINGS - the regime and how growth compared with what was expected, then
+## the commentary under it - and IN THE NEWS (D211); then each current whisper
+## about the company or its industry. A part with nothing to say is left out.
 func _show_news(state: GameState) -> void:
 	for child: Node in _company_news.get_children():
 		_company_news.remove_child(child)
 		child.queue_free()
 	var news: YearNews = NewsSelector.latest(state)
-	if news != null:
+	var latest: EarningsYearResult = state.latest_result() as EarningsYearResult
+	if news != null and latest != null and news.earnings_surprise.has(_stalk_id):
+		_add_news_heading("EARNINGS")
+		_add_news_line(earnings_news_line(latest.regimes.get(_stalk_id, EarningsRegime.Value.STEADY), news.earnings_surprise[_stalk_id]))
 		var commentary: String = news.commentary.get(_stalk_id, "")
 		if not commentary.is_empty():
 			_add_news_line(commentary)
+	if news != null and news.company_news.has(_stalk_id):
+		_add_news_heading("IN THE NEWS")
+		_add_news_line(news.company_news[_stalk_id])
 	var whispers: WhisperRound = NewsSelector.latest_whispers(state)
 	var company: CompanyState = state.market.company_by_id(_stalk_id) if state.market != null else null
 	if whispers != null and company != null:
 		var about: Array[WhisperRound.Line] = whispers.lines_about(_stalk_id)
 		about.append_array(whispers.lines_about(company.profile.industry))
+		if not about.is_empty():
+			_add_news_heading(WHISPERS_HEADING)
 		for line: WhisperRound.Line in about:
 			var row: WhisperRow = WhisperRowScene.instantiate()
 			_company_news.add_child(row)
 			row.show_whisper(line, WHISPER_TEXT_WIDTH)
 	_news_section.visible = _company_news.get_child_count() > 0
+
+
+## The EARNINGS line: "Distress. Much worse than expected."
+static func earnings_news_line(regime: EarningsRegime.Value, surprise: NewsBands.Surprise) -> String:
+	return "%s. %s." % [
+		Palette.sentence_case(EarningsRegime.name_of(regime).to_lower()),
+		Palette.sentence_case(WhisperRow.OUTCOME_WORDS.get(surprise, "")),
+	]
+
+
+func _add_news_heading(text: String) -> void:
+	var heading: Label = Label.new()
+	heading.text = text
+	heading.theme_type_variation = &"Faint"
+	_company_news.add_child(heading)
 
 
 func _add_news_line(text: String) -> void:
@@ -483,7 +510,7 @@ func _show_activity(state: GameState, company: CompanyState) -> void:
 	var shorted: int = state.market.desk.short_interest(company.id)
 	_short_line.tooltip_text = TermTips.fit(TermTips.short_interest())
 	if shorted > 0:
-		_short_line.text = "Short interest %d shares" % shorted
+		_short_line.text = "Short interest %s" % SidePanel.short_interest_words(state, company.id)
 
 
 ## A trader's chatter under its line: faint, indented, wrapped to the table.
@@ -587,9 +614,8 @@ func chatter_lines() -> PackedStringArray:
 	return lines
 
 
-## The NEWS section's lines; empty when it is hidden.
-## The NEWS section as shown: the commentary, then each whisper as
-## `source | words`.
+## The NEWS section as shown, top to bottom: each heading and line, and each
+## whisper as `source | words`. Empty when the section is hidden.
 func news_lines() -> PackedStringArray:
 	var lines: PackedStringArray = []
 	if not _news_section.visible:

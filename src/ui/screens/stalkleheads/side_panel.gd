@@ -37,6 +37,10 @@ const WIDTH_CHARS: int = 26
 const CAPTION_CHARS: int = 12
 const VALUE_CHARS: int = 12
 
+## The short interest list's ticker column: narrower than a caption, so the
+## percent and its FLAGGED or SQUEEZED fit beside it.
+const SHORT_TICKER_CHARS: int = 7
+
 ## The width chatter wraps at: the two columns above it.
 const CHATTER_WIDTH: int = (CAPTION_CHARS + VALUE_CHARS) * CellRow.CELL_WIDTH
 
@@ -210,9 +214,10 @@ func _refresh_short_interest(state: GameState) -> void:
 		var stalk: StalkState = state.stalk_by_id(entry[0])
 		var row: CellRow = CellRowScene.instantiate()
 		_short_list.add_child(row)
-		row.configure([CAPTION_CHARS, VALUE_CHARS], [CellRow.LEFT, CellRow.RIGHT])
-		row.set_texts([String(stalk.definition.ticker), "%d shares" % entry[1]])
+		row.configure([SHORT_TICKER_CHARS, CAPTION_CHARS + VALUE_CHARS - SHORT_TICKER_CHARS], [CellRow.LEFT, CellRow.RIGHT])
+		row.set_texts([String(stalk.definition.ticker), short_interest_words(state, entry[0])])
 		row.set_cell_tooltip(0, stalk.definition.display_name)
+		row.set_cell_tooltip(1, "%d shares sold short" % entry[1])
 
 
 ## Each trader that said something about last year, in the order they acted:
@@ -277,6 +282,18 @@ func desk_lines() -> PackedStringArray:
 	for row: CellRow in _desk_rows:
 		lines.append(row.line_text())
 	return lines
+
+
+## A company's short interest as the desk and the Company tab show it: the
+## percent of its shares sold short, then FLAGGED or SQUEEZED (D213).
+static func short_interest_words(state: GameState, company_id: StringName) -> String:
+	var words: String = Palette.format_percent(MarketReadouts.short_interest_percent(state, company_id))
+	match MarketReadouts.short_status(state, company_id):
+		MarketReadouts.ShortStatus.FLAGGED:
+			words += " FLAGGED"
+		MarketReadouts.ShortStatus.SQUEEZED:
+			words += " SQUEEZED"
+	return words
 
 
 func short_interest_lines() -> PackedStringArray:
