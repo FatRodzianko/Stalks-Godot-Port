@@ -47,7 +47,7 @@ first conflates the two and you learn less from a failure.
 2. On the machine that will host, find its address. From the project folder:
 
    ```
-   & "C:\Users\murph\Desktop\dev-projects\Godot_v4.7.2-stable_win64\Godot_v4.7.2-stable_win64_console.exe" --headless --path . --script res://tools/lan_check.gd
+   & "..\Godot_v4.7.2-stable_win64\Godot_v4.7.2-stable_win64_console.exe" --headless --path . --script res://tools/lan_check.gd
    ```
 
    It prints the address to type, and alternatives if the first does not work.

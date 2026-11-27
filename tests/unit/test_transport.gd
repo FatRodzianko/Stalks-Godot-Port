@@ -22,7 +22,7 @@ func _settings() -> GameSettings:
 
 func test_a_host_can_be_built_on_a_transport_that_is_not_enet() -> void:
 	var result: Dictionary = HostSession.host(
-		StubTransport.new(), _settings(), _library, "Murph"
+		StubTransport.new(), _settings(), _library, "Ada"
 	)
 
 	assert_eq(String(result["error"]), "", "a non-ENet transport should be accepted")
@@ -42,14 +42,14 @@ func test_a_client_can_be_built_on_a_transport_that_is_not_enet() -> void:
 
 func test_the_host_seats_itself_whatever_the_transport() -> void:
 	var result: Dictionary = HostSession.host(
-		StubTransport.new(), _settings(), _library, "Murph"
+		StubTransport.new(), _settings(), _library, "Ada"
 	)
 	var session: HostSession = result["session"]
 	add_child_autofree(session)
 	session.attach_peer(result["peer"])
 
 	assert_eq(session.local_player_id(), &"p0")
-	assert_eq(session.state().player_by_id(&"p0").display_name, "Murph")
+	assert_eq(session.state().player_by_id(&"p0").display_name, "Ada")
 
 
 # ------------------------------------------------------------------- failures
@@ -58,7 +58,7 @@ func test_a_transport_failure_reaches_the_caller() -> void:
 	var transport: StubTransport = StubTransport.new()
 	transport.failure = "The lobby could not be created."
 
-	var result: Dictionary = HostSession.host(transport, _settings(), _library, "Murph")
+	var result: Dictionary = HostSession.host(transport, _settings(), _library, "Ada")
 
 	assert_null(result["session"], "nothing should be built on a dead transport")
 	assert_eq(String(result["error"]), "The lobby could not be created.")
@@ -80,12 +80,12 @@ func test_the_joining_hint_comes_from_the_transport() -> void:
 	# The lobby shows this verbatim. A port today, a Steam invite later, and the
 	# screen must not grow a branch for the difference.
 	var transport: StubTransport = StubTransport.new()
-	transport.hint = "Ask Murph for an invite"
+	transport.hint = "Ask Ada for an invite"
 	var session: HostSession = HostSession.host(
-		transport, _settings(), _library, "Murph"
+		transport, _settings(), _library, "Ada"
 	)["session"]
 
-	assert_eq(session.joining_hint(), "Ask Murph for an invite")
+	assert_eq(session.joining_hint(), "Ask Ada for an invite")
 
 
 func test_the_enet_transport_names_its_port() -> void:

@@ -242,7 +242,7 @@ func _lobby_on_host() -> LobbyScreen:
 	_harness = NetHarness.new()
 	add_child(_harness)
 	var error: String = _harness.start(
-		StalksFixture.make_settings(), _library, "Murph", "Guest"
+		StalksFixture.make_settings(), _library, "Ada", "Guest"
 	)
 	if not error.is_empty():
 		fail_test("harness did not start: %s" % error)
@@ -279,7 +279,7 @@ func test_a_guest_sees_the_same_heading_as_the_host() -> void:
 	add_child(_harness)
 	var settings: GameSettings = StalksFixture.make_settings()
 	settings.game_name = "Friday night"
-	if not _harness.start(settings, _library, "Murph", "Guest").is_empty():
+	if not _harness.start(settings, _library, "Ada", "Guest").is_empty():
 		fail_test("harness did not start")
 		return
 	if not await _harness.await_join(self):
@@ -323,7 +323,7 @@ func test_the_lobby_marks_who_you_are_and_who_is_hosting() -> void:
 		return
 
 	var first: LobbyRow = lobby.player_rows()[0]
-	assert_eq(first.get_node("%Name").text, "Murph")
+	assert_eq(first.get_node("%Name").text, "Ada")
 	assert_string_contains(first.get_node("%Tag").text, "HOST")
 	assert_string_contains(first.get_node("%Tag").text, "YOU")
 
@@ -511,7 +511,7 @@ func test_hosting_through_main_opens_a_lobby() -> void:
 	var main: Main = MainScene.instantiate()
 	add_child_autofree(main)
 
-	assert_eq(main.host_match(StalksFixture.make_settings(), "Murph", _free_port()), "")
+	assert_eq(main.host_match(StalksFixture.make_settings(), "Ada", _free_port()), "")
 	await get_tree().process_frame
 
 	assert_true(main.current_screen() is LobbyScreen, "the lobby should be showing")
@@ -528,7 +528,7 @@ func test_hosting_on_a_taken_port_reports_rather_than_crashing() -> void:
 
 	var main: Main = MainScene.instantiate()
 	add_child_autofree(main)
-	var problem: String = main.host_match(StalksFixture.make_settings(), "Murph", port)
+	var problem: String = main.host_match(StalksFixture.make_settings(), "Ada", port)
 	squatter.close()
 
 	assert_ne(problem, "", "the host should be told the port is taken")
@@ -595,13 +595,13 @@ func test_leaving_a_lobby_frees_the_port_for_the_next_attempt() -> void:
 	var port: int = _free_port()
 	var main: Main = MainScene.instantiate()
 	add_child_autofree(main)
-	assert_eq(main.host_match(StalksFixture.make_settings(), "Murph", port), "")
+	assert_eq(main.host_match(StalksFixture.make_settings(), "Ada", port), "")
 
 	main.show_menu()
 	await get_tree().process_frame
 
 	assert_eq(
-		main.host_match(StalksFixture.make_settings(), "Murph", port), "",
+		main.host_match(StalksFixture.make_settings(), "Ada", port), "",
 		"the same port should be usable again",
 	)
 
@@ -609,7 +609,7 @@ func test_leaving_a_lobby_frees_the_port_for_the_next_attempt() -> void:
 func test_starting_the_match_carries_the_host_to_the_board() -> void:
 	var main: Main = MainScene.instantiate()
 	add_child_autofree(main)
-	assert_eq(main.host_match(StalksFixture.make_settings(), "Murph", _free_port()), "")
+	assert_eq(main.host_match(StalksFixture.make_settings(), "Ada", _free_port()), "")
 	await get_tree().process_frame
 
 	var host: HostSession = main.session()
@@ -631,7 +631,7 @@ func test_the_board_shows_the_hosts_own_player() -> void:
 	# would silently break if the lobby handed the gameplay screen a new one.
 	var main: Main = MainScene.instantiate()
 	add_child_autofree(main)
-	assert_eq(main.host_match(StalksFixture.make_settings(), "Murph", _free_port()), "")
+	assert_eq(main.host_match(StalksFixture.make_settings(), "Ada", _free_port()), "")
 	await get_tree().process_frame
 
 	var host: HostSession = main.session()
@@ -639,7 +639,7 @@ func test_the_board_shows_the_hosts_own_player() -> void:
 	await wait_process_frames(3)
 
 	assert_eq(main.session().local_player_id(), &"p0")
-	assert_eq(main.session().state().player_by_id(&"p0").display_name, "Murph")
+	assert_eq(main.session().state().player_by_id(&"p0").display_name, "Ada")
 
 
 # ----------------------------------------------- who readies up, and who starts
@@ -690,7 +690,7 @@ func test_the_host_is_told_who_is_still_waiting() -> void:
 func test_the_host_alone_is_told_they_can_still_start() -> void:
 	_harness = NetHarness.new()
 	add_child(_harness)
-	assert_eq(_harness.start(StalksFixture.make_settings(), _library, "Murph"), "")
+	assert_eq(_harness.start(StalksFixture.make_settings(), _library, "Ada"), "")
 
 	var lobby: LobbyScreen = LobbyScene.instantiate()
 	add_child_autofree(lobby)
@@ -764,7 +764,7 @@ func test_the_host_does_not_have_to_ready_themselves() -> void:
 func test_a_host_alone_can_start() -> void:
 	_harness = NetHarness.new()
 	add_child(_harness)
-	assert_eq(_harness.start(StalksFixture.make_settings(), _library, "Murph"), "")
+	assert_eq(_harness.start(StalksFixture.make_settings(), _library, "Ada"), "")
 
 	assert_eq(_harness.host.why_not_start(), "")
 	_harness.host.start_match()

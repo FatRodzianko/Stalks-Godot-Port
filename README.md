@@ -126,3 +126,12 @@ was decided about each.
 The port deliberately does **not** reproduce the original's code structure. It was the
 author's first project, and this is a clean reimplementation of the behaviour, not a
 translation of the code.
+
+---
+
+## License
+
+The code is licensed under the **GNU GPL, version 3 or later** ([LICENSE](LICENSE)),
+with an added permission to link with Valve's Steamworks libraries. The game's name,
+logo and sound effects are **not** covered. Details, and the licenses of the bundled
+third-party components, are in [NOTICE.md](NOTICE.md).

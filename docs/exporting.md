@@ -197,7 +197,7 @@ See [section 2.5](#25-if-the-dialog-is-empty-when-you-expect-a-preset) → **Pro
 Only worth knowing if you ever want to build without opening the editor:
 
 ```
-& "C:\Users\murph\Desktop\dev-projects\Godot_v4.7.2-stable_win64\Godot_v4.7.2-stable_win64_console.exe" --headless --path . --export-debug "Windows Desktop" "..\stalks-build\StalksStalksStalks.exe"
+& "..\Godot_v4.7.2-stable_win64\Godot_v4.7.2-stable_win64_console.exe" --headless --path . --export-debug "Windows Desktop" "..\stalks-build\StalksStalksStalks.exe"
 ```
 
 `--export-release` instead of `--export-debug` for a release build. The preset

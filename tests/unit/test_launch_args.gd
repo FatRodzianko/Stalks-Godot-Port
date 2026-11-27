@@ -95,7 +95,7 @@ func test_a_joiner_is_named_guest_by_default() -> void:
 # ----------------------------------------------------------------------- shared
 
 func test_a_name_overrides_the_default() -> void:
-	assert_eq(_parsed(["--host", "--name=Murph"] as Array[String]).resolved_name(), "Murph")
+	assert_eq(_parsed(["--host", "--name=Ada"] as Array[String]).resolved_name(), "Ada")
 
 
 func test_a_port_can_be_given() -> void:

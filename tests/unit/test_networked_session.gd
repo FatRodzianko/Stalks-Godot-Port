@@ -666,16 +666,16 @@ func test_a_joining_player_is_added_to_the_lobby() -> void:
 
 
 func test_a_player_arrives_with_the_name_they_typed() -> void:
-	if not await _connect_lobby("Murph", "Rodzianko"):
+	if not await _connect_lobby("Ada", "Bea"):
 		return
 
-	assert_eq(_harness.host.state().player_by_id(&"p0").display_name, "Murph")
+	assert_eq(_harness.host.state().player_by_id(&"p0").display_name, "Ada")
 	assert_eq(
-		_harness.host.state().player_by_id(&"p1").display_name, "Rodzianko",
+		_harness.host.state().player_by_id(&"p1").display_name, "Bea",
 		"the host should seat the client under its chosen name",
 	)
 	assert_eq(
-		_harness.client.state().player_by_id(&"p1").display_name, "Rodzianko",
+		_harness.client.state().player_by_id(&"p1").display_name, "Bea",
 		"and the client should see it too",
 	)
 
@@ -772,7 +772,7 @@ func test_a_blank_name_becomes_a_numbered_placeholder() -> void:
 
 
 func test_a_name_is_trimmed() -> void:
-	assert_eq(HostSession.sanitised_name("  Murph  ", 0), "Murph")
+	assert_eq(HostSession.sanitised_name("  Ada  ", 0), "Ada")
 
 
 func test_an_overlong_name_is_cut_to_the_column_width() -> void:

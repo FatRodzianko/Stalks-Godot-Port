@@ -15,7 +15,7 @@ const MenuScene: PackedScene = preload("res://src/ui/screens/main_menu/main_menu
 
 
 func _player(steam_id: int) -> PlayerState:
-	var player: PlayerState = PlayerState.new(&"p0", "Murph", 10000)
+	var player: PlayerState = PlayerState.new(&"p0", "Ada", 10000)
 	player.steam_id = steam_id
 	return player
 
@@ -45,7 +45,7 @@ func _texture() -> Texture2D:
 
 func test_a_player_has_no_steam_account_by_default() -> void:
 	# Which is every player in a local game, and every player in a test.
-	assert_eq(PlayerState.new(&"p0", "Murph", 100).steam_id, 0)
+	assert_eq(PlayerState.new(&"p0", "Ada", 100).steam_id, 0)
 
 
 ## The lobby list is built from the synced roster, so an account that does not
@@ -67,8 +67,8 @@ func test_a_steam_account_is_not_redacted_from_rivals() -> void:
 	var state: GameState = _two_players()
 	state.players[1].steam_id = 7656119796028793
 
-	var seen_by_murph: Dictionary = StateSync.encode_state(state)
-	var rival: Dictionary = seen_by_murph["players"][1]
+	var seen_by_ada: Dictionary = StateSync.encode_state(state)
+	var rival: Dictionary = seen_by_ada["players"][1]
 
 	assert_eq(int(rival.get("steam_id", 0)), 7656119796028793)
 

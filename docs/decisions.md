@@ -8020,3 +8020,31 @@ own words belong in the news lines.
 
 **Rules out:** content lines for anything worked out from the numbers; an earnings
 commentary slot beside the EARNINGS report.
+
+
+### D216 - GPLv3 with a Steamworks linking exception; name, logo and audio excluded
+
+The repository went public on 2026-11-27 and is licensed **GPL version 3 or
+later**, with an additional permission under section 7 to link with Valve's
+Steamworks libraries. `LICENSE` is the unmodified GPL text, so GitHub recognises
+it; the exception, the exclusions and the third-party table are in `NOTICE.md`.
+
+**Why the exception.** The game links `steam_api64.dll`, which is proprietary.
+Plain GPL binds everybody but the copyright holder, so without it nobody could
+legally distribute a Steam-enabled build of a fork, and once anybody else
+contributed code the owner would need their permission to keep shipping on Steam.
+The exception is the standard wording used by GPL games on Steam and permits that
+one combination only.
+
+**Why the exclusions.** The GPL grants no trademark rights, so the name and the
+Glacial Lake Studios logo are stated as not licensed. The sound effects in
+`assets/audio/` have no recorded origin and so cannot be licensed by this project
+at all; the Wilhelm scream in particular is commonly treated as Warner Bros.
+material. Until each has a recorded source, they are excluded.
+
+**Same day:** the owner's Windows username was removed from three docs and the
+owner's handles from the tests' player names (now "Ada" and "Bea"). They remain in
+git history, which was judged not worth rewriting for.
+
+**Rules out:** relicensing contributed code without contributors' consent;
+treating anything in `assets/audio/` as free to reuse.

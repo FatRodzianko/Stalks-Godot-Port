@@ -68,17 +68,20 @@ this executable.
 
 ### Paths on the original author's machine
 
-Recorded only so existing notes make sense. **These are one machine's layout and will
-not match yours.**
+Recorded only so existing notes make sense. **This is one machine's layout and need
+not match yours.** The engine folder sits beside the project folder, so commands in
+these docs that start `& "..\Godot_v4.7.2-stable_win64\..."` and are run from the
+project root find it with no change:
 
 ```
-Engine:   C:\Users\murph\Desktop\dev-projects\Godot_v4.7.2-stable_win64\
-          Godot_v4.7.2-stable_win64.exe           (editor)
-          Godot_v4.7.2-stable_win64_console.exe   (CLI — this is <godot>)
-Project:  C:\Users\murph\Desktop\dev-projects\Stalks-Godot-Port
-Original
-Unity src: C:\Users\murph\Desktop\Unity-gamedev-stuff\StalksStalksStalks  (not in git)
+<any folder>\
+  Godot_v4.7.2-stable_win64\
+    Godot_v4.7.2-stable_win64.exe           (editor)
+    Godot_v4.7.2-stable_win64_console.exe   (CLI — this is <godot>)
+  Stalks-Godot-Port\                        (this repository)
 ```
+
+The original Unity project is kept elsewhere on that machine and is not in git.
 
 An automated assistant needs a literal path rather than a placeholder, so one is
 kept in `CLAUDE.local.md` — a file beside `CLAUDE.md` that is loaded with it and is
@@ -631,7 +634,7 @@ They work from a terminal too, in either form:
 ```
 
 ```
-<godot> --path . -- --join --name=Murph
+<godot> --path . -- --join --name=Ada
 ```
 
 `--autostart` with `--ready` on the other instance takes two windows from launch
