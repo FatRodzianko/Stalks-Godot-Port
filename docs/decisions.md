@@ -7967,7 +7967,8 @@ and a 40%-shorted one would jump alike).
 Two new kinds of whisper (`NewsBands.Subject` SQUEEZE and CRASH), each always from a
 **Questionable** source, and taking **one of the two** whisper slots, not a third
 (*amended by D218: it now comes on top of the two; by D219: the crash whisper only
-in the squeeze's last year, from a Rock Solid source*):
+in the squeeze's last year, from a Rock Solid source; by D220: Questionable again, heard
+as often as the end is likely*):
 
 - **A squeeze whisper** when some company is flagged at the end of the year: about
   the most shorted one. A squeeze is never certain, so the source is never better
