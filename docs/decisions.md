@@ -8130,7 +8130,8 @@ D214 and D218
   (`EarningsYearResolver`, step 14). They are taken at the same point in the
   random stream as before, when the settling year drew them at its start, so no
   price changes for any seed.
-- **The crash whisper is heard only when the squeeze will come off next year, and
+- *(Superseded by D220: a squeeze has no fixed length and the crash whisper is
+  Questionable again.)* **The crash whisper is heard only when the squeeze will come off next year, and
   from a Rock Solid source.** The end of a squeeze is not chance: when it fires,
   the hold roll sets how many years it lasts (one to three); the short sellers
   buy back an equal part each year; the lift comes off the year after the last
