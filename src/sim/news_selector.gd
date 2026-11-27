@@ -145,8 +145,8 @@ static func select(
 		return news
 	var pick: Pick = Pick.new(counts, shown, rng_for(result))
 	_select_reports(state, content, result, pick, news)
-	_select_industry_reports(state, content, result, pick, news)
-	_select_commentary(state, content, result, pick, news)
+	_write_industry_reports(state, result, news)
+	_write_earnings(state, result, news)
 	_select_company_news(state, content, result, pick, news)
 	_select_chatter(state, content, result, pick, news)
 	return news
@@ -295,77 +295,37 @@ static func _select_reports(
 			news.drawn.append(chosen.id)
 
 
-static func _select_commentary(
-	state: GameState,
-	content: NewsContent,
-	result: EarningsYearResult,
-	pick: Pick,
-	news: YearNews,
-) -> void:
+## The EARNINGS report (D215): for each company that had an earnings season,
+## its revenue growth against what its regime led one to expect.
+static func _write_earnings(state: GameState, result: EarningsYearResult, news: YearNews) -> void:
 	for company: CompanyState in state.market.companies:
 		var after: CompanyState = result.companies_after.get(company.id, null)
 		if not result.regimes.has(company.id) or after == null:
 			continue
 		var regime: EarningsRegime.Value = result.regimes[company.id]
-		var regime_band: NewsBands.Regime = NewsBands.regime_band(regime)
 		var expected: float = expected_growth(regime, company.profile.payout_policy_percent, state.settings.max_years)
 		var surprise: NewsBands.Surprise = surprise_band(after.revenue_growth_percent, expected)
 		news.earnings_surprise[company.id] = surprise
-		var own: Array[Resource] = []
-		var general: Array[Resource] = []
-		for line: EarningsCommentary in content.earnings_commentary:
-			var regime_fits: bool = line.regime == NewsBands.Regime.ANY or line.regime == regime_band
-			var surprise_fits: bool = line.surprise == NewsBands.Surprise.ANY or line.surprise == surprise
-			if not (regime_fits and surprise_fits):
-				continue
-			if line.company_id == company.id:
-				own.append(line)
-			elif line.company_id.is_empty():
-				general.append(line)
-		var chosen: EarningsCommentary = pick.choose(own, general) as EarningsCommentary
-		if chosen != null:
-			news.commentary[company.id] = _fill(chosen.text, _company_tokens(state, company.id))
-			news.drawn.append(chosen.id)
+		news.earnings[company.id] = ReportWriter.earnings_sentence(
+			_company_tokens(state, company.id)[COMPANY_TOKEN], after.revenue_growth_percent, surprise, regime)
 
 
-## The INDUSTRY REPORT (D212): for each industry, a line on how its year went
-## against what was expected, and one on what is expected of it next year.
-static func _select_industry_reports(
-	state: GameState,
-	content: NewsContent,
-	result: EarningsYearResult,
-	pick: Pick,
-	news: YearNews,
-) -> void:
+## The INDUSTRY REPORT (D212, D215): for each industry, how its year went
+## against what was expected, and what is expected of it next year, written by
+## `ReportWriter` from the numbers.
+static func _write_industry_reports(state: GameState, result: EarningsYearResult, news: YearNews) -> void:
 	for industry: IndustryState in state.market.industries:
 		if not result.industry_performance.has(industry.id):
 			continue
 		var move: NewsBands.Move = move_band(result.industry_performance[industry.id])
 		var surprise: NewsBands.Surprise = surprise_band(float(result.industry_rolls.get(industry.id, 0)), 0.0)
-		var last_move: NewsBands.Move = move_band(industry_move_in(state, industry.id, result.year - 1))
-		var tokens: Dictionary[String, String] = {INDUSTRY_TOKEN: industry.definition.display_name}
-		var own: Array[Resource] = []
-		var general: Array[Resource] = []
-		for line: IndustryYearLine in content.industry_years:
-			if not (_move_fits(line.move, move) and _surprise_fits(line.surprise, surprise) and _move_fits(line.last_move, last_move)):
-				continue
-			_sort_into(line, line.industry_id, industry.id, own, general)
-		var year_line: IndustryYearLine = pick.choose(own, general) as IndustryYearLine
-		if year_line != null:
-			news.industry_years[industry.id] = _fill(year_line.text, tokens)
-			news.drawn.append(year_line.id)
-
+		var last_move: NewsBands.Move = NewsBands.Move.ANY
+		if result.year > 1:
+			last_move = move_band(industry_move_in(state, industry.id, result.year - 1))
 		var outlook: NewsBands.Move = move_band(expected_industry_move(state, industry.id, result.year))
-		own = []
-		general = []
-		for line: IndustryOutlookLine in content.industry_outlooks:
-			if not _move_fits(line.outlook, outlook):
-				continue
-			_sort_into(line, line.industry_id, industry.id, own, general)
-		var outlook_line: IndustryOutlookLine = pick.choose(own, general) as IndustryOutlookLine
-		if outlook_line != null:
-			news.industry_outlooks[industry.id] = _fill(outlook_line.text, tokens)
-			news.drawn.append(outlook_line.id)
+		news.industry_years[industry.id] = ReportWriter.year_sentence(
+			industry.definition.display_name, move, surprise, last_move)
+		news.industry_outlooks[industry.id] = ReportWriter.outlook_sentence(outlook)
 
 
 ## IN THE NEWS (D211): for each company that traded through the year, a line

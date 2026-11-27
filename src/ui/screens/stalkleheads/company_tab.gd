@@ -411,13 +411,9 @@ func _show_news(state: GameState) -> void:
 		_company_news.remove_child(child)
 		child.queue_free()
 	var news: YearNews = NewsSelector.latest(state)
-	var latest: EarningsYearResult = state.latest_result() as EarningsYearResult
-	if news != null and latest != null and news.earnings_surprise.has(_stalk_id):
+	if news != null and news.earnings.has(_stalk_id):
 		_add_news_heading("EARNINGS")
-		_add_news_line(earnings_news_line(latest.regimes.get(_stalk_id, EarningsRegime.Value.STEADY), news.earnings_surprise[_stalk_id]))
-		var commentary: String = news.commentary.get(_stalk_id, "")
-		if not commentary.is_empty():
-			_add_news_line(commentary)
+		_add_news_line(news.earnings[_stalk_id])
 	if news != null and news.company_news.has(_stalk_id):
 		_add_news_heading("IN THE NEWS")
 		_add_news_line(news.company_news[_stalk_id])
@@ -433,14 +429,6 @@ func _show_news(state: GameState) -> void:
 			_company_news.add_child(row)
 			row.show_whisper(line, WHISPER_TEXT_WIDTH)
 	_news_section.visible = _company_news.get_child_count() > 0
-
-
-## The EARNINGS line: "Distress. Much worse than expected."
-static func earnings_news_line(regime: EarningsRegime.Value, surprise: NewsBands.Surprise) -> String:
-	return "%s. %s." % [
-		Palette.sentence_case(EarningsRegime.name_of(regime).to_lower()),
-		Palette.sentence_case(WhisperRow.OUTCOME_WORDS.get(surprise, "")),
-	]
 
 
 func _add_news_heading(text: String) -> void:

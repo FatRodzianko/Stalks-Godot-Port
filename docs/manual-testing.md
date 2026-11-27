@@ -2591,11 +2591,11 @@ checkout before exporting, `src/sim/news_selector.gd` contains `FIRST_WHISPER_YE
 
 ### V - StalkleHeads news redesign (decisions.md D208-D214) — **not yet run**
 
-One machine, no Steam. Run on a locally exported build containing D209; to check a
-checkout before exporting, the file `src/sim/market_news_rules.gd` exists. Every
-line except the twelve market news headlines, the industry headlines and the
-company news ported from the base game's events is still a placeholder, such as
-**INDUSTRY REPORT: Energy, up, better than expected**.
+One machine, no Steam. Run on a locally exported build containing D215; to check a
+checkout before exporting, the file `src/sim/report_writer.gd` exists. The EARNINGS
+and INDUSTRY REPORT lines are written by code. Every other line except the twelve
+market news headlines, the industry headlines and the company news ported from the
+base game's events is still a placeholder, such as **IN THE NEWS: strYker!!!, up**.
 
 **The headline and the Exchange**
 
@@ -2621,9 +2621,9 @@ company news ported from the base game's events is still a placeholder, such as
 **The Company tab**
 
 19. Check **NEWS** starts with a faint **EARNINGS** heading.
-20. Check the line under it names a regime and a surprise, such as "Steady. As expected."
-21. Check the regime matches the one shown at the top of the tab.
-22. Check a faint **IN THE NEWS** heading follows, with one line under it.
+20. Check the line under it reads like "Mafia HUD Scam's revenue fell 14%, far worse than expected. The company is in distress.", naming this company.
+21. Check the regime in its last sentence matches the one shown at the top of the tab.
+22. Check a faint **IN THE NEWS** heading follows, with one line under it, and that no line starting **EARNINGS:** is shown.
 23. Click **>** until **Mafia HUD Scam** is shown.
 24. Check its **IN THE NEWS** line is one of the base game's Mafia events, with no price change written after it.
 
@@ -2631,7 +2631,7 @@ company news ported from the base game's events is still a placeholder, such as
 
 25. Click **INDUSTRIES**.
 26. Check a **FROM THE HEADLINES** heading is shown, with the industry's headline under it.
-27. Check an **INDUSTRY REPORT** heading follows, with a line that starts **INDUSTRY REPORT:** and also contains **OUTLOOK:**.
+27. Check an **INDUSTRY REPORT** heading follows, with a line like "Energy fell, worse than expected. Expected to rise next year.", naming the selected industry.
 28. Check the **BY YEAR** chart shows one bar, captioned **1**.
 29. Press **Ready for New Year**.
 30. Click **Close** on the news.

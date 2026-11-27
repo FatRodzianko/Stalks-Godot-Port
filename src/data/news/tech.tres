@@ -1,7 +1,6 @@
 [gd_resource type="Resource" script_class="NewsBook" format=3 uid="uid://2cxlekhcrg71"]
 
 [ext_resource type="Script" uid="uid://hdwh1gbiv1nl" path="res://src/data/npc_chatter.gd" id="1_bgesv"]
-[ext_resource type="Script" uid="uid://3xrws76tycdl" path="res://src/data/earnings_commentary.gd" id="2_jqyp0"]
 [ext_resource type="Script" uid="uid://bn57xwtijt6bb" path="res://src/data/industry_report.gd" id="4_hcxdw"]
 [ext_resource type="Script" uid="uid://dbw7v33qp1gq1" path="res://src/data/news_book.gd" id="5_llmmf"]
 [ext_resource type="Script" uid="uid://bo8a8il38w0ac" path="res://src/data/whisper.gd" id="6_k3k66"]

@@ -273,7 +273,7 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **Readouts (on screen)** — every number the StalkleHeads tabs show that is worked out rather than stored: P/E, market share, averages, breadth. All come from `MarketReadouts` in `src/sim/`, never from a node (decisions.md D179).
 
-**News (StalkleHeads)** — the lines a StalkleHeads year shows besides its numbers: the market news, an industry headline and an industry report per industry, the EARNINGS line, commentary and company news per company, each desk trader's chatter; and, heard at each year's end about the next, two whispers. Only market news moves a price. Chosen by `NewsSelector`, the market news by `MarketNewsRules` (design §8, decisions.md D199-D214; rules in game-rules.md §5.1).
+**News (StalkleHeads)** — the lines a StalkleHeads year shows besides its numbers: the market news, an industry headline and an industry report per industry, the EARNINGS report and company news per company, each desk trader's chatter; and, heard at each year's end about the next, two whispers. Only market news moves a price. Chosen by `NewsSelector`, the market news by `MarketNewsRules` (design §8, decisions.md D199-D215; rules in game-rules.md §5.1). The two reports are written by `ReportWriter`, not chosen.
 
 **News book** — a `.tres` file in `src/data/news/` holding news lines of any kind (`NewsBook`). The game loads every one in the folder.
 
@@ -283,13 +283,11 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **Industry headline** — one line about an industry's year, chosen by how far it moved, under FROM THE HEADLINES on the Industries tab. Code: `IndustryReport` (its name before D212).
 
-**Industry report** — the automated INDUSTRY REPORT under it: how the industry's year went against what was expected (`IndustryYearLine`), then what is expected of it next year (`IndustryOutlookLine`) (decisions.md D212).
+**Industry report** — the INDUSTRY REPORT under it, written by code from the numbers (`ReportWriter`, decisions.md D215), never by hand: how the industry moved, "again" if last year went the same way, how that compared with what was expected, then what is expected of it next year. "Energy fell again, worse than expected. Expected to rise next year."
 
 **Company news** — one line a year about a company, under IN THE NEWS on its Company tab, chosen by its own price move. The base game's events for the eight companies it shares are these lines now (decisions.md D211). Code: `CompanyNews`.
 
-**EARNINGS line** — the Company tab's worked-out line, such as "Distress. Much worse than expected.": the regime, then how growth compared with what it led one to expect (decisions.md D211).
-
-**Earnings commentary** — one line about a company's earnings, chosen by its regime and its surprise band. On the Company tab under NEWS.
+**EARNINGS report** — the Company tab's line under EARNINGS, written by code from the numbers (`ReportWriter`, decisions.md D215): the revenue change, how it compared with what the regime led one to expect, then the regime in plain words. "Mafia HUD Scam's revenue fell 14%, far worse than expected. The company is in distress."
 
 **Squeeze whisper / crash whisper** — a whisper that a flagged company is about to be squeezed, or that a squeezed one's jump is about to come off. Always from a Questionable source, in one of the two whisper slots; its outcome is whether it happened (decisions.md D214).
 

@@ -985,9 +985,9 @@ flow, and short interest, which makes a short squeeze possible. Phase S5 made th
 mode selectable: the title screen, the lobby, and `MatchSetup` choosing the board and
 the year at match start. Phase S6 put the market on the wire, so a client holds the
 whole match, can rejoin it and can take it over. Phase S7 put it on screen. Phase S8
-added the news: market news, industry headlines and reports, the EARNINGS line,
-earnings commentary, company news, whispers and NPC chatter, as content, chosen
-each year by a pure selector. Its whispers foretell next year, from next year's
+added the news: market news, industry headlines, company news, whispers and NPC
+chatter, as content, chosen each year by a pure selector, with the EARNINGS and
+INDUSTRY REPORT written by `ReportWriter` from the numbers (D215). Its whispers foretell next year, from next year's
 draws made a year early (D205). After S8's play the market news replaced the
 special events in this mode, and the short squeeze became a meme stock (D209-D214).
 
@@ -1024,7 +1024,7 @@ special events in this mode, and the short squeeze became a meme stock (D209-D21
 | net | `market_sync.gd` | **S6.** The StalkleHeads half of the wire: the market block of a snapshot, and a year as its draws, both as packed rows; called only by `StateSync` (D176-D178) |
 | tools | `wire_report.gd` | **S6.** Measures the snapshot, the year packet and the welcome in both modes, in bytes (D178) |
 | data | `news_bands.gd` | **S8.** `NewsBands`: the named conditions news is chosen by - mood, move, regime, surprise - and whether a whisper is about a company or an industry. Enums, `ANY` first (§8.1) |
-| data | `market_news.gd`, `industry_report.gd`, `industry_year_line.gd`, `industry_outlook_line.gd`, `earnings_commentary.gd`, `company_news.gd`, `whisper.gd`, `npc_chatter.gd` | **S8.** One resource type per news category: an id, its conditions, its text and its `requires` (D199, D209-D212) |
+| data | `market_news.gd`, `industry_report.gd`, `company_news.gd`, `whisper.gd`, `npc_chatter.gd` | **S8.** One resource type per news category: an id, its conditions, its text and its `requires` (D199, D209-D212) |
 | data | `news_book.gd` + `news/*.tres` | **S8.** A file of news lines of any category. Every `.tres` in `src/data/news/` is loaded; seven ship, all placeholders (D199) |
 | data | `news_content.gd` | **S8.** Every news line, one sorted list per category, the traders' own chatter turned into `NpcChatter` lines. `ContentLibrary.news`, `EarningsMarket.news` |
 | sim | `news_selector.gd` | **S8.** Chooses a year's news from the history (bands, the bag), and each round of whispers (`whispers_for`). Its own seeded generators, never the match's (D200, D205) |
@@ -1293,8 +1293,8 @@ EarningsMarket.news ────┘
 NewsSelector.news_for(state, year)
    ├─ earlier years first (their draws are this year's bag counts)
    ├─ rng seeded from the year's own draws (D200)
-   ├─ headline, report per industry, commentary per company,
-   │  chatter per trader
+   ├─ headline per industry, company news, chatter per trader
+   ├─ ReportWriter: EARNINGS per company, INDUSTRY REPORT per industry
    └─ YearNews, kept on EarningsYearResult.news
 
 NewsSelector.whispers_for(state, year)          heard at year's end, about year + 1

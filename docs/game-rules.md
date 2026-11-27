@@ -325,16 +325,14 @@ Each event carries: **target stalk name**, **flavour text**, **price change**.
 
 StalkleHeads (phase S8) adds news. Only **market news** can move a price; every
 other kind is there to read. The rules, as built (stalkleheads-design.md §8,
-decisions.md D199-D214):
+decisions.md D199-D215):
 
 | Line | How many a year | Chosen by |
 |---|---|---|
 | Market news | at most one | **last year's** mood and index move band; drawn by the host, and may move one company or one industry (D209) |
 | Industry headline (FROM THE HEADLINES) | at most one per industry | that industry's move band (and mood, if a line names one) |
-| Industry report, the year | at most one per industry | its move band, how its roll compared with what was expected, and optionally last year's move band (D212) |
-| Industry report, the outlook | at most one per industry | the band of its expected move next year with no surprise (D212) |
-| EARNINGS | one per company alive at the year's start | worked out, not written: its regime, then its surprise band (D211) |
-| Earnings commentary | at most one per company alive at the year's start | its regime this year, and its surprise band |
+| INDUSTRY REPORT | one per industry | written by code, not chosen (D215): its move, "again" if last year went the same way, how its roll compared with what was expected, then the band of its expected move next year with no surprise (D212) |
+| EARNINGS | one per company alive at the year's start | written by code, not chosen (D215): its revenue change rounded to a whole percent, its surprise band, then its regime in plain words |
 | Company news (IN THE NEWS) | at most one per company alive at the year's start | its own price move band that year (D211) |
 | Whisper | two a round, heard at each year's end from year 1, about the next year | next year's real outcome for a company or industry, bent by a source; or a squeeze or crash; see below |
 | NPC chatter | at most one per desk trader | what the trader did: bought, sold, shorted, covered or held |
@@ -388,9 +386,12 @@ decisions.md D199-D214):
   year drew, never taking a draw from the match's random numbers.
 
 All the shipped text is placeholder - the category in capitals, then the conditions
-(`INDUSTRY REPORT: {industry}, crash, much worse than expected`) - until the owner
-writes it. Exceptions: the owner's twelve market news headlines, the owner's
-industry headlines, and the company news ported from the base game's events.
+(`IN THE NEWS: {company}, crash`) - until the owner writes it. Exceptions: the
+owner's twelve market news headlines, the owner's industry headlines, the company
+news ported from the base game's events, and the two reports, which code writes
+(D215): "Mafia HUD Scam's revenue fell 14%, far worse than expected. The company is
+in distress." and "Energy fell again, worse than expected. Expected to rise next
+year."
 
 ---
 

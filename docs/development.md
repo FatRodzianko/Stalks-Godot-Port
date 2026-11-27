@@ -235,27 +235,28 @@ the method is in the git history for the Phase 3 commit.
 
 ### Writing StalkleHeads news
 
-Every news line in StalkleHeads - market news, industry headlines, the industry
-report, earnings commentary, company news, whispers and NPC chatter - is a short
-piece of text in a `.tres` file. **Writing them needs no code change.** Until
-somebody writes them they are placeholders that say which slot they fill, like
-`INDUSTRY REPORT: {industry}, crash, much worse than expected`, so one that turns
+Every news line in StalkleHeads - market news, industry headlines, company news,
+whispers and NPC chatter - is a short piece of text in a `.tres` file. **Writing
+them needs no code change.** Until somebody writes them they are placeholders that
+say which slot they fill, like `IN THE NEWS: {company}, crash`, so one that turns
 up on screen tells you exactly which line is missing. To find every line still to
-write, search `src/data/` for `INDUSTRY REPORT:`, `OUTLOOK:`, `IN THE NEWS:`,
-`EARNINGS:`, `WHISPER:`, `EVENT:`, `NPC NAME:` and `NPC CHATTER:`.
+write, search `src/data/` for `IN THE NEWS:`, `WHISPER:`, `EVENT:`, `NPC NAME:` and
+`NPC CHATTER:`.
+
+**Two things on screen are not lines and cannot be written here:** the Company
+tab's EARNINGS report and the Industries tab's INDUSTRY REPORT. Code writes both
+from the numbers each year (`src/sim/report_writer.gd`, decisions.md D215), so
+there is nothing to fill in. To change their wording, edit that file.
 
 What the game does with them - which line is chosen when, where it shows - is in
-[game-rules.md](game-rules.md) §5.1 and decisions.md D199-D214.
+[game-rules.md](game-rules.md) §5.1 and decisions.md D199-D215.
 
 #### Where each kind of line lives
 
 | Kind | File | One line per |
 |---|---|---|
 | Market news (headline, event text, effect) | `src/data/news/market.tres`, the `market_news` list | **last year's** mood and index move band |
-| Earnings commentary | `src/data/news/market.tres`, the `earnings_commentary` list | regime and surprise band, for any company |
 | Company news (IN THE NEWS) | `src/data/news/companies.tres` for the ported events; the general ones in `market.tres`; the `company_news` list | the company's own price move band |
-| Industry report, the year | `src/data/news/market.tres`, the `industry_years` list | the industry's move band and surprise band, optionally last year's move band |
-| Industry report, the outlook | `src/data/news/market.tres`, the `industry_outlooks` list | the band of the industry's expected move next year |
 | Whisper | `src/data/news/market.tres`, the `whispers` list | outcome it foretells, for a company or for an industry; or a squeeze or a crash |
 | Industry headline (FROM THE HEADLINES) | `src/data/news/<industry>.tres` (`energy.tres` and so on), the `industry_reports` list | move band |
 | The short squeeze's words | `src/data/squeeze/short_squeeze.tres`, `flavour_text` | (one line; `{company}` is the squeezed company) |
@@ -295,8 +296,8 @@ line: the id is how the game remembers which lines it has shown this match.
 
 | Token | Becomes | Allowed in |
 |---|---|---|
-| `{company}` | the company's name | market news event text (its target company), earnings commentary, company news, company, squeeze and crash whispers, chatter (the company the trader picked) |
-| `{industry}` | the industry's name (for a company line, the company's industry) | industry headlines, the industry report, earnings commentary, company news, whispers |
+| `{company}` | the company's name | market news event text (its target company), company news, company, squeeze and crash whispers, chatter (the company the trader picked) |
+| `{industry}` | the industry's name (for a company line, the company's industry) | industry headlines, company news, whispers |
 | `{trader}` | the trader's name | chatter |
 
 A token a kind of line does not fill (or a misspelt one, like `{compnay}`) is an
@@ -310,8 +311,7 @@ named choices instead of numbers.
 1. Open the project in the Godot editor.
 2. In the **FileSystem** panel (bottom left), open `src` > `data` > `news`.
 3. Double-click `market.tres`. The **Inspector** panel (right) shows its lists:
-   **Market News**, **Industry Reports**, **Industry Years**, **Industry Outlooks**,
-   **Earnings Commentary**, **Company News**, **Whispers**, **Chatter**.
+   **Market News**, **Industry Reports**, **Company News**, **Whispers**, **Chatter**.
 4. Click a list's name, for example **Market News**, to open it. It shows its
    entries, numbered from 0.
 5. Click an entry's box (it reads **MarketNews**) to open it. Its fields show:
@@ -406,11 +406,11 @@ requires itself.
 `strategy` (chatter): 0 VALUE, 1 MOMENTUM, 2 CONTRARIAN, 3 INCOME, 4 INDEXER,
 5 PANIC, 6 GROWTH, 7 SHORT.
 
-**Lines for one thing beat general ones.** An industry report with an
-`industry_id`, earnings commentary with a `company_id`, and a trader's own chatter
-are preferred over lines that leave that field empty. So the shipped general
-earnings lines (`EARNINGS: {company}, ...`) cover every company, and a line written
-for one company replaces them for it, in the years it fits.
+**Lines for one thing beat general ones.** An industry headline with an
+`industry_id`, company news with a `company_id`, and a trader's own chatter are
+preferred over lines that leave that field empty. So the shipped general company
+news (`IN THE NEWS: {company}, ...`) covers every company, and a line written for
+one company replaces it for that company, in the years it fits.
 
 #### Whispers
 

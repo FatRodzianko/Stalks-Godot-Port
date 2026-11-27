@@ -110,9 +110,6 @@ static func news_with_market(shipped: NewsContent, lines: Array[MarketNews]) -> 
 	var content: NewsContent = NewsContent.new()
 	content.market_news = lines
 	content.industry_reports = shipped.industry_reports
-	content.industry_years = shipped.industry_years
-	content.industry_outlooks = shipped.industry_outlooks
-	content.earnings_commentary = shipped.earnings_commentary
 	content.company_news = shipped.company_news
 	content.whispers = shipped.whispers
 	content.chatter = shipped.chatter

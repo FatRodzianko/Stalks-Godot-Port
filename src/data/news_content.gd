@@ -12,9 +12,6 @@ extends RefCounted
 
 var market_news: Array[MarketNews] = []
 var industry_reports: Array[IndustryReport] = []
-var industry_years: Array[IndustryYearLine] = []
-var industry_outlooks: Array[IndustryOutlookLine] = []
-var earnings_commentary: Array[EarningsCommentary] = []
 var company_news: Array[CompanyNews] = []
 var whispers: Array[Whisper] = []
 var chatter: Array[NpcChatter] = []
@@ -29,9 +26,6 @@ static func build(books: Array[NewsBook], traders: Array[NpcTraderDefinition]) -
 	for book: NewsBook in books:
 		content.market_news.append_array(book.market_news)
 		content.industry_reports.append_array(book.industry_reports)
-		content.industry_years.append_array(book.industry_years)
-		content.industry_outlooks.append_array(book.industry_outlooks)
-		content.earnings_commentary.append_array(book.earnings_commentary)
 		content.company_news.append_array(book.company_news)
 		content.whispers.append_array(book.whispers)
 		content.chatter.append_array(book.chatter)
@@ -50,9 +44,6 @@ static func build(books: Array[NewsBook], traders: Array[NpcTraderDefinition]) -
 			content.chatter.append(line)
 	content.market_news.sort_custom(_by_id)
 	content.industry_reports.sort_custom(_by_id)
-	content.industry_years.sort_custom(_by_id)
-	content.industry_outlooks.sort_custom(_by_id)
-	content.earnings_commentary.sort_custom(_by_id)
 	content.company_news.sort_custom(_by_id)
 	content.whispers.sort_custom(_by_id)
 	content.chatter.sort_custom(_by_id)
@@ -70,9 +61,6 @@ func all_lines() -> Array[Resource]:
 	var lines: Array[Resource] = []
 	lines.append_array(market_news)
 	lines.append_array(industry_reports)
-	lines.append_array(industry_years)
-	lines.append_array(industry_outlooks)
-	lines.append_array(earnings_commentary)
 	lines.append_array(company_news)
 	lines.append_array(whispers)
 	lines.append_array(chatter)

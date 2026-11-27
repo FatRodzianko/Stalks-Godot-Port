@@ -402,27 +402,6 @@ func _validate_news(industry_ids: Array, company_ids: Array) -> void:
 		_check_band(line.move, NewsBands.Move.values(), label, "move")
 		_check_industry(line.industry_id, industry_ids, label)
 
-	for line: IndustryYearLine in news.industry_years:
-		var label: String = _news_label(line, "industry year", seen)
-		_check_text(line.text, label, industry_tokens)
-		_check_band(line.move, NewsBands.Move.values(), label, "move")
-		_check_band(line.surprise, NewsBands.Surprise.values(), label, "surprise")
-		_check_band(line.last_move, NewsBands.Move.values(), label, "last move")
-		_check_industry(line.industry_id, industry_ids, label)
-
-	for line: IndustryOutlookLine in news.industry_outlooks:
-		var label: String = _news_label(line, "industry outlook", seen)
-		_check_text(line.text, label, industry_tokens)
-		_check_band(line.outlook, NewsBands.Move.values(), label, "outlook")
-		_check_industry(line.industry_id, industry_ids, label)
-
-	for line: EarningsCommentary in news.earnings_commentary:
-		var label: String = _news_label(line, "earnings commentary", seen)
-		_check_text(line.text, label, company_tokens)
-		_check_band(line.regime, NewsBands.Regime.values(), label, "regime")
-		_check_band(line.surprise, NewsBands.Surprise.values(), label, "surprise")
-		_check_company(line.company_id, company_ids, label)
-
 	for line: CompanyNews in news.company_news:
 		var label: String = _news_label(line, "company news", seen)
 		_check_text(line.text, label, company_tokens)

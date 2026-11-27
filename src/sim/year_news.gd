@@ -20,7 +20,7 @@ var year: int = 0
 var industry_reports: Dictionary[StringName, String] = {}
 
 ## The first sentence of each industry's INDUSTRY REPORT: its year against what
-## was expected (D212). By industry id.
+## was expected (D212), written by `ReportWriter` (D215). By industry id.
 var industry_years: Dictionary[StringName, String] = {}
 
 ## The second sentence: what is expected of it next year. By industry id.
@@ -31,8 +31,9 @@ var industry_outlooks: Dictionary[StringName, String] = {}
 ## Every company that had an earnings season has one.
 var earnings_surprise: Dictionary[StringName, NewsBands.Surprise] = {}
 
-## Earnings commentary by company id. A company with none has no key.
-var commentary: Dictionary[StringName, String] = {}
+## Each company's EARNINGS report, written by `ReportWriter` (D215), by company
+## id. Every company that had an earnings season has one.
+var earnings: Dictionary[StringName, String] = {}
 
 ## IN THE NEWS, by company id (D211).
 var company_news: Dictionary[StringName, String] = {}
@@ -55,7 +56,7 @@ func industry_report(industry_id: StringName) -> String:
 	return " ".join(parts)
 
 
-## Every chosen line, as text: headlines, reports, commentary, company news,
+## Every chosen line, as text: headlines, reports, earnings, company news,
 ## chatter, each group in id order. For tests comparing two peers.
 func all_lines() -> PackedStringArray:
 	var lines: PackedStringArray = []
@@ -65,8 +66,8 @@ func all_lines() -> PackedStringArray:
 		lines.append("report %s=%s" % [key, industry_years[key]])
 	for key: StringName in _sorted(industry_outlooks.keys()):
 		lines.append("outlook %s=%s" % [key, industry_outlooks[key]])
-	for key: StringName in _sorted(commentary.keys()):
-		lines.append("earnings %s=%s" % [key, commentary[key]])
+	for key: StringName in _sorted(earnings.keys()):
+		lines.append("earnings %s=%s" % [key, earnings[key]])
 	for key: StringName in _sorted(company_news.keys()):
 		lines.append("news %s=%s" % [key, company_news[key]])
 	for key: StringName in _sorted(chatter.keys()):

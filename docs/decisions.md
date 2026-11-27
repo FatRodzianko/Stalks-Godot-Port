@@ -7979,3 +7979,44 @@ came off next year. The ordinary whisper is about some other subject.
 
 **Rules out:** a third whisper slot; a Rock Solid squeeze whisper (it would make the
 25% roll look certain).
+
+### D215 - The EARNINGS and INDUSTRY REPORT are written by code
+**2026-11-27 · Accepted** (the owner: "Yes, build it") · **supersedes** the line
+lists of D211's EARNINGS and D212, and the earnings commentary of D199
+
+The owner asked for both reports to be **automated**. D211 and D212 built them as
+news lines: 25 earnings commentary lines, 25 industry year lines and 5 outlooks in
+`market.tres`, chosen by conditions, all placeholders waiting to be written. That
+was a mistake: a report worked out wholly from the numbers needs no lines, and the
+commentary repeated the EARNINGS line above it word for word.
+
+Now `ReportWriter` (`src/sim/report_writer.gd`) writes both, each year, from the
+numbers alone, and `NewsSelector` stores them on `YearNews` (`earnings`,
+`industry_years`, `industry_outlooks`):
+
+- **EARNINGS**, one per company that had an earnings season: "Mafia HUD Scam's
+  revenue fell 14%, far worse than expected. The company is in distress." The
+  revenue change rounded to a whole percent ("held steady" at 0); the surprise band
+  against what the regime led one to expect (unchanged from D211); the regime as
+  "The company is growing / steady / in decline / in distress" or "Growth is
+  slowing".
+- **INDUSTRY REPORT**, one per industry: "Energy fell again, worse than expected.
+  Expected to rise next year." Its move band as crashed / fell / held steady / rose
+  / surged; "again" when last year's band went the same way (a crash and a fall
+  both count as down), never in year 1; the surprise band of its roll; the outlook
+  band of D212.
+
+Past tense throughout, so every industry name reads right whether it is singular
+("Energy fell") or plural ("Consumer Goods fell").
+
+`IndustryYearLine`, `IndustryOutlookLine` and `EarningsCommentary` are deleted, with
+their lists in `NewsBook` and `NewsContent`, their validator checks and the 55
+placeholder lines. Nothing hand-written was lost: none had been written. The
+reports draw nothing from the news bag, so the other lines a year shows may differ
+from before for the same seed; no price does.
+
+The wording is explanation, not tone, which is why code may write it. The owner's
+own words belong in the news lines.
+
+**Rules out:** content lines for anything worked out from the numbers; an earnings
+commentary slot beside the EARNINGS report.

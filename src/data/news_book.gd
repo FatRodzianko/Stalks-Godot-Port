@@ -13,9 +13,6 @@ extends Resource
 
 @export var market_news: Array[MarketNews] = []
 @export var industry_reports: Array[IndustryReport] = []
-@export var industry_years: Array[IndustryYearLine] = []
-@export var industry_outlooks: Array[IndustryOutlookLine] = []
-@export var earnings_commentary: Array[EarningsCommentary] = []
 @export var company_news: Array[CompanyNews] = []
 @export var whispers: Array[Whisper] = []
 @export var chatter: Array[NpcChatter] = []

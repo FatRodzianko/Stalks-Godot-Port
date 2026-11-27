@@ -45,10 +45,10 @@ func _with_news(library: ContentLibrary, book: NewsBook) -> NewsContent:
 	return library.news
 
 
-## An outlook line for energy alone, whatever the outlook: one is drawn for
-## energy every year, so it is what the bag tests watch.
-func _energy_outlook(id: String) -> IndustryOutlookLine:
-	var line: IndustryOutlookLine = IndustryOutlookLine.new()
+## An industry headline for energy alone, whatever its mood and move: one is
+## drawn for energy every year, so it is what the bag tests watch.
+func _energy_headline(id: String) -> IndustryReport:
+	var line: IndustryReport = IndustryReport.new()
 	line.id = StringName(id)
 	line.industry_id = &"energy"
 	line.text = id
@@ -81,9 +81,6 @@ func test_the_shipped_news_loads_and_validates_clean() -> void:
 	for line: MarketNews in library.news.market_news:
 		assert_false(line.headline.begins_with("MARKET HEADLINE"), "%s lost its old prefix" % line.id)
 		assert_eq(line.amount, 0, "%s moves nothing yet" % line.id)
-	assert_eq(library.news.industry_years.size(), 25, "five moves by five surprises")
-	assert_eq(library.news.industry_outlooks.size(), 5, "one per outlook")
-	assert_eq(library.news.earnings_commentary.size(), 25, "five regimes by five surprises")
 	assert_eq(library.news.company_news.size(), 5 + 8 * 10, "one per move, and every ported event (D211)")
 	assert_eq(library.news.whispers.size(), 12, "five outcomes for a company and an industry, a squeeze and a crash")
 	assert_eq(library.news.chatter.size(), 24 * 5, "every trader's five lines")
@@ -137,20 +134,10 @@ func test_every_slot_that_can_come_up_has_a_line() -> void:
 			assert_true(found, "market news for %d %d" % [mood, move])
 	var all_moves: Array[NewsBands.Move] = [NewsBands.Move.CRASH, NewsBands.Move.DOWN, NewsBands.Move.FLAT, NewsBands.Move.UP, NewsBands.Move.SURGE]
 	for move: NewsBands.Move in all_moves:
-		var outlook_found: bool = false
-		for line: IndustryOutlookLine in news.industry_outlooks:
-			outlook_found = outlook_found or (line.industry_id.is_empty() and line.outlook in [move, NewsBands.Move.ANY])
-		assert_true(outlook_found, "an outlook for %d" % move)
 		var company_found: bool = false
 		for line: CompanyNews in news.company_news:
 			company_found = company_found or (line.company_id.is_empty() and line.move in [move, NewsBands.Move.ANY])
 		assert_true(company_found, "company news for any company on %d" % move)
-		for surprise: NewsBands.Surprise in WhisperRules.OUTCOMES:
-			var year_found: bool = false
-			for line: IndustryYearLine in news.industry_years:
-				year_found = year_found or (line.industry_id.is_empty() and line.move in [move, NewsBands.Move.ANY]
-					and line.surprise in [surprise, NewsBands.Surprise.ANY] and line.last_move == NewsBands.Move.ANY)
-			assert_true(year_found, "an industry year for %d %d" % [move, surprise])
 	for industry: IndustryDefinition in library.industries:
 		for move: NewsBands.Move in [NewsBands.Move.CRASH, NewsBands.Move.DOWN, NewsBands.Move.FLAT, NewsBands.Move.UP, NewsBands.Move.SURGE]:
 			var found: bool = false
@@ -179,11 +166,11 @@ func test_the_validator_reports_every_kind_of_mistake() -> void:
 	report.industry_id = &"energee"
 	report.text = "x"
 	book.industry_reports.append(report)
-	var commentary: EarningsCommentary = EarningsCommentary.new()
-	commentary.id = &"e1"
-	commentary.company_id = &"nobody"
-	commentary.text = "EARNINGS: {compnay}"
-	book.earnings_commentary.append(commentary)
+	var gossip: CompanyNews = CompanyNews.new()
+	gossip.id = &"e1"
+	gossip.company_id = &"nobody"
+	gossip.text = "IN THE NEWS: {compnay}"
+	book.company_news.append(gossip)
 	var lie: Whisper = Whisper.new()
 	lie.id = &"w1"
 	lie.about = NewsBands.Subject.INDUSTRY
@@ -297,22 +284,22 @@ func test_a_line_drawn_fewer_times_is_drawn_first() -> void:
 	var played: WireMatch = _played(SEED, 3)
 	var book: NewsBook = NewsBook.new()
 	for id: String in ["a", "b", "c"]:
-		book.industry_outlooks.append(_energy_outlook(id))
+		book.industry_reports.append(_energy_headline(id))
 	_rechoose(played.state, _with_news(played.library, book))
 	var result: EarningsYearResult = played.state.history[0]
 	var counts: Dictionary[StringName, int] = {&"a": 1, &"b": 0, &"c": 1}
-	assert_eq(NewsSelector.select(played.state, result, counts).industry_outlooks[&"energy"], "b")
+	assert_eq(NewsSelector.select(played.state, result, counts).industry_reports[&"energy"], "b")
 
 
 func test_no_line_repeats_until_every_line_has_had_its_turn() -> void:
 	var played: WireMatch = _played(SEED, 12)
 	var book: NewsBook = NewsBook.new()
 	for id: String in ["a", "b", "c", "d"]:
-		book.industry_outlooks.append(_energy_outlook(id))
+		book.industry_reports.append(_energy_headline(id))
 	_rechoose(played.state, _with_news(played.library, book))
 	var seen: PackedStringArray = []
 	for year: int in range(1, 13):
-		seen.append(NewsSelector.news_for(played.state, year).industry_outlooks[&"energy"])
+		seen.append(NewsSelector.news_for(played.state, year).industry_reports[&"energy"])
 	for cycle: int in 3:
 		var slice: PackedStringArray = seen.slice(cycle * 4, cycle * 4 + 4)
 		slice.sort()
@@ -322,25 +309,24 @@ func test_no_line_repeats_until_every_line_has_had_its_turn() -> void:
 func test_a_slot_nothing_matches_stays_empty() -> void:
 	var played: WireMatch = _played(SEED, 5)
 	var book: NewsBook = NewsBook.new()
-	var never: IndustryYearLine = IndustryYearLine.new()
+	var never: CompanyNews = CompanyNews.new()
 	never.id = &"never"
-	never.industry_id = &"energy"
+	never.company_id = &"stryker"
 	never.move = NewsBands.Move.CRASH
-	never.surprise = NewsBands.Surprise.MUCH_BETTER
-	never.last_move = NewsBands.Move.SURGE
+	never.requires = [&"never_shown"] as Array[StringName]
 	never.text = "never"
-	book.industry_years.append(never)
+	book.company_news.append(never)
 	_rechoose(played.state, _with_news(played.library, book))
 	for year: int in range(1, 6):
 		var news: YearNews = NewsSelector.news_for(played.state, year)
-		assert_true(news.industry_years.is_empty(), "year %d" % year)
-		assert_true(news.industry_outlooks.is_empty())
-		assert_true(news.company_news.is_empty())
+		assert_true(news.company_news.is_empty(), "year %d" % year)
 		assert_true(news.industry_reports.is_empty())
-		assert_true(news.commentary.is_empty())
 		var round: WhisperRound = NewsSelector.whispers_for(played.state, year)
 		assert_true(round == null or round.lines.is_empty(), "heard after year %d" % year)
 		assert_true(news.chatter.is_empty())
+		assert_false(news.earnings.is_empty(), "the reports need no lines (D215)")
+		assert_false(news.industry_years.is_empty())
+		assert_false(news.industry_outlooks.is_empty())
 
 
 func test_a_line_for_this_industry_beats_a_general_one() -> void:
@@ -362,17 +348,46 @@ func test_a_line_for_this_industry_beats_a_general_one() -> void:
 		assert_eq(news.industry_reports[&"food"], "ANY Food", "the token is filled in")
 
 
-func test_commentary_names_its_company_and_matches_its_regime() -> void:
+## D215: every company with an earnings season gets its EARNINGS report every
+## year, naming it, its revenue change and its regime.
+func test_every_company_gets_an_earnings_report_naming_its_numbers() -> void:
 	var played: WireMatch = _played()
 	var state: GameState = played.state
 	for year: int in range(1, YEARS + 1):
 		var news: YearNews = NewsSelector.news_for(state, year)
 		var result: EarningsYearResult = MarketReadouts.result_for_year(state, year)
-		for company_id: StringName in news.commentary:
-			var text: String = news.commentary[company_id]
-			assert_true(text.contains(state.stalk_by_id(company_id).definition.display_name))
-			var regime: String = EarningsRegime.name_of(result.regimes[company_id]).to_lower()
-			assert_true(text.contains(", %s," % regime), "%s in year %d: %s" % [company_id, year, text])
+		for company_id: StringName in result.regimes:
+			if not result.companies_after.has(company_id):
+				continue
+			var after: CompanyState = result.companies_after[company_id]
+			var name: String = state.stalk_by_id(company_id).definition.display_name
+			var expected: String = ReportWriter.earnings_sentence(
+				name, after.revenue_growth_percent, news.earnings_surprise[company_id], result.regimes[company_id])
+			assert_eq(news.earnings.get(company_id, ""), expected, "%s in year %d" % [company_id, year])
+			assert_true(expected.begins_with(ReportWriter.possessive(name) + " revenue "), expected)
+
+
+## D215: the reports' wording, word for word.
+func test_the_report_writer_says_what_happened_in_plain_words() -> void:
+	assert_eq(ReportWriter.earnings_sentence("Mafia HUD Scam", -14.4, NewsBands.Surprise.MUCH_WORSE, EarningsRegime.Value.DISTRESS),
+		"Mafia HUD Scam's revenue fell 14%, far worse than expected. The company is in distress.")
+	assert_eq(ReportWriter.earnings_sentence("Easy Breezy Airways", 8.6, NewsBands.Surprise.BETTER, EarningsRegime.Value.GROWTH),
+		"Easy Breezy Airways' revenue rose 9%, better than expected. The company is growing.")
+	assert_eq(ReportWriter.earnings_sentence("BoobTube", 0.4, NewsBands.Surprise.AS_EXPECTED, EarningsRegime.Value.STEADY),
+		"BoobTube's revenue held steady, as expected. The company is steady.")
+	assert_eq(ReportWriter.year_sentence("Consumer Goods", NewsBands.Move.DOWN, NewsBands.Surprise.WORSE, NewsBands.Move.CRASH),
+		"Consumer Goods fell again, worse than expected.", "a crash then a fall is the same way")
+	assert_eq(ReportWriter.year_sentence("Energy", NewsBands.Move.UP, NewsBands.Surprise.BETTER, NewsBands.Move.ANY),
+		"Energy rose, better than expected.", "no again without a last year")
+	assert_eq(ReportWriter.year_sentence("Food", NewsBands.Move.FLAT, NewsBands.Surprise.AS_EXPECTED, NewsBands.Move.UP),
+		"Food held steady, as expected.")
+	assert_eq(ReportWriter.outlook_sentence(NewsBands.Move.SURGE), "Expected to surge next year.")
+	for move: NewsBands.Move in [NewsBands.Move.CRASH, NewsBands.Move.DOWN, NewsBands.Move.FLAT, NewsBands.Move.UP, NewsBands.Move.SURGE]:
+		for surprise: NewsBands.Surprise in WhisperRules.OUTCOMES:
+			assert_false(ReportWriter.year_sentence("X", move, surprise, NewsBands.Move.ANY).is_empty())
+		assert_false(ReportWriter.outlook_sentence(move).is_empty())
+	for regime: EarningsRegime.Value in EarningsRegime.ALL:
+		assert_true(ReportWriter.earnings_sentence("X", 1.0, NewsBands.Surprise.AS_EXPECTED, regime).ends_with("."))
 
 
 # ------------------------------------------------------------- whispers
