@@ -8515,3 +8515,23 @@ in the line that follows the mouse while an arrow is drawn (D227).
 **Not changed:** the books, the game, the golden history hash.
 
 **Rules out:** assuming Godot passes every connection line in the same space.
+
+### D229 - The News Flow tab: a selected arrow is drawn orange
+
+The fourth run of manual section AA passed every step but one. Clicking an
+arrow selected it, and Delete removed the right one, but it looked like every
+other arrow, so with several on the chart there was no telling which was
+selected. The only change on screen was the chart's blue focus border.
+
+Godot marks a connection with `GraphEdit.set_connection_activity`, which blends
+its line toward the chart's "activity" theme color. In the editor's theme that
+color is white, the same as the arrows, so the blend changed nothing. A
+headless editor run confirmed it: the selected line's colors stayed white.
+
+`NewsChartCanvas` now sets its own "activity" color to orange
+(`SELECTED_COLOR`) when it starts. The same run then showed only the selected
+line turning orange, and turning back when the selection is cleared. It is set
+in code, not in a theme resource: the News Flow tab is an editor tool with no
+theme of its own, and the game's shared theme does not reach the editor.
+
+**Not changed:** the books, the game, the golden history hash.

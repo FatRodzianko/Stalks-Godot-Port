@@ -47,6 +47,12 @@ const PORT_MATCH_DISTANCE: float = 1.0
 const DOT_REACH: float = 12.0
 const LINE_REACH: float = 8.0
 
+## The color of the selected arrow. Godot colors a connection with its
+## "activity" theme color, which is white by default, the same as every other
+## arrow, so a selected one looked unchanged (D229). This is an editor tool, not
+## the game, so it does not use the game's theme.
+const SELECTED_COLOR: Color = Color(1.0, 0.65, 0.15)
+
 ## The box a drag started on, and whether from its bottom dot; empty when no
 ## arrow is being drawn.
 var _dragged_from: StringName = &""
@@ -58,6 +64,7 @@ var _selected_to: StringName = &""
 
 func _ready() -> void:
 	right_disconnects = false
+	add_theme_color_override(&"activity", SELECTED_COLOR)
 	connection_drag_started.connect(_on_connection_drag_started)
 	connection_drag_ended.connect(_on_connection_drag_ended)
 	connection_request.connect(_on_connection_request)

@@ -2880,7 +2880,7 @@ match.
   edit in the Inspector instead.
 - **Second run, after the fixes: every step passed.**
 
-### AA - The News Flow tab: creating, editing and linking (decisions.md D225-D228) — **three runs 2026-11-27, with findings; fourth run not yet done**
+### AA - The News Flow tab: creating, editing and linking (decisions.md D225-D228) — **four runs 2026-11-27; passed on the fourth but for one finding, fixed in D229**
 
 **The first run** passed linking, the loop, editing, naming, saving and putting
 the books back. Its findings, each changed in D226:
@@ -2911,7 +2911,12 @@ from the side of one box to the side of the other, nowhere near the mouse, and
 after a screenshot taken mid-drag it stayed stuck to the mouse until the next
 click. Both are changed in D228.
 
-The steps below are rewritten for the fourth run.
+**The fourth run** passed every step but one: a selected arrow looked the same
+as every other, so with several on the chart it was not clear which was
+selected. It is now drawn orange (D229). Only that step, under **Edit and
+remove**, needs running again.
+
+The steps below are as run the fourth time, with that step updated.
 
 One machine, the **editor**. Needs a checkout that has
 `addons/news_flow_chart/ui/news_chart_canvas.gd` containing `_dot_of`. This builds a chain of five
@@ -2984,7 +2989,7 @@ open scenes before you start.**
 52. Click **Add a requirement...** under **Requires** and pick `mkt_bear_crash_3`.
 53. Check a second arrow now runs from the market box to `test four`.
 54. Click on the arrow from the market box to `test four`, on the line itself.
-55. Check that arrow is drawn highlighted.
+55. Check that arrow turns orange, and every other arrow stays white.
 56. Press **Delete**.
 57. Check that arrow is gone, the one from the industry headline stays, and **Requires** for `test four` lists only the industry headline.
 

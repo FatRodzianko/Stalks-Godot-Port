@@ -887,3 +887,19 @@ func test_a_line_whose_button_was_let_go_elsewhere_ends_when_the_mouse_moves() -
 	# Here Godot itself was never drawing a line, since the drag was only
 	# signalled, so ending it makes Godot say so. In the editor it is drawing.
 	assert_engine_error("connecting", "Godot had no line of its own to end")
+
+
+# ------------------------------------------------- after the fourth run of section AA
+
+
+func test_the_selected_arrow_is_drawn_in_its_own_color() -> void:
+	# Found by hand: selecting an arrow left it looking like every other one.
+	# Godot colors a selected connection with the "activity" theme color,
+	# which is white by default, like the arrows. GUT's window is too small for
+	# the lines to be drawn, so the line's own color was checked once in a
+	# headless editor run instead (D229).
+	var chart: NewsChart = _chart()
+	_show(chart, _example())
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	assert_eq(canvas.get_theme_color(&"activity"), NewsChartCanvas.SELECTED_COLOR)
+	assert_ne(NewsChartCanvas.SELECTED_COLOR, Color.WHITE, "not the arrows' own white")
