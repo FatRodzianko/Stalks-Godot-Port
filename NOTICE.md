@@ -34,6 +34,16 @@ which is proprietary. Plain GPL would forbid anybody other than the copyright
 holder from distributing a build that includes it. This permission allows it,
 and allows nothing else: every part of this project stays under the GPL.
 
+### Contributions
+
+By submitting a contribution to this project, you agree that it is licensed
+under the same terms as the code above: the GNU GPL version 3 or later,
+**including** the Steamworks additional permission.
+
+**Why this exists.** Contributed code belongs to its author. Without this
+agreement a contribution would arrive under plain GPL, and the project could no
+longer ship a Steam build containing it.
+
 ## What is not covered
 
 The GPL above does **not** grant rights to:
