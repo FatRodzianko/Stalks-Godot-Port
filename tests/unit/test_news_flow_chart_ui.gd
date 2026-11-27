@@ -416,8 +416,8 @@ func test_drawing_an_arrow_adds_the_id_to_requires() -> void:
 func test_removing_an_arrow_removes_only_that_id() -> void:
 	var chart: NewsChart = _chart()
 	var editor: NewsBookEditor = _show(chart, _example())
-	var canvas: GraphEdit = chart.get_node("%Chart")
-	canvas.disconnection_request.emit(&"b", 0, &"e", 0)
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	canvas.arrow_delete_requested.emit(&"b", &"e")
 	assert_eq(_requires(editor, &"e"), [&"no_such_item"] as Array[StringName], "every other requirement stays")
 	assert_eq(_requires(editor, &"d"), [&"b"] as Array[StringName], "every other arrow stays")
 	assert_does_not_have(chart.arrows(), PackedStringArray(["b", "e"]))
@@ -711,3 +711,112 @@ func test_a_free_spot_is_right_of_everything_at_the_top() -> void:
 	var taken: Array[Rect2] = [Rect2(0, 100, 200, 50), Rect2(-300, 40, 100, 300)]
 	assert_eq(NewsLayout.free_spot(taken), Vector2(200 + NewsLayout.COLUMN_GAP, 40))
 	assert_eq(NewsLayout.free_spot([] as Array[Rect2]), Vector2.ZERO)
+
+
+# ------------------------------------------------- after the second run of section AA
+
+
+func test_arrange_centers_each_item_over_its_own_followers_as_a_tree() -> void:
+	# Found by hand: the third row lined up in columns under the second row
+	# instead of branching out under the one item it follows.
+	var lines: Array[Resource] = [
+		_item("m"),
+		_item("c2", [&"m"]),
+		_item("i", [&"m"]),
+		_item("c3", [&"i"]),
+		_item("c4", [&"i"]),
+	]
+	var ids: Array[StringName] = [&"m", &"c2", &"i", &"c3", &"c4"]
+	var sizes: Dictionary[StringName, Vector2] = {}
+	for id: StringName in ids:
+		sizes[id] = Vector2(240, 100)
+	var at: Dictionary[StringName, Vector2] = NewsLayout.positions(NewsGraph.from_lines(lines), ids, sizes)
+	var gap: float = NewsLayout.COLUMN_GAP
+	var row: float = 100 + NewsLayout.ROW_GAP
+	assert_eq(at[&"c3"], Vector2(-120, 2 * row), "i's two followers side by side")
+	assert_eq(at[&"c4"], Vector2(-120 + 240 + gap, 2 * row))
+	assert_eq(at[&"i"], Vector2(20, row), "i centered over its followers")
+	assert_eq(at[&"c2"], Vector2(-400, row), "c2 beside i's whole branch, not over c3")
+	assert_eq(at[&"m"], Vector2(-120, 0), "m centered over everything under it")
+
+
+func test_an_arrow_starts_from_the_box_pressed_first_whichever_dot() -> void:
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	# Pressed on c's top dot and let go on d's bottom dot: Godot reports d's
+	# bottom joined to c's top, but c was pressed first, so d requires c.
+	canvas.connection_drag_started.emit(&"c", 0, false)
+	canvas.connection_request.emit(&"d", 0, &"c", 0)
+	canvas.connection_drag_ended.emit()
+	assert_eq(_requires(editor, &"d"), [&"b", &"c"] as Array[StringName])
+	assert_eq(_requires(editor, &"c"), [&"a"] as Array[StringName], "not the other way round")
+
+
+func test_letting_go_anywhere_on_a_box_draws_the_arrow_to_it() -> void:
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	await wait_process_frames(2)
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	var d: NewsItemBox = chart.box_for(&"d")
+	var middle_of_d: Vector2 = d.position + d.size * canvas.zoom / 2.0
+	canvas.connection_drag_started.emit(&"c", 0, true)
+	canvas.connection_to_empty.emit(&"c", 0, middle_of_d)
+	canvas.connection_drag_ended.emit()
+	assert_eq(_requires(editor, &"d"), [&"b", &"c"] as Array[StringName], "from the bottom dot")
+	await wait_process_frames(2)
+	canvas.connection_drag_started.emit(&"a", 0, false)
+	canvas.connection_from_empty.emit(&"a", 0, middle_of_d)
+	canvas.connection_drag_ended.emit()
+	assert_eq(_requires(editor, &"d"), [&"b", &"c", &"a"] as Array[StringName], "and from the top dot")
+	canvas.connection_to_empty.emit(&"c", 0, middle_of_d + Vector2(5000, 0))
+	assert_eq(_requires(editor, &"d"), [&"b", &"c", &"a"] as Array[StringName], "let go on nothing: no arrow")
+
+
+func test_the_dots_that_answer_the_mouse_are_the_top_and_bottom_middle() -> void:
+	var chart: NewsChart = _chart()
+	_show(chart, _example())
+	await wait_process_frames(2)
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	var box: NewsItemBox = chart.box_for(&"a")
+	var top: Vector2 = (box.position + NewsItemBox.top_dot(box.size) * canvas.zoom) / canvas.zoom
+	var bottom: Vector2 = (box.position + NewsItemBox.bottom_dot(box.size) * canvas.zoom) / canvas.zoom
+	var side: Vector2 = (box.position + box.get_output_port_position(0) * canvas.zoom) / canvas.zoom
+	assert_true(canvas._is_in_input_hotzone(box, 0, top))
+	assert_true(canvas._is_in_output_hotzone(box, 0, bottom))
+	assert_false(canvas._is_in_output_hotzone(box, 0, side), "not Godot's side dot")
+	assert_false(canvas._is_in_input_hotzone(box, 0, bottom))
+
+
+func test_a_line_dragged_from_a_box_starts_at_the_dot_pressed() -> void:
+	var chart: NewsChart = _chart()
+	_show(chart, _example())
+	await wait_process_frames(2)
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	var a: NewsItemBox = chart.box_for(&"a")
+	var port: Vector2 = (a.position_offset + a.get_output_port_position(0)) * canvas.zoom
+	var mouse: Vector2 = port + Vector2(300, 300)
+	canvas.connection_drag_started.emit(&"a", 0, true)
+	var points: PackedVector2Array = canvas._get_connection_line(port, mouse)
+	canvas.connection_drag_ended.emit()
+	assert_eq(points[0], (a.position_offset + NewsItemBox.bottom_dot(a.size)) * canvas.zoom)
+	assert_eq(points[points.size() - 2], mouse, "head at the mouse")
+
+
+func test_a_clicked_arrow_is_selected_and_delete_removes_it() -> void:
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	await wait_process_frames(2)
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	var a: NewsItemBox = chart.box_for(&"a")
+	var b: NewsItemBox = chart.box_for(&"b")
+	var from_port: Vector2 = (a.position_offset + a.get_output_port_position(0)) * canvas.zoom
+	var to_port: Vector2 = (b.position_offset + b.get_input_port_position(0)) * canvas.zoom
+	var line: PackedVector2Array = canvas._get_connection_line(from_port, to_port)
+	var on_it: Vector2 = line[(line.size() - 3) / 2] - canvas.scroll_offset
+	assert_false(canvas.select_arrow_at(on_it + Vector2(0, 5000)), "nothing there")
+	assert_true(canvas.select_arrow_at(on_it), "on the line")
+	assert_eq(canvas.selected_arrow(), [&"a", &"b"] as Array[StringName])
+	canvas.delete_nodes_request.emit([] as Array[StringName])
+	assert_eq(_requires(editor, &"b"), [] as Array[StringName], "b no longer requires a")
+	assert_does_not_have(chart.arrows(), PackedStringArray(["a", "b"]))

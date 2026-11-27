@@ -1360,9 +1360,9 @@ plugin.gd (EditorPlugin, main screen "News Flow")
         |- toolbar: + New news item, Arrange, Rename chain, Save, status line
         |- chain list, news item list + search   (NewsGraph, NewsChainNames)
         |- NewsChartCanvas (a GraphEdit): one NewsItemBox per item shown,
-        |     an arrow per requires; drawing or removing one -> link / unlink;
-        |     right-click -> a new item there
-        |- NewsLayout: Arrange, top to bottom; a free spot for a new box
+        |     an arrow per requires; arrow_drawn -> link, a selected arrow
+        |     + Delete -> unlink; right-click -> a new item there
+        |- NewsLayout: Arrange, top to bottom as a tree; a free spot for a new box
         |- NewsDetailsPanel: every field as a control; says what changed
         |     through signals; dropdowns from NewsFieldChoices
         |- every change -> NewsBookEditor (in memory) -> Save writes the books
@@ -1380,11 +1380,16 @@ from their files by `NewsFieldChoices.library_from_files`, for the same reason.
 `NewsChart.show_content` takes a `NewsBookEditor` directly, which is what the
 scene-tree tests drive, with books under `user://`.
 
-Chains read top to bottom (D226), but `GraphNode` only has connection dots on
-its left and right. Arrows are therefore still drawn from the right dot to the
-left dot. `NewsChartCanvas._get_connection_line` then draws each finished arrow
-from the bottom middle of one box to the top middle of the other, finding the
-two boxes from the dot positions it is given.
+Chains read top to bottom (D226, D227), but `GraphNode` only has connection
+dots on its left and right. So `NewsItemBox` draws its own dots at its top and
+bottom middle instead, and `NewsChartCanvas` tells `GraphEdit` that is where the
+mouse can press (`_is_in_input_hotzone`, `_is_in_output_hotzone`).
+`_get_connection_line` draws each finished arrow from the bottom middle of one
+box to the top middle of the other, finding the two boxes from the side-dot
+positions Godot still hands it. The box pressed first is the one required,
+whichever dot it was: the canvas notes where each drag started and reports
+every drawn arrow as `arrow_drawn(from, to)`. A clicked arrow is selected, and
+Delete reports it as `arrow_delete_requested`.
 
 ### The rules that hold it together
 

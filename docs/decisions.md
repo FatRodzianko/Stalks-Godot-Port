@@ -8430,3 +8430,61 @@ which was wrong; it is rewritten.
 
 **Rules out:** Godot's own left-to-right arrange; a box placed over another
 when the chart has room beside it.
+
+### D227 - The News Flow tab after its second edit run: dots top and bottom, the first box pressed is required, a tree, arrows deleted with Delete
+
+The second run of manual section AA (D226) passed everything but drawing the
+arrows. It turned up three requests and one bug.
+
+- **Each box has its dots at the top middle and bottom middle**, not on its
+  sides, and **an arrow can be drawn from either dot to either dot, or let go
+  anywhere on the other box.** The box pressed first is the one required. This
+  is how the Unity animator makes a transition (the first state clicked is
+  where it comes from), and it matches what the line being dragged shows: it
+  runs from the dot pressed, with its head at the mouse. The alternative,
+  typed dots as Godot's own editors use (one dot only ever an input, one only
+  an output), was ruled out. It makes the dot pressed decide the direction,
+  which the person using the tool should not need to remember.
+
+  `GraphNode` puts its dots on the sides and that cannot be changed, so the
+  dots are moved by hand. `NewsItemBox` leaves Godot's side dots undrawn
+  (`_draw_port`) and draws its own at the top and bottom. `NewsChartCanvas`
+  tells `GraphEdit` those are where the mouse can press
+  (`_is_in_input_hotzone`, `_is_in_output_hotzone`). Godot still only ever
+  joins an output to an input, and reports a join by which side each end is
+  on. So the canvas notes the box a drag started on (`connection_drag_started`)
+  and turns whatever Godot reports into one signal, `arrow_drawn`, from that
+  box. That covers `connection_request`, where Godot's from and to are swapped
+  when the drag began on a top dot, and `connection_to_empty` /
+  `connection_from_empty`, a drop that is not on a dot Godot would join: on a
+  dot of the same kind, or on the body of a box.
+- **Arrange lays a chain out as a tree.** An item is centered over the items
+  placed under it, and they are side by side under it, not lined up with the
+  row above. An item that requires two items on the chart is placed under one
+  of them, the one in the row just above it, first by id
+  (`NewsLayout.positions`). Before, each row was simply centered, so a third
+  row stood in columns under the second.
+- **An arrow is deleted by clicking it and pressing Delete.** The click selects
+  the nearest arrow within 8 pixels (`GraphEdit.get_closest_connection_at_point`)
+  and highlights it (`set_connection_activity`). Delete then removes it, which
+  takes the id out of `requires`, as **Remove** in the details panel does.
+  Dragging an arrow's head off a dot no longer removes it: pressing a dot now
+  always starts a new arrow. Delete with only boxes selected does nothing yet:
+  deleting an item is Phase 4's, with its question.
+- **Bug: an industry headline for (any) made an empty box** and the errors
+  "Array is in read-only state" and "Cannot call method 'get' on a null value".
+  It goes in `market.tres`, which has no industry headlines. In the editor, a
+  book's list that was never saved is its script's default, and that default
+  is read-only. `NewsBookEditor.add` appended to the list it was handed. Now
+  `add` and `delete` copy the list, change the copy and set it back. In GUT the
+  books are real objects, not placeholders, so the default list is writable
+  and no test caught it. The regression test makes the list read-only by hand.
+
+**Undo and redo** (Ctrl+Z, Ctrl+Y) of arrows and other chart edits were also
+asked about. They are already Phase 4 of news-flow-chart.md, with deleting an
+item, and stay there.
+
+**Not changed:** the books, the game, the golden history hash.
+
+**Rules out:** dots on the sides; a dot that decides an arrow's direction by
+being an input or an output; removing an arrow by dragging it off a dot.

@@ -312,12 +312,12 @@ addons/news_flow_chart/
     news_field_choices.gd     what each dropdown lists
     news_item_summary.gd      what a box and the details panel show (Phase 2)
     news_problems.gd          the Problems strip: runs the check, filters to news (Phase 2)
-    news_layout.gd            Arrange, top to bottom; where a new box goes (D226)
+    news_layout.gd            Arrange, top to bottom as a tree; where a new box goes (D226, D227)
   check/
     write_news_problems.gd    the validator, run headless in a process of its own (Phase 2)
   ui/                         Control scenes, testable in GUT's scene tree
     news_chart.tscn / .gd     the whole tab: lists, GraphEdit chart, details, Problems
-    news_chart_canvas.gd      the GraphEdit; arrows drawn top to bottom, with heads
+    news_chart_canvas.gd      the GraphEdit; dots top and bottom, arrows with heads, Delete
     news_item_box.tscn / .gd  one GraphNode (box)
     details_panel.tscn / .gd  every field of the selected item
     delete_confirm.tscn / .gd
@@ -457,11 +457,13 @@ The plan as written:
 - **The dropdowns' companies, industries and traders are read straight from
   their files** (`NewsFieldChoices.library_from_files`). In the editor they are
   placeholders, so `ContentLibrary.load_fundamentals` cannot supply them (D224).
-- **An arrow can be drawn two ways:** drag from the right-hand dot of one box to
-  the left-hand dot of another, or pick an id from **Add a requirement...** in the
-  details panel. An end that is not on the chart is put on it. **An arrow is
-  removed** by dragging its head off the left-hand dot and letting go over empty
-  chart, or with **Remove** beside the id in the details panel.
+- **An arrow can be drawn two ways:** drag from a dot of one box to a dot of
+  another, or pick an id from **Add a requirement...** in the details panel. An
+  end that is not on the chart is put on it. **An arrow is removed** by
+  clicking it and pressing Delete, or with **Remove** beside the id in the
+  details panel. (As first built, the dots were on the sides, drawing ran
+  right dot to left dot, and an arrow was removed by dragging its head off.
+  D227 changed all three.)
 - **The chart shows a set of boxes, not always one whole chain.** Choosing a
   chain shows it; a created item, a dropped item and the far end of a new arrow
   are added beside what is there, and keep their places when other things
@@ -479,6 +481,14 @@ item there. A new box goes beside everything rather than on top of the first.
 An item in the news item list opens when the mouse button is let go, so it can
 be dragged onto the chart. Six more tests; the file has 39.
 
+**After the second manual run (D227):** each box has its dots at the top and
+bottom middle; an arrow can be drawn from either dot to either dot, or let go
+anywhere on the other box, and the box pressed first is the one required.
+**Arrange** lays a chain out as a tree. A clicked arrow is selected, and Delete
+removes it. Adding an item to a book with none of its kind yet no longer fails
+in the editor. Six more scene-tree tests (45) and one more core test (28).
+Undo stays in Phase 4.
+
 The plan as written:
 
 - **+ New news item** for all five kinds.
@@ -490,8 +500,8 @@ The plan as written:
 
 **Tested by:**
 
-- Scene-tree tests: a `connection_request` adds the id to `requires`; a
-  `disconnection_request` removes it; an arrow that would make a loop is refused;
+- Scene-tree tests: a drawn arrow adds the id to `requires`; a deleted one
+  removes it; an arrow that would make a loop is refused;
   each kind is created with the right id in the right book; editing a field in
   the panel changes that field and nothing else.
 - **Manual** steps: build the owner's example chain, market news → industry

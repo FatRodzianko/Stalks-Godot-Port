@@ -110,8 +110,8 @@ func _ready() -> void:
 	_news_item_list.set_drag_forwarding(_news_item_drag_data, Callable(), Callable())
 	_chart.set_drag_forwarding(Callable(), _can_drop_on_chart, _drop_on_chart)
 	_chart.node_selected.connect(_on_chart_node_selected)
-	_chart.connection_request.connect(_on_chart_connection_request)
-	_chart.disconnection_request.connect(_on_chart_disconnection_request)
+	_chart.arrow_drawn.connect(_on_chart_arrow_drawn)
+	_chart.arrow_delete_requested.connect(_on_chart_arrow_delete_requested)
 	_details_panel.field_changed.connect(_on_details_panel_field_changed)
 	_details_panel.requirement_added.connect(_on_details_panel_requirement_added)
 	_details_panel.requirement_removed.connect(_on_details_panel_requirement_removed)
@@ -214,7 +214,7 @@ func arrange() -> void:
 	var sizes: Dictionary[StringName, Vector2] = {}
 	for box: NewsItemBox in boxes():
 		sizes[box.item_id] = box.size
-	var places: Dictionary[StringName, Vector2] = NewsLayout.positions(NewsLayout.rows(_graph, _shown), sizes)
+	var places: Dictionary[StringName, Vector2] = NewsLayout.positions(_graph, _shown, sizes)
 	for box: NewsItemBox in boxes():
 		box.position_offset = places.get(box.item_id, box.position_offset)
 
@@ -719,12 +719,12 @@ func _on_chart_node_selected(node: Node) -> void:
 	_show_details()
 
 
-func _on_chart_connection_request(from_node: StringName, _from_port: int, to_node: StringName, _to_port: int) -> void:
-	link(_id_of_box(from_node), _id_of_box(to_node))
+func _on_chart_arrow_drawn(from_box: StringName, to_box: StringName) -> void:
+	link(_id_of_box(from_box), _id_of_box(to_box))
 
 
-func _on_chart_disconnection_request(from_node: StringName, _from_port: int, to_node: StringName, _to_port: int) -> void:
-	unlink(_id_of_box(from_node), _id_of_box(to_node))
+func _on_chart_arrow_delete_requested(from_box: StringName, to_box: StringName) -> void:
+	unlink(_id_of_box(from_box), _id_of_box(to_box))
 
 
 func _on_details_panel_field_changed(field: StringName, value: Variant) -> void:

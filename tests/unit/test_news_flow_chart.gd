@@ -216,6 +216,26 @@ func test_a_new_item_gets_its_id_and_goes_in_its_book() -> void:
 	assert_eq(editor.changed_paths(), ["%s/energy.tres" % SCRATCH_DIR] as Array[String], "only that book changed")
 
 
+func test_an_item_goes_in_a_book_whose_list_is_read_only() -> void:
+	# Found by hand: in the editor, an industry headline for (any) goes in
+	# market.tres, which has none yet, and its empty list is the script's
+	# read-only default. Appending to it failed and left an empty box.
+	var market: NewsBook = NewsBook.new()
+	var empty: Array[IndustryReport] = []
+	empty.make_read_only()
+	market.industry_reports = empty
+	var path: String = "%s/market.tres" % SCRATCH_DIR
+	var editor: NewsBookEditor = NewsBookEditor.new({path: market} as Dictionary[String, NewsBook])
+	var industry: IndustryReport = IndustryReport.new()
+	industry.move = NewsBands.Move.CRASH
+	industry.text = "test"
+	assert_eq(editor.add(industry, SCRATCH_DIR), "")
+	assert_eq(editor.find(industry.id), industry)
+	assert_eq(market.industry_reports.size(), 1)
+	assert_eq(editor.delete(industry.id), "")
+	assert_true(market.industry_reports.is_empty(), "deleted again")
+
+
 func test_an_item_whose_book_is_missing_is_refused() -> void:
 	var books: Dictionary[String, NewsBook] = {"%s/market.tres" % SCRATCH_DIR: NewsBook.new()}
 	var editor: NewsBookEditor = NewsBookEditor.new(books)

@@ -93,8 +93,12 @@ func add(line: Resource, news_dir: String) -> String:
 	if not books.has(path):
 		return "There is no book %s to put it in." % path.get_file()
 	line.set("id", NewsIdMaker.next_id(line, taken_ids()))
-	var list: Array = books[path].get(NewsKind.list_name(kind))
+	# A copy, changed and set back, never the list itself: in the editor a book
+	# with none of this kind yet hands back its script's default list, which is
+	# read-only (decisions.md D227).
+	var list: Array = books[path].get(NewsKind.list_name(kind)).duplicate()
 	list.append(line)
+	books[path].set(NewsKind.list_name(kind), list)
 	_changed[path] = true
 	return ""
 
@@ -152,8 +156,9 @@ func delete(id: StringName) -> String:
 	if path.is_empty():
 		return "There is no news item %s." % id
 	var line: Resource = find(id)
-	var list: Array = books[path].get(NewsKind.list_name(NewsKind.of(line)))
+	var list: Array = books[path].get(NewsKind.list_name(NewsKind.of(line))).duplicate()
 	list.erase(line)
+	books[path].set(NewsKind.list_name(NewsKind.of(line)), list)
 	_changed[path] = true
 	for other_path: String in books:
 		var book: NewsBook = books[other_path]

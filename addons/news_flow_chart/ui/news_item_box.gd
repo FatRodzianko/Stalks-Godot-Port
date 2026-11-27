@@ -3,8 +3,14 @@ class_name NewsItemBox
 extends GraphNode
 ## One news item on the News Flow Chart: a box showing its kind (the title),
 ## its id, its conditions and the first words of its headline or text
-## (docs/news-flow-chart.md §2). Arrows come in on the left, from the items it
-## requires, and go out on the right, to the items that require it.
+## (docs/news-flow-chart.md §2). Arrows come in at the top, from the items it
+## requires, and go out at the bottom, to the items that require it.
+##
+## It has one dot at the top middle and one at the bottom middle, where an arrow
+## is drawn from with the mouse (decisions.md D227). Godot's `GraphNode` only
+## puts its dots on the left and right sides, so it is given one slot as usual,
+## its side dots are not drawn (`_draw_port`), and these two are drawn instead.
+## `NewsChartCanvas` makes them the places that answer the mouse.
 ##
 ## A reusable widget: it knows its item and nothing about the chart holding
 ## it. Its node name is the item's id, which is what `GraphEdit` arrows name.
@@ -25,6 +31,29 @@ var item_id: StringName = &""
 func _ready() -> void:
 	set_slot_enabled_left(LINK_SLOT, true)
 	set_slot_enabled_right(LINK_SLOT, true)
+	resized.connect(queue_redraw)
+
+
+func _draw() -> void:
+	var dot: Texture2D = get_theme_icon(&"port", &"GraphNode")
+	var half: Vector2 = dot.get_size() / 2.0
+	draw_texture(dot, top_dot(size) - half, get_slot_color_left(LINK_SLOT))
+	draw_texture(dot, bottom_dot(size) - half, get_slot_color_right(LINK_SLOT))
+
+
+## Godot's side dots are not drawn: `_draw` draws the top and bottom ones.
+func _draw_port(_slot_index: int, _position: Vector2i, _left: bool, _color: Color) -> void:
+	pass
+
+
+## Where the top dot is, inside a box of `box_size`: arrows come in here.
+static func top_dot(box_size: Vector2) -> Vector2:
+	return Vector2(box_size.x / 2.0, 0.0)
+
+
+## Where the bottom dot is: arrows go out here.
+static func bottom_dot(box_size: Vector2) -> Vector2:
+	return Vector2(box_size.x / 2.0, box_size.y)
 
 
 ## Fills the box from `line`. Call once the box is in the tree.
