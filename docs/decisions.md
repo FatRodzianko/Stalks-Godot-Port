@@ -7806,7 +7806,8 @@ match start (it would leave year 0 the one year without kept draws, for nothing)
   Exchange row used to open it, so a missed click on BUY or a share count took the
   player away from the board. `CompanyRow.opens_company_at` is the test; the rest of
   the row does nothing.
-- **The Industries tab's BY YEAR chart shows the latest years that fit**, every bar
+- *(Superseded by D218: a text chart again, bars of a fixed width growing to the
+  right.)* **The Industries tab's BY YEAR chart shows the latest years that fit**, every bar
   with its year under it (`DrawnChart.show_signed_bars`, `ChartGeometry.slots_that_fit`).
   It used to be a text chart 22 cells wide, so a long match lost its early years
   at a fixed point whatever the window. A wide window shows the whole match; a narrow one
@@ -7964,7 +7965,8 @@ and a 40%-shorted one would jump alike).
 **2026-11-27 · Accepted** (the owner chose option 3 for the crash)
 
 Two new kinds of whisper (`NewsBands.Subject` SQUEEZE and CRASH), each always from a
-**Questionable** source, and taking **one of the two** whisper slots, not a third:
+**Questionable** source, and taking **one of the two** whisper slots, not a third
+(*amended by D218: it now comes on top of the two*):
 
 - **A squeeze whisper** when some company is flagged at the end of the year: about
   the most shorted one. A squeeze is never certain, so the source is never better
@@ -8084,3 +8086,30 @@ every clip's peak at or below -1 dBFS. They are 16-bit mono WAV.
 effects, which only listening in a match can settle.
 
 **Rules out:** relicensing any scream under the project's code license.
+
+### D218 - The industry chart as text again, and squeeze whispers on top of the two
+**2026-11-27 · Accepted** (the owner, after manual section V) · **supersedes** D208's
+industry chart · **amends** D214
+
+- **The Industries tab's BY YEAR chart is a text chart again** (`ChartWidget`,
+  `TextChart.signed_bars`), with the dashed axis and block bars it had before D208.
+  The owner preferred that look. **Every bar keeps its width** (two cells and a
+  gap) whatever the year: year 1 is one bar at the left, and the chart grows to the
+  right. Once the bars reach the right edge of the chart's half of the tab, the
+  oldest year is dropped for each new one. D208's drawn chart spread however many
+  years there were across the whole width, so one year was one bar the width of
+  the screen and the bars halved in year 2. The chart redraws when its width
+  changes, so a wider window shows more years; a tooltip still names the year
+  under the mouse.
+- **A squeeze or crash whisper comes on top of the two ordinary whispers**, not in
+  one of their slots. A squeeze can run for up to three years, and the crash
+  whisper took a slot every one of them. A year with a flagged or squeezed company
+  has three whispers; any other year has two.
+- **No WHISPER: in front of a whisper.** The twelve placeholder whispers lost their
+  `WHISPER: ` prefix; they already sit under the WHISPERS FROM THE AVENUE heading.
+  They are still placeholders, so to find them search `src/data/news/market.tres`
+  for its `whispers` list.
+
+**Rules out:** a squeeze whisper taking an ordinary whisper's place; industry bars
+that stretch to fill the chart; a scrolling industry chart (D208's reason holds: it
+would hide the latest year).

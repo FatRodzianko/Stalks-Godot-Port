@@ -1061,30 +1061,61 @@ func test_a_signed_chart_colours_its_bars_by_sign() -> void:
 	assert_false(lines[3].contains("[color"), "the captions are not coloured")
 
 
-## D208: the industry's moves are drawn bars, every year played while they
-## fit, each captioned.
+## D218: the industry's moves are a text chart again, every year played while
+## they fit, each captioned, each bar the same width whatever the year.
 func test_the_industry_chart_draws_every_year_that_fits() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 4)
 	_tabs().select_tab(MarketTabs.Tab.INDUSTRIES)
-	var chart: DrawnChart = _tabs().industries_tab().industry_chart()
-	assert_eq(chart.kind(), DrawnChart.Kind.BARS)
-	assert_eq(chart.captions(), PackedStringArray(["1", "2", "3", "4"]))
+	await wait_process_frames(2)
+	var chart: ChartWidget = _tabs().industries_tab().industry_chart()
+	assert_eq(chart.captions_shown(), PackedStringArray(["1", "2", "3", "4"]))
 	assert_eq(chart.years_shown(), 4)
+	var axis: String = chart.chart_text().split("\n")[2]
+	assert_eq(axis, "    0+" + "-".repeat(4 * 3 - 1), "four bars of two cells and their gaps")
 
 
-## Narrower than the years need, the chart keeps the latest ones.
-func test_a_narrow_industry_chart_keeps_the_latest_years() -> void:
-	var chart: DrawnChart = preload("res://src/ui/widgets/drawn_chart.tscn").instantiate()
+## A bar is as wide in year 1 as in year 30: the chart grows to the right.
+func test_the_industry_chart_bars_keep_their_width() -> void:
+	var chart: ChartWidget = preload("res://src/ui/widgets/chart_widget.tscn").instantiate()
 	add_child_autofree(chart)
-	var values: PackedFloat32Array = []
+	chart.size = Vector2(600, 72)
+	chart.show_signed_bars_to_fit("T", [5.0] as Array[float], PackedStringArray(["1"]), PackedStringArray(["a"]), 2)
+	var one: String = chart.chart_text().split("\n")[0]
+	chart.show_signed_bars_to_fit("T", [5.0, 5.0] as Array[float], PackedStringArray(["1", "2"]), PackedStringArray(["a", "b"]), 2)
+	var two: String = chart.chart_text().split("\n")[0]
+	assert_eq(one, "    5|██")
+	assert_eq(two, "    5|██ ██")
+
+
+## Once the bars reach the right edge, the oldest year goes; a resize redraws.
+func test_a_full_industry_chart_drops_the_oldest_years() -> void:
+	var chart: ChartWidget = preload("res://src/ui/widgets/chart_widget.tscn").instantiate()
+	add_child_autofree(chart)
+	var values: Array[float] = []
 	var captions: PackedStringArray = []
 	for year: int in range(1, 41):
 		values.append(float(year % 7) - 3.0)
 		captions.append(str(year))
-	chart.size = Vector2(ChartGeometry.LABEL_CHARS * ChartGeometry.CELL_WIDTH + ChartGeometry.AXIS_GAP + 1 + 18 * 10, 96)
-	chart.show_signed_bars(values, captions, captions)
+	# The scale and axis, then ten bars of two cells with a cell between.
+	chart.size = Vector2((TextChart.LABEL_WIDTH + 1 + 29) * CellRow.CELL_WIDTH, 72)
+	chart.show_signed_bars_to_fit("T", values, captions, captions, 2)
 	assert_eq(chart.years_shown(), 10)
-	assert_eq(chart.captions()[9], "40", "the latest year is kept")
+	assert_eq(chart.captions_shown()[9], "40", "the latest year is kept")
+	chart.size = Vector2((TextChart.LABEL_WIDTH + 1 + 14) * CellRow.CELL_WIDTH, 72)
+	assert_eq(chart.years_shown(), 5, "narrower, fewer years")
+	assert_eq(chart.captions_shown()[0], "36")
+
+
+## Hovering a bar names its year.
+func test_the_industry_chart_tooltip_names_the_year_under_the_mouse() -> void:
+	var chart: ChartWidget = preload("res://src/ui/widgets/chart_widget.tscn").instantiate()
+	add_child_autofree(chart)
+	chart.size = Vector2(600, 72)
+	chart.show_signed_bars_to_fit("T", [1.0, -2.0] as Array[float], PackedStringArray(["1", "2"]),
+		PackedStringArray(["Year 1", "Year 2"]), 2)
+	var x: float = (TextChart.LABEL_WIDTH + 1 + 3) * CellRow.CELL_WIDTH + 2
+	assert_string_contains(chart._get_tooltip(Vector2(x, 30)), "Year 2")
+	assert_eq(chart._get_tooltip(Vector2(2, 30)), "", "the scale has none")
 
 
 ## D188: the earnings area opens on the table; each button swaps in its chart,
@@ -1232,9 +1263,12 @@ func test_the_market_tab_shows_the_headline_and_the_whispers() -> void:
 	assert_eq(_tabs().market_tab().headline_text(), latest.market_news.headline)
 	assert_eq(_tabs().market_tab().event_texts()[0], latest.market_news.headline, "first in THIS YEAR'S NEWS")
 	var expected: PackedStringArray = []
+	var ordinary: int = 0
 	for whisper: WhisperRound.Line in NewsSelector.latest_whispers(_state()).lines:
 		expected.append("%s | %s" % [WhisperRules.SOURCE_NAMES[whisper.source], whisper.text])
-	assert_eq(expected.size(), NewsSelector.WHISPERS_PER_YEAR)
+		if not whisper.is_about_squeeze():
+			ordinary += 1
+	assert_eq(ordinary, NewsSelector.WHISPERS_PER_YEAR, "two, and a squeeze whisper on top of them (D218)")
 	assert_eq(_tabs().market_tab().whisper_texts(), expected)
 
 

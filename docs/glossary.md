@@ -273,7 +273,7 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **Readouts (on screen)** — every number the StalkleHeads tabs show that is worked out rather than stored: P/E, market share, averages, breadth. All come from `MarketReadouts` in `src/sim/`, never from a node (decisions.md D179).
 
-**News (StalkleHeads)** — the lines a StalkleHeads year shows besides its numbers: the market news, an industry headline and an industry report per industry, the EARNINGS report and company news per company, each desk trader's chatter; and, heard at each year's end about the next, two whispers. Only market news moves a price. Chosen by `NewsSelector`, the market news by `MarketNewsRules` (design §8, decisions.md D199-D215; rules in game-rules.md §5.1). The two reports are written by `ReportWriter`, not chosen.
+**News (StalkleHeads)** — the lines a StalkleHeads year shows besides its numbers: the market news, an industry headline and an industry report per industry, the EARNINGS report and company news per company, each desk trader's chatter; and, heard at each year's end about the next, two whispers (three while a company is flagged or squeezed). Only market news moves a price. Chosen by `NewsSelector`, the market news by `MarketNewsRules` (design §8, decisions.md D199-D215; rules in game-rules.md §5.1). The two reports are written by `ReportWriter`, not chosen.
 
 **News book** — a `.tres` file in `src/data/news/` holding news lines of any kind (`NewsBook`). The game loads every one in the folder.
 
@@ -289,7 +289,7 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **EARNINGS report** — the Company tab's line under EARNINGS, written by code from the numbers (`ReportWriter`, decisions.md D215): the revenue change, how it compared with what the regime led one to expect, then the regime in plain words. "Mafia HUD Scam's revenue fell 14%, far worse than expected. The company is in distress."
 
-**Squeeze whisper / crash whisper** — a whisper that a flagged company is about to be squeezed, or that a squeezed one's jump is about to come off. Always from a Questionable source, in one of the two whisper slots; its outcome is whether it happened (decisions.md D214).
+**Squeeze whisper / crash whisper** — a whisper that a flagged company is about to be squeezed, or that a squeezed one's jump is about to come off. Always from a Questionable source, on top of the two ordinary whispers; its outcome is whether it happened (decisions.md D214, D218).
 
 **Whisper** — a rumor about a company or an industry, heard at the end of a year (from year 1; none in year 0) and about **the next year**: whether it will do much worse, worse, as expected, better or much better than everyone expects. Two a round, on the Market tab with their sources, and on the Company tab of a company they name or its industry. A whisper can be wrong, and how often depends on its **source** (decisions.md D205).
 

@@ -368,8 +368,9 @@ decisions.md D199-D215):
   outcome told. A whisper predicts the company's or industry's own year, not the
   price: the industry's year, events and trading still move it.
 - **Squeeze and crash whispers** (D214). When a company is FLAGGED at a year's end,
-  one of the two whispers is about a squeeze on the most shorted one; when one is
-  SQUEEZED, about the squeeze ending instead. Always from a **Questionable** source.
+  a whisper is about a squeeze on the most shorted one; when one is SQUEEZED,
+  about the squeeze ending instead. It comes on top of the two ordinary whispers,
+  so that year has three (D218). Always from a **Questionable** source.
   Its outcome is whether it happened next year.
 - **The last year has no whispers**, having no next year. A round's outcomes are
   shown in the Market tab's whisper history once the year it was about is played.

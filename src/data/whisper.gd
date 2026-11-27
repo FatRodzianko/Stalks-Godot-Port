@@ -14,7 +14,7 @@ extends Resource
 ## said with conviction; how far to trust it is the source's.
 ##
 ## **The words are the owner's.** Until written, `text` is a placeholder that
-## names its slot - `WHISPER: {company}, much better` (§8.3).
+## names its slot - `{company}, much better` (§8.3).
 
 
 ## Unique across every news line. Never shown.

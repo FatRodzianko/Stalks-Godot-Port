@@ -50,9 +50,11 @@ const HEADINGS: PackedStringArray = [
 ## How many cells the revenue-share bar may take, at 100%.
 const SHARE_BAR_CELLS: int = 10
 
-## The by-year chart's height in pixels. Its width is half the tab, and it
-## shows the latest years that fit with every year captioned (D208).
-const CHART_HEIGHT: int = 96
+## The by-year chart's rows above the zero axis, and the same below (design
+## §7.6). It is a text chart again (D218): bars of a fixed width, growing to the
+## right, the oldest dropped once they reach the right edge of its half of the
+## tab.
+const CHART_HALF_HEIGHT: int = 2
 
 const MEMBER_WIDTHS: Array[int] = [22, 6, 6]
 
@@ -64,8 +66,7 @@ var _context: TradeContext
 
 @onready var _header: CellRow = %Header
 @onready var _list: VBoxContainer = %IndustryList
-@onready var _chart_title: Label = %ChartTitle
-@onready var _chart: DrawnChart = %IndustryChart
+@onready var _chart: ChartWidget = %IndustryChart
 @onready var _members_title: Label = %MembersTitle
 @onready var _members_header: CellRow = %MembersHeader
 @onready var _members: VBoxContainer = %Members
@@ -76,7 +77,6 @@ var _context: TradeContext
 
 
 func _ready() -> void:
-	_chart.custom_minimum_size.y = CHART_HEIGHT
 	_header.configure(WIDTHS, ALIGNS)
 	_header.set_texts(HEADINGS)
 	_header.set_row_variation(&"Faint")
@@ -150,7 +150,7 @@ func _refresh_selected(state: GameState) -> void:
 	if industry == null:
 		return
 	var name: String = industry.definition.display_name
-	var values: PackedFloat32Array = []
+	var values: Array[float] = []
 	var captions: PackedStringArray = []
 	var tips: PackedStringArray = []
 	for year: int in range(1, state.year + 1):
@@ -159,8 +159,7 @@ func _refresh_selected(state: GameState) -> void:
 		captions.append(str(year))
 		tips.append("Year %d
 %s %s" % [year, name, Palette.format_percent_change(move)])
-	_chart_title.text = "BY YEAR: %s" % name.to_upper()
-	_chart.show_signed_bars(values, captions, tips)
+	_chart.show_signed_bars_to_fit("BY YEAR: %s" % name.to_upper(), values, captions, tips, CHART_HALF_HEIGHT)
 
 	_members_title.text = "WITHIN THE INDUSTRY: %s" % name.to_upper()
 	for child: Node in _members.get_children():
@@ -231,12 +230,12 @@ func outlook_text() -> String:
 	return _outlook.text if _outlook.visible else ""
 
 
-func industry_chart() -> DrawnChart:
+func industry_chart() -> ChartWidget:
 	return _chart
 
 
 func industry_chart_title() -> String:
-	return _chart_title.text
+	return _chart.title_text()
 
 
 func _on_industry_pressed(industry_id: StringName) -> void:

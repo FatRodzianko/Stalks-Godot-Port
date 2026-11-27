@@ -176,7 +176,7 @@ func test_the_validator_reports_every_kind_of_mistake() -> void:
 	lie.about = NewsBands.Subject.INDUSTRY
 	lie.subject = &"stryker"
 	lie.outcome = NewsBands.Surprise.ANY
-	lie.text = "WHISPER: {company}"
+	lie.text = "{company}"
 	book.whispers.append(lie)
 	var chatter: NpcChatter = NpcChatter.new()
 	chatter.id = &"c1"
@@ -490,7 +490,7 @@ func test_a_whispers_truth_is_what_next_year_brought() -> void:
 	var industries: int = 0
 	for round: WhisperRound in _rounds(state):
 		var next: EarningsYearResult = MarketReadouts.result_for_year(state, round.about_year())
-		assert_true(round.lines.size() <= NewsSelector.WHISPERS_PER_YEAR)
+		assert_true(round.lines.size() <= NewsSelector.WHISPERS_PER_YEAR + 1, "two, and a squeeze whisper on top")
 		var subjects: Dictionary[StringName, bool] = {}
 		for line: WhisperRound.Line in round.lines:
 			assert_false(subjects.has(line.subject), "two whispers about one subject")
@@ -531,9 +531,9 @@ func _shorted_year_one(library: ContentLibrary, seed_value: int) -> GameState:
 
 
 ## D214: a flagged company makes a squeeze whisper and a squeezed one a crash
-## whisper, always Questionable, in one of the two slots; next year says whether
-## it happened.
-func test_squeeze_and_crash_whispers_take_one_slot_from_a_questionable_source() -> void:
+## whisper, always Questionable; next year says whether it happened. D218: it
+## comes on top of the two ordinary whispers, not in place of one.
+func test_squeeze_and_crash_whispers_come_on_top_of_the_two_from_a_questionable_source() -> void:
 	var library: ContentLibrary = _library()
 	var seen: Dictionary[NewsBands.Subject, int] = {}
 	for seed_value: int in 80:
@@ -550,7 +550,7 @@ func test_squeeze_and_crash_whispers_take_one_slot_from_a_questionable_source() 
 			kind = NewsBands.Subject.SQUEEZE
 			subject = flagged[0]
 		var round: WhisperRound = NewsSelector.whispers_for(state, 1)
-		assert_eq(round.lines.size(), NewsSelector.WHISPERS_PER_YEAR, "seed %d" % seed_value)
+		assert_eq(round.lines.size(), NewsSelector.WHISPERS_PER_YEAR + 1, "seed %d" % seed_value)
 		var special: Array[WhisperRound.Line] = []
 		for line: WhisperRound.Line in round.lines:
 			if line.is_about_squeeze():

@@ -1252,7 +1252,8 @@ on the wire; `test_stalkleheads_screen.gd` compares all four tabs line by line.
 **The widgets.** `CellRow` is one line of a text table, its columns a whole number of
 characters wide (D181). `CompanyRow` is a board row, an industry header or the column
 headings, in one scene so the three line up. `ChartWidget` shows a `TextChart`
-string (the industry chart); `DrawnChart` draws line, candle and bar charts, placed
+string (the industry chart, its bars a fixed width, as many of the latest years as
+fit its width, D218); `DrawnChart` draws line, candle and bar charts, placed
 by the pure `ChartGeometry` (D188: the index line and the Company tab's charts);
 `LedgerWidget` the price ledger, `YearDigestPanel` the year in review. Each
 emits signals with ids and knows nothing of the tab holding it.

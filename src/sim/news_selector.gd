@@ -516,7 +516,8 @@ static func draws_about(state: GameState, about_year: int) -> KeptDraws:
 ## comes in about a quarter of flagged years, and a squeeze ends in one of the
 ## one to three years it runs.
 ##
-## Then, for the rest of the `WHISPERS_PER_YEAR`, subjects are picked evenly
+## Then `WHISPERS_PER_YEAR` more, on top of it (D218), so a squeeze never takes
+## the place of an ordinary whisper: subjects are picked evenly
 ## from every industry and every company still trading, without repeats. For
 ## each: its true outcome (`WhisperRules`), a source, the outcome that source
 ## tells, and a line written for that outcome - one written for this very
@@ -548,7 +549,7 @@ static func select_whispers(
 			subjects.append(company.id)
 			kinds.append(NewsBands.Subject.COMPANY)
 
-	for _slot: int in WHISPERS_PER_YEAR - round.lines.size():
+	for _slot: int in WHISPERS_PER_YEAR:
 		if subjects.is_empty():
 			break
 		var which: int = rng.randi_range(0, subjects.size() - 1)

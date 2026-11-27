@@ -2589,7 +2589,14 @@ checkout before exporting, `src/sim/news_selector.gd` contains `FIRST_WHISPER_YE
 13. Check only **ABOUT YEAR 2** is listed.
 14. Close the game window.
 
-### V - StalkleHeads news redesign (decisions.md D208-D214) — **not yet run**
+### V - StalkleHeads news redesign (decisions.md D208-D214) — **run 2026-11-27, passed with findings**
+
+**Result:** every step passed. Findings, all built as D218 and re-checked as
+section W: the industry chart's bars stretched to fill its width (one bar across
+the screen in year 1, halved in year 2) where they should keep one width and grow
+to the right, and the owner preferred the earlier text look; the squeeze-ends
+whisper took one of the two whisper slots each year a squeeze ran; whispers began
+**WHISPER:**.
 
 One machine, no Steam. Run on a locally exported build containing D215; to check a
 checkout before exporting, the file `src/sim/report_writer.gd` exists. The EARNINGS
@@ -2670,6 +2677,49 @@ base game's events is still a placeholder, such as **IN THE NEWS: strYker!!!, up
 
 **Not checked here:** a market news line that moves a price. No shipped line has an
 amount yet; `test_earnings_year_resolver.gd` covers company and industry effects.
+
+### W - The industry chart as text, and squeeze whispers on top (decisions.md D218) — **not yet run**
+
+One machine, no Steam. Run on a locally exported build containing D218; to check a
+checkout before exporting, `src/ui/widgets/chart_widget.gd` contains
+`show_signed_bars_to_fit`.
+
+**The industry chart**
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Set **Years** to **30**.
+5. Click **START**.
+6. Press **Ready for New Year**.
+7. Click **Close** on the news.
+8. Click **INDUSTRIES**.
+9. Check **BY YEAR** is a text chart: block bars, a **|** axis down the left and a dashed **0+-----** line across.
+10. Check there is one narrow bar at the left, captioned **1**, not one bar across the chart.
+11. Hover over the bar.
+12. Check the tooltip names year 1 and the industry's move.
+13. Press **Ready for New Year**.
+14. Click **Close**.
+15. Click **INDUSTRIES**.
+16. Check a second bar sits to the right of the first, and the first is as wide as before.
+17. Repeat steps 13 to 15 until the bars reach the right edge of the chart's half of the tab.
+18. Note the first year shown.
+19. Repeat steps 13 to 15 once more.
+20. Check the first year shown is one later than the year noted, and the latest year is at the right.
+21. Check every bar is still the same width.
+
+**Whispers**
+
+22. Click **MARKET**.
+23. Check no whisper begins **WHISPER:**.
+24. Look at **SHORT INTEREST** in the side panel.
+25. If no entry ends **FLAGGED** or **SQUEEZED**, press **Ready for New Year**.
+26. Click **Close**.
+27. Click **MARKET**.
+28. Repeat steps 25 to 27 until an entry ends **FLAGGED** or **SQUEEZED**, or the match ends.
+29. If the match ended first, write down "no squeeze seen" and skip to step 31.
+30. Check **WHISPERS FROM THE AVENUE** shows three whispers: one from **Questionable** about that company, and two about other subjects.
+31. Close the game window.
 
 ### Known gaps, so they are not surprises
 

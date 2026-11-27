@@ -243,8 +243,9 @@ whispers and NPC chatter - is a short piece of text in a `.tres` file. **Writing
 them needs no code change.** Until somebody writes them they are placeholders that
 say which slot they fill, like `IN THE NEWS: {company}, crash`, so one that turns
 up on screen tells you exactly which line is missing. To find every line still to
-write, search `src/data/` for `IN THE NEWS:`, `WHISPER:`, `EVENT:`, `NPC NAME:` and
-`NPC CHATTER:`.
+write, search `src/data/` for `IN THE NEWS:`, `EVENT:`, `NPC NAME:` and
+`NPC CHATTER:`; whispers have no prefix (D218), and are the `whispers` list in
+`src/data/news/market.tres`.
 
 **Two things on screen are not lines and cannot be written here:** the Company
 tab's EARNINGS report and the Industries tab's INDUSTRY REPORT. Code writes both

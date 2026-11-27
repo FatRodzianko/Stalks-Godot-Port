@@ -95,64 +95,64 @@ headline = "It's Over"
 script = ExtResource("6_1ixhk")
 id = &"whisp_company_much_worse_1"
 outcome = 1
-text = "WHISPER: {company}, much worse"
+text = "{company}, much worse"
 
 [sub_resource type="Resource" id="Resource_wh_com_worse"]
 script = ExtResource("6_1ixhk")
 id = &"whisp_company_worse_1"
 outcome = 2
-text = "WHISPER: {company}, worse"
+text = "{company}, worse"
 
 [sub_resource type="Resource" id="Resource_wh_com_as_expected"]
 script = ExtResource("6_1ixhk")
 id = &"whisp_company_as_expected_1"
-text = "WHISPER: {company}, as expected"
+text = "{company}, as expected"
 
 [sub_resource type="Resource" id="Resource_wh_com_better"]
 script = ExtResource("6_1ixhk")
 id = &"whisp_company_better_1"
 outcome = 4
-text = "WHISPER: {company}, better"
+text = "{company}, better"
 
 [sub_resource type="Resource" id="Resource_wh_com_much_better"]
 script = ExtResource("6_1ixhk")
 id = &"whisp_company_much_better_1"
 outcome = 5
-text = "WHISPER: {company}, much better"
+text = "{company}, much better"
 
 [sub_resource type="Resource" id="Resource_wh_ind_much_worse"]
 script = ExtResource("6_1ixhk")
 id = &"whisp_industry_much_worse_1"
 about = 1
 outcome = 1
-text = "WHISPER: {industry}, much worse"
+text = "{industry}, much worse"
 
 [sub_resource type="Resource" id="Resource_wh_ind_worse"]
 script = ExtResource("6_1ixhk")
 id = &"whisp_industry_worse_1"
 about = 1
 outcome = 2
-text = "WHISPER: {industry}, worse"
+text = "{industry}, worse"
 
 [sub_resource type="Resource" id="Resource_wh_ind_as_expected"]
 script = ExtResource("6_1ixhk")
 id = &"whisp_industry_as_expected_1"
 about = 1
-text = "WHISPER: {industry}, as expected"
+text = "{industry}, as expected"
 
 [sub_resource type="Resource" id="Resource_wh_ind_better"]
 script = ExtResource("6_1ixhk")
 id = &"whisp_industry_better_1"
 about = 1
 outcome = 4
-text = "WHISPER: {industry}, better"
+text = "{industry}, better"
 
 [sub_resource type="Resource" id="Resource_wh_ind_much_better"]
 script = ExtResource("6_1ixhk")
 id = &"whisp_industry_much_better_1"
 about = 1
 outcome = 5
-text = "WHISPER: {industry}, much better"
+text = "{industry}, much better"
 
 [sub_resource type="Resource" id="Resource_cn_crash"]
 script = ExtResource("9_cnews")
@@ -188,13 +188,13 @@ text = "IN THE NEWS: {company}, surge"
 script = ExtResource("6_1ixhk")
 id = &"whisp_squeeze_1"
 about = 2
-text = "WHISPER: {company}, short squeeze"
+text = "{company}, short squeeze"
 
 [sub_resource type="Resource" id="Resource_wh_crash"]
 script = ExtResource("6_1ixhk")
 id = &"whisp_crash_1"
 about = 3
-text = "WHISPER: {company}, squeeze ends"
+text = "{company}, squeeze ends"
 
 [resource]
 script = ExtResource("5_asjd0")
