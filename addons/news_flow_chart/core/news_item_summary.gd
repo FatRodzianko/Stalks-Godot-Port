@@ -102,7 +102,7 @@ static func search_text(line: Resource) -> String:
 ## `[label, value]` pairs: what the details panel lists.
 static func fields(line: Resource) -> Array[PackedStringArray]:
 	var found: Array[PackedStringArray] = []
-	for property: Dictionary in _stored_properties(line):
+	for property: Dictionary in stored_properties(line):
 		var field: StringName = property["name"]
 		found.append(PackedStringArray([String(field).capitalize(), value_text(line, field)]))
 	return found
@@ -120,7 +120,7 @@ static func value_text(line: Resource, field: StringName) -> String:
 			items.append(str(item))
 		return ", ".join(items)
 	if value is int:
-		var names: Dictionary[int, String] = _enum_names(line, field)
+		var names: Dictionary[int, String] = enum_names(line, field)
 		if names.has(value):
 			return names[value]
 	return str(value)
@@ -133,7 +133,7 @@ static func field_label(field: StringName) -> String:
 ## The fields the item's own script declares and saves. Read from the
 ## script, not the item: a placeholder's own property list (D224) has neither
 ## the usage flags nor the enum names.
-static func _stored_properties(line: Resource) -> Array[Dictionary]:
+static func stored_properties(line: Resource) -> Array[Dictionary]:
 	var stored: Array[Dictionary] = []
 	var script: Script = line.get_script() as Script
 	if script == null:
@@ -147,9 +147,9 @@ static func _stored_properties(line: Resource) -> Array[Dictionary]:
 
 ## The names of an enum field's values, from its export hint
 ## (`Any:0,Bull:1,Bear:2`). Empty for a field that is not an enum.
-static func _enum_names(line: Resource, field: StringName) -> Dictionary[int, String]:
+static func enum_names(line: Resource, field: StringName) -> Dictionary[int, String]:
 	var names: Dictionary[int, String] = {}
-	for property: Dictionary in _stored_properties(line):
+	for property: Dictionary in stored_properties(line):
 		if property["name"] != field or property["hint"] != PROPERTY_HINT_ENUM:
 			continue
 		var entries: PackedStringArray = String(property["hint_string"]).split(",")

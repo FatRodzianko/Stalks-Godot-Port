@@ -1,7 +1,7 @@
 # News Flow Chart — design and build plan
 
-**Status: agreed with the owner on 2026-11-27. Phases 1 and 2 built (D223,
-D224); Phases 3-4 not started.** §6 records the owner's answers that shaped the design.
+**Status: agreed with the owner on 2026-11-27. Phases 1-3 built (D223,
+D224, D225); Phase 4 not started.** §6 records the owner's answers that shaped the design.
 
 The News Flow Chart is an editor tool for writing StalkleHeads news as connected
 chains. Take a market headline that leads to an industry headline, which in turn
@@ -445,7 +445,33 @@ The plan as written:
   a chain opens; clicking a box shows its fields. These are
   [manual-testing.md](manual-testing.md) section Z.
 
-### Phase 3 — Creating, editing and linking
+### Phase 3 — Creating, editing and linking — **done 2026-11-27** (D225)
+
+**Delivered as planned**, with these details settled while building it:
+
+- **Changes are held in memory until Save.** The toolbar's status line names
+  every book not yet saved ("Unsaved: market.tres"). **Save** writes them, and
+  so do Ctrl+S and **Scene > Save All**. Closing the editor with changes unsaved
+  asks first. Opening the tab again keeps unsaved changes.
+- **The dropdowns' companies, industries and traders are read straight from
+  their files** (`NewsFieldChoices.library_from_files`). In the editor they are
+  placeholders, so `ContentLibrary.load_fundamentals` cannot supply them (D224).
+- **An arrow can be drawn two ways:** drag from the right-hand dot of one box to
+  the left-hand dot of another, or pick an id from **Add a requirement...** in the
+  details panel. An end that is not on the chart is put on it. **An arrow is
+  removed** by dragging its head off the left-hand dot and letting go over empty
+  chart, or with **Remove** beside the id in the details panel.
+- **The chart shows a set of boxes, not always one whole chain.** Choosing a
+  chain shows it; a created item, a dropped item and the far end of a new arrow
+  are added beside what is there, and keep their places when other things
+  change.
+- **A new item is a draft until Create.** Its id reads "(given on Create)"; its
+  requires list appears once it exists. Clicking any box drops the draft.
+- Typing in a text field changes the item at once and updates its box, without
+  redrawing the panel, so the text box keeps the cursor.
+- 18 new tests in `test_news_flow_chart_ui.gd`, which now has 33.
+
+The plan as written:
 
 - **+ New news item** for all five kinds.
 - Every field editable in the details panel, with the dropdowns.
@@ -462,7 +488,10 @@ The plan as written:
   the panel changes that field and nothing else.
 - **Manual** steps: build the owner's example chain, market news → industry
   headline and company news, then industry headline → two company news. Save,
-  close the editor and reopen it, and check the chain is unchanged. Run the suite.
+  close the editor and reopen it, and check the chain is unchanged. These are
+  [manual-testing.md](manual-testing.md) section AA. The suite is run by the
+  person building the phase, not as a manual step: a check of the books is
+  what the Problems strip already shows.
 
 ### Phase 4 — Delete, undo, dropdowns in the ordinary Inspector
 

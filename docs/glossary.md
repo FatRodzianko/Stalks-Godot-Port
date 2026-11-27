@@ -110,6 +110,10 @@ other docs call a "news line".
 only appear once A has appeared in an earlier year. Worked out from the
 `requires` lists, never stored (decisions.md D223).
 
+**Draft (News Flow tab)** — a news item being filled in after **+ New news
+item** and before **Create**. It is in no book and has no id yet (decisions.md
+D225).
+
 **Placeholder (in the editor)** — what Godot makes of an object loaded inside the
 editor when its script is not a `@tool` script: its fields can be read and
 written, but none of its methods run. Every news item, company, trader and stalk

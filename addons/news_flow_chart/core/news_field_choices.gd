@@ -100,3 +100,48 @@ static func _label(display_name: String, id: StringName) -> String:
 		return String(id)
 	return "%s (%s)" % [display_name, id]
 
+
+
+## A library holding only the companies, industries and traders, read from
+## their files and sorted by id, with no method of theirs called and nothing
+## validated. What the dropdowns need, and what the editor can load: there,
+## every one of them is a placeholder (decisions.md D224), and
+## `ContentLibrary.load_fundamentals` would fail.
+static func library_from_files(
+	companies_dir: String = ContentLibrary.COMPANIES_DIR,
+	industries_dir: String = ContentLibrary.INDUSTRIES_DIR,
+	traders_dir: String = ContentLibrary.TRADERS_DIR,
+) -> ContentLibrary:
+	var library: ContentLibrary = ContentLibrary.new()
+	for resource: Resource in _load_dir(companies_dir):
+		if resource is CompanyProfile:
+			library.companies.append(resource)
+	for resource: Resource in _load_dir(industries_dir):
+		if resource is IndustryDefinition:
+			library.industries.append(resource)
+	for resource: Resource in _load_dir(traders_dir):
+		if resource is NpcTraderDefinition:
+			library.traders.append(resource)
+	library.companies.sort_custom(_by_id)
+	library.industries.sort_custom(_by_id)
+	library.traders.sort_custom(_by_id)
+	return library
+
+
+static func _load_dir(dir_path: String) -> Array[Resource]:
+	var loaded: Array[Resource] = []
+	var names: Array[String] = []
+	names.assign(DirAccess.get_files_at(dir_path))
+	names.sort()
+	for file_name: String in names:
+		var usable: String = file_name.trim_suffix(".remap")
+		if not usable.ends_with(".tres"):
+			continue
+		var resource: Resource = load("%s/%s" % [dir_path, usable])
+		if resource != null:
+			loaded.append(resource)
+	return loaded
+
+
+static func _by_id(a: Resource, b: Resource) -> bool:
+	return String(a.get("id")) < String(b.get("id"))

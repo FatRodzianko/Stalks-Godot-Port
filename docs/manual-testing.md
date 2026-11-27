@@ -2797,7 +2797,7 @@ checkout before exporting, `src/ui/screens/stalkleheads/side_panel.gd` contains
 11. Check the **COMPANY** tab opens on the company with that ticker.
 12. Close the game window.
 
-### Z - The News Flow tab, read-only (decisions.md D224) — **run 2026-11-27, findings fixed; rerun steps 28-41**
+### Z - The News Flow tab, read-only (decisions.md D224) — **passed 2026-11-27**, on the second run
 
 One machine, the **editor**, not an exported build: the tab is part of the
 editor and is never in the game. Needs a checkout that contains
@@ -2878,6 +2878,103 @@ match.
 - The old steps ended by quitting with **Don't Save**, which also throws away
   unsaved changes in every other open scene. **Fixed:** steps 36-41 now undo the
   edit in the Inspector instead.
+- **Second run, after the fixes: every step passed.**
+
+### AA - The News Flow tab: creating, editing and linking (decisions.md D225) — **not run yet**
+
+One machine, the **editor**. Needs a checkout whose
+`addons/news_flow_chart/ui/details_panel.gd` contains `create_pressed`. This
+builds a chain of five throwaway items in the real books, saves it, checks it
+survives closing the editor, and then puts the books back with git (steps
+60-64). **Save any work in open scenes before you start.**
+
+**Make five items**
+
+1. Open the project in the Godot editor.
+2. Click **News Flow** at the top.
+3. Click **+ New news item**, then **Market news**.
+4. Check the right side reads **New market news**, its **Id** reads **(given on Create)**, and **Create** and **Cancel** are at the bottom.
+5. Set **Mood** to **Bear**.
+6. Set **Move** to **Crash**.
+7. Click in the **Headline** box and type `test one`.
+8. Click **Create**.
+9. Check a **Market news** box appears with the id `mkt_bear_crash_3`, and the toolbar reads **Created mkt_bear_crash_3.** and **Unsaved: market.tres**.
+10. Click **+ New news item**, then **Industry headline**.
+11. Set **Industry Id** to **Energy (energy)**. Its list should hold **(any)** and the six industries.
+12. Set **Move** to **Down**.
+13. Click in the **Text** box and type `test two`.
+14. Click **Create**.
+15. Check a second box appears, `ind_energy_down_` followed by a number.
+16. Click **+ New news item**, then **Company news**.
+17. Leave **Company Id** at **(any)**. Set **Move** to **Crash**.
+18. Click in the **Text** box and type `test three`.
+19. Click **Create**.
+20. Repeat steps 16-19 twice more, typing `test four` and then `test five`.
+21. Check five boxes are on the chart and the toolbar names **market.tres** and **energy.tres** as unsaved.
+22. Click **Arrange**.
+
+**Draw the arrows**
+
+23. Drag from the dot on the right of the **Market news** box to the dot on the left of the **Industry headline** box, and let go.
+24. Check an arrow appears, its head at the **Industry headline** box.
+25. Drag from the **Market news** box's right dot to the left dot of the `test three` box.
+26. Drag from the **Industry headline** box's right dot to the left dot of the `test four` box.
+27. Drag from the **Industry headline** box's right dot to the left dot of the `test five` box.
+28. Click **Arrange**.
+29. Check the chart reads left to right: market, then industry and `test three`, then `test four` and `test five`.
+30. Check **Chains** on the left lists `mkt_bear_crash_3`.
+
+**A loop is refused**
+
+31. Drag from the `test five` box's right dot to the **Market news** box's left dot.
+32. Check no arrow appears and the toolbar says it would make a loop.
+
+**Edit and remove**
+
+33. Click the `test four` box.
+34. Check **Requires** on the right lists the industry headline's id with a **Remove** button.
+35. Click in its **Text** box and add ` edited` to the end.
+36. Check the box on the chart shows `test four edited` as you type.
+37. Click **Add a requirement...** under **Requires** and pick `mkt_bear_crash_3`.
+38. Check a second arrow now runs from the market box to `test four`.
+39. Click **Remove** beside `mkt_bear_crash_3`.
+40. Check that arrow is gone and the one from the industry headline stays.
+
+**Name and save**
+
+41. Click `mkt_bear_crash_3` under **Chains**.
+42. Click the **Chain name** box in the toolbar, delete what is there, and type `Test chain`.
+43. Click **Rename chain**.
+44. Check **Chains** now reads **Test chain**, and the toolbar adds **news_chains.cfg** to the unsaved files.
+45. Click an empty part of the chart, then press **Ctrl+S**.
+46. Check the toolbar reads **Saved.** with nothing unsaved, and the bottom reads **Problems: none**.
+47. Click the `test five` box.
+48. Click at the end of its **Text** box and type ` again`.
+49. Click **Scene** in the menu bar, then **Quit**.
+50. Check the editor asks whether to save the News Flow tab's changes to the news books.
+51. Click **Cancel**, so the editor stays open.
+52. Click **Save** in the tab's toolbar.
+53. Check the toolbar reads **Saved.**
+
+**Close and reopen**
+
+54. Click **Scene**, then **Quit**. It should close without asking about the news.
+55. Open the project again.
+56. Click **News Flow**, then **Test chain** under **Chains**.
+57. Check the five boxes and the four arrows are as in step 29, with `test four edited` and `test five again`.
+58. In PowerShell, in the project folder, run `git diff src/data/news | Select-String "uid="`.
+59. Check it prints nothing: the books kept their `uid` lines.
+
+**Put it back**
+
+60. In the editor, click **Scene**, then **Quit**.
+61. In PowerShell, in the project folder, run `git checkout -- src/data/news`.
+62. Run `Remove-Item src/data/news_chains.cfg`.
+63. Run `git status --short src`.
+64. Check it prints nothing.
+
+**Report:** any step that did not match, and anything awkward to do with the
+mouse - dragging an arrow onto a small dot is the part most likely to need work.
 
 ### Known gaps, so they are not surprises
 

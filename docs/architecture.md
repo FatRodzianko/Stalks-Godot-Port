@@ -1350,16 +1350,21 @@ loop of any length (`NewsContent.requires_loops`) and a retired id
 (`ContentLibrary.retired_news_ids`) are errors.
 [news-flow-chart.md](news-flow-chart.md) is the design and the plan.
 
-**The News Flow tab (Phase 2, D224)** is read-only so far:
+**The News Flow tab (Phases 2 and 3, D224, D225)** shows the chains and edits
+them:
 
 ```
 plugin.gd (EditorPlugin, main screen "News Flow")
+   |  Ctrl+S / Save All -> NewsChart.save; asks before closing with unsaved news
    `- ui/news_chart.tscn  NewsChart: reload_from_project on every opening
+        |- toolbar: + New news item, Arrange, Rename chain, Save, status line
         |- chain list, news item list + search   (NewsGraph, NewsChainNames)
-        |- GraphEdit: one NewsItemBox per item of the chosen chain,
-        |             an arrow per requires       (NewsItemSummary for the words)
-        |- NewsDetailsPanel: every field, read-only
-        `- Problems strip   <- NewsProblems.run_check
+        |- NewsChartCanvas (a GraphEdit): one NewsItemBox per item shown,
+        |     an arrow per requires; drawing or removing one -> link / unlink
+        |- NewsDetailsPanel: every field as a control; says what changed
+        |     through signals; dropdowns from NewsFieldChoices
+        |- every change -> NewsBookEditor (in memory) -> Save writes the books
+        `- Problems strip   <- NewsProblems.run_check (on opening and after Save)
                                  `- headless Godot: check/write_news_problems.gd
                                       runs ContentLibrary.load_fundamentals
 ```
@@ -1368,8 +1373,10 @@ Inside the editor the news items are **placeholders**: their scripts are not
 `@tool` scripts, so their fields can be read but their methods cannot run. The
 tab therefore never calls a method on an item, and the validator, which does,
 runs in a headless process of its own and hands back its news errors through a
-file under `user://`. `NewsChart.show_content` takes the items directly, which is
-what the scene-tree tests drive.
+file under `user://`. The dropdowns' companies, industries and traders are read
+from their files by `NewsFieldChoices.library_from_files`, for the same reason.
+`NewsChart.show_content` takes a `NewsBookEditor` directly, which is what the
+scene-tree tests drive, with books under `user://`.
 
 ### The rules that hold it together
 

@@ -8347,3 +8347,47 @@ fields of the clicked box, and a Problems strip. It writes no file.
 **Rules out:** running the validator inside the editor process; `@tool` on the
 game's data scripts for the tool's sake; calling a method on a news item
 anywhere in the tab's code.
+
+### D225 - The News Flow tab edits: held until Save, tied to the editor's own saving (Phase 3)
+**2026-11-27 · Accepted**
+
+Phase 3 of [news-flow-chart.md](news-flow-chart.md) makes the News Flow tab an
+editor: **+ New news item** for all five kinds, every field editable in the
+details panel with dropdowns, arrows drawn and removed, an item dragged onto
+the chart, **Rename chain**, and **Save**. Every change goes through Phase 1's
+`NewsBookEditor`.
+
+- **Nothing is written until Save.** The books are changed in memory, and the
+  status line lists the files waiting. One save writes them all and then runs
+  the Problems check. Saving on every change would run that one-second check on
+  every keystroke, and would leave half-finished items on disk.
+- **The editor's own saving includes the tab** (`EditorPlugin._save_external_data`
+  and `_get_unsaved_status`). Ctrl+S and **Scene > Save All** save the news too,
+  and closing the editor with unsaved news asks first. The first manual run of
+  Phase 2 ended with **Don't Save**, which throws away every scene's unsaved
+  changes; the tab should never be a reason to answer that question.
+- **Unsaved changes survive leaving and reopening the tab.** Reopening reloads
+  only when there is nothing unsaved; otherwise it keeps the books in memory and
+  runs the check again. Reloading would forget which books were changed, and
+  the changes would then never be saved.
+- **Dropdown lists come from the files directly**
+  (`NewsFieldChoices.library_from_files`), since the editor cannot run
+  `load_fundamentals` (D224). Only ids and display names are read.
+- **Two ways to draw an arrow, two to remove one:** on the chart, or in the
+  details panel's requires list. Both go through `NewsBookEditor.link` and
+  `unlink`, so a loop is refused the same way. The panel's way is there because
+  an item in another chain may not be on the chart; the end that is missing is
+  put on the chart when the arrow is made, so the arrow can be seen.
+- **The chart holds the boxes put on it** rather than always one whole chain.
+  Created, dropped and newly linked items join what is shown, and boxes keep
+  their places through edits. Re-arranging after every edit would move boxes
+  away from under the mouse.
+- **A new item is a draft until Create**, as §2 describes. Clicking another box
+  drops it, rather than asking: nothing has been written, and its fields take
+  seconds to set again.
+
+**Not changed:** the game, the news rules, the golden history hash. The books
+change only when the person using the tool saves.
+
+**Rules out:** saving on every edit; reloading the books over unsaved changes;
+loading the full content library inside the editor.

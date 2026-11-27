@@ -264,10 +264,12 @@ What the game does with them - which line is chosen when, where it shows - is in
 
 **To see the news as chains**, open the **News Flow** tab at the top of the
 editor, beside **2D**, **3D**, **Script** and **AssetLib**. It is the News Flow
-Chart ([news-flow-chart.md](news-flow-chart.md)), and so far it only shows:
-the chains, every line with a search box, each line's fields, and the
-validator's news errors under **Problems**. Editing still happens in the
-Inspector as described below. If the tab is missing, switch the plugin on:
+Chart ([news-flow-chart.md](news-flow-chart.md)). It shows the chains, every
+line with a search box, and the validator's news errors under **Problems**, and
+it can make a new line of any kind (**+ New news item**), change any field of
+a line, and draw an arrow from one line to another, which is the `requires`
+list. Click **Save** when done (Ctrl+S saves it too). It cannot delete a line
+yet; for that, and for anything else, the Inspector works as described below. If the tab is missing, switch the plugin on:
 **Project > Project Settings > Plugins**, tick **Enable** on the **News Flow
 Chart** row. Then close and reopen the project.
 
