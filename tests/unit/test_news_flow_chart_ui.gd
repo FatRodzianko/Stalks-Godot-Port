@@ -251,3 +251,49 @@ func test_the_check_runs_the_real_validator_in_its_own_process() -> void:
 	# The shipped news is valid, so it finds nothing - and "did not run" would
 	# show up here as a problem.
 	assert_eq(NewsProblems.run_check(), [] as Array[String])
+
+
+
+func test_a_box_is_no_taller_than_its_contents() -> void:
+	# Found by hand on 2026-11-27: a Whisper box with three short lines stood
+	# about 1,800 pixels tall, empty below its words.
+	var chart: NewsChart = _chart()
+	chart.show_content(_example(), NewsChainNames.new(), _no_problems())
+	await wait_process_frames(2)
+	for box: NewsItemBox in chart.boxes():
+		assert_almost_eq(box.size.y, box.get_combined_minimum_size().y, 1.0, String(box.item_id))
+
+
+func test_godots_own_arrange_button_is_hidden() -> void:
+	# It arranges only the selected boxes, so with one selected it does
+	# nothing visible. The tab's Arrange button arranges them all.
+	var chart: NewsChart = _chart()
+	var canvas: GraphEdit = chart.get_node("%Chart")
+	assert_false(canvas.show_arrange_button)
+
+
+func test_arrange_moves_every_box_even_with_one_selected() -> void:
+	var chart: NewsChart = _chart()
+	chart.show_content(_example(), NewsChainNames.new(), _no_problems())
+	await wait_process_frames(2)
+	var moved: NewsItemBox = chart.box_for(&"d")
+	moved.position_offset = Vector2(-2000, -2000)
+	moved.selected = true
+	chart.arrange()
+	assert_gt(moved.position_offset.x, chart.box_for(&"b").position_offset.x, "d is back right of b")
+	assert_true(moved.selected, "and still selected")
+
+
+func test_every_arrow_has_a_head_at_the_end_that_requires() -> void:
+	var canvas: NewsChartCanvas = NewsChartCanvas.new()
+	add_child_autofree(canvas)
+	var from_position: Vector2 = Vector2(0, 0)
+	var to_position: Vector2 = Vector2(200, 50)
+	var points: PackedVector2Array = canvas._get_connection_line(from_position, to_position)
+	assert_eq(points[0], from_position, "starts at the required item")
+	var size: int = points.size()
+	assert_eq(points[size - 2], to_position, "the head's point is on the item that requires")
+	assert_eq(points[size - 4], to_position, "the line itself ends there too")
+	assert_lt(points[size - 3].x, to_position.x, "one barb behind the point")
+	assert_lt(points[size - 1].x, to_position.x, "and the other")
+	assert_ne(points[size - 3].y, points[size - 1].y, "on either side of the line")

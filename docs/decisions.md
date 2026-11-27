@@ -8327,6 +8327,14 @@ fields of the clicked box, and a Problems strip. It writes no file.
 - **One chain on the chart at a time.** Choosing a chain shows it. Choosing a
   news item from the list shows its chain, or its box alone if it has none. All
   161 shipped items on one chart would be unreadable, and none is in a chain yet.
+- **Arrowheads, drawn by the tool.** `GraphEdit` connects two boxes with a
+  plain line. The chart's `GraphEdit` overrides `_get_connection_line` to add a
+  head at the end that requires (`NewsChartCanvas`). Without it a chain's
+  direction, the one thing the chart is for, cannot be seen.
+- **One Arrange button, arranging everything.** `GraphEdit`'s own button
+  arranges only the selected boxes, and with one selected it does nothing
+  visible. It is hidden, and the tab's **Arrange** sets the selection aside,
+  shrinks each box to its contents and arranges them all.
 - **The tab reloads each time it is opened**, so a change made in the Inspector
   or a text editor shows when you come back to it. No refresh button is needed.
 - **The screen scripts are `@tool` and have a `class_name`** (`NewsChart`,

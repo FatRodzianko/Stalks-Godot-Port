@@ -2797,13 +2797,14 @@ checkout before exporting, `src/ui/screens/stalkleheads/side_panel.gd` contains
 11. Check the **COMPANY** tab opens on the company with that ticker.
 12. Close the game window.
 
-### Z - The News Flow tab, read-only (decisions.md D224) — **not run yet**
+### Z - The News Flow tab, read-only (decisions.md D224) — **run 2026-11-27, findings fixed; rerun steps 28-41**
 
 One machine, the **editor**, not an exported build: the tab is part of the
 editor and is never in the game. Needs a checkout that contains
 `addons/news_flow_chart/plugin.gd`. Steps 19-27 put one temporary `requires` into
 `market.tres` without saving it, because no shipped news item is in a chain yet;
-steps 36-39 make sure it is gone.
+steps 36-41 take it out again without quitting, so nothing else open in the
+editor is lost.
 
 **Open the tab**
 
@@ -2843,21 +2844,40 @@ steps 36-39 make sure it is gone.
 28. Click **News Flow** at the top.
 29. Check **Chains** now lists `whisp_crash_1`.
 30. Click `whisp_crash_1` in **Chains**.
-31. Check two boxes appear, **Whisper** `whisp_crash_1` on the left and the id from step 24 on the right, joined by an arrow from left to right.
-32. Drag a box somewhere else, then click **Arrange**.
-33. Check the boxes go back to left-to-right order.
-34. Click the right-hand box.
-35. Check **Requires** on the right reads `whisp_crash_1`.
+31. Check two boxes appear, **Whisper** `whisp_crash_1` on the left and the id from step 24 on the right, joined by a line with an arrowhead on the right-hand end.
+32. Check neither box has empty space below its words.
+33. Drag the right-hand box somewhere else, and leave it selected.
+34. Click **Arrange** (top left of the tab).
+35. Check both boxes go back to left-to-right order. The chart's own toolbar has no arrange button.
 
 **Put it back**
 
-36. Click **Scene** in the menu bar, then **Quit**.
-37. If asked whether to save anything, click **Don't Save**.
-38. Open PowerShell in the project folder and run `git status --short src/data/news`.
-39. Check it prints nothing. If it lists `market.tres`, run `git checkout -- src/data/news/market.tres`.
+36. Click **2D** at the top.
+37. In the Inspector, find the **Requires** you opened in step 25.
+38. Set its **Size** to `0` and press **Enter**.
+39. Click **News Flow**, and check **Chains** is empty again.
+40. Open PowerShell in the project folder and run `git status --short src/data/news`.
+41. Check it prints nothing.
+
+If the editor later asks whether to save `market.tres`, saving is harmless: its
+contents are the same as the file's.
 
 **Report:** whether the tab appeared without step 4, and any step that did not
 match.
+
+**Run 2026-11-27, findings:**
+
+- The tab, the lists, a box, the details panel and Problems all worked.
+- The arrow was a plain line, with nothing to say which way it ran. **Fixed:**
+  an arrowhead on the end that requires (`NewsChartCanvas`).
+- The Whisper box stood far taller than its words, empty below them. **Fixed:**
+  each box is shrunk to its contents before arranging; a test checks it.
+- `GraphEdit`'s own **arrange selected nodes** button did nothing with one box
+  selected, which is how Godot's button works. **Fixed:** that button is hidden;
+  the tab's **Arrange** arranges every box whatever is selected.
+- The old steps ended by quitting with **Don't Save**, which also throws away
+  unsaved changes in every other open scene. **Fixed:** steps 36-41 now undo the
+  edit in the Inspector instead.
 
 ### Known gaps, so they are not surprises
 

@@ -316,6 +316,7 @@ addons/news_flow_chart/
     write_news_problems.gd    the validator, run headless in a process of its own (Phase 2)
   ui/                         Control scenes, testable in GUT's scene tree
     news_chart.tscn / .gd     the whole tab: lists, GraphEdit chart, details, Problems
+    news_chart_canvas.gd      the GraphEdit, with an arrowhead on every arrow
     news_item_box.tscn / .gd  one GraphNode (box)
     details_panel.tscn / .gd  every field of the selected item
     delete_confirm.tscn / .gd
@@ -421,7 +422,13 @@ The plan as written:
   (`NewsChainNames.follow`), and nothing is written back.
 - The UI scripts are `@tool`, so they run in the editor, and have a `class_name`,
   so the tests can use them as types. `plugin.gd` has none.
-- 15 new tests, in `test_news_flow_chart_ui.gd`.
+- **An arrowhead on every arrow.** `GraphEdit` draws a plain line, so the
+  chart's `GraphEdit` has a script of its own, `ui/news_chart_canvas.gd`, that
+  adds a head at the end that requires. Found in the first manual run.
+- **Arrange** arranges every box, and shrinks each to its contents first.
+  `GraphEdit`'s own arrange button, which arranges only the selected boxes, is
+  hidden. Both were found in the first manual run.
+- 19 new tests, in `test_news_flow_chart_ui.gd`.
 
 The plan as written:
 

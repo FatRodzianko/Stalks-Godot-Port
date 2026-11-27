@@ -33,7 +33,7 @@ var _chains: Array[Array] = []
 @onready var _chain_list: ItemList = %ChainList
 @onready var _search_box: LineEdit = %SearchBox
 @onready var _news_item_list: ItemList = %NewsItemList
-@onready var _chart: GraphEdit = %Chart
+@onready var _chart: NewsChartCanvas = %Chart
 @onready var _details_panel: NewsDetailsPanel = %DetailsPanel
 @onready var _problems_label: Label = %ProblemsLabel
 
@@ -103,12 +103,19 @@ func choose_item(id: StringName) -> void:
 		box.selected = true
 
 
-## Lays the boxes out again, left to right. What the **Arrange** button does.
-## `arrange_nodes` moves only the selected boxes when any are selected, so the
-## selection is put aside while it runs.
+## Lays every box out again, left to right, whatever is selected. What the
+## **Arrange** button does. `arrange_nodes` moves only the selected boxes when
+## any are selected, so the selection is put aside while it runs. (GraphEdit's
+## own arrange button, which does just that, is hidden in the scene: two
+## buttons that behave differently would be one too many.)
+##
+## Each box is first shrunk to what its contents need. A box's labels wrap,
+## and before the first layout they wrap at almost no width, one word per line;
+## the box grows to fit that and, being a container, never shrinks back.
 func arrange() -> void:
 	var was_selected: Array[NewsItemBox] = []
 	for box: NewsItemBox in boxes():
+		box.reset_size()
 		if box.selected:
 			was_selected.append(box)
 			box.selected = false
