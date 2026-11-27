@@ -178,7 +178,10 @@ tests/
   unit/          Everything GUT runs.
 tools/           Headless scripts a developer runs by hand: network checks,
                  screenshots, and the StalkleHeads balance tool (balance_report.gd,
-                 with its pieces in tools/balance/). Nothing in src/ uses them.
+                 with its pieces in tools/balance/), plus measure_loudness.gd
+                 and level_sounds.gd, which measure and level the sounds in
+                 assets/audio/ (run both before adding a sound, D221).
+                 Nothing in src/ uses them.
 project.godot    Engine configuration. Edited directly; see decisions.md D19.
 .gutconfig.json  Test runner configuration.
 CLAUDE.md        Coding standards. Addressed to an AI, but applies to everyone.

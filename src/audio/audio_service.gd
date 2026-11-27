@@ -17,19 +17,23 @@ extends Node
 ##
 ## There is no sound for a split, and none for buying or selling. That is the
 ## original's choice, not an omission here.
+##
+## **Every clip is levelled to `bull2`**, the one the volume slider previews,
+## so the volume a player picks is the volume they get. A new clip should go
+## through `tools/level_sounds.gd` first. See docs/decisions.md D221.
 
 
 ## Where the clips live. Named for what they are rather than what they sound
 ## like, except where the file name is already the joke.
 const BULL: Array[AudioStream] = [
-	preload("res://assets/audio/bull1.mp3"),
-	preload("res://assets/audio/bull2.mp3"),
+	preload("res://assets/audio/bull1.wav"),
+	preload("res://assets/audio/bull2.wav"),
 ]
 const BEAR: Array[AudioStream] = [
-	preload("res://assets/audio/bear1.mp3"),
-	preload("res://assets/audio/bear2.mp3"),
+	preload("res://assets/audio/bear1.wav"),
+	preload("res://assets/audio/bear2.wav"),
 ]
-const GLASS: AudioStream = preload("res://assets/audio/glass-shattering.mp3")
+const GLASS: AudioStream = preload("res://assets/audio/glass-shattering.wav")
 
 ## The screams a bankruptcy takes turns through, one per bankrupt year, in this
 ## order and round again. The original had one Wilhelm scream; this has several
@@ -39,7 +43,7 @@ const GLASS: AudioStream = preload("res://assets/audio/glass-shattering.mp3")
 ## the same, and nothing here needs a random number generator.
 ##
 ## Five are cut from one Craig Smith archival reel of Wilhelm screams and two
-## come from Sonniss GDC bundles; all were levelled to the same loudness. Where
+## come from Sonniss GDC bundles. Where
 ## each came from, and its terms, is in NOTICE.md. See docs/decisions.md D217.
 const SCREAMS: Array[AudioStream] = [
 	preload("res://assets/audio/wilhelm-scream-1.wav"),
@@ -50,7 +54,7 @@ const SCREAMS: Array[AudioStream] = [
 	preload("res://assets/audio/wilhelm-scream-4.wav"),
 	preload("res://assets/audio/wilhelm-scream-5.wav"),
 ]
-const YEEHAW: AudioStream = preload("res://assets/audio/yeehaw.mp3")
+const YEEHAW: AudioStream = preload("res://assets/audio/yeehaw.wav")
 
 ## The bus every effect goes to, so one volume governs all of them and the
 ## Master bus is left alone for music, should any ever arrive.

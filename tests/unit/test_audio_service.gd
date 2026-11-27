@@ -93,6 +93,47 @@ func test_bankruptcies_take_turns_through_every_scream() -> void:
 	assert_eq(heard[-1], heard[0], "then round again from the start")
 
 
+## How loud the loudest 300 ms of `stream` is, in dBFS, decoded by Godot.
+## The same measure as `tools/measure_loudness.gd`.
+func _loudness_db(stream: AudioStream) -> float:
+	const RATE: float = 44100.0
+	var playback: AudioStreamPlayback = stream.instantiate_playback()
+	playback.start(0.0)
+	var mixed: PackedVector2Array = playback.mix_audio(1.0, int(stream.get_length() * RATE) + 1)
+	playback.stop()
+
+	var window: int = int(0.3 * RATE)
+	var running: float = 0.0
+	var loudest: float = 0.0
+	for index: int in mixed.size():
+		running += mixed[index].length_squared() / 2.0
+		if index >= window:
+			running -= mixed[index - window].length_squared() / 2.0
+		loudest = maxf(loudest, running / float(window))
+	return linear_to_db(sqrt(loudest))
+
+
+## Every clip the service can play.
+func _every_clip() -> Array[AudioStream]:
+	var clips: Array[AudioStream] = []
+	clips.append_array(AudioService.BULL)
+	clips.append_array(AudioService.BEAR)
+	clips.append(AudioService.GLASS)
+	clips.append_array(AudioService.SCREAMS)
+	clips.append(AudioService.YEEHAW)
+	return clips
+
+
+func test_every_clip_is_as_loud_as_the_volume_preview() -> void:
+	# Reported from play: the screams came out nearly 30 dB above everything
+	# else, which hurt, and the yeehaw sat 19 dB above the rest. The preview
+	# is what a player sets the volume by, so every clip is levelled to it.
+	# D221.
+	var preview: float = _loudness_db(AudioService.BULL[1])
+	for clip: AudioStream in _every_clip():
+		assert_almost_eq(_loudness_db(clip), preview, 1.0, clip.resource_path)
+
+
 func test_no_scream_follows_itself() -> void:
 	var previous: AudioStream = null
 	for year: int in AudioService.SCREAMS.size() * 2:

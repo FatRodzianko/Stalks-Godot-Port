@@ -8080,11 +8080,10 @@ echo dies away, because the first cuts stopped while the echo was still about
 -40 dB and that was heard as a click. Fades are cosine-shaped: 5 ms in, 200 ms
 out, 300 ms out for the female scream, which is one sustained note and has to
 be faded mid-scream to be short. DC offset is removed. Every clip's loudest
-300 ms is brought to the same RMS (-11.3 dBFS), the highest level that keeps
-every clip's peak at or below -1 dBFS. They are 16-bit mono WAV.
+300 ms is brought to the same RMS. They are 16-bit mono WAV.
 
-**Not checked:** how loud the screams sit against the glass and the other
-effects, which only listening in a match can settle.
+That shared level was first set at -11.3 dBFS, which was nearly 30 dB louder
+than every other effect and painful in play. **D221 corrects it, levelling every sound to the volume preview.**
 
 **Rules out:** relicensing any scream under the project's code license.
 
@@ -8196,3 +8195,55 @@ length", and not tuned.
 
 **Rules out:** a squeeze length that can be read off the screen; a squeeze that
 can end in its own year; a certain crash whisper; a fixed maximum length.
+
+### D221 - Every sound at the loudness of the volume preview
+**2026-11-27 · Accepted** (the owner, after reports from play) · **amends** D217
+
+D217 levelled the seven screams against **each other**, at the loudest level
+that fit (-11.3 dBFS over their loudest 300 ms). Nobody measured them against
+the other effects. The carried-over MP3s are mastered very quietly, so the
+screams came out about 28 dB louder than the glass played under them, and the
+owner reported it as painful.
+
+Measured in Godot, after import (`tools/measure_loudness.gd`, loudest 300 ms):
+
+| Clip | Before | After |
+|---|---|---|
+| bull2 (the preview) | -37.7 dBFS | -37.7 |
+| bull1 | -38.8 | -37.7 |
+| bear1, bear2 | -40.4, -40.6 | -37.7 |
+| glass-shattering | -40.4 | -37.7 |
+| the seven screams | -11.3 | -37.7 |
+| yeehaw | -19.0 | -37.7 |
+| (the old wilhelm-scream.mp3, for comparison) | -38.9 | removed in D217 |
+
+**Every clip is levelled to `bull2`**, because that is the clip the volume
+slider previews (`play_volume_preview`). A player sets the volume by ear
+against it, so every other sound should arrive at that volume. The yeehaw,
+19 dB above the rest as it came from the original, is turned down with
+everything else; that is a deliberate change from the original, asked for by
+the owner.
+
+**How.** The six original MP3s were decoded by Godot, given the gain that
+matches them to `bull2`, and re-saved as 16-bit stereo WAV at 44.1 kHz by
+`tools/level_sounds.gd`. The MP3s are deleted; MP3 would have meant encoding
+the audio a second time. The screams were rendered again from their source
+recordings with D217's cuts and fades, only the gain changed. Loudness is the
+RMS of the loudest 300 ms, the measure both tools share. Peaks end up between
+-21.8 dBFS (yeehaw) and -33.4 dBFS, so nothing is near clipping, and there is
+room to turn the whole game up later.
+
+**A mood is still louder than a single clip**, about 3 dB, because it plays two
+clips at once, as the original did (see the top of `audio_service.gd`). The levelling is
+per clip, not per moment.
+
+**Checked by a test:** every clip must be within 1 dB of `bull2`
+(`test_every_clip_is_as_loud_as_the_volume_preview`). Confirmed it fails with a
+D217 scream put back.
+
+**Not checked:** how it sounds in a match. Equal RMS is not equal perceived
+loudness: a scream is mostly in the frequencies the ear hears best, so it may
+still seem louder than a bull at the same number.
+
+**Rules out:** adding a sound without levelling it; levelling by peak, which
+let a short scream through at full volume; per-clip volume settings in code.
