@@ -363,7 +363,7 @@ func test_short_interest_words_say_flagged_and_squeezed() -> void:
 	desk.traders[0].set_short(&"stryker", roundi(float(company.shares_outstanding) * 0.2))
 	assert_eq(SidePanel.short_interest_words(_state(), &"stryker"), "20% FLAGGED")
 	company.squeeze_premium = 10
-	company.squeeze_years_left = 1
+	company.squeeze_remaining_percent = 60
 	assert_eq(SidePanel.short_interest_words(_state(), &"stryker"), "20% SQUEEZED")
 	desk.traders[0].set_short(&"stryker", 0)
 	assert_eq(SidePanel.short_interest_words(_state(), &"stryker"), "0% SQUEEZED", "covered, the lift still in")

@@ -77,6 +77,16 @@ static func of(state: GameState, result: EarningsYearResult) -> YearEventText:
 		words.squeeze_effects.append("Short squeeze over: %s" % moved(_name_of(state, company_id), fall))
 		if words.squeeze_change == 0:
 			words.squeeze_change = fall
+	# A squeeze that held, and which way its lift drifted (D220).
+	var held: Array[StringName] = []
+	for company_id: StringName in result.squeeze_drift_moves:
+		held.append(company_id)
+	held.sort_custom(_by_text)
+	for company_id: StringName in held:
+		var drift: int = result.squeeze_drift_moves[company_id]
+		words.squeeze_effects.append("Short squeeze holds: %s" % moved(_name_of(state, company_id), drift))
+		if words.squeeze_change == 0:
+			words.squeeze_change = drift
 	return words
 
 

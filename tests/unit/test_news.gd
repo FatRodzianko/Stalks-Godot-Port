@@ -545,13 +545,15 @@ func test_squeeze_and_crash_whispers_come_on_top_of_the_two_from_a_questionable_
 	for seed_value: int in 80:
 		var state: GameState = _shorted_year_one(library, seed_value)
 		var kind: NewsBands.Subject = NewsBands.Subject.CRASH
-		var subject: StringName = NewsSelector.squeeze_ending_after(state, 1)
-		if subject.is_empty() and not NewsSelector.squeezed_at_end_of(state, 1).is_empty():
-			# D219: squeezed with years still to run - no crash whisper yet.
+		var subject: StringName = NewsSelector.squeezed_at_end_of(state, 1)
+		if not subject.is_empty():
+			var crash_heard: bool = false
 			for line: WhisperRound.Line in NewsSelector.whispers_for(state, 1).lines:
-				assert_ne(line.about, NewsBands.Subject.CRASH, "seed %d: the squeeze is held next year" % seed_value)
-			held += 1
-			continue
+				crash_heard = crash_heard or line.about == NewsBands.Subject.CRASH
+			if not crash_heard:
+				# D220: the crash whisper is heard only as often as the end is likely.
+				held += 1
+				continue
 		if subject.is_empty():
 			# Not squeezed: short stryker again at the year's end, as a desk might.
 			state.market.desk.traders[0].set_short(&"stryker", 400)
@@ -575,10 +577,7 @@ func test_squeeze_and_crash_whispers_come_on_top_of_the_two_from_a_questionable_
 		var heard: WhisperRound.Line = special[0]
 		assert_eq(heard.about, kind, "seed %d" % seed_value)
 		assert_eq(heard.subject, subject)
-		if kind == NewsBands.Subject.CRASH:
-			assert_eq(heard.source, WhisperRules.Source.ROCK_SOLID, "a crash whisper is certain (D219)")
-		else:
-			assert_eq(heard.source, WhisperRules.Source.QUESTIONABLE)
+		assert_eq(heard.source, WhisperRules.Source.QUESTIONABLE)
 		assert_true(heard.text.contains(state.stalk_by_id(subject).definition.display_name), heard.text)
 		seen[kind] = seen.get(kind, 0) + 1
 
@@ -588,11 +587,9 @@ func test_squeeze_and_crash_whispers_come_on_top_of_the_two_from_a_questionable_
 		if kind == NewsBands.Subject.CRASH:
 			happened = next.squeeze_moves.get(subject, 0) < 0
 		assert_eq(NewsSelector.squeeze_whisper_came_true(state, round, heard), happened, "seed %d" % seed_value)
-		if kind == NewsBands.Subject.CRASH:
-			assert_true(happened, "seed %d: a crash whisper always comes true" % seed_value)
 	assert_gt(seen.get(NewsBands.Subject.SQUEEZE, 0), 0, "some seed left stryker flagged")
-	assert_gt(seen.get(NewsBands.Subject.CRASH, 0), 0, "some seed left stryker's squeeze ending")
-	assert_gt(held, 0, "some seed left stryker's squeeze with years to run")
+	assert_gt(seen.get(NewsBands.Subject.CRASH, 0), 0, "some seed made a crash whisper")
+	assert_gt(held, 0, "and some squeezed seed did not")
 
 
 ## The line heard is one written for the outcome its source told, never for

@@ -1010,7 +1010,7 @@ special events in this mode, and the short squeeze became a meme stock (D209-D21
 | sim | `price_ledger.gd` | Why a price moved, in whole coins that sum to the move |
 | sim | `dividend_rules.gd` | Payout ratio, dividend per share, the retention factor |
 | sim | `earnings_market.gd` | **S3.** `GameState.market`: the companies, industries, sentiment, last year's mood, the index level, the flow input. Builds a match's board. The bond's yardstick readouts (D160, D156) |
-| sim | `earnings_year_result.gd` | **S3.** `YearResult` plus the ledgers, the index move, the sentiment used, industry figures and every row's dividend per share; since D209 the market news, and since D213 the squeeze's hold roll, spike and moves |
+| sim | `earnings_year_result.gd` | **S3.** `YearResult` plus the ledgers, the index move, the sentiment used, industry figures and every row's dividend per share; since D209 the market news, and since D213 the squeeze's spike and moves, and since D220 its end, drift and cover rolls and drift moves |
 | sim | `market_news_rules.gd` | **D209.** Draws the year's market news (last year's mood and move, follow-ups first, the bag), and what it hits |
 | sim | `earnings_year_resolver.gd` | **S3.** The StalkleHeads year, §4 steps 1-10, ending in `YearSettlement` |
 | sim | `year_settlement.gd` | **S3.** The back half both pipelines share: loans, net worth and standings, game end, closing the year (D152) |
@@ -1057,7 +1057,9 @@ market.sentiment_used = market.sentiment       # what this year is valued on
 1   IndustryState.advance_all(industries, market.sentiment, rng)  # one draw each, id order
 2   company.advance_earnings(performance, max_years, rng)         # two draws each, id order
 4   roll = rng.randi_range(1, 100)                                # the squeeze roll, every year
-    hold = rng.randi_range(1, 3)                                  # the hold roll, every year (D213)
+    end = rng.randi_range(1, 100)                                 # the squeeze's end, drift and cover
+    drift = rng.randi_range(-15, 15)                              #   rolls, every year (D220)
+    cover = rng.randi_range(20, 50)
     flagged = desk.flagged_companies(state)                       # short interest, as last year left it
     if template and roll <= squeeze_chance(flagged): squeezed = flagged[0], spike = spike_for(price, short %)
     market_news = MarketNewsRules.draw(state, shown, rng)         # last year's mood and move; one draw if any fits

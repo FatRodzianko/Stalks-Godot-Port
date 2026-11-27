@@ -43,12 +43,9 @@ extends RefCounted
 ## industry (design §8.4).
 const WHISPERS_PER_YEAR: int = 2
 
-## Every squeeze whisper is from this source (D214): a squeeze is never certain.
+## Every squeeze and crash whisper is from this source (D214, D220): neither a
+## squeeze nor its end is ever certain.
 const SQUEEZE_WHISPER_SOURCE: WhisperRules.Source = WhisperRules.Source.QUESTIONABLE
-
-## Every crash whisper is from this source (D219): it is heard only when the
-## squeeze is certain to come off next year, so it is always true.
-const CRASH_WHISPER_SOURCE: WhisperRules.Source = WhisperRules.Source.ROCK_SOLID
 
 ## The first year at whose end whispers are heard. Not 0: trading opens in
 ## year 1, so a whisper about year 1 could not be acted on (D207).
@@ -513,13 +510,13 @@ static func draws_about(state: GameState, about_year: int) -> KeptDraws:
 ## lines were shown in earlier years. Public for tests; screens use
 ## `whispers_for`.
 ##
-## **A squeeze whisper first, if there is one to hear (D214).** When a
-## company's squeeze will come off next year - its short sellers have bought
-## the last of their shares back - one whisper says so (CRASH), from a Rock
-## Solid source, because it will (D219). Not in the years before: the lift is
-## held until then whatever happens. Otherwise, while a company is flagged, one
-## says a squeeze is coming (SQUEEZE), from a Questionable source: a squeeze
-## comes in about a quarter of flagged years.
+## **A squeeze whisper first, if there is one to hear (D214).** While a
+## company is squeezed, a whisper that its squeeze is ending (CRASH) is heard
+## as often as the squeeze would end next year on what is known now: its fuel
+## left and this year's mood (`ShortInterestRules.end_chance_percent`, D220).
+## So it is heard more as the end nears, and can still be wrong. If none is
+## heard, while a company is flagged, one says a squeeze is coming (SQUEEZE).
+## Both are from a Questionable source.
 ##
 ## Then `WHISPERS_PER_YEAR` more, on top of it (D218), so a squeeze never takes
 ## the place of an ordinary whisper: subjects are picked evenly
@@ -602,16 +599,14 @@ static func _select_squeeze_whisper(
 	pick: Pick,
 	round: WhisperRound,
 ) -> StringName:
-	var subject: StringName = squeeze_ending_after(state, year)
+	var subject: StringName = crash_whisper_subject(state, year, pick.rng)
 	var kind: NewsBands.Subject = NewsBands.Subject.CRASH
-	var source: WhisperRules.Source = CRASH_WHISPER_SOURCE
 	if subject.is_empty():
 		var flagged: Array[StringName] = flagged_at_end_of(state, year)
 		if flagged.is_empty():
 			return &""
 		subject = flagged[0]
 		kind = NewsBands.Subject.SQUEEZE
-		source = SQUEEZE_WHISPER_SOURCE
 	var own: Array[Resource] = []
 	var general: Array[Resource] = []
 	for line: Whisper in content.whispers:
@@ -624,7 +619,7 @@ static func _select_squeeze_whisper(
 	heard.id = chosen.id
 	heard.subject = subject
 	heard.about = kind
-	heard.source = source
+	heard.source = SQUEEZE_WHISPER_SOURCE
 	heard.text = _fill(chosen.text, _company_tokens(state, subject))
 	round.lines.append(heard)
 	round.drawn.append(chosen.id)
@@ -646,20 +641,20 @@ static func squeezed_at_end_of(state: GameState, year: int) -> StringName:
 	return &""
 
 
-## The company whose squeeze comes off in the year after `year`, lowest id
-## first, or empty: one still in a squeeze with no years of it left
-## (`CompanyState.squeeze_years_left`), so its lift comes off next year for
-## certain (`EarningsYearResolver`, D213, D219).
-static func squeeze_ending_after(state: GameState, year: int) -> StringName:
-	var result: EarningsYearResult = MarketReadouts.result_for_year(state, year)
-	if result == null:
+## The squeezed company a crash whisper is heard about at the end of `year`,
+## or empty (D220). The first company still squeezed then, if `rng`'s roll
+## (1-100, drawn only while one is) is at most the chance its squeeze ends next
+## year, read from its fuel left and this year's mood: the same chance the
+## resolver will roll against.
+static func crash_whisper_subject(state: GameState, year: int, rng: RandomNumberGenerator) -> StringName:
+	var subject: StringName = squeezed_at_end_of(state, year)
+	if subject.is_empty():
 		return &""
-	var ids: Array[StringName] = _sorted_keys(result.companies_after.keys())
-	for id: StringName in ids:
-		var company: CompanyState = result.companies_after[id]
-		var row: StalkState = state.stalk_by_id(id)
-		if company.in_squeeze() and company.squeeze_years_left <= 0 and row != null and not _failed_by(state, id, year):
-			return id
+	var result: EarningsYearResult = MarketReadouts.result_for_year(state, year)
+	var company: CompanyState = result.companies_after[subject]
+	var chance: int = ShortInterestRules.end_chance_percent(company.squeeze_remaining_percent, result.mood)
+	if rng.randi_range(1, 100) <= chance:
+		return subject
 	return &""
 
 

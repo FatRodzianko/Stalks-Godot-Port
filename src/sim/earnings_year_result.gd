@@ -69,9 +69,15 @@ var squeeze_roll: int = 0
 ## Since D213 it comes **as well as** the year's market news, not instead.
 var squeezed: bool = false
 
-## The squeeze's hold roll, 1-3, drawn every year after the squeeze roll: how
-## many years the lift stays in the price if a squeeze fired (D213).
-var squeeze_hold_roll: int = 0
+## The squeeze's three yearly rolls (D220), drawn every year after the squeeze
+## roll whether or not anything is squeezed, so the stream never depends on it:
+## the end roll (1-100: a running squeeze ends when it is at most its end
+## chance), the drift roll (plus or minus `ShortInterestRules.DRIFT_SPREAD`) and
+## the cover roll (the percent of their squeezed shorts the short sellers buy
+## back this year).
+var squeeze_end_roll: int = 0
+var squeeze_drift_roll: int = 0
+var squeeze_cover_roll: int = 0
 
 ## The squeeze's lift before the no-loss top-up, in coins: a share of the
 ## company's price that grows with its short interest
@@ -87,10 +93,14 @@ var market_news: MarketNews = null
 ## company whose lift came off, with the coins it lost (negative).
 var squeeze_moves: Dictionary[StringName, int] = {}
 
+## A readout: every company whose squeeze held this year, with the coins its
+## lift drifted by, up or down (D220).
+var squeeze_drift_moves: Dictionary[StringName, int] = {}
+
 # ----------------------------------------------------------------- the inputs
 # What the year drew, kept so the year can be sent as its inputs and replayed
 # on a client (`EarningsYearResolver.replay_year`, decisions.md D176). The
-# market news, the squeeze roll, hold roll and spike and the flagged list above
+# market news, the squeeze's four rolls and its spike and the flagged list above
 # are inputs too. Everything
 # else in this result is derived from these and the market before the year.
 

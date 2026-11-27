@@ -303,9 +303,17 @@ Each event carries: **target stalk name**, **flavour text**, **price change**.
   > - lifts the price by **5% for every point of short interest, at most 150%**;
   > - and on top of that adds back anything the rest of the year took off, so the
   >   price **does not fall in the squeeze year**;
-  > - stays in the price while the short sellers buy back, in equal parts over a
-  >   **hold of 1 to 3 years** (a roll made every year), and stop shorting it;
-  > - **comes off all at once the year after short interest reaches 0**.
+  > - then, **every later year, ends or holds** (D220). It ends - the whole lift
+  >   comes off at once - when a roll of 1-100 is at most its end chance: 15%,
+  >   plus 70% times the share of the shorts already bought back, plus 10 after a
+  >   bear year or minus 10 after a bull one, kept between 5% and 95%;
+  > - while it holds, the lift **drifts** by a roll of -15% to +15% of itself,
+  >   plus 25% times the share of shorts still open, minus 5%, plus 5 after a
+  >   bull year or minus 5 after a bear one;
+  > - its short sellers buy back **20% to 50%** of what they owe each year (a roll),
+  >   all of it once 10% or less is left, and stop shorting it. It has no fixed
+  >   length: it cannot end in its own year, often ends in its second, and
+  >   sometimes runs five years or more.
   >
   > The short interest list shows the percent with FLAGGED or SQUEEZED. The market
   > news still draws in a squeeze year. The base game has no squeeze.
@@ -368,11 +376,10 @@ decisions.md D199-D215):
   outcome told. A whisper predicts the company's or industry's own year, not the
   price: the industry's year, events and trading still move it.
 - **Squeeze and crash whispers** (D214). When a company is FLAGGED at a year's end,
-  a whisper is about a squeeze on the most shorted one, from a **Questionable**
-  source. When a squeezed company's short sellers have bought back their last
-  shares, so that its lift comes off next year for certain, a whisper says the
-  squeeze is ending, from a **Rock Solid** source; not in the squeeze's earlier
-  years (D219). Either comes on top of the two ordinary whispers, so that year
+  a whisper is about a squeeze on the most shorted one. While one is SQUEEZED, a
+  whisper that its squeeze is ending is heard as often as the squeeze would end
+  next year on what is known now (D220), so more often as its shorts cover. Both
+  are from a **Questionable** source and either can be wrong. Either comes on top of the two ordinary whispers, so that year
   has three (D218). Its outcome is whether it happened next year.
 - **The final year has whispers too** (D219), about the settling year that ends
   the match (§12), which moves every price. A round's outcomes are

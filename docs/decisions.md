@@ -8141,3 +8141,58 @@ D214 and D218
 
 **Rules out:** a crash whisper while the lift still has years to run; a crash
 whisper that can be wrong.
+
+### D220 - A squeeze of no fixed length
+**2026-11-27 · Accepted** (the owner: "build the uncertain end") · **supersedes**
+D213's hold and D219's Rock Solid crash whisper
+
+D213's squeeze ran on a schedule: a hidden hold of 1 to 3 years, the short
+sellers buying back an equal part each year, the lift off the year after short
+interest reached 0%. The schedule was readable from the first year: a drop of a
+third meant three years, of half meant two. D219 then made the crash whisper
+certain and Rock Solid, which said the same thing out loud. The owner wanted a
+bet made on analysis, not a countdown, and a squeeze stretched over years - the
+jump in year 1, small or medium moves either way in the years after, the crash
+whenever it comes - ending "naturally", driven by the short positions and the
+market.
+
+Now (`ShortInterestRules`, `EarningsYearResolver`):
+
+- **Year 1 is unchanged:** 5% of the price a point of short interest, at most
+  150%, no loss that year.
+- **Every later year, the squeeze ends or holds.** It ends when the year's end
+  roll (1-100) is at most its end chance: 15% plus 70% times the share of the
+  shorts already bought back, 10 points more after a bear year and 10 fewer after
+  a bull one, between 5% and 95%. Never certain either way. About a third end in
+  their second year, and the chance rises as the shorts cover.
+- **A squeeze that holds drifts:** its lift moves by a roll of plus or minus 15%,
+  plus up to 25% for the shorts still open, minus 5%, and 5 more after a bull
+  year or 5 fewer after a bear one. With most shorts open it tends up; with few,
+  down. The ledger's squeeze line shows it, and THIS YEAR'S NEWS says "Short
+  squeeze holds".
+- **The short sellers buy back an uneven part each year:** the year's cover roll,
+  20% to 50% of what they owe. At 10% or less of the shorts still open they buy
+  back the rest: the fuel is gone, though the squeeze can still hold a little
+  while.
+- **The crash whisper is Questionable again**, and heard as often as the squeeze
+  would end next year on what is known at the year's end. So it is heard more as
+  the end nears, and is still sometimes wrong.
+
+Measured over 739 squeezes (3,000 seeds, one SHORT trader 400 shares short of
+stryker, counting the year it fires): 2 years 31%, 3 years 35%, 4 years 23%, 5
+years 9%, 6 to 10 years 1%. None ends in its own year, and there is no last year.
+
+**Determinism.** The three rolls (end, drift, cover) are drawn every year, after
+the squeeze roll, whether anything is squeezed or not, and are sent with the
+year. The share of shorts still open is kept on the company
+(`squeeze_remaining_percent`, in the snapshot) rather than read from the desk,
+because a client's replay has no desk. So a client and a promoted host replay a
+squeeze exactly. The extra draws change every StalkleHeads seed's later years;
+the base game does not draw them, and its golden hash is unchanged.
+
+**Balance:** P4 still fails as shipped, by 1.1 points (`TREND` 31.1%, 26.5% with
+no squeeze); recorded in stalkleheads-design.md, "After the squeeze of no fixed
+length", and not tuned.
+
+**Rules out:** a squeeze length that can be read off the screen; a squeeze that
+can end in its own year; a certain crash whisper; a fixed maximum length.

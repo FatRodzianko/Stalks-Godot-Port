@@ -43,7 +43,7 @@ extends RefCounted
 ## order is the wire format**: change it and old and new builds disagree about
 ## what every number means. `test_wire.gd` pins both widths.
 const COMPANY_REALS: int = 6   # revenue, margin_percent, profit_before_season, revenue_growth_percent, event_carry, flow
-const COMPANY_INTS: int = 9    # shares_outstanding, regime, years_in_regime, growth_roll, event_delta, price, did_split, squeeze_premium, squeeze_years_left
+const COMPANY_INTS: int = 9    # shares_outstanding, regime, years_in_regime, growth_roll, event_delta, price, did_split, squeeze_premium, squeeze_remaining_percent
 const MARKET_REALS: int = 3    # sentiment, sentiment_used, index_level
 
 ## Next year's kept draws (`KeptDraws`, decisions.md D205), when there are
@@ -79,7 +79,7 @@ static func encode_market(state: GameState) -> Dictionary:
 		company_ints.append_array([
 			company.shares_outstanding, int(company.regime), company.years_in_regime,
 			company.growth_roll, company.event_delta, company.price, int(company.did_split),
-			company.squeeze_premium, company.squeeze_years_left,
+			company.squeeze_premium, company.squeeze_remaining_percent,
 		])
 	var industry_rolls: Array[int] = []
 	for industry: IndustryState in market.industries:
@@ -162,7 +162,7 @@ static func apply_market(state: GameState, data: Dictionary, library: ContentLib
 		company.price = int(company_ints[at + 5])
 		company.did_split = company_ints[at + 6] != 0
 		company.squeeze_premium = int(company_ints[at + 7])
-		company.squeeze_years_left = int(company_ints[at + 8])
+		company.squeeze_remaining_percent = int(company_ints[at + 8])
 		if state.year > 0:
 			var row: StalkState = state.stalk_by_id(company.id)
 			company.derive_readouts(
@@ -304,7 +304,8 @@ static func encode_year_into(data: Dictionary, result: EarningsYearResult, state
 		])
 
 	out.append_array([
-		result.squeeze_roll, result.squeeze_hold_roll, int(result.squeezed), result.squeeze_spike,
+		result.squeeze_roll, result.squeeze_end_roll, result.squeeze_drift_roll, result.squeeze_cover_roll,
+		int(result.squeezed), result.squeeze_spike,
 		result.short_interest_flagged.size(),
 	])
 	for company_id: StringName in result.short_interest_flagged:
@@ -372,7 +373,9 @@ static func decode_year_into(
 		result.net_shares_priced[company.id] = priced
 
 	result.squeeze_roll = reader.next()
-	result.squeeze_hold_roll = reader.next()
+	result.squeeze_end_roll = reader.next()
+	result.squeeze_drift_roll = reader.next()
+	result.squeeze_cover_roll = reader.next()
 	result.squeezed = reader.next() != 0
 	result.squeeze_spike = reader.next()
 	for _flagged: int in reader.count(market.companies.size()):

@@ -94,14 +94,16 @@ var flow: float = 0.0
 ## A short squeeze's lift, in whole coins, added to the price on top of the
 ## identity while the desk's short sellers buy back (decisions.md D213). 0
 ## when the company is not in a squeeze. It does not fade like an event: it
-## stays at full size until the year after the last short is covered, and
-## then comes off all at once.
+## drifts a little each year it holds, and comes off all at once when the
+## squeeze ends (D220).
 var squeeze_premium: int = 0
 
-## While `squeeze_premium` is held: how many more years it stays after this
-## one. At 0 the desk covers the last of its shorts this year, and next year
-## the premium comes off.
-var squeeze_years_left: int = 0
+## While `squeeze_premium` is held: the share of the short interest at the
+## squeeze still open, in whole percent (`ShortInterestRules.remaining_after`).
+## The squeeze's fuel: it decides how likely the squeeze is to end and which
+## way the lift drifts. Kept here, not read from the desk, because a client's
+## replay has no desk.
+var squeeze_remaining_percent: int = 0
 
 var price: int = 0
 
@@ -286,7 +288,7 @@ func dividend_per_share() -> int:
 func fail() -> void:
 	price = 0
 	squeeze_premium = 0
-	squeeze_years_left = 0
+	squeeze_remaining_percent = 0
 	sentiment = 0.0
 	industry_standing = 0.0
 	regime_premium = 0.0
@@ -364,7 +366,7 @@ func copy() -> CompanyState:
 	twin.event_delta = event_delta
 	twin.flow = flow
 	twin.squeeze_premium = squeeze_premium
-	twin.squeeze_years_left = squeeze_years_left
+	twin.squeeze_remaining_percent = squeeze_remaining_percent
 	twin.price = price
 	twin.did_split = did_split
 	return twin

@@ -121,7 +121,9 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearR
 	#    roll comes up (§5.3, D213); its two rolls are drawn every year, flagged
 	#    or not. Then, squeeze or no squeeze, the market news (D209).
 	result.squeeze_roll = rng.randi_range(1, 100)
-	result.squeeze_hold_roll = rng.randi_range(ShortInterestRules.HOLD_YEARS_MIN, ShortInterestRules.HOLD_YEARS_MAX)
+	result.squeeze_end_roll = rng.randi_range(1, 100)
+	result.squeeze_drift_roll = rng.randi_range(-ShortInterestRules.DRIFT_SPREAD, ShortInterestRules.DRIFT_SPREAD)
+	result.squeeze_cover_roll = rng.randi_range(ShortInterestRules.COVER_MIN, ShortInterestRules.COVER_MAX)
 	result.short_interest_flagged = market.desk.flagged_companies(state)
 	var any_flagged: bool = not result.short_interest_flagged.is_empty()
 	if _short_squeeze != null and result.squeeze_roll <= squeeze_chance_percent(any_flagged):
@@ -143,7 +145,7 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearR
 	YearSettlement.settle(state, result)
 
 	# 13. The NPC desk, on the settled state. Its net trading is next year's flow.
-	result.desk = market.desk.act(state, rng)
+	result.desk = market.desk.act(state, rng, result.squeeze_cover_roll)
 	for stalk_id: StringName in result.desk.net_shares:
 		market.record_trade(stalk_id, result.desk.net_shares[stalk_id])
 
@@ -274,17 +276,24 @@ func _settle_prices(state: GameState, result: EarningsYearResult, year: YearInPr
 	var hits: Dictionary[StringName, int] = MarketNewsRules.hits(state, result.market_news)
 	var squeezed_id: StringName = result.squeeze_target()
 
-	# A squeeze that has run its course comes off now, before the price is
-	# set; one still running counts down a year (D213).
+	# A running squeeze ends or holds before the price is set (D220): it ends
+	# when the end roll is at most its chance, from the fuel left and last
+	# year's mood; otherwise its lift drifts and the shorts buy back some more.
 	for company: CompanyState in alive:
 		if not company.in_squeeze():
 			continue
-		if company.squeeze_years_left <= 0:
+		var remaining: int = company.squeeze_remaining_percent
+		if result.squeeze_end_roll <= ShortInterestRules.end_chance_percent(remaining, market.last_mood):
 			result.squeeze_moves[company.id] = -company.squeeze_premium
 			company.squeeze_premium = 0
-			company.squeeze_years_left = 0
+			company.squeeze_remaining_percent = 0
 		else:
-			company.squeeze_years_left -= 1
+			var drift: int = ShortInterestRules.drift_percent(result.squeeze_drift_roll, remaining, market.last_mood)
+			@warning_ignore("integer_division")
+			var moved: int = maxi(-company.squeeze_premium + 1, company.squeeze_premium * drift / 100)
+			company.squeeze_premium += moved
+			result.squeeze_drift_moves[company.id] = moved
+			company.squeeze_remaining_percent = ShortInterestRules.remaining_after(remaining, result.squeeze_cover_roll)
 
 	# 3 and 5. Valuation, then the price identity, once.
 	for company: CompanyState in alive:
@@ -295,7 +304,7 @@ func _settle_prices(state: GameState, result: EarningsYearResult, year: YearInPr
 			# a squeezed price never falls in the year it is squeezed.
 			var lift: int = result.squeeze_spike + maxi(0, before[company.id].price - company.price)
 			company.squeeze_premium = lift
-			company.squeeze_years_left = result.squeeze_hold_roll - 1
+			company.squeeze_remaining_percent = ShortInterestRules.remaining_after(100, result.squeeze_cover_roll)
 			company.price += lift
 			result.squeeze_moves[company.id] = lift
 

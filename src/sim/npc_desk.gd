@@ -44,6 +44,9 @@ const PICK_RANGE: int = 10000
 ## Every trader, sorted by id.
 var traders: Array[NpcTraderState] = []
 
+## The year's cover roll while `act` runs (D220).
+var _squeeze_cover_percent: int = 100
+
 
 ## A desk of fresh traders, each at its starting cash, sorted by id.
 static func from_definitions(definitions: Array[NpcTraderDefinition]) -> NpcDesk:
@@ -64,8 +67,11 @@ func trader_by_id(trader_id: StringName) -> NpcTraderState:
 
 ## §4 step 13: every trader acts once, in id order, on the settled state.
 ## Returns what they did; the caller records `net_shares` into the flow input.
-func act(state: GameState, rng: RandomNumberGenerator) -> NpcDeskYear:
+## `squeeze_cover_percent` is the year's cover roll: the part of a squeezed
+## company's shorts each short seller buys back (D220).
+func act(state: GameState, rng: RandomNumberGenerator, squeeze_cover_percent: int = 100) -> NpcDeskYear:
 	var year: NpcDeskYear = NpcDeskYear.new()
+	_squeeze_cover_percent = squeeze_cover_percent
 	for trader: NpcTraderState in traders:
 		# Draw first, always (§5.4).
 		var appetite: int = rng.randi_range(APPETITE_MIN, APPETITE_MAX)
@@ -278,9 +284,9 @@ func _trade_long(
 
 ## Buy back every short not on the target, then bring the target's short to
 ## `worth * conviction * appetite / 10000` of shares at the posted price.
-## A short in a company being squeezed is bought back only in part, an equal
-## share each year for as long as the squeeze runs (`ShortInterestRules.cover_now`,
-## D213), with or without a target. With no target, every other short is left
+## A short in a company being squeezed is bought back only in part, the year's
+## cover roll of it, all of it once the squeeze's fuel is gone
+## (`ShortInterestRules.cover_now`, D220), with or without a target. With no target, every other short is left
 ## as it is.
 func _trade_short(
 	trader: NpcTraderState,
@@ -300,7 +306,7 @@ func _trade_short(
 		var owed: int = trader.short_of(company_id)
 		var buying: int = owed
 		if squeezing:
-			buying = ShortInterestRules.cover_now(owed, squeezed.squeeze_years_left)
+			buying = ShortInterestRules.cover_now(owed, _squeeze_cover_percent, squeezed.squeeze_remaining_percent)
 		var row: StalkState = state.stalk_by_id(company_id)
 		if row != null and row.price > 0:
 			trader.cash -= buying * row.price

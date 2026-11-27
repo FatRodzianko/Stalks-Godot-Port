@@ -520,12 +520,31 @@ func test_the_spike_scales_with_short_interest_and_is_capped() -> void:
 	assert_eq(ShortInterestRules.spike_for(0, 40.0), 0)
 
 
-func test_shorts_in_a_squeeze_cover_in_equal_parts() -> void:
-	assert_eq(ShortInterestRules.cover_now(300, 2), 100, "three years left including this one")
-	assert_eq(ShortInterestRules.cover_now(200, 1), 100)
-	assert_eq(ShortInterestRules.cover_now(100, 0), 100, "the last year covers the rest")
-	assert_eq(ShortInterestRules.cover_now(10, 2), 4, "rounding up, so nothing is left over")
-	assert_eq(ShortInterestRules.cover_now(0, 2), 0)
+## D220: the shorts buy back the year's cover roll of what they owe, rounded
+## up, and all of it once the fuel is gone.
+func test_shorts_in_a_squeeze_cover_the_years_roll() -> void:
+	assert_eq(ShortInterestRules.cover_now(300, 20, 80), 60)
+	assert_eq(ShortInterestRules.cover_now(10, 35, 50), 4, "rounding up")
+	assert_eq(ShortInterestRules.cover_now(300, 20, 0), 300, "the fuel is gone: all of it")
+	assert_eq(ShortInterestRules.cover_now(0, 50, 80), 0)
+	assert_eq(ShortInterestRules.remaining_after(100, 30), 70)
+	assert_eq(ShortInterestRules.remaining_after(40, 50), 20)
+	assert_eq(ShortInterestRules.remaining_after(20, 50), 0, "at or under 10% the rest goes")
+
+
+## D220: the end chance rises as the shorts cover, and with a bear year; the
+## drift leans up with most shorts open and down with few.
+func test_a_squeeze_ends_more_likely_as_its_fuel_runs_out() -> void:
+	var bull: MarketMood.Value = MarketMood.Value.BULL
+	var bear: MarketMood.Value = MarketMood.Value.BEAR
+	assert_eq(ShortInterestRules.end_chance_percent(100, bull), 5, "just fired, a bull year: the floor")
+	assert_eq(ShortInterestRules.end_chance_percent(70, bull), 26)
+	assert_eq(ShortInterestRules.end_chance_percent(70, bear), 46, "a bear year helps it end")
+	assert_eq(ShortInterestRules.end_chance_percent(0, bear), 95, "never certain")
+	assert_lt(ShortInterestRules.end_chance_percent(70, bull), ShortInterestRules.end_chance_percent(30, bull))
+	assert_eq(ShortInterestRules.drift_percent(0, 100, bull), 25)
+	assert_eq(ShortInterestRules.drift_percent(0, 0, bear), -10)
+	assert_eq(ShortInterestRules.drift_percent(-15, 0, bear), -25)
 
 
 func test_a_squeeze_lifts_the_most_shorted_company_through_the_ledger() -> void:
@@ -543,8 +562,7 @@ func test_a_squeeze_lifts_the_most_shorted_company_through_the_ledger() -> void:
 	assert_eq(result.squeeze_moves[&"stryker"], company.squeeze_premium)
 	assert_gte(company.squeeze_premium, result.squeeze_spike, "at least the spike")
 	assert_gte(state.stalk_by_id(&"stryker").price, before + result.squeeze_spike, "and no loss in the squeeze year")
-	assert_between(company.squeeze_years_left, 0, ShortInterestRules.HOLD_YEARS_MAX - 1)
-	assert_eq(company.squeeze_years_left, result.squeeze_hold_roll - 1)
+	assert_eq(company.squeeze_remaining_percent, ShortInterestRules.remaining_after(100, result.squeeze_cover_roll))
 
 
 func test_the_lift_comes_off_once_the_shorts_have_covered() -> void:
@@ -554,20 +572,57 @@ func test_the_lift_comes_off_once_the_shorts_have_covered() -> void:
 	var rng: RandomNumberGenerator = found[4]
 	var resolver: EarningsYearResolver = _shipped_resolver()
 	var company: CompanyState = state.market.company_by_id(&"stryker")
-	var premium: int = company.squeeze_premium
 	var came_off: bool = false
-	for year: int in ShortInterestRules.HOLD_YEARS_MAX + 1:
-		var short_before: int = state.market.desk.short_interest(&"stryker")
+	for year: int in 40:
+		var premium: int = company.squeeze_premium
+		var remaining: int = company.squeeze_remaining_percent
+		var mood: MarketMood.Value = state.market.last_mood
 		var result: EarningsYearResult = resolver.advance_year(state, rng)
+		var ends: bool = result.squeeze_end_roll <= ShortInterestRules.end_chance_percent(remaining, mood)
 		if result.squeeze_moves.has(&"stryker"):
+			assert_true(ends, "it ends exactly when the roll says")
 			assert_eq(result.squeeze_moves[&"stryker"], -premium, "the whole lift comes off")
 			assert_eq(result.ledger_for(&"stryker").squeeze, -premium, "on the ledger's squeeze line")
-			assert_eq(short_before, 0, "only after the shorts reached 0%")
 			came_off = true
 			break
+		assert_false(ends)
 		assert_true(company.in_squeeze(), "still squeezed in year %d" % state.year)
-	assert_true(came_off, "within the hold")
+		var drift: int = result.squeeze_drift_moves[&"stryker"]
+		@warning_ignore("integer_division")
+		assert_eq(drift, premium * ShortInterestRules.drift_percent(result.squeeze_drift_roll, remaining, mood) / 100)
+		assert_eq(result.ledger_for(&"stryker").squeeze, drift, "the drift is on the squeeze line")
+	assert_true(came_off, "it ends in time")
 	assert_false(company.in_squeeze())
+
+
+## D220: over many squeezes, most run two to five years, some end in their
+## second, and none is fixed in length.
+func test_squeezes_run_for_years_of_no_fixed_length() -> void:
+	var lengths: Dictionary[int, int] = {}
+	var resolver: EarningsYearResolver = _shipped_resolver()
+	var found: int = 0
+	for seed_value: int in 400:
+		var state: GameState = _new_state(40)
+		_shorted(state, &"stryker", 400)
+		var rng: RandomNumberGenerator = StalksFixture.rng(seed_value)
+		if not resolver.advance_year(state, rng).squeezed:
+			continue
+		found += 1
+		var company: CompanyState = state.market.company_by_id(&"stryker")
+		var years: int = 1
+		while company.in_squeeze() and years < 30:
+			resolver.advance_year(state, rng)
+			years += 1
+		lengths[years] = lengths.get(years, 0) + 1
+	assert_gt(found, 40)
+	assert_eq(lengths.get(1, 0), 0, "never over in its own year")
+	assert_gt(lengths.get(2, 0), 0, "sometimes over in its second")
+	var long_ones: int = 0
+	for years: int in lengths:
+		if years >= 4:
+			long_ones += lengths[years]
+	assert_gt(long_ones, 0, "some run four years or more")
+	assert_gt(lengths.size(), 3, "lengths vary: %s" % lengths)
 
 
 func test_a_squeezed_company_is_not_shorted_again_or_flagged() -> void:

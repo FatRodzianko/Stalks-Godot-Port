@@ -207,7 +207,7 @@ stock rather than a better one (§3.10a).
 
 **Flagged / FLAGGED** — a company whose short interest is at least 10% of its shares outstanding, and not already squeezed. Only while some company is flagged can a short squeeze happen (decisions.md D165). Shown as FLAGGED after the percent in the short interest list and on the Company tab (D213).
 
-**Short squeeze** — in StalkleHeads, what happens to the most shorted flagged company 25% of the time: its price jumps by 5% for every point of short interest (at most 150%), and does not fall that year. The jump stays while the short sellers buy back over one to three years, and comes off all at once the year after short interest reaches 0. Modeled on a meme stock (decisions.md D213). With nothing flagged it never happens.
+**Short squeeze** — in StalkleHeads, what happens to the most shorted flagged company 25% of the time: its price jumps by 5% for every point of short interest (at most 150%), and does not fall that year. After that, each year it either ends - the jump comes off all at once - or holds and the jump drifts a little up or down. It ends more likely as the short sellers buy back (an uneven part each year) and after a bear year; there is no fixed length. Modeled on a meme stock (decisions.md D213, D220). With nothing flagged it never happens.
 
 **Squeezed / SQUEEZED** — a company whose price holds a squeeze's jump (`CompanyState.squeeze_premium`). Shown as SQUEEZED after its short interest percent. A SHORT trader does not short it again.
 
@@ -289,7 +289,7 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **EARNINGS report** — the Company tab's line under EARNINGS, written by code from the numbers (`ReportWriter`, decisions.md D215): the revenue change, how it compared with what the regime led one to expect, then the regime in plain words. "Mafia HUD Scam's revenue fell 14%, far worse than expected. The company is in distress."
 
-**Squeeze whisper / crash whisper** — a whisper that a flagged company is about to be squeezed, or that a squeezed one's jump is about to come off. The squeeze whisper is from a Questionable source; the crash whisper is heard only in a squeeze's last year, when the jump will come off, from a Rock Solid source. Either comes on top of the two ordinary whispers; its outcome is whether it happened (decisions.md D214, D218, D219).
+**Squeeze whisper / crash whisper** — a whisper that a flagged company is about to be squeezed, or that a squeezed one's jump is about to come off. Both are from a Questionable source; the crash whisper is heard as often as the squeeze is likely to end next year, so more as its shorts cover, and can be wrong. Either comes on top of the two ordinary whispers; its outcome is whether it happened (decisions.md D214, D218, D219).
 
 **Whisper** — a rumor about a company or an industry, heard at the end of a year (from year 1; none in year 0) and about **the next year**: whether it will do much worse, worse, as expected, better or much better than everyone expects. Two a round, on the Market tab with their sources, and on the Company tab of a company they name or its industry. A whisper can be wrong, and how often depends on its **source** (decisions.md D205).
 

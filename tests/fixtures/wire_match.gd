@@ -159,7 +159,7 @@ static func company_lines(company: CompanyState) -> PackedStringArray:
 		"price": company.price,
 		"did_split": company.did_split,
 		"squeeze_premium": company.squeeze_premium,
-		"squeeze_years_left": company.squeeze_years_left,
+		"squeeze_remaining_percent": company.squeeze_remaining_percent,
 	}
 	var lines: PackedStringArray = []
 	for field: String in fields:
@@ -197,9 +197,10 @@ static func result_lines(result: YearResult) -> PackedStringArray:
 	lines.append("result index %s sentiment %s bag %d" % [
 		bits(earnings.index_move_percent), bits(earnings.sentiment_used), earnings.event_bag,
 	])
-	lines.append("result squeeze %d hold %d %s spike %d flagged %s moves %s" % [
-		earnings.squeeze_roll, earnings.squeeze_hold_roll, earnings.squeezed, earnings.squeeze_spike,
-		earnings.short_interest_flagged, _sorted(earnings.squeeze_moves),
+	lines.append("result squeeze %d end %d drift %d cover %d %s spike %d flagged %s moves %s drifts %s" % [
+		earnings.squeeze_roll, earnings.squeeze_end_roll, earnings.squeeze_drift_roll, earnings.squeeze_cover_roll,
+		earnings.squeezed, earnings.squeeze_spike,
+		earnings.short_interest_flagged, _sorted(earnings.squeeze_moves), _sorted(earnings.squeeze_drift_moves),
 	])
 	var news_id: String = "none"
 	if earnings.market_news != null:
