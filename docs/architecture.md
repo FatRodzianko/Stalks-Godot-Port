@@ -1347,8 +1347,29 @@ NewsBookEditor.load_books(news dir) -> books by path
 
 The one change it made to the game's own code is the validator's: a `requires`
 loop of any length (`NewsContent.requires_loops`) and a retired id
-(`ContentLibrary.retired_news_ids`) are errors. The screens come in later phases;
+(`ContentLibrary.retired_news_ids`) are errors.
 [news-flow-chart.md](news-flow-chart.md) is the design and the plan.
+
+**The News Flow tab (Phase 2, D224)** is read-only so far:
+
+```
+plugin.gd (EditorPlugin, main screen "News Flow")
+   `- ui/news_chart.tscn  NewsChart: reload_from_project on every opening
+        |- chain list, news item list + search   (NewsGraph, NewsChainNames)
+        |- GraphEdit: one NewsItemBox per item of the chosen chain,
+        |             an arrow per requires       (NewsItemSummary for the words)
+        |- NewsDetailsPanel: every field, read-only
+        `- Problems strip   <- NewsProblems.run_check
+                                 `- headless Godot: check/write_news_problems.gd
+                                      runs ContentLibrary.load_fundamentals
+```
+
+Inside the editor the news items are **placeholders**: their scripts are not
+`@tool` scripts, so their fields can be read but their methods cannot run. The
+tab therefore never calls a method on an item, and the validator, which does,
+runs in a headless process of its own and hands back its news errors through a
+file under `user://`. `NewsChart.show_content` takes the items directly, which is
+what the scene-tree tests drive.
 
 ### The rules that hold it together
 

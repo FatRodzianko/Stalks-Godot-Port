@@ -42,7 +42,7 @@ mouse_cursor/tooltip_position_offset=Vector2(0, 6)
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+enabled=PackedStringArray("res://addons/gut/plugin.cfg", "res://addons/news_flow_chart/plugin.cfg")
 
 [gui]
 

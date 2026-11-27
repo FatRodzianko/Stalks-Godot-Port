@@ -1,0 +1,80 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://addons/news_flow_chart/ui/news_chart.gd" id="1_chart"]
+[ext_resource type="PackedScene" path="res://addons/news_flow_chart/ui/details_panel.tscn" id="2_details"]
+
+[node name="NewsChart" type="VBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_chart")
+
+[node name="Toolbar" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="ArrangeButton" type="Button" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Arrange"
+
+[node name="Body" type="HSplitContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Sidebar" type="VBoxContainer" parent="Body"]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+
+[node name="ChainsLabel" type="Label" parent="Body/Sidebar"]
+layout_mode = 2
+text = "Chains"
+
+[node name="ChainList" type="ItemList" parent="Body/Sidebar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="NewsItemsLabel" type="Label" parent="Body/Sidebar"]
+layout_mode = 2
+text = "News items"
+
+[node name="SearchBox" type="LineEdit" parent="Body/Sidebar"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Search ids and words"
+clear_button_enabled = true
+
+[node name="NewsItemList" type="ItemList" parent="Body/Sidebar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
+
+[node name="ChartAndDetails" type="HSplitContainer" parent="Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Chart" type="GraphEdit" parent="Body/ChartAndDetails"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DetailsPanel" parent="Body/ChartAndDetails" instance=ExtResource("2_details")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ProblemsScroll" type="ScrollContainer" parent="."]
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="ProblemsLabel" type="Label" parent="ProblemsScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3

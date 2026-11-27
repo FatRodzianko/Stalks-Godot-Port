@@ -162,7 +162,8 @@ More test-running options are in [testing.md](testing.md).
 addons/gut/      The test framework. Committed deliberately (decisions.md D17).
 addons/news_flow_chart/
                  Ours: the News Flow Chart, an editor tool for writing news
-                 (news-flow-chart.md). Not part of the game.
+                 (news-flow-chart.md). Not part of the game. Adds the
+                 News Flow tab; core/ logic, ui/ screens, check/ validator run.
 assets/
   themes/        Shared Theme resources. All colours and fonts belong here.
   sprites/
@@ -260,6 +261,15 @@ there is nothing to fill in. To change their wording, edit that file.
 
 What the game does with them - which line is chosen when, where it shows - is in
 [game-rules.md](game-rules.md) §5.1 and decisions.md D199-D215.
+
+**To see the news as chains**, open the **News Flow** tab at the top of the
+editor, beside **2D**, **3D**, **Script** and **AssetLib**. It is the News Flow
+Chart ([news-flow-chart.md](news-flow-chart.md)), and so far it only shows:
+the chains, every line with a search box, each line's fields, and the
+validator's news errors under **Problems**. Editing still happens in the
+Inspector as described below. If the tab is missing, switch the plugin on:
+**Project > Project Settings > Plugins**, tick **Enable** on the **News Flow
+Chart** row. Then close and reopen the project.
 
 #### Where each kind of line lives
 

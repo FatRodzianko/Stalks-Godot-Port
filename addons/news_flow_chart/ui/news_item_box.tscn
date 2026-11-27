@@ -1,0 +1,21 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/news_flow_chart/ui/news_item_box.gd" id="1_box"]
+
+[node name="NewsItemBox" type="GraphNode"]
+custom_minimum_size = Vector2(240, 0)
+script = ExtResource("1_box")
+
+[node name="IdLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ConditionsLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="WordsLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3

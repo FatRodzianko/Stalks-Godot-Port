@@ -8295,3 +8295,47 @@ rules are as they were, and the golden history hash does not move.
 **Rules out:** a separate "tree file" of links; ids typed by hand in the tool;
 renaming an id when its item's fields change; reusing a deleted item's id.
 
+
+### D224 - The News Flow tab: read-only, one chain at a time, the check in its own process (Phase 2)
+**2026-11-27 · Accepted**
+
+Phase 2 of [news-flow-chart.md](news-flow-chart.md) adds the **News Flow** tab
+at the top of the editor (`addons/news_flow_chart/plugin.gd`). It shows the
+chains, a searchable list of every news item, a chart of boxes and arrows, the
+fields of the clicked box, and a Problems strip. It writes no file.
+
+- **Inside the editor every news item is a placeholder.** Godot runs only
+  `@tool` scripts in the editor. An object loaded from a file whose script is
+  not one keeps its fields, but any method call on it fails ("Attempt to call a
+  method on a placeholder instance"). None of the data scripts in `src/data` is
+  a `@tool` script. A throwaway plugin in a headless editor run showed
+  `ContentLibrary.load_fundamentals` failing at `StalkDefinition.all_events` and
+  `NpcTraderDefinition.chatter_for`. So the tab reads news items through their
+  fields only (`get`, `is`, and the field list from the script itself, since a
+  placeholder's own property list has no enum names).
+- **The validator runs in a Godot process of its own.** `NewsProblems.run_check`
+  starts the same executable headless on `check/write_news_problems.gd`, which
+  runs `load_fundamentals` for real and writes the news errors to a file under
+  `user://`. It takes about a second. It checks the books as saved, which is
+  what the game and the tests will load. The other way, making the data scripts
+  `@tool`, would change about a dozen of the game's own files for an editor tool,
+  and would run their code whenever the editor opened one of their files.
+- **The traders' own chatter is left off the chart.** It is made by calling a
+  method on each trader. The tool does not edit it (§1.2), so the cost is one
+  missing arrow if a news item ever requires a trader's line, and the id still
+  shows in that item's details.
+- **One chain on the chart at a time.** Choosing a chain shows it. Choosing a
+  news item from the list shows its chain, or its box alone if it has none. All
+  161 shipped items on one chart would be unreadable, and none is in a chain yet.
+- **The tab reloads each time it is opened**, so a change made in the Inspector
+  or a text editor shows when you come back to it. No refresh button is needed.
+- **The screen scripts are `@tool` and have a `class_name`** (`NewsChart`,
+  `NewsItemBox`, `NewsDetailsPanel`), so they run in the editor and the tests can
+  name them as types. `plugin.gd` has no `class_name`. The whole addon stays out
+  of exports.
+
+**Not changed:** the game, the news rules, the books, the golden history hash.
+
+**Rules out:** running the validator inside the editor process; `@tool` on the
+game's data scripts for the tool's sake; calling a method on a news item
+anywhere in the tab's code.

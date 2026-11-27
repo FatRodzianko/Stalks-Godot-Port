@@ -2797,6 +2797,68 @@ checkout before exporting, `src/ui/screens/stalkleheads/side_panel.gd` contains
 11. Check the **COMPANY** tab opens on the company with that ticker.
 12. Close the game window.
 
+### Z - The News Flow tab, read-only (decisions.md D224) — **not run yet**
+
+One machine, the **editor**, not an exported build: the tab is part of the
+editor and is never in the game. Needs a checkout that contains
+`addons/news_flow_chart/plugin.gd`. Steps 19-27 put one temporary `requires` into
+`market.tres` without saving it, because no shipped news item is in a chain yet;
+steps 36-39 make sure it is gone.
+
+**Open the tab**
+
+1. Open the project in the Godot editor (the plain `.exe`, not `_console.exe`).
+2. Look along the top of the editor, at **2D**, **3D**, **Script** and **AssetLib**.
+3. Check that a **News Flow** tab sits beside them.
+4. If it is missing: click **Project** in the menu bar, then **Project Settings...**.
+5. Click the **Plugins** tab of that window.
+6. Tick **Enable** on the **News Flow Chart** row.
+7. Close the window, and check that **News Flow** is now at the top.
+8. Click **News Flow**.
+9. Check the left side shows **Chains** (empty) and **News items** (a long list of ids).
+10. Check the bottom reads **Problems: none**.
+
+**One box**
+
+11. Click in the search box under **News items**.
+12. Type `crash`.
+13. Check that only ids or lines containing "crash" are left, `mkt_bear_crash_1` among them.
+14. Click `mkt_bear_crash_1`.
+15. Check one box appears, titled **Market news**, showing `mkt_bear_crash_1`, `Mood: Bear  ·  Move: Crash` and the start of its headline.
+16. Click the box.
+17. Check the right side lists its fields: **Id**, **Mood** = Bear, **Move** = Crash, **Headline**, and the rest down to **Requires** = (empty).
+18. Check none of the values on the right can be clicked into or typed in.
+
+**A chain**
+
+19. Click **2D** at the top, to leave the tab.
+20. In the **FileSystem** panel (bottom left), open **res://** > **src** > **data** > **news**.
+21. Double-click **market.tres**. The **Inspector** panel (right) shows it.
+22. In the Inspector, click **Market News** to open the list.
+23. Click the first entry in the list to open it.
+24. Note its **Id**.
+25. Click **Requires** to open it, then click **+ Add Element**.
+26. Click the new empty box and type `whisp_crash_1`.
+27. Press **Enter**. Do **not** save.
+28. Click **News Flow** at the top.
+29. Check **Chains** now lists `whisp_crash_1`.
+30. Click `whisp_crash_1` in **Chains**.
+31. Check two boxes appear, **Whisper** `whisp_crash_1` on the left and the id from step 24 on the right, joined by an arrow from left to right.
+32. Drag a box somewhere else, then click **Arrange**.
+33. Check the boxes go back to left-to-right order.
+34. Click the right-hand box.
+35. Check **Requires** on the right reads `whisp_crash_1`.
+
+**Put it back**
+
+36. Click **Scene** in the menu bar, then **Quit**.
+37. If asked whether to save anything, click **Don't Save**.
+38. Open PowerShell in the project folder and run `git status --short src/data/news`.
+39. Check it prints nothing. If it lists `market.tres`, run `git checkout -- src/data/news/market.tres`.
+
+**Report:** whether the tab appeared without step 4, and any step that did not
+match.
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until

@@ -1,7 +1,7 @@
 # News Flow Chart — design and build plan
 
-**Status: agreed with the owner on 2026-11-27. Phase 1 built (D223); Phases 2-4
-not started.** §6 records the owner's answers that shaped the design.
+**Status: agreed with the owner on 2026-11-27. Phases 1 and 2 built (D223,
+D224); Phases 3-4 not started.** §6 records the owner's answers that shaped the design.
 
 The News Flow Chart is an editor tool for writing StalkleHeads news as connected
 chains. Take a market headline that leads to an industry headline, which in turn
@@ -76,6 +76,13 @@ third-party dependency for a successor to keep working. Building directly on
    tool.
 5. **No shipped news item uses `requires` yet** (all eight books checked). So
    there are no existing chains for the tool to break.
+6. **Inside the editor, every news item is a placeholder** (found in Phase 2,
+   D224). A script that is not a `@tool` script does not run in the editor. An
+   object loaded from a file with such a script keeps its fields, but calling any
+   of its methods fails with "Attempt to call a method on a placeholder
+   instance". All the data scripts in `src/data` are of this kind. So the tool
+   reads news items only through their fields, and the content validator, which
+   calls methods, runs in a headless Godot process of its own.
 
 ### 1.2 What it cannot do
 
@@ -303,8 +310,12 @@ addons/news_flow_chart/
     news_book_editor.gd       add, edit, link, unlink and delete items; the retired list
     news_chain_names.gd       reads and writes news_chains.cfg; moves a name to a new root
     news_field_choices.gd     what each dropdown lists
+    news_item_summary.gd      what a box and the details panel show (Phase 2)
+    news_problems.gd          the Problems strip: runs the check, filters to news (Phase 2)
+  check/
+    write_news_problems.gd    the validator, run headless in a process of its own (Phase 2)
   ui/                         Control scenes, testable in GUT's scene tree
-    news_chart.tscn / .gd     the GraphEdit chart
+    news_chart.tscn / .gd     the whole tab: lists, GraphEdit chart, details, Problems
     news_item_box.tscn / .gd  one GraphNode (box)
     details_panel.tscn / .gd  every field of the selected item
     delete_confirm.tscn / .gd
@@ -379,7 +390,40 @@ The plan as written:
 - Validator: regression tests for both new checks.
 - The re-saved books load and validate exactly as before.
 
-### Phase 2 — The chart, read-only
+### Phase 2 — The chart, read-only — **done 2026-11-27** (D224)
+
+**Delivered as planned**, with these details settled while building it:
+
+- `plugin.gd` adds the **News Flow** tab. It is switched on in `project.godot`
+  under `[editor_plugins]`, beside GUT. The tab reloads everything each time it
+  is opened, so edits made elsewhere show up when you come back to it.
+- `ui/news_chart.tscn` is the whole tab, not just the `GraphEdit`: the chain list,
+  the searchable news item list, the chart, the details panel and the Problems
+  strip. The chart shows **one chain at a time**. Choosing a chain shows it;
+  choosing a news item from the list shows the chain it is in, or its box on its
+  own, and selects its box. 161 boxes at once would be unreadable.
+- Each box (`ui/news_item_box.tscn`) shows the kind as its title, then the id,
+  the conditions (`Mood: Bear  ·  Move: Crash`) and the first eight words of the
+  headline, or of the text when there is no headline. The words are the file's
+  own (`NewsItemSummary`).
+- The details panel (`ui/details_panel.tscn`) lists every field the item's
+  script saves, in the script's order, as plain labels. Nothing in it can be
+  edited.
+- **The Problems strip comes from a separate Godot process** (finding 6). It
+  checks the books as saved on disk, so an unsaved change in the Inspector does
+  not show in it until it is saved. The chart itself shows unsaved changes,
+  because it reads the editor's own copies.
+- **The traders' own chatter is not on the chart** in the editor. It is built by
+  calling a method on each trader, which a placeholder cannot run, and the tool
+  does not edit it anyway (§1.2). An item that requires one shows that id in its
+  details panel, with no arrow.
+- Chain names that can no longer be placed are listed in Problems
+  (`NewsChainNames.follow`), and nothing is written back.
+- The UI scripts are `@tool`, so they run in the editor, and have a `class_name`,
+  so the tests can use them as types. `plugin.gd` has none.
+- 15 new tests, in `test_news_flow_chart_ui.gd`.
+
+The plan as written:
 
 - The plugin and the **News Flow** tab: the chain list and the news item list;
   boxes and arrows drawn from `requires`; **Arrange**; automatic chain names;
@@ -391,7 +435,8 @@ The plan as written:
   ordinary Control, so this works headless. Given some content, the right boxes
   and arrows exist.
 - **Manual** numbered steps for the plugin itself: switch it on; the tab appears;
-  a chain opens; clicking a box shows its fields.
+  a chain opens; clicking a box shows its fields. These are
+  [manual-testing.md](manual-testing.md) section Z.
 
 ### Phase 3 — Creating, editing and linking
 
@@ -436,6 +481,8 @@ The plan as written:
 | `core/` (graph, ids, router, book edits, chain names, dropdown lists, new validator checks) | **Yes, fully** | It is pure `RefCounted` logic working on `NewsBook` objects. |
 | `ui/` scenes (chart, boxes, details panel, delete confirmation) | **Yes, mostly** | `GraphEdit` and `GraphNode` are ordinary Controls and run in GUT's scene tree. A mouse drag is not simulated, but the signals a drag emits are. |
 | `plugin.gd` (the tab appears; switching the plugin on and off) | **No: manual** | `EditorPlugin` and `EditorInterface` exist only inside the running editor, not in a `--headless --script` run. |
+| The chart inside the editor, on placeholder items (finding 6) | **No: manual** | GUT runs the game's scripts for real, so a method call on an item would pass there and fail in the editor. The UI reads items through their fields only; that it works on placeholders was checked once with a throwaway plugin in a headless editor run, and is checked by hand in section Z. |
+| The Problems check | **Yes** | A test runs the real headless check on the shipped books and expects no problems. |
 | Inspector dropdowns | **The list yes, the display no** | What each dropdown contains is a tested function; that the Inspector shows it is checked by hand. |
 | Undo and redo | **No: manual** | `EditorUndoRedoManager` belongs to the running editor. |
 | Saving with `uid` lines kept | **No: manual** | Headless saving drops them (§1.1). So a real save is checked by hand, then with `git diff`. |
