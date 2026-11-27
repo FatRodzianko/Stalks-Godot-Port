@@ -820,3 +820,70 @@ func test_a_clicked_arrow_is_selected_and_delete_removes_it() -> void:
 	canvas.delete_nodes_request.emit([] as Array[StringName])
 	assert_eq(_requires(editor, &"b"), [] as Array[StringName], "b no longer requires a")
 	assert_does_not_have(chart.arrows(), PackedStringArray(["a", "b"]))
+
+
+# ------------------------------------------------- after the third run of section AA
+
+
+func test_a_dragged_line_runs_dot_to_dot_when_the_chart_is_scrolled() -> void:
+	# Found by hand: once the chart had been scrolled, the line being dragged
+	# was drawn from the side of one box to the side of the other. Godot hands
+	# the dragged line over shifted by the scroll, unlike a finished arrow.
+	var chart: NewsChart = _chart()
+	_show(chart, _example())
+	await wait_process_frames(2)
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	canvas.scroll_offset = Vector2(-321, 77)
+	await wait_process_frames(2)
+	var shift: Vector2 = -canvas.scroll_offset
+	var a: NewsItemBox = chart.box_for(&"a")
+	var d: NewsItemBox = chart.box_for(&"d")
+	var a_bottom: Vector2 = (a.position_offset + NewsItemBox.bottom_dot(a.size)) * canvas.zoom + shift
+	var d_top: Vector2 = (d.position_offset + NewsItemBox.top_dot(d.size)) * canvas.zoom + shift
+	var a_port: Vector2 = (a.position_offset + a.get_output_port_position(0)) * canvas.zoom + shift
+	var d_port: Vector2 = (d.position_offset + d.get_input_port_position(0)) * canvas.zoom + shift
+	var mouse: Vector2 = a_port + Vector2(30, 200)
+	canvas.connection_drag_started.emit(&"a", 0, true)
+	var free: PackedVector2Array = canvas._get_connection_line(a_port, mouse)
+	var snapped: PackedVector2Array = canvas._get_connection_line(a_port, d_port)
+	canvas.connection_drag_ended.emit()
+	assert_eq(free[0], a_bottom, "from the bottom dot pressed")
+	assert_eq(free[free.size() - 2], mouse, "to the mouse")
+	assert_eq(snapped[0], a_bottom)
+	assert_eq(snapped[snapped.size() - 2], d_top, "on d's top dot, not its side")
+
+
+func test_a_line_dragged_from_a_top_dot_has_its_head_on_the_other_box() -> void:
+	var chart: NewsChart = _chart()
+	_show(chart, _example())
+	await wait_process_frames(2)
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	var shift: Vector2 = -canvas.scroll_offset
+	var d: NewsItemBox = chart.box_for(&"d")
+	var c: NewsItemBox = chart.box_for(&"c")
+	var d_port: Vector2 = (d.position_offset + d.get_input_port_position(0)) * canvas.zoom + shift
+	var c_port: Vector2 = (c.position_offset + c.get_output_port_position(0)) * canvas.zoom + shift
+	# Godot draws a drag from an incoming dot from the other box's outgoing dot.
+	canvas.connection_drag_started.emit(&"d", 0, false)
+	var points: PackedVector2Array = canvas._get_connection_line(c_port, d_port)
+	canvas.connection_drag_ended.emit()
+	assert_eq(points[0], (d.position_offset + NewsItemBox.top_dot(d.size)) * canvas.zoom + shift, "from d's top dot, pressed")
+	assert_eq(points[points.size() - 2], (c.position_offset + NewsItemBox.bottom_dot(c.size)) * canvas.zoom + shift, "head on c's bottom dot")
+
+
+func test_a_line_whose_button_was_let_go_elsewhere_ends_when_the_mouse_moves() -> void:
+	# Found by hand: a screenshot taken mid-drag took the button's release, and
+	# the line stayed on the mouse until the next click.
+	var chart: NewsChart = _chart()
+	_show(chart, _example())
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	canvas.connection_drag_started.emit(&"a", 0, true)
+	var held: InputEventMouseMotion = InputEventMouseMotion.new()
+	held.button_mask = MOUSE_BUTTON_MASK_LEFT
+	canvas._input(held)
+	assert_eq(canvas._dragged_from, &"a", "still drawing while the button is held")
+	canvas._input(InputEventMouseMotion.new())
+	assert_eq(canvas._dragged_from, &"", "ended once it is not")
+	# Here Godot itself was never drawing a line, since the drag was only
+	# signalled, so ending it makes Godot say so. In the editor it is drawing.
+	assert_engine_error("connecting", "Godot had no line of its own to end")

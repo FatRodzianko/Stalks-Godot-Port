@@ -489,6 +489,11 @@ removes it. Adding an item to a book with none of its kind yet no longer fails
 in the editor. Six more scene-tree tests (45) and one more core test (28).
 Undo stays in Phase 4.
 
+**After the third manual run (D228):** the line being dragged runs from the
+dot pressed to the mouse on a scrolled chart too, and ends on the dot under the
+mouse; a drag whose button release was lost ends when the mouse moves. Three
+more tests; the file has 48.
+
 The plan as written:
 
 - **+ New news item** for all five kinds.

@@ -2880,7 +2880,7 @@ match.
   edit in the Inspector instead.
 - **Second run, after the fixes: every step passed.**
 
-### AA - The News Flow tab: creating, editing and linking (decisions.md D225, D226, D227) — **two runs 2026-11-27, with findings; third run not yet done**
+### AA - The News Flow tab: creating, editing and linking (decisions.md D225-D228) — **three runs 2026-11-27, with findings; fourth run not yet done**
 
 **The first run** passed linking, the loop, editing, naming, saving and putting
 the books back. Its findings, each changed in D226:
@@ -2906,12 +2906,17 @@ each changed in D227:
   in read-only state" and "Cannot call method 'get' on a null value";
 - an arrow could not be selected and deleted with the Delete key.
 
-The steps below are rewritten for the third run.
+**The third run** stopped at drawing the arrows. The line being dragged ran
+from the side of one box to the side of the other, nowhere near the mouse, and
+after a screenshot taken mid-drag it stayed stuck to the mouse until the next
+click. Both are changed in D228.
+
+The steps below are rewritten for the fourth run.
 
 One machine, the **editor**. Needs a checkout that has
-`addons/news_flow_chart/ui/news_chart_canvas.gd` containing `arrow_drawn`. This builds a chain of five
+`addons/news_flow_chart/ui/news_chart_canvas.gd` containing `_dot_of`. This builds a chain of five
 throwaway items in the real books, saves it, checks it survives closing the
-editor, and then puts the books back with git (steps 88-92). **Save any work in
+editor, and then puts the books back with git (steps 91-95). **Save any work in
 open scenes before you start.**
 
 **Make five items**
@@ -2949,89 +2954,92 @@ open scenes before you start.**
 
 **Draw the arrows**
 
-31. Press and hold on the dot at the bottom middle of the **Market news** box.
-32. Still holding, move the mouse to the **Industry headline** box.
-33. Check a line runs from the dot you pressed to the mouse, with its head at the mouse.
-34. Let go on the dot at the top middle of the **Industry headline** box.
-35. Check an arrow appears from the bottom of the **Market news** box to the top of the **Industry headline** box, its head pointing down.
-36. Press on the dot at the **top** middle of the **Market news** box, drag into the middle of the `test three` box, and let go. The box pressed first is the one required, whichever of its dots you press and wherever on the other box you let go.
-37. Check an arrow runs from the **Market news** box down to `test three`.
-38. Press on the **Industry headline** box's bottom dot, drag to the **bottom** dot of the `test four` box, and let go.
-39. Press on the **Industry headline** box's top dot, drag onto the `test five` box, and let go.
-40. Click **Arrange**.
-41. Check the chart is a tree: the market box at the top; `test three` and the industry headline side by side below it; `test four` and `test five` side by side below the industry headline, centered under it and not under `test three`; every arrowhead pointing down.
-42. Check **Chains** on the left lists `mkt_bear_crash_3`.
+31. Over an empty part of the chart, press and hold the **middle** mouse button (the wheel), move the mouse a little to the left, and let go. The whole chart slides: it is now scrolled.
+32. Press and hold on the dot at the bottom middle of the **Market news** box.
+33. Still holding, move the mouse to an empty part of the chart.
+34. Check a line runs from the dot you pressed to the mouse, with its head at the mouse.
+35. Still holding, move the mouse onto the dot at the top middle of the **Industry headline** box.
+36. Check the line now ends on that top dot, not on the side of the box.
+37. Let go.
+38. Check an arrow appears from the bottom of the **Market news** box to the top of the **Industry headline** box, its head pointing down.
+39. Press on the dot at the **top** middle of the **Market news** box, drag into the middle of the `test three` box, and let go. The box pressed first is the one required, whichever of its dots you press and wherever on the other box you let go.
+40. Check an arrow runs from the **Market news** box down to `test three`.
+41. Press on the **Industry headline** box's bottom dot, drag to the **bottom** dot of the `test four` box, and let go.
+42. Press on the **Industry headline** box's top dot, drag onto the `test five` box, and let go.
+43. Click **Arrange**.
+44. Check the chart is a tree: the market box at the top; `test three` and the industry headline side by side below it; `test four` and `test five` side by side below the industry headline, centered under it and not under `test three`; every arrowhead pointing down.
+45. Check **Chains** on the left lists `mkt_bear_crash_3`.
 
 **A loop is refused**
 
-43. Press on the `test five` box's bottom dot, drag onto the **Market news** box, and let go.
-44. Check no arrow appears and the toolbar says it would make a loop.
+46. Press on the `test five` box's bottom dot, drag onto the **Market news** box, and let go.
+47. Check no arrow appears and the toolbar says it would make a loop.
 
 **Edit and remove**
 
-45. Click the `test four` box.
-46. Check **Requires** on the right lists the industry headline's id with a **Remove** button.
-47. Click in its **Text** box and add ` edited` to the end.
-48. Check the box on the chart shows `test four edited` as you type.
-49. Click **Add a requirement...** under **Requires** and pick `mkt_bear_crash_3`.
-50. Check a second arrow now runs from the market box to `test four`.
-51. Click on the arrow from the market box to `test four`, on the line itself.
-52. Check that arrow is drawn highlighted.
-53. Press **Delete**.
-54. Check that arrow is gone, the one from the industry headline stays, and **Requires** for `test four` lists only the industry headline.
+48. Click the `test four` box.
+49. Check **Requires** on the right lists the industry headline's id with a **Remove** button.
+50. Click in its **Text** box and add ` edited` to the end.
+51. Check the box on the chart shows `test four edited` as you type.
+52. Click **Add a requirement...** under **Requires** and pick `mkt_bear_crash_3`.
+53. Check a second arrow now runs from the market box to `test four`.
+54. Click on the arrow from the market box to `test four`, on the line itself.
+55. Check that arrow is drawn highlighted.
+56. Press **Delete**.
+57. Check that arrow is gone, the one from the industry headline stays, and **Requires** for `test four` lists only the industry headline.
 
 **Name and save**
 
-55. Click `mkt_bear_crash_3` under **Chains**.
-56. Click the **Chain name** box in the toolbar, delete what is there, and type `Test chain`.
-57. Click **Rename chain**.
-58. Check **Chains** now reads **Test chain**, and the toolbar adds **news_chains.cfg** to the unsaved files.
-59. Click an empty part of the chart, then press **Ctrl+S**.
-60. Check the toolbar reads **Saved.** with nothing unsaved, and the bottom reads **Problems: none**.
-61. Click the `test five` box.
-62. Click at the end of its **Text** box and type ` again`.
-63. Click **Scene** in the menu bar, then **Quit**.
-64. Check the editor asks whether to save the News Flow tab's changes to the news books.
-65. Click **Cancel**, so the editor stays open.
-66. Click **Save** in the tab's toolbar.
-67. Check the toolbar reads **Saved.**
+58. Click `mkt_bear_crash_3` under **Chains**.
+59. Click the **Chain name** box in the toolbar, delete what is there, and type `Test chain`.
+60. Click **Rename chain**.
+61. Check **Chains** now reads **Test chain**, and the toolbar adds **news_chains.cfg** to the unsaved files.
+62. Click an empty part of the chart, then press **Ctrl+S**.
+63. Check the toolbar reads **Saved.** with nothing unsaved, and the bottom reads **Problems: none**.
+64. Click the `test five` box.
+65. Click at the end of its **Text** box and type ` again`.
+66. Click **Scene** in the menu bar, then **Quit**.
+67. Check the editor asks whether to save the News Flow tab's changes to the news books.
+68. Click **Cancel**, so the editor stays open.
+69. Click **Save** in the tab's toolbar.
+70. Check the toolbar reads **Saved.**
 
 **Close and reopen**
 
-68. Click **Scene**, then **Quit**. It should close without asking about the news.
-69. Open the project again.
-70. Click **News Flow**, then **Test chain** under **Chains**.
-71. Check the five boxes and the four arrows are as in step 41, with `test four edited` and `test five again`.
-72. In PowerShell, in the project folder, run `git diff src/data/news | Select-String "uid="`.
-73. Check it prints nothing: the books kept their `uid` lines.
+71. Click **Scene**, then **Quit**. It should close without asking about the news.
+72. Open the project again.
+73. Click **News Flow**, then **Test chain** under **Chains**.
+74. Check the five boxes and the four arrows are as in step 44, with `test four edited` and `test five again`.
+75. In PowerShell, in the project folder, run `git diff src/data/news | Select-String "uid="`.
+76. Check it prints nothing: the books kept their `uid` lines.
 
 **Drag one in from the list**
 
-74. In the news item list on the left, press and hold on any item that is not one of the five test items.
-75. Still holding the button, move the mouse onto an empty part of the chart, and let go.
-76. Check that item's box appears where you let go, and the five test boxes are still there.
-77. Click once on a different item in the news item list, one that is not on the chart.
-78. Check the chart changes to show that item, with its chain if it has one.
+77. In the news item list on the left, press and hold on any item that is not one of the five test items.
+78. Still holding the button, move the mouse onto an empty part of the chart, and let go.
+79. Check that item's box appears where you let go, and the five test boxes are still there.
+80. Click once on a different item in the news item list, one that is not on the chart.
+81. Check the chart changes to show that item, with its chain if it has one.
 
 **An industry headline for any industry**
 
-79. Right-click an empty part of the chart.
-80. Click **New industry headline**.
-81. Leave **Industry Id** at **(any)**. Set **Move** to **Crash**.
-82. Click in the **Text** box and type `test`.
-83. Click **Create**.
-84. Check its box shows **Industry headline**, the id `ind_any_crash_` followed by a number, and `test`, and the toolbar reads **Unsaved: market.tres**.
-85. Click **Output** at the bottom of the editor.
-86. Check it shows no red error about a read-only array.
-87. Click **Save** in the tab's toolbar.
+82. Right-click an empty part of the chart.
+83. Click **New industry headline**.
+84. Leave **Industry Id** at **(any)**. Set **Move** to **Crash**.
+85. Click in the **Text** box and type `test`.
+86. Click **Create**.
+87. Check its box shows **Industry headline**, the id `ind_any_crash_` followed by a number, and `test`, and the toolbar reads **Unsaved: market.tres**.
+88. Click **Output** at the bottom of the editor.
+89. Check it shows no red error about a read-only array.
+90. Click **Save** in the tab's toolbar.
 
 **Put it back**
 
-88. In the editor, click **Scene**, then **Quit**. It should close without asking about the news.
-89. In PowerShell, in the project folder, run `git checkout -- src/data/news`.
-90. Run `Remove-Item src/data/news_chains.cfg`.
-91. Run `git status --short src`.
-92. Check it prints nothing.
+91. In the editor, click **Scene**, then **Quit**. It should close without asking about the news.
+92. In PowerShell, in the project folder, run `git checkout -- src/data/news`.
+93. Run `Remove-Item src/data/news_chains.cfg`.
+94. Run `git status --short src`.
+95. Check it prints nothing.
 
 **Report:** any step that did not match, and anything awkward to do with the
 mouse - dragging an arrow onto a small dot is the part most likely to need work.

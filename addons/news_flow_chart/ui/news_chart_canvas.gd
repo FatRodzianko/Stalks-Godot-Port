@@ -67,6 +67,19 @@ func _ready() -> void:
 	gui_input.connect(_on_gui_input)
 
 
+## Ends a line still being drawn once the mouse moves with its button no longer
+## held. That happens when something else took the button's release, such as a
+## screenshot tool opened mid-drag; Godot would otherwise keep the line on the
+## mouse until the next click (found by hand, D228).
+func _input(event: InputEvent) -> void:
+	var motion: InputEventMouseMotion = event as InputEventMouseMotion
+	if motion == null or _dragged_from.is_empty():
+		return
+	if motion.button_mask & MOUSE_BUTTON_MASK_LEFT == 0:
+		force_connection_drag_end()
+		_on_connection_drag_ended()
+
+
 ## The selected arrow as `[from box, to box]`, or empty.
 func selected_arrow() -> Array[StringName]:
 	if _selected_from.is_empty() or not is_node_connected(_selected_from, 0, _selected_to, 0):
@@ -113,25 +126,26 @@ func _is_in_output_hotzone(in_node: Object, _in_port: int, mouse_position: Vecto
 
 
 ## The points of one connection. Godot hands over the two ports' positions,
-## which are `(box offset + port position) * zoom`; the boxes they belong to
-## are found from those, and the arrow drawn between their bottom and top.
-## A connection still being dragged runs from the dot pressed to the mouse,
-## with its head at the mouse.
+## which for a finished arrow are `(box offset + port position) * zoom`; the
+## boxes they belong to are found from those, and the arrow drawn between their
+## bottom and top. The line still being dragged is handled first
+## (`_dragged_line`).
 func _get_connection_line(from_position: Vector2, to_position: Vector2) -> PackedVector2Array:
-	var from_box: GraphNode = _box_with_port(from_position, false)
-	var to_box: GraphNode = _box_with_port(to_position, true)
+	var dragged: PackedVector2Array = _dragged_line(from_position, to_position)
+	if not dragged.is_empty():
+		return dragged
+	var from_box: GraphNode = _box_with_port(from_position, false, Vector2.ZERO)
+	var to_box: GraphNode = _box_with_port(to_position, true, Vector2.ZERO)
 	if from_box != null and to_box != null:
 		var start: Vector2 = (from_box.position_offset + NewsItemBox.bottom_dot(from_box.size)) * zoom
 		var end: Vector2 = (to_box.position_offset + NewsItemBox.top_dot(to_box.size)) * zoom
 		var points: PackedVector2Array = curve_points(start, end, connection_lines_curvature, true)
 		points.append_array(head(end, Vector2.DOWN, zoom))
 		return points
-	return _dragged_line(from_position, to_position, from_box, to_box)
+	var plain: PackedVector2Array = PackedVector2Array([from_position, to_position])
+	plain.append_array(head(to_position, _direction(from_position, to_position), zoom))
+	return plain
 
-
-## A curve from `start` to `end` that leaves and arrives straight: downwards
-## when `downwards`, else sideways, as `GraphEdit` draws by default. Bent by
-## `curvature`.
 static func curve_points(start: Vector2, end: Vector2, curvature: float, downwards: bool) -> PackedVector2Array:
 	if curvature <= 0.0:
 		return PackedVector2Array([start, end])
@@ -152,36 +166,58 @@ static func head(tip: Vector2, direction: Vector2, scale: float) -> PackedVector
 	return PackedVector2Array([tip + back + side, tip, tip + back - side])
 
 
-## The line being dragged: one end is the port of the box pressed, the other
-## the mouse. It is drawn from that box's dot, the one pressed, to the mouse,
-## with the head at the mouse, since the box pressed is the one required.
-func _dragged_line(
-	from_position: Vector2,
-	to_position: Vector2,
-	from_box: GraphNode,
-	to_box: GraphNode,
-) -> PackedVector2Array:
-	var pressed: GraphNode = from_box
-	var port: Vector2 = from_position
-	var mouse: Vector2 = to_position
+## The line being dragged, or nothing when no line is being dragged or these
+## two points are not it. It is drawn from the dot pressed to the mouse, head
+## at the mouse, since the box pressed is the one required. When the mouse is
+## over a dot Godot would join, Godot hands over that box's side dot instead of
+## the mouse, and the line ends on the matching top or bottom dot.
+##
+## Godot hands the dragged line over in a different space from a finished
+## arrow: shifted by the scroll, `(box offset + port position) * zoom - scroll`.
+## Both are tried. (Found by hand: once the chart had been scrolled, the line
+## was drawn from side dot to side dot, D228.)
+func _dragged_line(from_position: Vector2, to_position: Vector2) -> PackedVector2Array:
+	if _dragged_from.is_empty():
+		return PackedVector2Array()
+	var pressed: GraphNode = get_node_or_null(NodePath(String(_dragged_from))) as GraphNode
 	if pressed == null:
-		pressed = to_box
-		port = to_position
-		mouse = from_position
-	if pressed == null:
-		var plain: PackedVector2Array = PackedVector2Array([from_position, to_position])
-		plain.append_array(head(to_position, _direction(from_position, to_position), zoom))
-		return plain
-	var own_port: Vector2 = pressed.get_output_port_position(0)
-	if pressed == to_box:
-		own_port = pressed.get_input_port_position(0)
-	var dot: Vector2 = NewsItemBox.top_dot(pressed.size)
-	if _dragged_from_bottom:
-		dot = NewsItemBox.bottom_dot(pressed.size)
-	var start: Vector2 = port + (dot - own_port) * zoom
-	var line: PackedVector2Array = PackedVector2Array([start, mouse])
-	line.append_array(head(mouse, _direction(start, mouse), zoom))
-	return line
+		return PackedVector2Array()
+	for shift: Vector2 in [-scroll_offset, Vector2.ZERO]:
+		var other_end: Vector2 = from_position
+		if _port_of(pressed, not _dragged_from_bottom, shift).distance_to(from_position) <= PORT_MATCH_DISTANCE:
+			other_end = to_position
+		elif _port_of(pressed, not _dragged_from_bottom, shift).distance_to(to_position) > PORT_MATCH_DISTANCE:
+			continue
+		var start: Vector2 = _dot_of(pressed, _dragged_from_bottom, shift)
+		var end: Vector2 = other_end
+		var target: GraphNode = _box_with_port(other_end, _dragged_from_bottom, shift)
+		if target != null and target != pressed:
+			if is_node_connected(pressed.name, 0, target.name, 0) or is_node_connected(target.name, 0, pressed.name, 0):
+				# Not the dragged line: a finished arrow between the same two boxes.
+				return PackedVector2Array()
+			end = _dot_of(target, not _dragged_from_bottom, shift)
+		var line: PackedVector2Array = PackedVector2Array([start, end])
+		line.append_array(head(end, _direction(start, end), zoom))
+		return line
+	return PackedVector2Array()
+
+
+## Where Godot's side dot of `box` is: the left (incoming) one when
+## `is_input`, in the space shifted by `shift`.
+func _port_of(box: GraphNode, is_input: bool, shift: Vector2) -> Vector2:
+	var port: Vector2 = box.get_output_port_position(0)
+	if is_input:
+		port = box.get_input_port_position(0)
+	return (box.position_offset + port) * zoom + shift
+
+
+## Where the tool's own dot of `box` is: the bottom one when `bottom`, else the
+## top one, in the space shifted by `shift`.
+func _dot_of(box: GraphNode, bottom: bool, shift: Vector2) -> Vector2:
+	var dot: Vector2 = NewsItemBox.top_dot(box.size)
+	if bottom:
+		dot = NewsItemBox.bottom_dot(box.size)
+	return (box.position_offset + dot) * zoom + shift
 
 
 static func _direction(start: Vector2, end: Vector2) -> Vector2:
@@ -198,15 +234,14 @@ func _is_near_dot(box: GraphNode, dot: Vector2, mouse_position: Vector2) -> bool
 	return dot_at.distance_to(mouse_position) <= DOT_REACH / zoom
 
 
-func _box_with_port(at: Vector2, is_input: bool) -> GraphNode:
+## The box whose side dot, the incoming one when `is_input`, is at `at` in the
+## space shifted by `shift`; null when none is.
+func _box_with_port(at: Vector2, is_input: bool, shift: Vector2) -> GraphNode:
 	for child: Node in get_children():
 		var box: GraphNode = child as GraphNode
 		if box == null or box.get_input_port_count() == 0:
 			continue
-		var port: Vector2 = box.get_output_port_position(0)
-		if is_input:
-			port = box.get_input_port_position(0)
-		if ((box.position_offset + port) * zoom).distance_to(at) <= PORT_MATCH_DISTANCE:
+		if _port_of(box, is_input, shift).distance_to(at) <= PORT_MATCH_DISTANCE:
 			return box
 	return null
 

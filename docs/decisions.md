@@ -8488,3 +8488,30 @@ item, and stay there.
 
 **Rules out:** dots on the sides; a dot that decides an arrow's direction by
 being an input or an output; removing an arrow by dragging it off a dot.
+
+### D228 - The News Flow tab's dragged line: found in Godot's scrolled space, ended when its release is lost
+
+The third run of manual section AA stopped at drawing the arrows, on two faults
+in the line that follows the mouse while an arrow is drawn (D227).
+
+- **The line ran from side dot to side dot once the chart was scrolled.**
+  Godot hands `_get_connection_line` a finished arrow's ends as
+  `(box offset + side dot) * zoom`, but the line being dragged as that minus
+  the scroll offset. The canvas only knew the first, so on a scrolled chart it
+  did not recognise the box the drag started on, and drew Godot's own line
+  between the side dots. `NewsChartCanvas._dragged_line` now tries both, finds
+  the box pressed by name (it is noted when the drag starts), and draws from
+  the dot pressed. When the mouse is over a dot Godot would join, Godot puts
+  the loose end on that box's side dot; the line ends on the matching top or
+  bottom dot instead. The headless tests had all run unscrolled, which is why
+  none caught it; two now scroll the chart first.
+- **The line stuck to the mouse after a screenshot taken mid-drag.** The
+  screenshot tool took the mouse button's release, so Godot never heard the
+  drag end and kept drawing it until the next click. The canvas now ends a
+  drag (`GraphEdit.force_connection_drag_end`) as soon as the mouse moves with
+  the left button no longer held. Godot has no other way to learn the button
+  came up.
+
+**Not changed:** the books, the game, the golden history hash.
+
+**Rules out:** assuming Godot passes every connection line in the same space.
