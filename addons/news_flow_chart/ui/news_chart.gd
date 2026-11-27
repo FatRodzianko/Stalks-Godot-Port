@@ -8,8 +8,10 @@ extends VBoxContainer
 ## name and **Rename chain**, **Save**, and a status line); on the left the
 ## chains and a searchable list of every news item; in the middle a
 ## `NewsChartCanvas` with one `NewsItemBox` per item shown and an arrow for
-## each `requires`; on the right the `NewsDetailsPanel` for the clicked box;
-## along the bottom the Problems strip.
+## each `requires`, laid out top to bottom (`NewsLayout`); on the right the
+## `NewsDetailsPanel` for the clicked box; along the bottom the Problems strip.
+## Right-clicking empty chart offers the same new items as the toolbar, made
+## where the click was.
 ##
 ## **Every change goes through `NewsBookEditor`** (Phase 1), which edits the
 ## books in memory and remembers which it changed. Nothing reaches a file
@@ -58,6 +60,15 @@ var _shown: Array[StringName] = []
 var _selected_id: StringName = &""
 ## A new item being filled in before **Create**, or null.
 var _draft: Resource = null
+## Where the draft's box goes, in chart coordinates, when it was started by a
+## right-click; otherwise it goes where it covers nothing.
+var _draft_place: Vector2 = Vector2.ZERO
+var _draft_has_place: bool = false
+## True from the moment an item is dragged out of the news item list until the
+## next press on it, so letting go of a drag is not taken for a click.
+var _dragged_from_list: bool = false
+## New boxes still to be given a place once their size is known.
+var _waiting_for_a_place: Array[StringName] = []
 var _problems: Array[String] = []
 var _name_problems: Array[String] = []
 var _message: String = ""
@@ -72,6 +83,7 @@ var _message: String = ""
 @onready var _search_box: LineEdit = %SearchBox
 @onready var _news_item_list: ItemList = %NewsItemList
 @onready var _chart: NewsChartCanvas = %Chart
+@onready var _create_menu: PopupMenu = %CreateMenu
 @onready var _details_panel: NewsDetailsPanel = %DetailsPanel
 @onready var _problems_label: Label = %ProblemsLabel
 
@@ -81,12 +93,20 @@ func _ready() -> void:
 	for kind: NewsKind.Value in NewsKind.ALL:
 		menu.add_item(NewsKind.display_name(kind), kind)
 	menu.id_pressed.connect(_on_new_item_menu_id_pressed)
+	for kind: NewsKind.Value in NewsKind.ALL:
+		_create_menu.add_item("New %s" % NewsKind.display_name(kind).to_lower(), kind)
+	_create_menu.id_pressed.connect(_on_create_menu_id_pressed)
+	_chart.popup_request.connect(_on_chart_popup_request)
 	_arrange_button.pressed.connect(arrange)
 	_rename_button.pressed.connect(_on_rename_button_pressed)
 	_save_button.pressed.connect(_on_save_button_pressed)
 	_chain_list.item_selected.connect(_on_chain_list_item_selected)
 	_search_box.text_changed.connect(_on_search_box_text_changed)
-	_news_item_list.item_selected.connect(_on_news_item_list_item_selected)
+	# A click opens an item when the button is let go, not when it is pressed:
+	# pressing is also how a drag onto the chart starts, and opening the item
+	# at once would replace the chart it was to be dropped on.
+	_news_item_list.gui_input.connect(_on_news_item_list_gui_input)
+	_news_item_list.item_activated.connect(_on_news_item_list_item_activated)
 	_news_item_list.set_drag_forwarding(_news_item_drag_data, Callable(), Callable())
 	_chart.set_drag_forwarding(Callable(), _can_drop_on_chart, _drop_on_chart)
 	_chart.node_selected.connect(_on_chart_node_selected)
@@ -176,29 +196,27 @@ func choose_item(id: StringName) -> void:
 func add_to_chart(id: StringName, at_offset: Vector2) -> void:
 	if not _graph.has(id):
 		return
-	if not _shown.has(id):
+	if _shown.has(id):
+		box_for(id).position_offset = at_offset
+	else:
 		var ids: Array[StringName] = _shown.duplicate()
 		ids.append(id)
-		_show_ids(ids, false)
-	box_for(id).position_offset = at_offset
+		_show_ids(ids, false, {id: at_offset} as Dictionary[StringName, Vector2])
 	_select_box(id)
 
 
-## Lays every box out again, left to right, whatever is selected. What the
-## **Arrange** button does. `arrange_nodes` moves only the selected boxes when
-## any are selected, so the selection is put aside while it runs. (GraphEdit's
-## own arrange button, which does just that, is hidden in the scene: two
-## buttons that behave differently would be one too many.)
+## Lays every box out again, top to bottom (`NewsLayout`), whatever is
+## selected. What the **Arrange** button does. (GraphEdit's own arrange button,
+## which lays out left to right and only the selected boxes, is hidden in the
+## scene.)
 func arrange() -> void:
-	var was_selected: Array[NewsItemBox] = []
 	_shrink_boxes()
+	var sizes: Dictionary[StringName, Vector2] = {}
 	for box: NewsItemBox in boxes():
-		if box.selected:
-			was_selected.append(box)
-			box.selected = false
-	_chart.arrange_nodes()
-	for box: NewsItemBox in was_selected:
-		box.selected = true
+		sizes[box.item_id] = box.size
+	var places: Dictionary[StringName, Vector2] = NewsLayout.positions(NewsLayout.rows(_graph, _shown), sizes)
+	for box: NewsItemBox in boxes():
+		box.position_offset = places.get(box.item_id, box.position_offset)
 
 
 ## Narrows the news item list to items whose id or words contain `text`.
@@ -211,11 +229,16 @@ func search(text: String) -> void:
 
 
 ## Opens the details panel on a new, empty item of `kind`. It is made when
-## **Create** is clicked (`create_draft`).
-func start_new_item(kind: NewsKind.Value) -> void:
+## **Create** is clicked (`create_draft`). Its box goes at `place` (chart
+## coordinates) when one is given, as for a right-click; otherwise where it
+## covers nothing.
+func start_new_item(kind: NewsKind.Value, place: Variant = null) -> void:
 	_deselect_boxes()
 	_selected_id = &""
 	_draft = NewsKind.make(kind)
+	_draft_has_place = place is Vector2
+	if _draft_has_place:
+		_draft_place = place
 	_show_details()
 
 
@@ -233,7 +256,11 @@ func create_draft() -> void:
 	_after_edit(before)
 	var ids: Array[StringName] = _shown.duplicate()
 	ids.append(id)
-	_show_ids(ids, ids.size() == 1)
+	var places: Dictionary[StringName, Vector2] = {}
+	if _draft_has_place:
+		places[id] = _draft_place
+	_draft_has_place = false
+	_show_ids(ids, false, places)
 	_select_box(id)
 	_set_message("Created %s." % id)
 
@@ -422,11 +449,16 @@ func _after_edit(before: NewsGraph) -> void:
 	_show_status()
 
 
-## Puts these boxes on the chart and the arrows between them. Boxes already
-## on the chart keep their place; with `arrange_after`, everything is laid out
-## afresh.
-func _show_ids(ids: Array[StringName], arrange_after: bool) -> void:
-	var places: Dictionary[StringName, Vector2] = {}
+## Puts these boxes on the chart and the arrows between them. With
+## `arrange_after`, everything is laid out afresh. Otherwise boxes already on
+## the chart keep their place, a box in `new_places` goes there, and any other
+## new box goes where it covers nothing (`NewsLayout.free_spot`).
+func _show_ids(
+	ids: Array[StringName],
+	arrange_after: bool,
+	new_places: Dictionary[StringName, Vector2] = {},
+) -> void:
+	var places: Dictionary[StringName, Vector2] = new_places.duplicate()
 	for box: NewsItemBox in boxes():
 		places[box.item_id] = box.position_offset
 	_chart.clear_connections()
@@ -440,6 +472,8 @@ func _show_ids(ids: Array[StringName], arrange_after: bool) -> void:
 		_chart.add_child(box)
 		box.show_item(_graph.line(id))
 		box.position_offset = places.get(id, Vector2.ZERO)
+		if not places.has(id):
+			_waiting_for_a_place.append(id)
 	for id: StringName in _shown:
 		for required: StringName in _graph.requires_of(id):
 			if _shown.has(required):
@@ -451,9 +485,25 @@ func _show_ids(ids: Array[StringName], arrange_after: bool) -> void:
 	# The boxes only know their size once the containers have sorted them,
 	# which happens later this frame.
 	if arrange_after:
+		_waiting_for_a_place.clear()
 		arrange.call_deferred()
 	else:
-		_shrink_boxes.call_deferred()
+		_settle_boxes.call_deferred()
+
+
+## Once the boxes know their sizes: shrinks them, then puts each new box that
+## has no place yet where it covers nothing.
+func _settle_boxes() -> void:
+	_shrink_boxes()
+	var taken: Array[Rect2] = []
+	for box: NewsItemBox in boxes():
+		if not _waiting_for_a_place.has(box.item_id):
+			taken.append(Rect2(box.position_offset, box.size))
+	for box: NewsItemBox in boxes():
+		if _waiting_for_a_place.has(box.item_id):
+			box.position_offset = NewsLayout.free_spot(taken)
+			taken.append(Rect2(box.position_offset, box.size))
+	_waiting_for_a_place.clear()
 
 
 ## Shrinks each box to what its contents need. Its labels wrap, and before the
@@ -592,6 +642,7 @@ func _news_item_drag_data(at_position: Vector2) -> Variant:
 	if index < 0:
 		return null
 	var id: StringName = _news_item_list.get_item_metadata(index)
+	_dragged_from_list = true
 	var preview: Label = Label.new()
 	preview.text = String(id)
 	_news_item_list.set_drag_preview(preview)
@@ -627,8 +678,36 @@ func _on_search_box_text_changed(_new_text: String) -> void:
 	_fill_news_item_list()
 
 
-func _on_news_item_list_item_selected(index: int) -> void:
+## A click on the list: on the press, forget any earlier drag; on the
+## release, open the item under the mouse, unless the press became a drag.
+func _on_news_item_list_gui_input(event: InputEvent) -> void:
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click == null or click.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if click.pressed:
+		_dragged_from_list = false
+		return
+	if _dragged_from_list:
+		return
+	var index: int = _news_item_list.get_item_at_position(click.position, true)
+	if index >= 0:
+		choose_item(_news_item_list.get_item_metadata(index))
+
+
+func _on_news_item_list_item_activated(index: int) -> void:
 	choose_item(_news_item_list.get_item_metadata(index))
+
+
+## A right-click on empty chart: offer the new items, to be made there.
+func _on_chart_popup_request(at_position: Vector2) -> void:
+	_create_menu.set_meta(&"place", (at_position + _chart.scroll_offset) / _chart.zoom)
+	_create_menu.position = Vector2i(_chart.get_screen_position() + at_position)
+	_create_menu.reset_size()
+	_create_menu.popup()
+
+
+func _on_create_menu_id_pressed(id: int) -> void:
+	start_new_item(id as NewsKind.Value, _create_menu.get_meta(&"place", Vector2.ZERO))
 
 
 func _on_chart_node_selected(node: Node) -> void:

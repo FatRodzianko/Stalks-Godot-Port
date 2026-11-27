@@ -2880,13 +2880,27 @@ match.
   edit in the Inspector instead.
 - **Second run, after the fixes: every step passed.**
 
-### AA - The News Flow tab: creating, editing and linking (decisions.md D225) — **not run yet**
+### AA - The News Flow tab: creating, editing and linking (decisions.md D225, D226) — **first run 2026-11-27, with findings; second run not yet done**
 
-One machine, the **editor**. Needs a checkout whose
-`addons/news_flow_chart/ui/details_panel.gd` contains `create_pressed`. This
-builds a chain of five throwaway items in the real books, saves it, checks it
-survives closing the editor, and then puts the books back with git (steps
-60-64). **Save any work in open scenes before you start.**
+**The first run** passed linking, the loop, editing, naming, saving and putting
+the books back. Its findings, each changed in D226:
+
+- creating an item needed a right-click on the chart;
+- an item could not be dragged from the news item list onto the chart;
+- every new box landed on top of the first;
+- chains should read top to bottom, not left to right;
+- step 21 named only market.tres as unsaved, but companies.tres was unsaved
+  too. That was the step's mistake, not the tool's: company news naming one
+  company goes in `companies.tres`, and only company news for **(any)** goes in
+  `market.tres`.
+
+The steps below are rewritten for the second run.
+
+One machine, the **editor**. Needs a checkout that has
+`addons/news_flow_chart/core/news_layout.gd`. This builds a chain of five
+throwaway items in the real books, saves it, checks it survives closing the
+editor, and then puts the books back with git (steps 73-77). **Save any work in
+open scenes before you start.**
 
 **Make five items**
 
@@ -2904,74 +2918,90 @@ survives closing the editor, and then puts the books back with git (steps
 12. Set **Move** to **Down**.
 13. Click in the **Text** box and type `test two`.
 14. Click **Create**.
-15. Check a second box appears, `ind_energy_down_` followed by a number.
-16. Click **+ New news item**, then **Company news**.
-17. Leave **Company Id** at **(any)**. Set **Move** to **Crash**.
-18. Click in the **Text** box and type `test three`.
-19. Click **Create**.
-20. Repeat steps 16-19 twice more, typing `test four` and then `test five`.
-21. Check five boxes are on the chart and the toolbar names **market.tres** and **energy.tres** as unsaved.
-22. Click **Arrange**.
+15. Check a second box appears, `ind_energy_down_` followed by a number, beside the first and not on top of it.
+16. Right-click an empty part of the chart, well below the two boxes.
+17. Check a menu opens listing five new items, **New market news** first.
+18. Click **New company news**.
+19. Leave **Company Id** at **(any)**. Set **Move** to **Crash**.
+20. Click in the **Text** box and type `test three`.
+21. Click **Create**.
+22. Check the `test three` box appears where you right-clicked.
+23. Click **+ New news item**, then **Company news**.
+24. Leave **Company Id** at **(any)**. Set **Move** to **Crash**.
+25. Click in the **Text** box and type `test four`.
+26. Click **Create**.
+27. Repeat steps 23-26, typing `test five`.
+28. Check five boxes are on the chart, none on top of another.
+29. Check the toolbar names **market.tres** and **energy.tres** as unsaved. Not **companies.tres**: company news for **(any)** goes in market.tres; only company news naming one company goes in companies.tres.
+30. Click **Arrange**.
 
 **Draw the arrows**
 
-23. Drag from the dot on the right of the **Market news** box to the dot on the left of the **Industry headline** box, and let go.
-24. Check an arrow appears, its head at the **Industry headline** box.
-25. Drag from the **Market news** box's right dot to the left dot of the `test three` box.
-26. Drag from the **Industry headline** box's right dot to the left dot of the `test four` box.
-27. Drag from the **Industry headline** box's right dot to the left dot of the `test five` box.
-28. Click **Arrange**.
-29. Check the chart reads left to right: market, then industry and `test three`, then `test four` and `test five`.
-30. Check **Chains** on the left lists `mkt_bear_crash_3`.
+31. Drag from the dot on the right of the **Market news** box to the dot on the left of the **Industry headline** box, and let go. (The dots stay on the sides; the arrow is drawn top to bottom once it is made.)
+32. Check an arrow appears from the bottom of the **Market news** box to the top of the **Industry headline** box, its head pointing down.
+33. Drag from the **Market news** box's right dot to the left dot of the `test three` box.
+34. Drag from the **Industry headline** box's right dot to the left dot of the `test four` box.
+35. Drag from the **Industry headline** box's right dot to the left dot of the `test five` box.
+36. Click **Arrange**.
+37. Check the chart reads top to bottom: market at the top, industry and `test three` below it, `test four` and `test five` at the bottom, every arrowhead pointing down.
+38. Check **Chains** on the left lists `mkt_bear_crash_3`.
 
 **A loop is refused**
 
-31. Drag from the `test five` box's right dot to the **Market news** box's left dot.
-32. Check no arrow appears and the toolbar says it would make a loop.
+39. Drag from the `test five` box's right dot to the **Market news** box's left dot.
+40. Check no arrow appears and the toolbar says it would make a loop.
 
 **Edit and remove**
 
-33. Click the `test four` box.
-34. Check **Requires** on the right lists the industry headline's id with a **Remove** button.
-35. Click in its **Text** box and add ` edited` to the end.
-36. Check the box on the chart shows `test four edited` as you type.
-37. Click **Add a requirement...** under **Requires** and pick `mkt_bear_crash_3`.
-38. Check a second arrow now runs from the market box to `test four`.
-39. Click **Remove** beside `mkt_bear_crash_3`.
-40. Check that arrow is gone and the one from the industry headline stays.
+41. Click the `test four` box.
+42. Check **Requires** on the right lists the industry headline's id with a **Remove** button.
+43. Click in its **Text** box and add ` edited` to the end.
+44. Check the box on the chart shows `test four edited` as you type.
+45. Click **Add a requirement...** under **Requires** and pick `mkt_bear_crash_3`.
+46. Check a second arrow now runs from the market box to `test four`.
+47. Click **Remove** beside `mkt_bear_crash_3`.
+48. Check that arrow is gone and the one from the industry headline stays.
 
 **Name and save**
 
-41. Click `mkt_bear_crash_3` under **Chains**.
-42. Click the **Chain name** box in the toolbar, delete what is there, and type `Test chain`.
-43. Click **Rename chain**.
-44. Check **Chains** now reads **Test chain**, and the toolbar adds **news_chains.cfg** to the unsaved files.
-45. Click an empty part of the chart, then press **Ctrl+S**.
-46. Check the toolbar reads **Saved.** with nothing unsaved, and the bottom reads **Problems: none**.
-47. Click the `test five` box.
-48. Click at the end of its **Text** box and type ` again`.
-49. Click **Scene** in the menu bar, then **Quit**.
-50. Check the editor asks whether to save the News Flow tab's changes to the news books.
-51. Click **Cancel**, so the editor stays open.
-52. Click **Save** in the tab's toolbar.
-53. Check the toolbar reads **Saved.**
+49. Click `mkt_bear_crash_3` under **Chains**.
+50. Click the **Chain name** box in the toolbar, delete what is there, and type `Test chain`.
+51. Click **Rename chain**.
+52. Check **Chains** now reads **Test chain**, and the toolbar adds **news_chains.cfg** to the unsaved files.
+53. Click an empty part of the chart, then press **Ctrl+S**.
+54. Check the toolbar reads **Saved.** with nothing unsaved, and the bottom reads **Problems: none**.
+55. Click the `test five` box.
+56. Click at the end of its **Text** box and type ` again`.
+57. Click **Scene** in the menu bar, then **Quit**.
+58. Check the editor asks whether to save the News Flow tab's changes to the news books.
+59. Click **Cancel**, so the editor stays open.
+60. Click **Save** in the tab's toolbar.
+61. Check the toolbar reads **Saved.**
 
 **Close and reopen**
 
-54. Click **Scene**, then **Quit**. It should close without asking about the news.
-55. Open the project again.
-56. Click **News Flow**, then **Test chain** under **Chains**.
-57. Check the five boxes and the four arrows are as in step 29, with `test four edited` and `test five again`.
-58. In PowerShell, in the project folder, run `git diff src/data/news | Select-String "uid="`.
-59. Check it prints nothing: the books kept their `uid` lines.
+62. Click **Scene**, then **Quit**. It should close without asking about the news.
+63. Open the project again.
+64. Click **News Flow**, then **Test chain** under **Chains**.
+65. Check the five boxes and the four arrows are as in step 37, with `test four edited` and `test five again`.
+66. In PowerShell, in the project folder, run `git diff src/data/news | Select-String "uid="`.
+67. Check it prints nothing: the books kept their `uid` lines.
+
+**Drag one in from the list**
+
+68. In the news item list on the left, press and hold on any item that is not one of the five test items.
+69. Still holding the button, move the mouse onto an empty part of the chart, and let go.
+70. Check that item's box appears where you let go, and the five test boxes are still there.
+71. Click once on a different item in the news item list, one that is not on the chart.
+72. Check the chart changes to show that item, with its chain if it has one.
 
 **Put it back**
 
-60. In the editor, click **Scene**, then **Quit**.
-61. In PowerShell, in the project folder, run `git checkout -- src/data/news`.
-62. Run `Remove-Item src/data/news_chains.cfg`.
-63. Run `git status --short src`.
-64. Check it prints nothing.
+73. In the editor, click **Scene**, then **Quit**. It should close without asking about the news: putting a box on the chart changes no book.
+74. In PowerShell, in the project folder, run `git checkout -- src/data/news`.
+75. Run `Remove-Item src/data/news_chains.cfg`.
+76. Run `git status --short src`.
+77. Check it prints nothing.
 
 **Report:** any step that did not match, and anything awkward to do with the
 mouse - dragging an arrow onto a small dot is the part most likely to need work.

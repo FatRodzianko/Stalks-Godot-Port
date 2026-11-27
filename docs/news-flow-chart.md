@@ -312,11 +312,12 @@ addons/news_flow_chart/
     news_field_choices.gd     what each dropdown lists
     news_item_summary.gd      what a box and the details panel show (Phase 2)
     news_problems.gd          the Problems strip: runs the check, filters to news (Phase 2)
+    news_layout.gd            Arrange, top to bottom; where a new box goes (D226)
   check/
     write_news_problems.gd    the validator, run headless in a process of its own (Phase 2)
   ui/                         Control scenes, testable in GUT's scene tree
     news_chart.tscn / .gd     the whole tab: lists, GraphEdit chart, details, Problems
-    news_chart_canvas.gd      the GraphEdit, with an arrowhead on every arrow
+    news_chart_canvas.gd      the GraphEdit; arrows drawn top to bottom, with heads
     news_item_box.tscn / .gd  one GraphNode (box)
     details_panel.tscn / .gd  every field of the selected item
     delete_confirm.tscn / .gd
@@ -470,6 +471,13 @@ The plan as written:
 - Typing in a text field changes the item at once and updates its box, without
   redrawing the panel, so the text box keeps the cursor.
 - 18 new tests in `test_news_flow_chart_ui.gd`, which now has 33.
+
+**After the first manual run (D226):** chains read top to bottom, with
+**Arrange** done by `core/news_layout.gd` and arrows drawn from the bottom of
+one box into the top of the next. A right-click on empty chart makes a new
+item there. A new box goes beside everything rather than on top of the first.
+An item in the news item list opens when the mouse button is let go, so it can
+be dragged onto the chart. Six more tests; the file has 39.
 
 The plan as written:
 

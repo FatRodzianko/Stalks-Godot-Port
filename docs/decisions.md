@@ -8391,3 +8391,42 @@ change only when the person using the tool saves.
 
 **Rules out:** saving on every edit; reloading the books over unsaved changes;
 loading the full content library inside the editor.
+
+### D226 - The News Flow tab after its first edit run: top to bottom, right-click to create, no box on top of another
+
+The first run of manual section AA (D225) passed its linking, editing, naming
+and saving steps, and turned up four things. Each is changed as follows.
+
+- **Chains read top to bottom.** An item sits one row below the lowest item it
+  requires, and every arrow leaves the bottom middle of one box and points down
+  into the top middle of the next. `GraphEdit.arrange_nodes` can only lay out
+  left to right, so **Arrange** uses the tool's own `core/news_layout.gd`
+  (`NewsLayout`). It is deliberately simple: rows by depth, each row ordered by
+  where its items' requirements sit above it, ties by id, rows centered.
+  `GraphNode` puts its connection dots only on its left and right sides, and
+  that cannot be changed. So **arrows are still drawn with the mouse from the
+  right-hand dot to the left-hand dot**, and `NewsChartCanvas._get_connection_line`
+  draws a finished arrow from bottom to top instead. It finds the two boxes by
+  their dot positions. The line being dragged, which has no box at its loose
+  end yet, is drawn sideways as before.
+- **Right-clicking empty chart offers the five new items** (the same list as
+  **+ New news item**). The new box goes where the right-click was.
+- **A new box covers nothing.** A box made from the toolbar, or put on the
+  chart as the far end of an arrow, goes to the right of everything already
+  there, level with the highest box (`NewsLayout.free_spot`). Before, every new
+  box went to the same spot, on top of the first.
+- **An item in the news item list opens when the mouse button is let go, not
+  when it is pressed.** It used to open on the press. Opening an item replaces
+  the chart with its chain, so that swapped the chart out from under a drag
+  before the drag began, and nothing could be dropped. Letting go after a drag
+  opens nothing. Enter or a double-click still opens the selected item.
+
+One report was not a bug. Company news that names a company goes in that
+company's book, `companies.tres`. Company news for **(any)** goes in
+`market.tres` (D223, `NewsBookRouter`). The manual step said only market.tres,
+which was wrong; it is rewritten.
+
+**Not changed:** the books, the game, the golden history hash.
+
+**Rules out:** Godot's own left-to-right arrange; a box placed over another
+when the chart has room beside it.

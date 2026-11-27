@@ -165,16 +165,47 @@ func test_a_named_chain_shows_its_name_and_a_lost_name_is_a_problem() -> void:
 	assert_string_contains(chart.problems_text(), "\"Lonely\"")
 
 
-func test_choosing_an_item_in_the_list_shows_its_chain_and_selects_its_box() -> void:
+## A left click on the news item list at item `index`: the press, then the
+## release, as the list receives them.
+func _click_list(item_list: ItemList, index: int, release: bool = true) -> void:
+	var at: Vector2 = item_list.get_item_rect(index).get_center()
+	var press: InputEventMouseButton = InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = at
+	item_list.gui_input.emit(press)
+	if not release:
+		return
+	var let_go: InputEventMouseButton = press.duplicate()
+	let_go.pressed = false
+	item_list.gui_input.emit(let_go)
+
+
+func test_clicking_an_item_in_the_list_shows_its_chain_and_selects_its_box() -> void:
 	var chart: NewsChart = _chart()
+	chart.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	chart.size = Vector2(1200, 800)
 	_show(chart, _example())
+	await wait_process_frames(2)
 	var item_list: ItemList = chart.get_node("%NewsItemList")
-	var index: int = Array(chart.news_item_labels()).find("g")
-	item_list.item_selected.emit(index)
+	_click_list(item_list, Array(chart.news_item_labels()).find("g"))
 	assert_eq(_box_ids(chart), PackedStringArray(["f", "g"]))
 	assert_true(chart.box_for(&"g").selected)
-	item_list.item_selected.emit(Array(chart.news_item_labels()).find("h"))
-	assert_eq(_box_ids(chart), PackedStringArray(["h"]), "an item with no arrows is shown on its own")
+	item_list.item_activated.emit(Array(chart.news_item_labels()).find("h"))
+	assert_eq(_box_ids(chart), PackedStringArray(["h"]), "an item with no arrows is shown on its own; Enter too")
+
+
+func test_pressing_on_the_list_changes_nothing_until_the_button_is_let_go() -> void:
+	# Found by hand: opening the item on the press swapped the chart out from
+	# under a drag that was just starting, so nothing could be dropped onto it.
+	var chart: NewsChart = _chart()
+	chart.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	chart.size = Vector2(1200, 800)
+	_show(chart, _example())
+	await wait_process_frames(2)
+	var item_list: ItemList = chart.get_node("%NewsItemList")
+	_click_list(item_list, Array(chart.news_item_labels()).find("h"), false)
+	assert_eq(_box_ids(chart), PackedStringArray(["a", "b", "c", "d", "e"]), "the chain shown stays")
 
 
 func test_a_box_shows_kind_id_conditions_and_the_first_words() -> void:
@@ -222,15 +253,15 @@ func test_the_search_box_narrows_the_list_by_id_or_words() -> void:
 	assert_eq(chart.news_item_labels().size(), 8)
 
 
-func test_arrange_lays_each_follower_out_to_the_right_of_what_it_requires() -> void:
+func test_arrange_lays_each_follower_out_below_what_it_requires() -> void:
 	var chart: NewsChart = _chart()
 	_show(chart, _example())
 	await wait_process_frames(2)
 	chart.arrange()
 	for arrow: PackedStringArray in chart.arrows():
-		var from_x: float = chart.box_for(StringName(arrow[0])).position_offset.x
-		var to_x: float = chart.box_for(StringName(arrow[1])).position_offset.x
-		assert_gt(to_x, from_x, "%s is right of %s" % [arrow[1], arrow[0]])
+		var above: NewsItemBox = chart.box_for(StringName(arrow[0]))
+		var below: NewsItemBox = chart.box_for(StringName(arrow[1]))
+		assert_gt(below.position_offset.y, above.position_offset.y + above.size.y, "%s is below %s" % [arrow[1], arrow[0]])
 
 
 # ------------------------------------------------------------------ details
@@ -327,11 +358,30 @@ func test_arrange_moves_every_box_even_with_one_selected() -> void:
 	moved.position_offset = Vector2(-2000, -2000)
 	moved.selected = true
 	chart.arrange()
-	assert_gt(moved.position_offset.x, chart.box_for(&"b").position_offset.x, "d is back right of b")
+	assert_gt(moved.position_offset.y, chart.box_for(&"b").position_offset.y, "d is back below b")
 	assert_true(moved.selected, "and still selected")
 
 
-func test_every_arrow_has_a_head_at_the_end_that_requires() -> void:
+func test_an_arrow_runs_from_the_bottom_of_one_box_to_the_top_of_the_next_head_down() -> void:
+	var chart: NewsChart = _chart()
+	_show(chart, _example())
+	await wait_process_frames(2)
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	var a: NewsItemBox = chart.box_for(&"a")
+	var b: NewsItemBox = chart.box_for(&"b")
+	var from_port: Vector2 = (a.position_offset + a.get_output_port_position(0)) * canvas.zoom
+	var to_port: Vector2 = (b.position_offset + b.get_input_port_position(0)) * canvas.zoom
+	var points: PackedVector2Array = canvas._get_connection_line(from_port, to_port)
+	var bottom_of_a: Vector2 = (a.position_offset + Vector2(a.size.x / 2.0, a.size.y)) * canvas.zoom
+	var top_of_b: Vector2 = (b.position_offset + Vector2(b.size.x / 2.0, 0.0)) * canvas.zoom
+	var size: int = points.size()
+	assert_eq(points[0], bottom_of_a, "leaves the bottom middle of the required box")
+	assert_eq(points[size - 2], top_of_b, "the head's point is on the top middle of the box that requires")
+	assert_lt(points[size - 3].y, top_of_b.y, "both barbs above the point: it points down")
+	assert_lt(points[size - 1].y, top_of_b.y)
+
+
+func test_a_line_being_dragged_still_has_a_head() -> void:
 	var canvas: NewsChartCanvas = NewsChartCanvas.new()
 	add_child_autofree(canvas)
 	var from_position: Vector2 = Vector2(0, 0)
@@ -600,3 +650,64 @@ func test_a_requirement_picked_from_off_the_chart_is_put_on_it_with_its_arrow() 
 	assert_not_null(chart.box_for(&"g"), "g is put on the chart")
 	assert_has(chart.arrows(), PackedStringArray(["g", "c"]))
 	assert_true(chart.box_for(&"c").selected, "c stays the one being edited")
+
+
+
+# ------------------------------------------------- after the first run of section AA
+
+
+func test_new_boxes_do_not_cover_one_another() -> void:
+	# Found by hand: every new box appeared at the same spot, on top of the
+	# first.
+	var chart: NewsChart = _chart()
+	_show(chart, _example())
+	var details: NewsDetailsPanel = chart.get_node("%DetailsPanel")
+	for word: String in ["one", "two", "three"]:
+		chart.start_new_item(NewsKind.Value.INDUSTRY)
+		details.field_changed.emit(&"text", word)
+		details.create_pressed.emit()
+		await wait_process_frames(2)
+	var boxes: Array[NewsItemBox] = chart.boxes()
+	assert_eq(boxes.size(), 8, "the chain of five and three new ones")
+	for first: int in boxes.size():
+		for second: int in range(first + 1, boxes.size()):
+			var one: Rect2 = Rect2(boxes[first].position_offset, boxes[first].size)
+			var other: Rect2 = Rect2(boxes[second].position_offset, boxes[second].size)
+			assert_false(one.intersects(other), "%s and %s overlap" % [boxes[first].item_id, boxes[second].item_id])
+
+
+func test_a_right_click_on_the_chart_offers_every_kind_and_makes_it_there() -> void:
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	await wait_process_frames(2)
+	var canvas: GraphEdit = chart.get_node("%Chart")
+	var menu: PopupMenu = chart.get_node("%CreateMenu")
+	assert_eq(menu.item_count, NewsKind.ALL.size())
+	assert_eq(menu.get_item_text(0), "New market news")
+	canvas.popup_request.emit(Vector2(700, 450))
+	menu.id_pressed.emit(NewsKind.Value.WHISPER)
+	var details: NewsDetailsPanel = chart.get_node("%DetailsPanel")
+	assert_eq(details.title_text(), "New whisper")
+	details.field_changed.emit(&"outcome", NewsBands.Surprise.WORSE)
+	details.field_changed.emit(&"text", "Written by the test")
+	details.create_pressed.emit()
+	await wait_process_frames(2)
+	var made: NewsItemBox = chart.box_for(&"whisp_company_worse_1")
+	assert_not_null(made)
+	var expected: Vector2 = (Vector2(700, 450) + canvas.scroll_offset) / canvas.zoom
+	assert_eq(made.position_offset, expected, "where the right-click was")
+	assert_not_null(editor.find(&"whisp_company_worse_1"))
+
+
+func test_rows_put_each_item_below_everything_it_requires() -> void:
+	var lines: Array[Resource] = _example()
+	var graph: NewsGraph = NewsGraph.from_lines(lines)
+	var ids: Array[StringName] = [&"a", &"b", &"c", &"d", &"e", &"h"]
+	var rows: Array[Array] = NewsLayout.rows(graph, ids)
+	assert_eq(rows, [[&"a", &"h"], [&"b", &"c"], [&"d", &"e"]] as Array[Array])
+
+
+func test_a_free_spot_is_right_of_everything_at_the_top() -> void:
+	var taken: Array[Rect2] = [Rect2(0, 100, 200, 50), Rect2(-300, 40, 100, 300)]
+	assert_eq(NewsLayout.free_spot(taken), Vector2(200 + NewsLayout.COLUMN_GAP, 40))
+	assert_eq(NewsLayout.free_spot([] as Array[Rect2]), Vector2.ZERO)
