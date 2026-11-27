@@ -1,0 +1,9 @@
+# Retired StalkleHeads news ids: one per line.
+#
+# When a news line is deleted, its id goes here, so that no new line is ever
+# given the same id. Without this, a follow-up that still required the deleted
+# line would silently follow the new one instead of being reported.
+#
+# The content validator refuses any news line whose id is listed here
+# (ContentLibrary, docs/news-flow-chart.md section 3.3). The News Flow Chart
+# tool adds to this file when it deletes a line. Never remove an id from it.

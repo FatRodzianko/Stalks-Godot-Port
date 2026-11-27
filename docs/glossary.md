@@ -102,6 +102,20 @@ port must support true offline single-player.
 
 ## StalkleHeads terms
 
+**News item** — one entry in a news book: a market news, industry headline,
+company news, whisper or chatter line. The News Flow Chart's word for what the
+other docs call a "news line".
+
+**Chain** — news items joined by `requires`: an arrow from A to B means B can
+only appear once A has appeared in an earlier year. Worked out from the
+`requires` lists, never stored (decisions.md D223).
+
+**Root** — an item in a chain that requires nothing: where the chain starts. A
+chain is called by its first root's id unless it has been given a name.
+
+**Retired id** — the id of a deleted news item, listed in
+`src/data/news_retired_ids.txt` so that no new item is ever given it (D223).
+
 StalkleHeads is a second game mode, being built in phases, in which prices come from
 simulated company earnings rather than random rolls. Its design is
 [stalkleheads-design.md](stalkleheads-design.md). None of these terms means anything

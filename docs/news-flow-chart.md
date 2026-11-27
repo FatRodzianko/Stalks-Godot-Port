@@ -1,7 +1,7 @@
 # News Flow Chart — design and build plan
 
-**Status: agreed with the owner on 2026-11-27; not built.** Nothing here exists in
-the code yet. §6 records the owner's answers that shaped the design.
+**Status: agreed with the owner on 2026-11-27. Phase 1 built (D223); Phases 2-4
+not started.** §6 records the owner's answers that shaped the design.
 
 The News Flow Chart is an editor tool for writing StalkleHeads news as connected
 chains. Take a market headline that leads to an industry headline, which in turn
@@ -63,9 +63,10 @@ third-party dependency for a successor to keep working. Building directly on
    to the first, so this happens once per file. Phase 1 does it on purpose, in a
    commit of its own.
 2. **Saving from a headless script drops each file's `uid` line.** Saving from
-   inside the running editor keeps it. So the tool saves only from the editor. The
-   headless tests save only to throwaway copies under `user://`, never to
-   `src/data/news/`.
+   inside the editor keeps it, and that includes the editor run headless
+   (`<godot> --headless -e`), which is how Phase 1 re-saved the books. So the tool
+   saves only from the editor. The headless tests save only to throwaway copies
+   under `user://`, never to `src/data/news/`.
 3. **The loader reads every `.tres` file in `src/data/news/` and refuses any that
    is not a `NewsBook`.** So anything else the tool writes, such as chain names,
    must live outside that folder.
@@ -295,12 +296,13 @@ addons/news_flow_chart/
   plugin.cfg                  Godot's description of the plugin
   plugin.gd                   EditorPlugin: adds the tab and the inspector plugin
   core/                       pure logic, no editor classes, tested headless
+    news_kind.gd              the five kinds: their list in a book, their name
     news_graph.gd             builds boxes and arrows from NewsContent; chains; loops
-    news_id_maker.gd          the id patterns, numbering, the retired list
+    news_id_maker.gd          the id patterns and numbering
     news_book_router.gd       which book a new item goes into
-    news_book_editor.gd       add, edit, link, unlink and delete items in NewsBook objects
-    chain_names.gd            reads and writes news_chains.cfg; moves a name to a new root
-    field_choices.gd          what each dropdown lists
+    news_book_editor.gd       add, edit, link, unlink and delete items; the retired list
+    news_chain_names.gd       reads and writes news_chains.cfg; moves a name to a new root
+    news_field_choices.gd     what each dropdown lists
   ui/                         Control scenes, testable in GUT's scene tree
     news_chart.tscn / .gd     the GraphEdit chart
     news_item_box.tscn / .gd  one GraphNode (box)
@@ -331,7 +333,27 @@ unchanged. Its documentation is updated, per CLAUDE.md's per-phase gate.
 A probe of the 4.7.2 APIs and of save round-trips, described in §1. Nothing was
 committed.
 
-### Phase 1 — Groundwork, no UI
+### Phase 1 — Groundwork, no UI — **done 2026-11-27** (D223)
+
+**Delivered as planned**, with these details settled while building it:
+
+- The loop finder is `NewsContent.requires_loops`, in `src/data`, because the
+  validator lives there and must not depend on an addon. `NewsGraph.would_loop`
+  is the tool's own check before an arrow is drawn.
+- A sixth core script, `news_kind.gd`, holds what the others need to know about
+  the five kinds.
+- The retired ids are read by `ContentLibrary.read_retired_news_ids`. An exported
+  game carries no `.txt` files, so there the list reads as empty, which only
+  matters while news is being written.
+- Chatter for one trader is named `chat_<trader id>_<situation>_<n>`, and chatter
+  for every trader of a strategy `chat_<strategy>_<situation>_<n>`.
+- The books were re-saved from a headless editor run, which keeps the `uid` lines
+  (§1.1). Every field of every news item was compared before and after: equal.
+- `test_conventions.gd` now scans `addons/news_flow_chart/` as well as `src/`.
+- 31 new tests: 27 in `test_news_flow_chart.gd`, 4 in `test_news.gd`. The suite
+  is 1,477, all passing, the golden history hash unmoved.
+
+The plan as written:
 
 - Validator: refuse a `requires` loop of any length, and refuse a live id that is
   on the retired list. Add `src/data/news_retired_ids.txt`, empty.

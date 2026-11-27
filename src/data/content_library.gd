@@ -25,6 +25,13 @@ const TRADERS_DIR: String = "res://src/data/traders"
 ## `NewsBook`. How lines are split between files is up to whoever writes them.
 const NEWS_DIR: String = "res://src/data/news"
 
+## Ids of news lines that were deleted, one per line, so no new line is ever
+## given one (docs/news-flow-chart.md §3.3). Plain text and outside `NEWS_DIR`,
+## so it is never read as a book. An exported game does not carry `.txt`
+## files, and a missing file reads as no retired ids: the list only matters
+## while news is being written.
+const RETIRED_NEWS_IDS_PATH: String = "res://src/data/news_retired_ids.txt"
+
 ## The short-squeeze template (docs/stalkleheads-design.md §5.3): one event whose
 ## target is filled in at the moment a squeeze fires. Not in `STALKS_DIR`, so the
 ## base game's event pool never sees it.
@@ -57,6 +64,10 @@ var traders: Array[NpcTraderDefinition] = []
 ## StalkleHeads news lines, every category sorted by id, the traders' own
 ## chatter included (`NewsContent.build`). Empty unless `load_fundamentals` ran.
 var news: NewsContent = NewsContent.new()
+
+## Ids no news line may have, read from `RETIRED_NEWS_IDS_PATH` by
+## `load_fundamentals`.
+var retired_news_ids: Array[StringName] = []
 
 ## The StalkleHeads short-squeeze template, or null unless `load_fundamentals`
 ## ran. Its `target_stalk_id` is empty: the squeeze names its own target.
@@ -120,6 +131,7 @@ func load_fundamentals(
 	traders_dir: String = TRADERS_DIR,
 	short_squeeze_path: String = SHORT_SQUEEZE_PATH,
 	news_dir: String = NEWS_DIR,
+	retired_news_ids_path: String = RETIRED_NEWS_IDS_PATH,
 ) -> void:
 	var load_errors: Array[String] = []
 	companies = []
@@ -161,6 +173,7 @@ func load_fundamentals(
 	industries.sort_custom(_industry_by_id)
 	traders.sort_custom(_trader_by_id)
 	news = NewsContent.build(books, traders)
+	retired_news_ids = read_retired_news_ids(retired_news_ids_path)
 	validate()
 	errors.append_array(load_errors)
 
@@ -366,9 +379,10 @@ func _validate_transition_matrix() -> void:
 
 ## The news (design §8.1, §8.2). Every id unique across every category;
 ## every company, industry, trader and subject it names exists; every id a line
-## requires is a news line too (D210); every band is a known value, and a
-## company or industry whisper's outcome is not ANY; every line has text, and
-## uses only the `{...}` tokens its category fills in - a misspelt token would
+## requires is a news line too (D210), and no lines wait for each other in a
+## loop; no line has a retired id (docs/news-flow-chart.md §3.3); every band is
+## a known value, and a company or industry whisper's outcome is not ANY;
+## every line has text, and uses only the `{...}` tokens its category fills in - a misspelt token would
 ## otherwise reach the screen as written. Market news must name at most one
 ## target, and a target for any amount it has (D209).
 func _validate_news(industry_ids: Array, company_ids: Array) -> void:
@@ -443,6 +457,17 @@ func _validate_news(industry_ids: Array, company_ids: Array) -> void:
 				errors.append("News %s requires %s, which is not a news line." % [line.get("id"), id])
 			elif id == line.get("id"):
 				errors.append("News %s requires itself, so it could never be shown." % id)
+
+	for loop: Array in news.requires_loops():
+		var steps: PackedStringArray = []
+		for index: int in loop.size():
+			steps.append("%s requires %s" % [loop[index], loop[(index + 1) % loop.size()]])
+		errors.append("News lines wait for each other in a loop (%s), so none of them could ever be shown."
+			% ", ".join(steps))
+
+	for id: StringName in retired_news_ids:
+		if seen.has(id):
+			errors.append("News %s has a retired id: a deleted line had it, so it may not be used again." % id)
 
 
 func _check_industry(industry_id: StringName, industry_ids: Array, label: String) -> void:
@@ -528,6 +553,21 @@ func _validate_company(
 	if company.industry_beta_percent < 0:
 		errors.append("Company %s has a negative industry beta (%d)."
 			% [label, company.industry_beta_percent])
+
+
+## The ids in a retired-ids file: one per line, blank lines and lines starting
+## `#` skipped. A file that does not exist holds none.
+static func read_retired_news_ids(path: String) -> Array[StringName]:
+	var ids: Array[StringName] = []
+	if not FileAccess.file_exists(path):
+		return ids
+	var text: String = FileAccess.get_file_as_string(path)
+	for raw: String in text.split("\n"):
+		var line: String = raw.strip_edges()
+		if line.is_empty() or line.begins_with("#"):
+			continue
+		ids.append(StringName(line))
+	return ids
 
 
 ## Every `.tres`/`.res` resource in a directory, in file-name order. Problems go

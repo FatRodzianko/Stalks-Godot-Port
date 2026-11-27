@@ -102,7 +102,7 @@ at their defaults:
 | Setting | Value | Why |
 |---|---|---|
 | **Export Path** | `../stalks-build/StalksStalksStalks.exe` | Where the build is written. Relative, and starting `../` means *the folder next to the project*, so builds never land inside the repository where they could be committed by accident. |
-| **Resources → Filters to exclude** | `tools/*, tests/*, addons/gut/*, .gutconfig.json, steam_appid.txt` | Leaves the developer tools, the test suite and the Steam App ID file out of the finished build. Valve's guidance is that the App ID file should not ship. |
+| **Resources → Filters to exclude** | `tools/*, tests/*, addons/gut/*, addons/news_flow_chart/*, .gutconfig.json, steam_appid.txt` | Leaves the developer tools, the test suite, the News Flow Chart editor tool and the Steam App ID file out of the finished build. Valve's guidance is that the App ID file should not ship. |
 | **Binary Format → Architecture** | `x86_64` | Ordinary 64-bit Windows. |
 | **Debug → Export Console Wrapper** | on | Produces a second small `.console.exe` that prints output to a terminal. Useful when something goes wrong on another machine. |
 

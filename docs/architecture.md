@@ -1328,6 +1328,28 @@ and a promoted host over thirty years.
 folder. [development.md](development.md) "Writing StalkleHeads news" is the
 step-by-step; [game-rules.md](game-rules.md) §5.1 is what each condition means.
 
+### The News Flow Chart (an editor tool, D223)
+
+`addons/news_flow_chart/` is a Godot editor tool for writing the news above as
+chains. It is not part of the game: nothing in `src/` depends on it, it depends
+on `src/data`, and it is left out of exported builds. Its `core/` is pure logic
+on `NewsBook` objects:
+
+```
+NewsBookEditor.load_books(news dir) -> books by path
+   |- NewsGraph         arrows from requires, chains, roots, would_loop
+   |- NewsIdMaker       the id of a new item, never a taken or retired one
+   |- NewsBookRouter    which book a new item goes in
+   |- add / set_field / link / unlink / delete -> save_changed, save_retired_ids
+   |- NewsChainNames    src/data/news_chains.cfg: names only, never links
+   `- NewsFieldChoices  what each dropdown lists, from ContentLibrary
+```
+
+The one change it made to the game's own code is the validator's: a `requires`
+loop of any length (`NewsContent.requires_loops`) and a retired id
+(`ContentLibrary.retired_news_ids`) are errors. The screens come in later phases;
+[news-flow-chart.md](news-flow-chart.md) is the design and the plan.
+
 ### The rules that hold it together
 
 - **Draw counts are fixed** (D131): an industry is one draw, earnings season two,

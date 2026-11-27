@@ -23,6 +23,10 @@ extends GutTest
 ## developer scripts; neither is ours to style.
 const SOURCE_DIR: String = "res://src"
 
+## The one addon that is ours, the News Flow Chart (docs/news-flow-chart.md),
+## held to the same rules as `src/`.
+const OWN_ADDON_DIR: String = "res://addons/news_flow_chart"
+
 ## The documentation, which is a release gate in this project and so is held to
 ## the placeholder rule as well. See `test_no_document_has_a_leftover_placeholder`.
 const DOCS_DIR: String = "res://docs"
@@ -58,7 +62,14 @@ func _lines_of(path: String) -> PackedStringArray:
 ## Every offending `file:line  text`, so a failure says exactly where to look
 ## rather than just that something is wrong somewhere.
 func _offenders(matcher: Callable) -> PackedStringArray:
-	return _offenders_in(_gd_files(SOURCE_DIR), matcher)
+	return _offenders_in(_our_gd_files(), matcher)
+
+
+## Every script of ours: `src/` and our own addon.
+func _our_gd_files() -> PackedStringArray:
+	var files: PackedStringArray = _gd_files(SOURCE_DIR)
+	files.append_array(_gd_files(OWN_ADDON_DIR))
+	return files
 
 
 func _offenders_in(paths: PackedStringArray, matcher: Callable) -> PackedStringArray:
@@ -205,6 +216,10 @@ func test_the_scan_actually_reaches_the_source() -> void:
 	assert_true(
 		"%s/net/host_session.gd" % SOURCE_DIR in files,
 		"a known file should be among those scanned",
+	)
+	assert_true(
+		"%s/core/news_graph.gd" % OWN_ADDON_DIR in _our_gd_files(),
+		"the News Flow Chart's scripts should be scanned too",
 	)
 
 	var documents: PackedStringArray = _files_under(DOCS_DIR, ".md")

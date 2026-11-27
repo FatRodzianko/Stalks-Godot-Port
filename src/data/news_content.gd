@@ -75,5 +75,75 @@ func market_news_by_id(id: StringName) -> MarketNews:
 	return null
 
 
+## Every loop in the `requires` lists, each as the ids around it: `[a, b]`
+## means a requires b and b requires a, so neither could ever be shown (D210).
+## Each loop starts at its smallest id and is listed once; a line that requires
+## itself is not reported here, since the validator names that on its own. An
+## id that is not a line is skipped. Finds at least one loop wherever there is
+## one, in the same order on every machine.
+func requires_loops() -> Array[Array]:
+	var required_by_id: Dictionary[StringName, Array] = {}
+	for line: Resource in all_lines():
+		var required: Array[StringName] = line.get("requires")
+		required_by_id[line.get("id")] = required
+	var ids: Array[StringName] = []
+	ids.assign(required_by_id.keys())
+	ids.sort_custom(_string_name_order)
+	var state: Dictionary[StringName, int] = {}
+	var path: Array[StringName] = []
+	var found: Dictionary[String, Array] = {}
+	for id: StringName in ids:
+		if not state.has(id):
+			_walk_requires(id, required_by_id, state, path, found)
+	var keys: Array[String] = []
+	keys.assign(found.keys())
+	keys.sort()
+	var loops: Array[Array] = []
+	for key: String in keys:
+		loops.append(found[key])
+	return loops
+
+
+## Depth-first walk for `requires_loops`. `state` is 1 while an id is on the
+## current path and 2 once everything it leads to has been walked.
+static func _walk_requires(
+	id: StringName,
+	required_by_id: Dictionary[StringName, Array],
+	state: Dictionary[StringName, int],
+	path: Array[StringName],
+	found: Dictionary[String, Array],
+) -> void:
+	state[id] = 1
+	path.append(id)
+	var required: Array = required_by_id[id]
+	for next: StringName in required:
+		if next == id or not required_by_id.has(next):
+			continue
+		if state.get(next, 0) == 1:
+			var loop: Array[StringName] = []
+			loop.assign(path.slice(path.find(next)))
+			_record_loop(loop, found)
+		elif not state.has(next):
+			_walk_requires(next, required_by_id, state, path, found)
+	path.pop_back()
+	state[id] = 2
+
+
+## Stores a loop turned to start at its smallest id, so one loop reached from
+## two places is stored once.
+static func _record_loop(loop: Array[StringName], found: Dictionary[String, Array]) -> void:
+	var start: int = 0
+	for index: int in loop.size():
+		if String(loop[index]) < String(loop[start]):
+			start = index
+	var turned: Array[StringName] = []
+	turned.assign(loop.slice(start) + loop.slice(0, start))
+	found[" ".join(turned)] = turned
+
+
+static func _string_name_order(a: StringName, b: StringName) -> bool:
+	return String(a) < String(b)
+
+
 static func _by_id(a: Resource, b: Resource) -> bool:
 	return String(a.get("id")) < String(b.get("id"))

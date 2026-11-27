@@ -160,6 +160,9 @@ More test-running options are in [testing.md](testing.md).
 
 ```
 addons/gut/      The test framework. Committed deliberately (decisions.md D17).
+addons/news_flow_chart/
+                 Ours: the News Flow Chart, an editor tool for writing news
+                 (news-flow-chart.md). Not part of the game.
 assets/
   themes/        Shared Theme resources. All colours and fonts belong here.
   sprites/
@@ -299,6 +302,10 @@ text = "INDUSTRY REPORT: energy, down"
 Leave every other line alone. In particular, **never change an `id`** to reword a
 line: the id is how the game remembers which lines it has shown this match.
 
+**Deleting a line by hand?** Add its id to `src/data/news_retired_ids.txt`, on a
+line of its own, so it is never given to a new line. The tests refuse a line whose
+id is on that list (decisions.md D223).
+
 **Tokens.** Some lines may contain words in braces, which the game fills in:
 
 | Token | Becomes | Allowed in |
@@ -406,8 +413,9 @@ requires = Array[StringName]([&"mkt_bear_crash_1", &"whisp_squeeze_1"])
 ```
 
 In the Inspector: open the entry, click **Requires**, click **+ Add Element**, and
-type the id. The tests report an id that is not a news line, and a line that
-requires itself.
+type the id. The tests report an id that is not a news line, a line that
+requires itself, and lines that wait for each other in a loop (A requires B, B
+requires A), since none of them could ever be shown.
 
 `situation` (chatter): 0 BOUGHT, 1 SOLD, 2 SHORTED, 3 COVERED, 4 HELD.
 `strategy` (chatter): 0 VALUE, 1 MOMENTUM, 2 CONTRARIAN, 3 INCOME, 4 INDEXER,

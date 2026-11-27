@@ -214,6 +214,70 @@ func test_the_validator_reports_every_kind_of_mistake() -> void:
 	assert_true(_has_error(library, "requires no_such_line"), "a requirement that is not a line")
 
 
+## A loop longer than one line is as stuck as a line that requires itself:
+## none of the lines in it could ever be shown (docs/news-flow-chart.md §1.1).
+func test_the_validator_refuses_a_loop_of_requires() -> void:
+	var library: ContentLibrary = _library()
+	var book: NewsBook = NewsBook.new()
+	for id: String in ["a", "b", "c", "d"]:
+		book.industry_reports.append(_energy_headline(id))
+	book.industry_reports[0].requires = [&"c"] as Array[StringName]
+	book.industry_reports[1].requires = [&"a"] as Array[StringName]
+	book.industry_reports[2].requires = [&"b"] as Array[StringName]
+	book.industry_reports[3].requires = [&"a"] as Array[StringName]
+	_with_news(library, book)
+	library.validate()
+
+	assert_true(_has_error(library, "loop (a requires c, c requires b, b requires a)"), "the three-line loop, named once")
+	var loops: int = 0
+	for error: String in library.errors:
+		if error.contains("loop"):
+			loops += 1
+	assert_eq(loops, 1, "d only follows the loop; it is not in it")
+
+
+func test_requires_loops_finds_each_loop_once_and_skips_a_line_that_requires_itself() -> void:
+	var book: NewsBook = NewsBook.new()
+	for id: String in ["x", "y", "p", "q", "solo", "free"]:
+		book.industry_reports.append(_energy_headline(id))
+	book.industry_reports[0].requires = [&"y"] as Array[StringName]
+	book.industry_reports[1].requires = [&"x"] as Array[StringName]
+	book.industry_reports[2].requires = [&"q", &"no_such_line"] as Array[StringName]
+	book.industry_reports[3].requires = [&"p"] as Array[StringName]
+	book.industry_reports[4].requires = [&"solo"] as Array[StringName]
+	var content: NewsContent = NewsContent.build([book] as Array[NewsBook], [] as Array[NpcTraderDefinition])
+	var loops: Array[Array] = content.requires_loops()
+	assert_eq(str(loops), str([[&"p", &"q"], [&"x", &"y"]]), "two loops, each from its smallest id, in id order")
+
+
+func test_the_validator_refuses_a_retired_id() -> void:
+	var library: ContentLibrary = _library()
+	var book: NewsBook = NewsBook.new()
+	book.industry_reports.append(_energy_headline("reborn"))
+	_with_news(library, book)
+	library.retired_news_ids = [&"reborn", &"long_gone"] as Array[StringName]
+	library.validate()
+
+	assert_true(_has_error(library, "reborn has a retired id"), "a live line with a deleted line's id")
+	assert_false(_has_error(library, "long_gone"), "a retired id nobody uses is fine")
+
+
+func test_the_retired_ids_file_ships_and_skips_comments() -> void:
+	assert_true(FileAccess.file_exists(ContentLibrary.RETIRED_NEWS_IDS_PATH), "the list is in the repository")
+	assert_true(_library().is_valid(), "the shipped news uses no retired id")
+	var path: String = "user://test_retired_ids.txt"
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	file.store_string("# a comment
+
+  mkt_bear_crash_9  
+ind_any_up_3
+")
+	file.close()
+	assert_eq(str(ContentLibrary.read_retired_news_ids(path)), str([&"mkt_bear_crash_9", &"ind_any_up_3"]))
+	DirAccess.remove_absolute(path)
+	assert_true(ContentLibrary.read_retired_news_ids("user://no_such_file.txt").is_empty(), "no file, no retired ids")
+
+
 func test_the_validator_checks_the_transition_matrix_and_the_strategies() -> void:
 	var library: ContentLibrary = _library()
 	var kept: Array[NpcTraderDefinition] = []

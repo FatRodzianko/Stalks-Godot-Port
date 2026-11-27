@@ -8257,3 +8257,41 @@ Each entry under SHORT INTEREST on the side panel's DESK page is clickable and
 opens that company on the Company tab, as a holding's name already did (D183).
 The whole entry is the target, ticker and percent: it has nothing else to click,
 unlike an Exchange row (D208). The tooltips stay.
+
+### D223 - The News Flow Chart: chains from `requires`, ids never reused (Phase 1)
+**2026-11-27 · Accepted** (the owner's answers in news-flow-chart.md §6)
+
+A Godot editor tool, the **News Flow Chart**, is planned for writing StalkleHeads
+news as chains of news items joined by arrows. An arrow from A to B is B's
+`requires` (D210). Its design and phases are in
+[news-flow-chart.md](news-flow-chart.md). Phase 1, built now, has no screen yet:
+
+- **A chain is not stored.** It is worked out from the `requires` lists each time
+  (`NewsGraph`). A second file of links would drift from the one the game reads.
+  The only thing stored about a chain is an optional name, in
+  `src/data/news_chains.cfg`, which holds names and never links.
+- **The validator refuses a loop of any length** (`NewsContent.requires_loops`).
+  It already refused a line requiring itself; a longer loop was let through, and
+  none of the lines in one could ever be shown.
+- **Ids are generated, fixed once made, and never reused.** `NewsIdMaker` names an
+  item from its own fields (`mkt_bear_crash_3`, `ind_energy_down_2`), numbered one
+  past the highest ever used. A deleted item's id goes into
+  `src/data/news_retired_ids.txt`, and the validator refuses a live item with a
+  retired id. Without the list, a new item could take a deleted one's id, and a
+  follow-up still requiring the old item would silently follow the new one.
+- **The tool's code is an addon**, `addons/news_flow_chart/`. Its `core/` is pure
+  logic, tested headless, and is held to `test_conventions.gd` like `src/`. It is
+  left out of exported builds. Nothing in `src/` depends on it; it depends on
+  `src/data`.
+- **The eight books were re-saved once through the editor**, in a commit of their
+  own with no content change. Godot reorders a book's blocks on its first save,
+  and that reordering would otherwise bury the tool's first real edit. It was done
+  from a headless *editor* run: a headless `--script` save drops each file's `uid`
+  line, but a headless editor run keeps it.
+
+**Not changed:** what the game does with news. The selector, the bands and D210's
+rules are as they were, and the golden history hash does not move.
+
+**Rules out:** a separate "tree file" of links; ids typed by hand in the tool;
+renaming an id when its item's fields change; reusing a deleted item's id.
+
