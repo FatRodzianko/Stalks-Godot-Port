@@ -217,6 +217,10 @@ func _refresh_short_interest(state: GameState) -> void:
 		row.configure([SHORT_TICKER_CHARS, CAPTION_CHARS + VALUE_CHARS - SHORT_TICKER_CHARS], [CellRow.LEFT, CellRow.RIGHT])
 		row.set_texts([String(stalk.definition.ticker), short_interest_words(state, entry[0])])
 		row.set_cell_tooltip(0, stalk.definition.display_name)
+		# Clicking the entry opens the company on the Company tab (D222).
+		row.key = entry[0]
+		row.set_clickable(true)
+		row.pressed.connect(_on_short_row_pressed)
 		row.set_cell_tooltip(1, "%d shares sold short" % entry[1])
 
 
@@ -296,6 +300,13 @@ static func short_interest_words(state: GameState, company_id: StringName) -> St
 	return words
 
 
+func short_interest_rows() -> Array[CellRow]:
+	var rows: Array[CellRow] = []
+	for child: Node in _short_list.get_children():
+		rows.append(child as CellRow)
+	return rows
+
+
 func short_interest_lines() -> PackedStringArray:
 	var lines: PackedStringArray = []
 	for child: Node in _short_list.get_children():
@@ -320,4 +331,8 @@ func _on_row_amount_changed(stalk_id: StringName, _shares: int) -> void:
 
 
 func _on_row_info_requested(stalk_id: StringName) -> void:
+	company_requested.emit(stalk_id)
+
+
+func _on_short_row_pressed(stalk_id: StringName) -> void:
 	company_requested.emit(stalk_id)

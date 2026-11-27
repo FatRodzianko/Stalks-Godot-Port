@@ -2725,7 +2725,13 @@ checkout before exporting, `src/ui/widgets/chart_widget.gd` contains
 30. Check **WHISPERS FROM THE AVENUE** shows three whispers: one from **Questionable** about that company, and two about other subjects.
 31. Close the game window.
 
-### X - A taller industry chart, final-year whispers, a squeeze of no fixed length (decisions.md D219, D220) — **not yet run**
+### X - A taller industry chart, final-year whispers, a squeeze of no fixed length (decisions.md D219, D220) — **run 2026-11-27, passed**
+
+**Result:** every step passed. Squeezes seen: one fired in year 21 and ended in
+year 22 with no crash whisper heard (a chance, D220); one fired in year 25, held
+in years 26 and 27 with a Questionable crash whisper each year, and ended in year
+28. Request, built as D222 and checked as section Y: clicking a ticker under
+SHORT INTEREST should open its company.
 
 One machine, no Steam. Run on a locally exported build containing D220; to check a
 checkout before exporting, `src/sim/short_interest_rules.gd` contains
@@ -2771,6 +2777,25 @@ checkout before exporting, `src/sim/short_interest_rules.gd` contains
 30. Press **Ready for New Year**.
 31. Check the final results are shown.
 32. Close the game window.
+
+### Y - A short interest entry opens its company (decisions.md D222) — **not yet run**
+
+One machine, no Steam. Run on a locally exported build containing D222; to check a
+checkout before exporting, `src/ui/screens/stalkleheads/side_panel.gd` contains
+`_on_short_row_pressed`.
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Click **START**.
+5. Press **Ready for New Year**.
+6. Click **Close** on the news.
+7. Repeat steps 5 and 6 until an entry shows under **SHORT INTEREST**.
+8. Click **DESK** on the side panel if it is not showing.
+9. Note the ticker of the first entry under **SHORT INTEREST**.
+10. Click that entry.
+11. Check the **COMPANY** tab opens on the company with that ticker.
+12. Close the game window.
 
 ### Known gaps, so they are not surprises
 

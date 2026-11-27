@@ -8247,3 +8247,11 @@ still seem louder than a bull at the same number.
 
 **Rules out:** adding a sound without levelling it; levelling by peak, which
 let a short scream through at full volume; per-clip volume settings in code.
+
+### D222 - A short interest entry opens its company
+**2026-11-27 · Accepted** (the owner, after manual section X)
+
+Each entry under SHORT INTEREST on the side panel's DESK page is clickable and
+opens that company on the Company tab, as a holding's name already did (D183).
+The whole entry is the target, ticker and percent: it has nothing else to click,
+unlike an Exchange row (D208). The tooltips stay.

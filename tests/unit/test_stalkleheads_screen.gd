@@ -354,6 +354,19 @@ func test_the_side_panel_lists_short_interest() -> void:
 		assert_true(line.contains("%"), "a percent of the company, not a share count (D213)")
 
 
+## D222: clicking a ticker under SHORT INTEREST opens that company.
+func test_a_short_interest_entry_opens_its_company() -> void:
+	_start(GameMode.Value.STALKLEHEADS, 8)
+	var rows: Array[CellRow] = _tabs().side_panel().short_interest_rows()
+	assert_false(rows.is_empty(), "something is shorted by year 8")
+	var row: CellRow = rows[rows.size() - 1]
+	_tabs().select_tab(MarketTabs.Tab.EXCHANGE)
+	_click(row)
+	assert_eq(_tabs().current_tab(), MarketTabs.Tab.COMPANY)
+	var ticker: String = String(_state().stalk_by_id(row.key).definition.ticker)
+	assert_string_contains(_tabs().company_tab().identity_text(), ticker)
+
+
 func test_short_interest_words_say_flagged_and_squeezed() -> void:
 	_start(GameMode.Value.STALKLEHEADS, 1)
 	var company: CompanyState = _state().market.company_by_id(&"stryker")
