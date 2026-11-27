@@ -2,10 +2,40 @@
 
 [ext_resource type="Script" uid="uid://hdwh1gbiv1nl" path="res://src/data/npc_chatter.gd" id="1_b4nbk"]
 [ext_resource type="Script" uid="uid://biomufjm1u64f" path="res://src/data/market_news.gd" id="3_x0qgy"]
-[ext_resource type="Script" uid="uid://bmr5nkcpgvsmo" path="res://src/data/company_news.gd" id="9_cnews"]
 [ext_resource type="Script" uid="uid://bn57xwtijt6bb" path="res://src/data/industry_report.gd" id="4_14ohu"]
 [ext_resource type="Script" uid="uid://dbw7v33qp1gq1" path="res://src/data/news_book.gd" id="5_asjd0"]
 [ext_resource type="Script" uid="uid://bo8a8il38w0ac" path="res://src/data/whisper.gd" id="6_1ixhk"]
+[ext_resource type="Script" uid="uid://bmr5nkcpgvsmo" path="res://src/data/company_news.gd" id="9_cnews"]
+
+[sub_resource type="Resource" id="Resource_cn_crash"]
+script = ExtResource("9_cnews")
+id = &"cnews_any_crash_1"
+move = 1
+text = "IN THE NEWS: {company}, crash"
+
+[sub_resource type="Resource" id="Resource_cn_down"]
+script = ExtResource("9_cnews")
+id = &"cnews_any_down_1"
+move = 2
+text = "IN THE NEWS: {company}, down"
+
+[sub_resource type="Resource" id="Resource_cn_flat"]
+script = ExtResource("9_cnews")
+id = &"cnews_any_flat_1"
+move = 3
+text = "IN THE NEWS: {company}, flat"
+
+[sub_resource type="Resource" id="Resource_cn_up"]
+script = ExtResource("9_cnews")
+id = &"cnews_any_up_1"
+move = 4
+text = "IN THE NEWS: {company}, up"
+
+[sub_resource type="Resource" id="Resource_cn_surge"]
+script = ExtResource("9_cnews")
+id = &"cnews_any_surge_1"
+move = 5
+text = "IN THE NEWS: {company}, surge"
 
 [sub_resource type="Resource" id="Resource_bnv30"]
 script = ExtResource("3_x0qgy")
@@ -154,36 +184,6 @@ about = 1
 outcome = 5
 text = "{industry}, much better"
 
-[sub_resource type="Resource" id="Resource_cn_crash"]
-script = ExtResource("9_cnews")
-id = &"cnews_any_crash_1"
-move = 1
-text = "IN THE NEWS: {company}, crash"
-
-[sub_resource type="Resource" id="Resource_cn_down"]
-script = ExtResource("9_cnews")
-id = &"cnews_any_down_1"
-move = 2
-text = "IN THE NEWS: {company}, down"
-
-[sub_resource type="Resource" id="Resource_cn_flat"]
-script = ExtResource("9_cnews")
-id = &"cnews_any_flat_1"
-move = 3
-text = "IN THE NEWS: {company}, flat"
-
-[sub_resource type="Resource" id="Resource_cn_up"]
-script = ExtResource("9_cnews")
-id = &"cnews_any_up_1"
-move = 4
-text = "IN THE NEWS: {company}, up"
-
-[sub_resource type="Resource" id="Resource_cn_surge"]
-script = ExtResource("9_cnews")
-id = &"cnews_any_surge_1"
-move = 5
-text = "IN THE NEWS: {company}, surge"
-
 [sub_resource type="Resource" id="Resource_wh_squeeze"]
 script = ExtResource("6_1ixhk")
 id = &"whisp_squeeze_1"
@@ -199,5 +199,5 @@ text = "{company}, squeeze ends"
 [resource]
 script = ExtResource("5_asjd0")
 market_news = Array[ExtResource("3_x0qgy")]([SubResource("Resource_bnv30"), SubResource("Resource_k7pkw"), SubResource("Resource_83jh5"), SubResource("Resource_x5kpj"), SubResource("Resource_twyq3"), SubResource("Resource_c3n7b"), SubResource("Resource_vjnyj"), SubResource("Resource_knovx"), SubResource("Resource_uy8my"), SubResource("Resource_5r1o3"), SubResource("Resource_agwpq"), SubResource("Resource_pum6f")])
-whispers = Array[ExtResource("6_1ixhk")]([SubResource("Resource_wh_com_much_worse"), SubResource("Resource_wh_com_worse"), SubResource("Resource_wh_com_as_expected"), SubResource("Resource_wh_com_better"), SubResource("Resource_wh_com_much_better"), SubResource("Resource_wh_ind_much_worse"), SubResource("Resource_wh_ind_worse"), SubResource("Resource_wh_ind_as_expected"), SubResource("Resource_wh_ind_better"), SubResource("Resource_wh_ind_much_better"), SubResource("Resource_wh_squeeze"), SubResource("Resource_wh_crash")])
 company_news = Array[ExtResource("9_cnews")]([SubResource("Resource_cn_crash"), SubResource("Resource_cn_down"), SubResource("Resource_cn_flat"), SubResource("Resource_cn_up"), SubResource("Resource_cn_surge")])
+whispers = Array[ExtResource("6_1ixhk")]([SubResource("Resource_wh_com_much_worse"), SubResource("Resource_wh_com_worse"), SubResource("Resource_wh_com_as_expected"), SubResource("Resource_wh_com_better"), SubResource("Resource_wh_com_much_better"), SubResource("Resource_wh_ind_much_worse"), SubResource("Resource_wh_ind_worse"), SubResource("Resource_wh_ind_as_expected"), SubResource("Resource_wh_ind_better"), SubResource("Resource_wh_ind_much_better"), SubResource("Resource_wh_squeeze"), SubResource("Resource_wh_crash")])

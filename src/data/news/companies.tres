@@ -1,7 +1,11 @@
-[gd_resource type="Resource" script_class="NewsBook" format=3]
+[gd_resource type="Resource" script_class="NewsBook" format=3 uid="uid://dwicmg4pecaqs"]
 
+[ext_resource type="Script" uid="uid://hdwh1gbiv1nl" path="res://src/data/npc_chatter.gd" id="1_cicdj"]
 [ext_resource type="Script" uid="uid://bmr5nkcpgvsmo" path="res://src/data/company_news.gd" id="1_cnews"]
 [ext_resource type="Script" uid="uid://dbw7v33qp1gq1" path="res://src/data/news_book.gd" id="2_book"]
+[ext_resource type="Script" uid="uid://bn57xwtijt6bb" path="res://src/data/industry_report.gd" id="3_mq2kt"]
+[ext_resource type="Script" uid="uid://biomufjm1u64f" path="res://src/data/market_news.gd" id="4_irhc4"]
+[ext_resource type="Script" uid="uid://bo8a8il38w0ac" path="res://src/data/whisper.gd" id="6_kfp4v"]
 
 [sub_resource type="Resource" id="Resource_mafia_bear_1"]
 script = ExtResource("1_cnews")
