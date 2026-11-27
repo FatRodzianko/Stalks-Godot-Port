@@ -148,7 +148,10 @@ func advance_year(state: GameState, rng: RandomNumberGenerator) -> EarningsYearR
 		market.record_trade(stalk_id, result.desk.net_shares[stalk_id])
 
 	# 14. Next year's earnings, drawn now and kept, so a whisper can know them.
-	if state.year < state.settings.max_years:
+	#     The final year too: a match of N years settles once more into year
+	#     N + 1, which moves every price, so its whispers are worth hearing
+	#     (D219). The same place in the stream as drawing them at its start.
+	if state.year <= state.settings.max_years:
 		market.next_draws = draw_ahead(state, rng)
 	return result
 

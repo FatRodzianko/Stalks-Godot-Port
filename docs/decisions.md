@@ -7966,7 +7966,8 @@ and a 40%-shorted one would jump alike).
 
 Two new kinds of whisper (`NewsBands.Subject` SQUEEZE and CRASH), each always from a
 **Questionable** source, and taking **one of the two** whisper slots, not a third
-(*amended by D218: it now comes on top of the two*):
+(*amended by D218: it now comes on top of the two; by D219: the crash whisper only
+in the squeeze's last year, from a Rock Solid source*):
 
 - **A squeeze whisper** when some company is flagged at the end of the year: about
   the most shorted one. A squeeze is never certain, so the source is never better
@@ -8113,3 +8114,30 @@ industry chart · **amends** D214
 **Rules out:** a squeeze whisper taking an ordinary whisper's place; industry bars
 that stretch to fill the chart; a scrolling industry chart (D208's reason holds: it
 would hide the latest year).
+
+### D219 - A taller industry chart, whispers in the final year, a certain crash whisper
+**2026-11-27 · Accepted** (the owner, after manual section W) · **amends** D207,
+D214 and D218
+
+- **The industry chart is three rows each side of zero** (`IndustriesTab.CHART_HALF_HEIGHT`),
+  up from two. The owner asked for three, or four if three looked too short; three
+  comes first, and four is a one-number change.
+- **The final year has whispers.** A match of N years plays years 1 to N and then
+  settles once more into year N + 1, which moves every price before the result is
+  shown (game-rules.md §12). So players trading in year N are trading for that
+  move, and the whispers about it are worth as much as any other year's. The
+  resolver now keeps the next year's draws at the end of year N too
+  (`EarningsYearResolver`, step 14). They are taken at the same point in the
+  random stream as before, when the settling year drew them at its start, so no
+  price changes for any seed.
+- **The crash whisper is heard only when the squeeze will come off next year, and
+  from a Rock Solid source.** The end of a squeeze is not chance: when it fires,
+  the hold roll sets how many years it lasts (one to three); the short sellers
+  buy back an equal part each year; the lift comes off the year after the last
+  is covered (D213). Until that last year nothing can end it early, so a crash
+  whisper every year of the squeeze said nothing. Now it is heard once, in the
+  year short interest reaches 0%, and it always comes true. The squeeze whisper
+  stays Questionable, because a squeeze is a 25% roll.
+
+**Rules out:** a crash whisper while the lift still has years to run; a crash
+whisper that can be wrong.

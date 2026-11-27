@@ -2678,7 +2678,11 @@ base game's events is still a placeholder, such as **IN THE NEWS: strYker!!!, up
 **Not checked here:** a market news line that moves a price. No shipped line has an
 amount yet; `test_earnings_year_resolver.gd` covers company and industry effects.
 
-### W - The industry chart as text, and squeeze whispers on top (decisions.md D218) — **not yet run**
+### W - The industry chart as text, and squeeze whispers on top (decisions.md D218) — **run 2026-11-27, passed with findings**
+
+**Result:** every step passed. Findings, built as D219 and re-checked as section X:
+the chart was too short; the final year had no whispers; the squeeze-ends whisper
+came every year of a squeeze.
 
 One machine, no Steam. Run on a locally exported build containing D218; to check a
 checkout before exporting, `src/ui/widgets/chart_widget.gd` contains
@@ -2720,6 +2724,49 @@ checkout before exporting, `src/ui/widgets/chart_widget.gd` contains
 29. If the match ended first, write down "no squeeze seen" and skip to step 31.
 30. Check **WHISPERS FROM THE AVENUE** shows three whispers: one from **Questionable** about that company, and two about other subjects.
 31. Close the game window.
+
+### X - A taller industry chart, final-year whispers, a certain crash whisper (decisions.md D219) — **not yet run**
+
+One machine, no Steam. Run on a locally exported build containing D219; to check a
+checkout before exporting, `src/sim/news_selector.gd` contains `CRASH_WHISPER_SOURCE`.
+
+**The chart**
+
+1. Start the game.
+2. Click **SINGLE PLAYER**.
+3. Set **Game** to **StalkleHeads**.
+4. Set **Years** to **30**.
+5. Click **START**.
+6. Press **Ready for New Year**.
+7. Click **Close** on the news.
+8. Click **INDUSTRIES**.
+9. Check the **BY YEAR** chart has three rows above the dashed **0+** line and three below it.
+
+**The crash whisper**
+
+10. Press **Ready for New Year**.
+11. Click **Close**.
+12. Repeat steps 10 and 11 until an entry under **SHORT INTEREST** ends **SQUEEZED**, up to year 25.
+13. If none did by year 25, write down "no squeeze seen" and skip to step 22.
+14. Note the company.
+15. Click **MARKET**.
+16. If that company's percent under **SHORT INTEREST** is above 0%, check no whisper says its squeeze is ending.
+17. Press **Ready for New Year**.
+18. Click **Close**.
+19. Click **MARKET**.
+20. Repeat steps 16 to 19 until a whisper from **Rock Solid** says that company's squeeze is ending, up to four years.
+21. Check that company's percent under **SHORT INTEREST** is 0% or it has left the list.
+
+**The final year**
+
+22. Press **Ready for New Year**.
+23. Click **Close**.
+24. Repeat steps 22 and 23 until the top strip shows year 30.
+25. Click **MARKET**.
+26. Check **WHISPERS FROM THE AVENUE** shows at least two whispers.
+27. Press **Ready for New Year**.
+28. Check the final results are shown.
+29. Close the game window.
 
 ### Known gaps, so they are not surprises
 

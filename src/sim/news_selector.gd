@@ -43,8 +43,12 @@ extends RefCounted
 ## industry (design §8.4).
 const WHISPERS_PER_YEAR: int = 2
 
-## Every squeeze and crash whisper is from this source (D214).
+## Every squeeze whisper is from this source (D214): a squeeze is never certain.
 const SQUEEZE_WHISPER_SOURCE: WhisperRules.Source = WhisperRules.Source.QUESTIONABLE
+
+## Every crash whisper is from this source (D219): it is heard only when the
+## squeeze is certain to come off next year, so it is always true.
+const CRASH_WHISPER_SOURCE: WhisperRules.Source = WhisperRules.Source.ROCK_SOLID
 
 ## The first year at whose end whispers are heard. Not 0: trading opens in
 ## year 1, so a whisper about year 1 could not be acted on (D207).
@@ -509,12 +513,13 @@ static func draws_about(state: GameState, about_year: int) -> KeptDraws:
 ## lines were shown in earlier years. Public for tests; screens use
 ## `whispers_for`.
 ##
-## **A squeeze whisper first, if there is one to hear (D214).** While a
-## company's squeeze is still in its price, one whisper says it is about to
-## end (CRASH); otherwise, while a company is flagged, one says a squeeze is
-## coming (SQUEEZE). Either is always from a Questionable source: a squeeze
-## comes in about a quarter of flagged years, and a squeeze ends in one of the
-## one to three years it runs.
+## **A squeeze whisper first, if there is one to hear (D214).** When a
+## company's squeeze will come off next year - its short sellers have bought
+## the last of their shares back - one whisper says so (CRASH), from a Rock
+## Solid source, because it will (D219). Not in the years before: the lift is
+## held until then whatever happens. Otherwise, while a company is flagged, one
+## says a squeeze is coming (SQUEEZE), from a Questionable source: a squeeze
+## comes in about a quarter of flagged years.
 ##
 ## Then `WHISPERS_PER_YEAR` more, on top of it (D218), so a squeeze never takes
 ## the place of an ordinary whisper: subjects are picked evenly
@@ -597,14 +602,16 @@ static func _select_squeeze_whisper(
 	pick: Pick,
 	round: WhisperRound,
 ) -> StringName:
-	var subject: StringName = squeezed_at_end_of(state, year)
+	var subject: StringName = squeeze_ending_after(state, year)
 	var kind: NewsBands.Subject = NewsBands.Subject.CRASH
+	var source: WhisperRules.Source = CRASH_WHISPER_SOURCE
 	if subject.is_empty():
 		var flagged: Array[StringName] = flagged_at_end_of(state, year)
 		if flagged.is_empty():
 			return &""
 		subject = flagged[0]
 		kind = NewsBands.Subject.SQUEEZE
+		source = SQUEEZE_WHISPER_SOURCE
 	var own: Array[Resource] = []
 	var general: Array[Resource] = []
 	for line: Whisper in content.whispers:
@@ -617,7 +624,7 @@ static func _select_squeeze_whisper(
 	heard.id = chosen.id
 	heard.subject = subject
 	heard.about = kind
-	heard.source = SQUEEZE_WHISPER_SOURCE
+	heard.source = source
 	heard.text = _fill(chosen.text, _company_tokens(state, subject))
 	round.lines.append(heard)
 	round.drawn.append(chosen.id)
@@ -635,6 +642,23 @@ static func squeezed_at_end_of(state: GameState, year: int) -> StringName:
 		var company: CompanyState = result.companies_after[id]
 		var row: StalkState = state.stalk_by_id(id)
 		if company.in_squeeze() and row != null and not _failed_by(state, id, year):
+			return id
+	return &""
+
+
+## The company whose squeeze comes off in the year after `year`, lowest id
+## first, or empty: one still in a squeeze with no years of it left
+## (`CompanyState.squeeze_years_left`), so its lift comes off next year for
+## certain (`EarningsYearResolver`, D213, D219).
+static func squeeze_ending_after(state: GameState, year: int) -> StringName:
+	var result: EarningsYearResult = MarketReadouts.result_for_year(state, year)
+	if result == null:
+		return &""
+	var ids: Array[StringName] = _sorted_keys(result.companies_after.keys())
+	for id: StringName in ids:
+		var company: CompanyState = result.companies_after[id]
+		var row: StalkState = state.stalk_by_id(id)
+		if company.in_squeeze() and company.squeeze_years_left <= 0 and row != null and not _failed_by(state, id, year):
 			return id
 	return &""
 

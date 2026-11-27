@@ -1070,7 +1070,9 @@ func test_the_industry_chart_draws_every_year_that_fits() -> void:
 	var chart: ChartWidget = _tabs().industries_tab().industry_chart()
 	assert_eq(chart.captions_shown(), PackedStringArray(["1", "2", "3", "4"]))
 	assert_eq(chart.years_shown(), 4)
-	var axis: String = chart.chart_text().split("\n")[2]
+	var lines: PackedStringArray = chart.chart_text().split("\n")
+	assert_eq(lines.size(), IndustriesTab.CHART_HALF_HEIGHT * 2 + 2, "three rows each side, the axis, the captions")
+	var axis: String = lines[IndustriesTab.CHART_HALF_HEIGHT]
 	assert_eq(axis, "    0+" + "-".repeat(4 * 3 - 1), "four bars of two cells and their gaps")
 
 

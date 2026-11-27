@@ -289,7 +289,7 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **EARNINGS report** — the Company tab's line under EARNINGS, written by code from the numbers (`ReportWriter`, decisions.md D215): the revenue change, how it compared with what the regime led one to expect, then the regime in plain words. "Mafia HUD Scam's revenue fell 14%, far worse than expected. The company is in distress."
 
-**Squeeze whisper / crash whisper** — a whisper that a flagged company is about to be squeezed, or that a squeezed one's jump is about to come off. Always from a Questionable source, on top of the two ordinary whispers; its outcome is whether it happened (decisions.md D214, D218).
+**Squeeze whisper / crash whisper** — a whisper that a flagged company is about to be squeezed, or that a squeezed one's jump is about to come off. The squeeze whisper is from a Questionable source; the crash whisper is heard only in a squeeze's last year, when the jump will come off, from a Rock Solid source. Either comes on top of the two ordinary whispers; its outcome is whether it happened (decisions.md D214, D218, D219).
 
 **Whisper** — a rumor about a company or an industry, heard at the end of a year (from year 1; none in year 0) and about **the next year**: whether it will do much worse, worse, as expected, better or much better than everyone expects. Two a round, on the Market tab with their sources, and on the Company tab of a company they name or its industry. A whisper can be wrong, and how often depends on its **source** (decisions.md D205).
 

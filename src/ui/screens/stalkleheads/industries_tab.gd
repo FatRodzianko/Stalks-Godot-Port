@@ -50,11 +50,11 @@ const HEADINGS: PackedStringArray = [
 ## How many cells the revenue-share bar may take, at 100%.
 const SHARE_BAR_CELLS: int = 10
 
-## The by-year chart's rows above the zero axis, and the same below (design
-## §7.6). It is a text chart again (D218): bars of a fixed width, growing to the
+## The by-year chart's rows above the zero axis, and the same below: three, the
+## owner's choice (D219; design §7.6 had two). It is a text chart again (D218): bars of a fixed width, growing to the
 ## right, the oldest dropped once they reach the right edge of its half of the
 ## tab.
-const CHART_HALF_HEIGHT: int = 2
+const CHART_HALF_HEIGHT: int = 3
 
 const MEMBER_WIDTHS: Array[int] = [22, 6, 6]
 

@@ -455,14 +455,17 @@ func test_next_years_draws_are_kept_and_then_used() -> void:
 		assert_eq(result.industry_rolls, kept.industry_rolls, "year %d industries" % result.year)
 		assert_eq(result.regimes, kept.regimes, "year %d regimes" % result.year)
 		assert_eq(result.growth_rolls, kept.growth_rolls, "year %d growth" % result.year)
-	assert_null(played.state.market.next_draws, "nothing is drawn after the last year")
+	assert_not_null(played.state.market.next_draws, "the final year keeps the settling year's draws (D219)")
+	WireMatch.play_year(played.authority)
+	assert_true(played.state.is_over)
+	assert_null(played.state.market.next_draws, "nothing is drawn after the match is settled")
 
 
-## Whispers are heard from the match's start, about year 1, and not at the end
-## of the last year, which has no next year.
+## Whispers are heard from the end of year 1, and at the end of the final year
+## too, about the year that settles the match (D219).
 ## Nobody can trade in year 0, so there are no whispers then (D207): the
 ## first round is heard at the end of year 1, and none after the last year.
-func test_whispers_start_after_year_one_and_stop_before_the_last() -> void:
+func test_whispers_start_after_year_one_and_run_to_the_final_year() -> void:
 	var fresh: WireMatch = WireMatch.start(SEED, 3, 5)
 	assert_null(NewsSelector.latest_whispers(fresh.state), "none in year 0")
 	assert_eq(_rounds(fresh.state).size(), 0)
@@ -474,9 +477,9 @@ func test_whispers_start_after_year_one_and_stop_before_the_last() -> void:
 	assert_eq(first.lines.size(), NewsSelector.WHISPERS_PER_YEAR)
 	assert_false(first.is_settled(fresh.state))
 	fresh.play(4)
-	assert_null(NewsSelector.whispers_for(fresh.state, 5))
+	assert_not_null(NewsSelector.whispers_for(fresh.state, 5), "the final year has whispers: year 6 settles the match (D219)")
 	assert_null(NewsSelector.whispers_for(fresh.state, 0))
-	assert_eq(_rounds(fresh.state).size(), 4, "rounds 1 to 4")
+	assert_eq(_rounds(fresh.state).size(), 5, "rounds 1 to 5")
 	assert_true(first.is_settled(fresh.state))
 
 
@@ -490,6 +493,8 @@ func test_a_whispers_truth_is_what_next_year_brought() -> void:
 	var industries: int = 0
 	for round: WhisperRound in _rounds(state):
 		var next: EarningsYearResult = MarketReadouts.result_for_year(state, round.about_year())
+		if next == null:
+			continue  # the final year's round, about the settling year, not played here
 		assert_true(round.lines.size() <= NewsSelector.WHISPERS_PER_YEAR + 1, "two, and a squeeze whisper on top")
 		var subjects: Dictionary[StringName, bool] = {}
 		for line: WhisperRound.Line in round.lines:
@@ -536,10 +541,17 @@ func _shorted_year_one(library: ContentLibrary, seed_value: int) -> GameState:
 func test_squeeze_and_crash_whispers_come_on_top_of_the_two_from_a_questionable_source() -> void:
 	var library: ContentLibrary = _library()
 	var seen: Dictionary[NewsBands.Subject, int] = {}
+	var held: int = 0
 	for seed_value: int in 80:
 		var state: GameState = _shorted_year_one(library, seed_value)
 		var kind: NewsBands.Subject = NewsBands.Subject.CRASH
-		var subject: StringName = NewsSelector.squeezed_at_end_of(state, 1)
+		var subject: StringName = NewsSelector.squeeze_ending_after(state, 1)
+		if subject.is_empty() and not NewsSelector.squeezed_at_end_of(state, 1).is_empty():
+			# D219: squeezed with years still to run - no crash whisper yet.
+			for line: WhisperRound.Line in NewsSelector.whispers_for(state, 1).lines:
+				assert_ne(line.about, NewsBands.Subject.CRASH, "seed %d: the squeeze is held next year" % seed_value)
+			held += 1
+			continue
 		if subject.is_empty():
 			# Not squeezed: short stryker again at the year's end, as a desk might.
 			state.market.desk.traders[0].set_short(&"stryker", 400)
@@ -563,7 +575,10 @@ func test_squeeze_and_crash_whispers_come_on_top_of_the_two_from_a_questionable_
 		var heard: WhisperRound.Line = special[0]
 		assert_eq(heard.about, kind, "seed %d" % seed_value)
 		assert_eq(heard.subject, subject)
-		assert_eq(heard.source, WhisperRules.Source.QUESTIONABLE)
+		if kind == NewsBands.Subject.CRASH:
+			assert_eq(heard.source, WhisperRules.Source.ROCK_SOLID, "a crash whisper is certain (D219)")
+		else:
+			assert_eq(heard.source, WhisperRules.Source.QUESTIONABLE)
 		assert_true(heard.text.contains(state.stalk_by_id(subject).definition.display_name), heard.text)
 		seen[kind] = seen.get(kind, 0) + 1
 
@@ -573,8 +588,11 @@ func test_squeeze_and_crash_whispers_come_on_top_of_the_two_from_a_questionable_
 		if kind == NewsBands.Subject.CRASH:
 			happened = next.squeeze_moves.get(subject, 0) < 0
 		assert_eq(NewsSelector.squeeze_whisper_came_true(state, round, heard), happened, "seed %d" % seed_value)
+		if kind == NewsBands.Subject.CRASH:
+			assert_true(happened, "seed %d: a crash whisper always comes true" % seed_value)
 	assert_gt(seen.get(NewsBands.Subject.SQUEEZE, 0), 0, "some seed left stryker flagged")
-	assert_gt(seen.get(NewsBands.Subject.CRASH, 0), 0, "some seed left stryker squeezed")
+	assert_gt(seen.get(NewsBands.Subject.CRASH, 0), 0, "some seed left stryker's squeeze ending")
+	assert_gt(held, 0, "some seed left stryker's squeeze with years to run")
 
 
 ## The line heard is one written for the outcome its source told, never for
