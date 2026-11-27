@@ -2778,7 +2778,7 @@ checkout before exporting, `src/sim/short_interest_rules.gd` contains
 31. Check the final results are shown.
 32. Close the game window.
 
-### Y - A short interest entry opens its company (decisions.md D222) — **not yet run**
+### Y - A short interest entry opens its company (decisions.md D222) — **passed 2026-11-27**
 
 One machine, no Steam. Run on a locally exported build containing D222; to check a
 checkout before exporting, `src/ui/screens/stalkleheads/side_panel.gd` contains
