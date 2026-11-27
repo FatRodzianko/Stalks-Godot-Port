@@ -56,6 +56,7 @@ game, not from the rules document.
 | [glossary.md](glossary.md) | Domain and technical terms used throughout | Something is unexplained |
 | [ui-reference.md](ui-reference.md) | The pixel grid, and the original's layout read from its scenes | You are building or changing a screen |
 | [stalkleheads-design.md](stalkleheads-design.md) | The approved design for StalkleHeads, an additional game mode in which prices come from a simulated market of earnings, industries and NPC traders. Phases S0 to S6 are built (the base-game guard, the market fundamentals, the balance tool, the year pipeline, the NPC desk, the mode and lobby, the wire); §11 tracks the rest | You are building StalkleHeads, or changing anything it says must not change in the base game |
+| [news-flow-chart.md](news-flow-chart.md) | The design and build plan for the News Flow Chart, a planned Godot editor tool for writing StalkleHeads news as connected chains. Not built yet | You are building that tool, or wondering whether news can be authored outside the Inspector |
 
 There is also **[../CLAUDE.md](../CLAUDE.md)** in the repository root. It holds the
 coding standards and conventions. It is addressed to an AI assistant, but the
