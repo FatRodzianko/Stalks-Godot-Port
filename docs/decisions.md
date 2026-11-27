@@ -8048,3 +8048,39 @@ git history, which was judged not worth rewriting for.
 
 **Rules out:** relicensing contributed code without contributors' consent;
 treating anything in `assets/audio/` as free to reuse.
+
+
+### D217 - Seven screams in turn instead of one Wilhelm scream
+
+A bankruptcy year still plays breaking glass and a scream together, once per
+year. The scream is now the next of seven in `AudioService.SCREAMS`, in a fixed
+order and round again, instead of the single `wilhelm-scream.mp3`, which had
+no recorded source and was removed on 2026-11-27.
+
+- **Five are Wilhelm screams** cut from one 39-second archival reel uploaded to
+  Freesound by Craig Smith and marked CC0. The owner chose to use it knowing
+  the caveat recorded in `NOTICE.md`: it is a copy of studio effects, so the
+  CC0 mark may not cover the original studio's rights. If that is ever raised,
+  the five files are the only thing to replace.
+- **Two come from Sonniss GDC bundles** (2016 and 2020), whose license allows
+  use and distribution in a game without attribution.
+
+**Why in turn and not at random.** Turns guarantee no scream follows itself
+and every one is heard within seven bankrupt years; random would need an RNG,
+and CLAUDE.md wants randomness injected and seeded, which is out of proportion
+for a sound. Each player's game keeps its own count, so two players may hear
+different screams for the same year. That is presentation, not state.
+
+**How the files were made** (scripts not kept; the steps are what matter):
+each Wilhelm cut starts 50 ms before the scream and runs 300 ms past it so the
+echo dies away, because the first cuts stopped while the echo was still about
+-40 dB and that was heard as a click. Fades are cosine-shaped: 5 ms in, 200 ms
+out, 300 ms out for the female scream, which is one sustained note and has to
+be faded mid-scream to be short. DC offset is removed. Every clip's loudest
+300 ms is brought to the same RMS (-11.3 dBFS), the highest level that keeps
+every clip's peak at or below -1 dBFS. They are 16-bit mono WAV.
+
+**Not checked:** how loud the screams sit against the glass and the other
+effects, which only listening in a match can settle.
+
+**Rules out:** relicensing any scream under the project's code license.

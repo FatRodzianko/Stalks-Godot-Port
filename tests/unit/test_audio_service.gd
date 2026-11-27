@@ -62,8 +62,45 @@ func test_a_bankruptcy_breaks_glass_and_screams() -> void:
 
 	var playing: Array[AudioStream] = _sounding()
 	assert_eq(playing.size(), 2)
-	for clip: AudioStream in AudioService.BANKRUPTCY:
-		assert_true(playing.has(clip))
+	assert_true(playing.has(AudioService.GLASS))
+	assert_eq(_screams_in(playing).size(), 1, "exactly one scream")
+
+
+## The screams among `streams`.
+func _screams_in(streams: Array[AudioStream]) -> Array[AudioStream]:
+	var found: Array[AudioStream] = []
+	for clip: AudioStream in streams:
+		if AudioService.SCREAMS.has(clip):
+			found.append(clip)
+	return found
+
+
+func test_bankruptcies_take_turns_through_every_scream() -> void:
+	# One per bankrupt year, each different, until all have been heard; then
+	# round again in the same order. Starts wherever the shared autoload
+	# happens to be, so it checks the cycle rather than which comes first.
+	var heard: Array[AudioStream] = []
+	for year: int in AudioService.SCREAMS.size() + 1:
+		_silence()
+		Audio.play_bankruptcy()
+		var screams: Array[AudioStream] = _screams_in(_sounding())
+		assert_eq(screams.size(), 1)
+		heard.append(screams[0])
+
+	var cycle: Array[AudioStream] = heard.slice(0, AudioService.SCREAMS.size())
+	for clip: AudioStream in AudioService.SCREAMS:
+		assert_eq(cycle.count(clip), 1, "every scream once per cycle")
+	assert_eq(heard[-1], heard[0], "then round again from the start")
+
+
+func test_no_scream_follows_itself() -> void:
+	var previous: AudioStream = null
+	for year: int in AudioService.SCREAMS.size() * 2:
+		_silence()
+		Audio.play_bankruptcy()
+		var scream: AudioStream = _screams_in(_sounding())[0]
+		assert_ne(scream, previous)
+		previous = scream
 
 
 func test_a_yeehaw_is_one_clip() -> void:

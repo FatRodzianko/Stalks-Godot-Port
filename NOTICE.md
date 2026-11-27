@@ -41,8 +41,19 @@ The GPL above does **not** grant rights to:
 - **The name and branding.** "Stalks Stalks Stalks" and the Glacial Lake Studios
   logo (`assets/sprites/glacial_lake_studios.png`) are not licensed for use.
   A fork must use its own name.
-- **The sound effects in `assets/audio/`.** Their origin is not yet recorded, so
-  no license is granted for them. Treat them as all rights reserved.
+- **The sound effects in `assets/audio/`.** No license is granted for any of
+  them by this project. Where a sound's source is known it is listed below,
+  and its own terms apply; the rest have no recorded origin and should be
+  treated as all rights reserved.
+
+## Sound sources
+
+| Files | Source | Terms |
+|---|---|---|
+| `wilhelm-scream-1.wav` to `-5.wav` | Cut from "S38-01 Man eaten by alligator; screams [Wilhelm screams]" by Craig Smith, https://freesound.org/people/craigsmith/sounds/675810/ — trimmed, faded and level-matched | Marked CC0 on Freesound. **Caveat:** the uploader describes it as an archival copy of Hollywood studio effects from the 1930s–60s, so the CC0 mark may not cover rights held by the original studio. |
+| `scream-sonniss-female.wav` | "Female_Scream_005" from SoundBits, *Screams & Shouts 2 - Humans*, Sonniss GDC 2016 Game Audio Bundle — shortened to 1.3 s and level-matched | Sonniss #GameAudioGDC bundle license: royalty-free, no attribution required, may be distributed; may not be sold on its own. |
+| `scream-sonniss-warrior.wav` | "Male Warrior 2 Scream, Battle, War, Cry, Fight, Shout 3" from 344 Audio, *Medieval Battle*, Sonniss GDC 2020 Game Audio Bundle — level-matched | As above. |
+| `bull1`, `bull2`, `bear1`, `bear2`, `glass-shattering`, `yeehaw` (`.mp3`) | Carried over from the original game | Origin not recorded. |
 
 ## Third-party components
 

@@ -29,9 +29,26 @@ const BEAR: Array[AudioStream] = [
 	preload("res://assets/audio/bear1.mp3"),
 	preload("res://assets/audio/bear2.mp3"),
 ]
-const BANKRUPTCY: Array[AudioStream] = [
-	preload("res://assets/audio/glass-shattering.mp3"),
-	preload("res://assets/audio/wilhelm-scream.mp3"),
+const GLASS: AudioStream = preload("res://assets/audio/glass-shattering.mp3")
+
+## The screams a bankruptcy takes turns through, one per bankrupt year, in this
+## order and round again. The original had one Wilhelm scream; this has several
+## so a long match does not play the same one every time.
+##
+## In turn rather than at random: the order is fixed, two in a row are never
+## the same, and nothing here needs a random number generator.
+##
+## Five are cut from one Craig Smith archival reel of Wilhelm screams and two
+## come from Sonniss GDC bundles; all were levelled to the same loudness. Where
+## each came from, and its terms, is in NOTICE.md. See docs/decisions.md D217.
+const SCREAMS: Array[AudioStream] = [
+	preload("res://assets/audio/wilhelm-scream-1.wav"),
+	preload("res://assets/audio/scream-sonniss-warrior.wav"),
+	preload("res://assets/audio/wilhelm-scream-2.wav"),
+	preload("res://assets/audio/wilhelm-scream-3.wav"),
+	preload("res://assets/audio/scream-sonniss-female.wav"),
+	preload("res://assets/audio/wilhelm-scream-4.wav"),
+	preload("res://assets/audio/wilhelm-scream-5.wav"),
 ]
 const YEEHAW: AudioStream = preload("res://assets/audio/yeehaw.mp3")
 
@@ -64,6 +81,9 @@ var _preview: AudioStreamPlayer = null
 ## candidate and looking for an idle one just risks finding none.
 var _next: int = 0
 
+## Which of `SCREAMS` the next bankruptcy plays.
+var _next_scream: int = 0
+
 
 func _ready() -> void:
 	_apply(UserSettings.load_from().volume_percent)
@@ -86,9 +106,12 @@ func play_mood(mood: MarketMood.Value) -> void:
 		_play_together(BULL)
 
 
-## Breaking glass and a scream. Call once for a year, not once per stalk.
+## Breaking glass and a scream, the next one in `SCREAMS`. Call once for a
+## year, not once per stalk.
 func play_bankruptcy() -> void:
-	_play_together(BANKRUPTCY)
+	_play(GLASS)
+	_play(SCREAMS[_next_scream])
+	_next_scream = (_next_scream + 1) % SCREAMS.size()
 
 
 func play_yeehaw() -> void:

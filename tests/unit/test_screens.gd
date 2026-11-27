@@ -1056,7 +1056,8 @@ func test_a_year_with_nothing_going_bankrupt_does_not_break_glass() -> void:
 	assert_eq(bits[2].state().latest_result().bankrupt_ids().size(), 0,
 		"this seed should not bankrupt anything in year 1")
 
-	for clip: AudioStream in AudioService.BANKRUPTCY:
+	assert_false(_clips_sounding().has(AudioService.GLASS))
+	for clip: AudioStream in AudioService.SCREAMS:
 		assert_false(_clips_sounding().has(clip))
 
 

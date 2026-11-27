@@ -545,7 +545,7 @@ Seven clips, one mixer group, one audio source per clip, all at pitch 1. There i
 |---|---|---|
 | A bear year begins | `bear1` **and** `bear2`, together | **Ported** |
 | A bull year begins | `bull1` **and** `bull2`, together | **Ported** |
-| Any stalk goes bankrupt | `glassShatter` **and** `scream` (a Wilhelm scream), **once per year** however many stalks died | **Ported** |
+| Any stalk goes bankrupt | `glassShatter` **and** `scream` (a Wilhelm scream), **once per year** however many stalks died | **Ported**; the port takes turns through seven screams (D217) |
 | A yeehaw is given | `yeehaw`, heard by everybody | **Ported** |
 | The volume slider moves | `bull2`, as an audition | **Ported** (improved, §3.5) |
 

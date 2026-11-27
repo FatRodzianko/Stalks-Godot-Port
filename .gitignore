@@ -105,3 +105,6 @@ logs/
 # it needs. Keep it that way: if a reference ever becomes load-bearing, write
 # down what it shows rather than committing the file.
 /reference-images/
+
+# Sound variants rendered for auditioning. Local only.
+/audio-auditions/
