@@ -20,8 +20,8 @@ this:
    second machine introduces a real network, a firewall, and two copies of the
    game that were built rather than run from source.
 2. **Steam's relay.** The suite must pass on a machine with no Steam client at
-   all, so it never calls Steam. Lobby creation and peer creation were checked
-   by hand on one machine; two *accounts* have never met.
+   all, so it never calls Steam. Two accounts on two machines have played
+   through Steam since 2026-11-15; sections B6 to B8 record those runs.
 3. **Whether any of it feels right.** Nothing automated has an opinion about
    layout, wording, or a screen that looks frozen when it is waiting.
 

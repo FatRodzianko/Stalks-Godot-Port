@@ -1,9 +1,10 @@
 # StalkleHeads — game design document
 
-**Status: design approved by the owner on 2026-11-21. Nothing in here is built.** No
-gameplay code, no scenes and no changes to any existing system were written for this
-document. Every open question in §14 is answered; the build plan is §11. The balance
-figures were re-measured on the approved roster on the same day (§2.6).
+**Status: design approved by the owner on 2026-11-21. Phases S0 to S8 are built
+(2026-11-21 to 2026-11-23); S9, balance tuning, is open.** §11 has the phase table
+and [stalkleheads-tuning.md](stalkleheads-tuning.md) the tuning work.
+Every open question in §14 is answered. The balance figures were re-measured on
+the approved roster on 2026-11-21 (§2.6).
 
 **What it is.** StalkleHeads is an *additional* game mode, chosen in the lobby
 alongside the shipped game, in which stalk prices come from a simulated market

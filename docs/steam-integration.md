@@ -1,7 +1,8 @@
 # Steam Integration
 
-Phase 6. **In progress** — the groundwork is built and tested; the parts that
-need a Steamworks account and a download are waiting on the owner.
+Phase 6. **Complete pending an upload.** Built, tested, and played by two Steam
+accounts on two machines. What is left needs the port uploaded to a Steam
+branch: see porting-plan.md Phase 6 and [publishing.md](publishing.md).
 
 This document is the whole plan plus the setup instructions. Read it before
 touching anything Steam-related.

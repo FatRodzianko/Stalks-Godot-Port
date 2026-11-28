@@ -1,7 +1,9 @@
 # Documentation
 
 Everything written down about **Stalks Stalks Stalks**, a port of a Unity
-stock-trading game to Godot 4.7.
+stock-trading game to Godot 4.7. The port is built and playable, alone or
+over Steam, but not yet uploaded to Steam. StalkleHeads, a second game mode,
+is in balance tuning.
 
 These documents are written to stand alone. You do not need the original Unity
 project, access to anyone who worked on this, or an AI assistant to continue the
@@ -55,7 +57,7 @@ game, not from the rules document.
 | [godot-editor-guide.md](godot-editor-guide.md) | A first-time walkthrough of the Godot editor for this project, written for a complete beginner | You have never opened Godot |
 | [glossary.md](glossary.md) | Domain and technical terms used throughout | Something is unexplained |
 | [ui-reference.md](ui-reference.md) | The pixel grid, and the original's layout read from its scenes | You are building or changing a screen |
-| [stalkleheads-design.md](stalkleheads-design.md) | The approved design for StalkleHeads, an additional game mode in which prices come from a simulated market of earnings, industries and NPC traders. Phases S0 to S8 are built (the base-game guard, the market fundamentals, the balance tool, the year pipeline, the NPC desk, the mode and lobby, the wire, the interface, the content); §11 tracks the rest | You are building StalkleHeads, or changing anything it says must not change in the base game |
+| [stalkleheads-design.md](stalkleheads-design.md) | The approved design for StalkleHeads, an additional game mode in which prices come from a simulated market of earnings, industries and NPC traders. Phases S0 to S8 are built (the base-game guard, the market fundamentals, the balance tool, the year pipeline, the NPC desk, the mode and lobby, the wire, the interface, the content) and S9, balance tuning, is open; §11 tracks the phases | You are building StalkleHeads, or changing anything it says must not change in the base game |
 | [news-flow-chart.md](news-flow-chart.md) | The design and build plan for the News Flow Chart, a Godot editor tool for writing StalkleHeads news as connected chains. Phases 1-4 built: the **News Flow** tab shows the chains and creates, edits, links and deletes news items, with undo; the Inspector gets the same dropdowns | You are building that tool, or wondering whether news can be authored outside the Inspector |
 | [stalkleheads-tuning.md](stalkleheads-tuning.md) | Phase S9's working file: the StalkleHeads balance baseline, every open balance lever with its value, its measured figures and the tool argument that sweeps it, and the decisions waiting for the owner | You are tuning StalkleHeads, or about to change one of its numbers |
 

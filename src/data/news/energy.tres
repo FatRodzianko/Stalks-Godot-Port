@@ -41,7 +41,7 @@ script = ExtResource("4_qenhj")
 id = &"ind_energy_up_1"
 industry_id = &"energy"
 move = 4
-text = "5 year old child charged with reckless endangerment of his own life after being run over by a lifted truck. \"He was too small to see, what could I do?\" said the driver"
+text = "City council passes Lifted Truck exemption for School Zones in unanimous vote."
 
 [sub_resource type="Resource" id="Resource_8uo47"]
 script = ExtResource("4_qenhj")

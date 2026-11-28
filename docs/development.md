@@ -172,8 +172,10 @@ docs/            All documentation. Start at docs/README.md.
 src/
   data/          Authored content and settings. Resource classes, saved as .tres.
   sim/           The entire economy. No nodes, no networking. See architecture.md.
-  net/            (empty — Phase 5) Session and transport.
-  autoload/       (empty) Global services, registered in project.godot.
+  net/           Sessions (local, host, client), the ENet and Steam transports,
+                 state sync, host migration, messages. See architecture.md.
+  audio/         AudioService, the one autoload (`Audio` in project.godot).
+  autoload/      Empty. Kept for future global services.
   ui/
     screens/     One folder per screen, scene and script together.
     widgets/     Reusable UI pieces.

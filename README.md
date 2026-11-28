@@ -5,7 +5,8 @@ Unity to **Godot 4.7.2**.
 
 A 2D, UI-only multiplayer stock-trading game. Players buy and sell "stalks" whose
 prices move each in-game year through bull/bear market swings and random special
-events. Highest net worth after the final year wins. 1–10 players.
+events. Highest net worth after the final year wins. 1–10 players, over Steam or a
+direct connection, or alone.
 
 ---
 
@@ -24,27 +25,32 @@ project, access to anyone who worked on this, or an AI assistant to continue the
 | [docs/decisions.md](docs/decisions.md) | **Why** it is organised that way. Read before changing anything structural |
 | [docs/development.md](docs/development.md) | Setup on a fresh machine, and how to work on it |
 | [docs/testing.md](docs/testing.md) | Running and writing tests |
-| [docs/porting-plan.md](docs/porting-plan.md) | The seven phases, and what is done |
+| [docs/porting-plan.md](docs/porting-plan.md) | The phases, and what is done |
+| [docs/original-game-audit.md](docs/original-game-audit.md) | Everything the original did, marked ported, changed or missing |
+| [docs/manual-testing.md](docs/manual-testing.md) | What has to be checked by hand, and what has passed |
+| [docs/stalkleheads-design.md](docs/stalkleheads-design.md) | StalkleHeads, the second game mode |
 | [docs/godot-editor-guide.md](docs/godot-editor-guide.md) | First-time Godot walkthrough for beginners |
 | [docs/glossary.md](docs/glossary.md) | Terms used throughout |
+
+The full index, including exporting, publishing and Steam, is
+[docs/README.md](docs/README.md).
 
 ---
 
 ## Status
 
-**Phases 1–4 of 7 complete. The single-player game is finished and playable.** Press
-F5: set up a match in the menu, buy and sell stalks, take a loan, watch prices move
-through splits, bankruptcies and special events, and get a result screen with the
-final standings.
+**The port is built and playable**, alone or with up to ten players over Steam or
+a direct connection. Phases 0 to 7 of [the porting plan](docs/porting-plan.md) are
+done, and so are the follow-ups asked for after them: public holdings, rejoining a
+match, host migration and the rematch. All of it has been played on two machines
+with two Steam accounts.
 
 | | |
 |---|---|
-| Tests | 214 tests, 13,524 asserts, about 3.3 seconds |
-| Built | The economy, loans, the ten stalks with their ninety events, and the complete single-player game: menu, play, loans, result |
-| Next | Multiplayer over ENet (Phase 5), then Steam (Phase 6), then sound and polish (Phase 7) |
-
-The current `main_scene` is a throwaway smoke-test screen that proves the toolchain
-works. It is deleted in Phase 4.
+| Not done | Uploading the port to Steam. Two Phase 6 checks need that upload; see [publishing.md](docs/publishing.md) |
+| In progress | **StalkleHeads**, a second game mode in which prices come from a simulated market of earnings, industries and traders. Built (phases S0 to S8); balance tuning (S9) is open. See [stalkleheads-design.md](docs/stalkleheads-design.md) |
+| Also here | The **News Flow Chart**, a Godot editor tool for writing StalkleHeads news ([news-flow-chart.md](docs/news-flow-chart.md)) |
+| Tests | Over 1,400, all passing. Coverage and what is still untested: [testing.md](docs/testing.md) |
 
 ---
 
@@ -64,8 +70,8 @@ With `<godot>` being the Godot `_console` executable, from this folder:
 <godot> --headless --path . -s res://addons/gut/gut_cmdln.gd
 ```
 
-The second command runs the test suite. If it reports `67 passed`, your setup is
-correct.
+The second command runs the test suite. If it ends with `All tests passed!`, your
+setup is correct.
 
 To open the editor, launch the Godot GUI executable, click *Import*, and select this
 folder's `project.godot`. Never used Godot before?
@@ -80,14 +86,18 @@ interface.
 src/
   sim/        The entire economy. No nodes, no networking, no scene tree.
   data/       Authored content and settings (.tres resources).
-  net/        (empty — Phase 5) Session and transport.
-  autoload/   (empty) Global services.
+  net/        Sessions, the ENet and Steam transports, sync, host migration.
+  audio/      The sound effects service, the one autoload.
   ui/         Screens and reusable widgets.
-assets/       Themes, sprites, audio.
+assets/       Themes, sprites, fonts, audio.
 tests/
   unit/       Everything the test runner executes.
   fixtures/   Shared test helpers.
-addons/gut/   The test framework, committed deliberately.
+tools/        Scripts run by hand: balance, screenshots, network and Steam checks.
+addons/
+  gut/        The test framework, committed deliberately.
+  godotsteam/ The Steam bindings.
+  news_flow_chart/  The editor tool for StalkleHeads news.
 docs/         All documentation.
 ```
 

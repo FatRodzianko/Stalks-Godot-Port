@@ -286,12 +286,12 @@ container layout.
 
 ---
 
-## Phase 5 — Multiplayer over ENet
+## Phase 5 — Multiplayer over ENet ✅ Complete
 
-**Status: both increments built, not yet played by two people.** The networked
-layer and the screens to reach it are done and tested. What has not happened is a
-human running two copies of the game and playing a match, which is the one
-condition below that automated tests cannot stand in for.
+**Status: built, tested, and played.** The last gate, two people playing a match
+over a direct connection, was met on 2026-11-15: two machines, Test A in
+[manual-testing.md](manual-testing.md). What that session turned up is under
+Phase 6, "Found by playing, fixed on 2026-11-15".
 
 ### Increment 1 — delivered
 
@@ -394,15 +394,18 @@ identical market state after every year.
 
 Of those three: the rejection and the identical-market conditions are met and
 tested (`test_networked_session.gd`). Two instances playing together is now
-*possible* — menu, lobby and transport are all in place — but has not been
-done by a person, and the suite cannot prove it (see the note on one `Main` per
-process below). **That is the remaining gate on calling Phase 5 complete.**
+*possible* — menu, lobby and transport are all in place — and was done by a
+person on 2026-11-15, which is what the suite cannot prove (see the note on one
+`Main` per process below). **All three are met.**
 
 ---
 
 ## Phase 6 — Steam
 
-**Status: built on one machine. Two Steam accounts have never met.**
+**Status: complete pending an upload.** Two Steam accounts on two machines have
+played full matches since 2026-11-15, including rejoin, host migration and the
+rematch (manual-testing.md B6 to B8). What is left needs the port uploaded to a
+Steam branch; see "Done when" below and [publishing.md](publishing.md).
 
 Full detail, including the setup steps, is in
 [steam-integration.md](steam-integration.md). In short:
@@ -829,7 +832,7 @@ machines: the client stayed on the standings when the host left, the finished
 game was gone from the browser and not offered as a rejoin, and an open "leave
 the game?" prompt went away when the host's departure migrated the match.
 
-### A rematch — **built 2026-11-20, not yet confirmed in play**
+### A rematch — **done, confirmed in play 2026-11-20**
 
 Asked for on 2026-11-20 and not in the original, which ends a match with `Quit
 Game`. The host reopens the lobby on a finished match, with the same settings
