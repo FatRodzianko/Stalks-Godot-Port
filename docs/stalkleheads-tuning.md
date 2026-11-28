@@ -289,6 +289,11 @@ D238 left it unchanged: whispers move no price). With it as an eleventh player:
 |---|---|---|---|---|---|---|---|---|
 | **eleven strategies, 10 years, sources 15/15/25/25/20 (D238)** | 4,000 | **35.5%** | 24,375 | 18.8 | 13.3 | 13.1 | 6 of 11 | 0.52 |
 | eleven strategies, 10 years, sources even (before D238) | 4,000 | 38.2% | 26,096 | 18.2 | 13.1 | 12.9 | 6 of 11 | 0.48 |
+| sources 12.5/15/25/25/22.5 (`25,30,50,50,45`) | 4,000 | 35.6% | 24,412 | 18.4 | 13.6 | 13.3 | 6 of 11 | 0.51 |
+| sources 10/20/25/25/20 | 4,000 | 35.0% | 24,087 | 18.9 | 13.5 | 13.1 | 6 of 11 | 0.52 |
+
+The last two were the owner's final checks on 2026-11-28: both within noise (about
+±0.7 points) of D238's 35.5%, so small moves around 15/15/25/25/20 change nothing.
 | WHISPER, TREND, RANDOM, BOND only | 4,000 | 51.6% | 26,199 | 32.7 | — | — | 3 of 4 | 0.50 |
 | eleven, no squeeze | 1,000 | 30.5% | — | 17.4 | 16.2 | 12.6 | 7 of 11 | 0.60 |
 | eleven, no flow | 1,000 | 39.9% | — | 19.8 | 5.7 | 8.3 | 7 of 11 | 0.48 |
