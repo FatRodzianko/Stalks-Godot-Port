@@ -494,7 +494,8 @@ dot pressed to the mouse on a scrolled chart too, and ends on the dot under the
 mouse; a drag whose button release was lost ends when the mouse moves. Three
 more tests; the file has 48.
 
-**After the fourth manual run (D229):** a selected arrow is drawn orange. The
+**After the fourth manual run (D229):** a selected arrow is drawn orange. Section
+AA passed on its fifth run, 2026-11-27, which completes Phase 3. The
 file has 49 tests.
 
 The plan as written:

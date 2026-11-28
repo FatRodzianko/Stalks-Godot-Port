@@ -2880,7 +2880,7 @@ match.
   edit in the Inspector instead.
 - **Second run, after the fixes: every step passed.**
 
-### AA - The News Flow tab: creating, editing and linking (decisions.md D225-D228) — **four runs 2026-11-27; passed on the fourth but for one finding, fixed in D229**
+### AA - The News Flow tab: creating, editing and linking (decisions.md D225-D229) — **passed 2026-11-27**, on the fifth run
 
 **The first run** passed linking, the loop, editing, naming, saving and putting
 the books back. Its findings, each changed in D226:
@@ -2914,7 +2914,7 @@ click. Both are changed in D228.
 **The fourth run** passed every step but one: a selected arrow looked the same
 as every other, so with several on the chart it was not clear which was
 selected. It is now drawn orange (D229). Only that step, under **Edit and
-remove**, needs running again.
+remove**, needed running again, and it passed on the fifth run.
 
 The steps below are as run the fourth time, with that step updated.
 
