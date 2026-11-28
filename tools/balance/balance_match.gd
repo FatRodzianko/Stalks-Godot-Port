@@ -45,6 +45,31 @@ const FLOW_DESK: StringName = &"desk"
 const FLOW_NONE: StringName = &"none"
 const FLOW_MODES: Array[StringName] = [FLOW_ALL, FLOW_DESK, FLOW_NONE]
 
+## Strategies that play only when named with `--strategies` (D234). Not in
+## the default set, so the P4 baseline keeps its ten players: in `FLOW_ALL` the
+## players are part of the market, and an eleventh would change it.
+## - WHISPER reads the latest whispers (§8.4) and nothing else.
+const OPTIONAL_STRATEGIES: Array[StringName] = [&"WHISPER"]
+
+## Every strategy the tool knows.
+const KNOWN_STRATEGIES: Array[StringName] = [
+	&"HOLD", &"LOWPE", &"HIGHPE", &"TREND", &"MOMENTUM",
+	&"CONTRARIAN", &"INCOME", &"FOLLOW", &"RANDOM", &"BOND", &"WHISPER",
+]
+
+## How much a whisper's told outcome is worth to WHISPER, worst to best.
+const WHISPER_VALUE: Dictionary[NewsBands.Surprise, float] = {
+	NewsBands.Surprise.MUCH_WORSE: -2.0,
+	NewsBands.Surprise.WORSE: -1.0,
+	NewsBands.Surprise.AS_EXPECTED: 0.0,
+	NewsBands.Surprise.BETTER: 1.0,
+	NewsBands.Surprise.MUCH_BETTER: 2.0,
+}
+
+## An industry whisper counts this much for each of its members, against a
+## whisper about the company itself.
+const WHISPER_INDUSTRY_SHARE: float = 0.5
+
 ## How many companies a picking strategy holds.
 const PICKS: int = 3
 
@@ -280,6 +305,8 @@ static func _targets(
 			if held.is_empty():
 				return first
 			return held
+		&"WHISPER":
+			return _whisper_targets(market, alive)
 		&"INCOME":
 			var scored: Array[Array] = []
 			for company: CompanyState in alive:
@@ -290,6 +317,42 @@ static func _targets(
 			return _lowest(scored)
 	push_error("Unknown strategy %s" % strategy)
 	return ids
+
+
+## WHISPER (D234): the whispers heard at the end of last year, about this one
+## (`NewsSelector.latest_whispers`), and nothing else. Each whisper scores what
+## it tells (`WHISPER_VALUE`) times its source's chance of telling the truth
+## (`WhisperRules.ODDS`): a company whisper for that company, an industry
+## whisper at `WHISPER_INDUSTRY_SHARE` for each member, a squeeze coming as +2
+## and a squeeze ending as -2 for its company. It holds the best PICKS scoring
+## above 0, and the bond when none does - every year 1, since the first round
+## is heard at its end (D207). It reads only what a player sees: the told
+## outcome and the source, never the truth.
+static func _whisper_targets(market: View, alive: Array[CompanyState]) -> Array[StringName]:
+	var round: WhisperRound = NewsSelector.latest_whispers(market.state)
+	var score: Dictionary[StringName, float] = {}
+	if round != null:
+		for line: WhisperRound.Line in round.lines:
+			var trust: float = float(WhisperRules.ODDS[line.source].x) / 100.0
+			match line.about:
+				NewsBands.Subject.COMPANY:
+					score[line.subject] = score.get(line.subject, 0.0) + WHISPER_VALUE[line.said] * trust
+				NewsBands.Subject.INDUSTRY:
+					for company: CompanyState in alive:
+						if company.profile.industry == line.subject:
+							score[company.id] = score.get(company.id, 0.0) 								+ WHISPER_VALUE[line.said] * trust * WHISPER_INDUSTRY_SHARE
+				NewsBands.Subject.SQUEEZE:
+					score[line.subject] = score.get(line.subject, 0.0) + 2.0 * trust
+				NewsBands.Subject.CRASH:
+					score[line.subject] = score.get(line.subject, 0.0) - 2.0 * trust
+	var scored: Array[Array] = []
+	for company: CompanyState in alive:
+		var value: float = score.get(company.id, 0.0)
+		if value > 0.0 and company.price > 0:
+			scored.append([-value, company.id])
+	if scored.is_empty():
+		return [BOND_ID]
+	return _lowest(scored)
 
 
 ## The PICKS ids with the lowest score, ties by id. Each entry is [score, id].

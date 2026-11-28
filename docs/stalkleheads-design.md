@@ -2726,7 +2726,7 @@ recommendation", the recommendation is what is recorded.
 | 10 | Can a player short a stalk? | **Not at first.** Players bet against others by reading the desk and short interest. A capped short is a candidate after first play |
 | 11 | How many NPC traders? | **About twenty-four**, three per strategy, shown by strategy on the board and by name on the Company tab |
 | 12 | A "flatten groups" toggle? | **Not in the first build**; added if players ask |
-| 13 | Flatten 99-year matches toward parity? | **Deferred to after first play** (S9) |
+| 13 | Flatten 99-year matches toward parity? | **No** ([D235](decisions.md), S9): the longer the match, the more the best reader should be rewarded |
 | 14 | Which event bag before the mood exists? | **Last year's mood**, the bull bag in year 1 |
 | 15 | What happens to Unionized Submissives LLC? | **Consumer Goods**, in place of the second placeholder |
 | 16 | Is the market model itself approved? | **Yes.** The price is `fair_value + event_carry + flow`, the mood is derived from what the market did, and NPC order flow is capped at 5% of fair value (§2) |
@@ -2814,6 +2814,25 @@ name ([D187](decisions.md)). Questions when it is taken up:
 
 Until it is designed, nothing in S8 or S9 should assume a company has no officers;
 the Company tab has room below NPC ACTIVITY.
+
+**Shared and personal whispers: asked for on 2026-11-27, not scheduled.** In a
+multiplayer match each player should hear two whispers a round: **one shared**, the
+same for every player, and **one personal**, unique to that player. Today every
+player hears the same round (§8.4, D205), worked out on every peer from the history,
+so nothing about whispers travels. Questions when it is taken up:
+
+- **Determinism and the wire.** A personal whisper must still come from a generator
+  every peer can rebuild (for example seeded from the year's draws and the player's
+  id), or be sent only to its player. Either way a rejoining player and a promoted
+  host must hear the same personal whispers as before.
+- **Privacy.** Another player's personal whisper must not be readable on screen,
+  nor, if it is worked out on every peer, easy to read from the client's memory.
+- **The history.** VIEW HISTORY shows the shared whisper and the player's own, never
+  anyone else's.
+- **Single player.** Whether a lone player hears both, or one.
+- **Balance.** The balance tool's WHISPER strategy ([D234](decisions.md)) measures
+  what reading whispers is worth; a personal whisper is a private edge, and should be
+  measured with it.
 
 **Messages: what was left out on 2026-11-23.** Private messages between players
 were built ([D192](decisions.md), [D193](decisions.md)). Not built, on the owner's

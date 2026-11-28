@@ -8733,3 +8733,57 @@ that far is still open (stalkleheads-tuning.md, section 3).
 
 **Rules out:** testing 3% a point for this decision; the owner's rule compared only 4%
 with 5%.
+
+### D234 - The balance tool gains a WHISPER player, named only
+**2026-11-27 · Accepted** (the owner asked for it, phase S9)
+
+The ten strategies read the board, the earnings and the desk; none reads the
+whispers (§8.4), so what a whisper is worth was unmeasured. `WHISPER`, in
+`tools/balance/balance_match.gd`, reads them and nothing else, at the start of each
+year: the round heard at the end of last year (`NewsSelector.latest_whispers`).
+
+- Each whisper scores what it **tells** (much worse -2 to much better +2) times its
+  source's chance of telling the truth (`WhisperRules.ODDS`). It never reads the truth.
+- A company whisper scores that company; an industry whisper scores each member at
+  half; a squeeze coming scores +2 and a squeeze ending -2, both times the source's
+  odds.
+- It holds the best three scoring above 0, equally, rebalancing like the others, and
+  the bond when none does. That is every year 1, since the first round is heard at
+  its end (D207).
+
+**It plays only when named** (`--strategies=...,WHISPER`). In the game's flow mode
+the players' trades move prices, so an eleventh player would change the market the
+P4 baseline is measured on.
+
+**Measured** (4,000 ten-year seeds, eleven players): WHISPER wins **38.2%**, with the
+highest median (26,096; TREND 21,898). With no squeeze, 30.5%; with no flow, 39.9%;
+at 25 years, 43.1%. So reading the whispers is the strongest edge in the game, and the
+squeeze whisper is about eight points of it. Not tuned; it is the owner's decision
+(stalkleheads-tuning.md, lever 5).
+
+**Rules out:** WHISPER in the default set; a strategy that reads a whisper's truth,
+which no player can see.
+
+### D235 - P4's half-point miss stands; the flag, the income slope and long matches stay as they are
+**2026-11-27 · Accepted** (the owner, phase S9) · **answers** design §14 q13
+
+The owner's answers to the open items of stalkleheads-tuning.md, section 3, after D233:
+
+- **P4 fails by 0.5 points (`TREND` 30.5% over 4,000 ten-year seeds), and that is
+  left alone.** The miss is about the size of one run's sampling noise. Shrinking the
+  squeeze to 2% a point or less would pass, at the cost of the meme-stock jump the
+  owner asked for (D213).
+- **The short-interest flag stays at 10%**: some company is flagged about one year
+  in four.
+- **The income trade-off keeps its slope of 1.** Halving it was measured as safe and
+  worth about two points to INCOME; not taken.
+- **Long matches are not flattened (q13).** In the owner's words, the longer the
+  match, the more the best reader should be rewarded. So the gradient with match
+  length (the leader at about 38% at 25 years, 76% at 99) is the design, not a fault,
+  as §1 argued, and lever 2 of the tuning file is closed.
+
+Nothing in `src/` changed for this entry.
+
+**Rules out:** a long-match damping of the premium, or any other mechanism added only
+to bring long matches toward parity; retuning the squeeze for P4 alone.
+

@@ -11,7 +11,8 @@ extends SceneTree
 ##   --years=N          match length (default 10)
 ##   --seeds=N          how many matches (default 400)
 ##   --first-seed=N     the first seed; seeds run N, N+1, ... (default 0)
-##   --strategies=A,B   which strategies play (default all ten)
+##   --strategies=A,B   which strategies play (default the ten; WHISPER, which
+##                      reads only the whispers, plays only when named)
 ##   --flow=MODE        what feeds the flow term: all (the desk and the players,
 ##                      as in the game; default), desk, or none
 ##
@@ -57,7 +58,8 @@ const USAGE: String = """Usage: <godot> --headless --script res://tools/balance_
   --years=N          match length (default 10)
   --seeds=N          how many matches (default 400)
   --first-seed=N     first seed (default 0)
-  --strategies=A,B   subset of HOLD,LOWPE,HIGHPE,TREND,MOMENTUM,CONTRARIAN,INCOME,FOLLOW,RANDOM,BOND
+  --strategies=A,B   any of HOLD,LOWPE,HIGHPE,TREND,MOMENTUM,CONTRARIAN,INCOME,FOLLOW,RANDOM,BOND
+                     (the default ten) and WHISPER (named only)
   --flow=MODE        all (desk and players, default), desk, or none
   --premium=G,S,L,D,X   regime premiums, GROWTH..DISTRESS (published 1.2,0,0.24,-0.6,-1.4)
   --premium-scale=F     published premium spread times F
@@ -166,7 +168,7 @@ func _init() -> void:
 		_fail("--years and --seeds must be at least 1.")
 		return
 	for strategy: StringName in strategies:
-		if strategy not in BalanceMatch.ALL_STRATEGIES:
+		if strategy not in BalanceMatch.KNOWN_STRATEGIES:
 			_fail("Unknown strategy: %s" % strategy)
 			return
 	if strategies.is_empty():
@@ -302,13 +304,13 @@ func _print_report(
 
 	# One line with every figure a sweep compares, for grep.
 	var share: Dictionary[StringName, String] = {}
-	for strategy: StringName in [&"TREND", &"LOWPE", &"HIGHPE", &"FOLLOW", &"INCOME", &"BOND"]:
+	for strategy: StringName in [&"TREND", &"LOWPE", &"HIGHPE", &"FOLLOW", &"INCOME", &"BOND", &"WHISPER"]:
 		share[strategy] = "-"
 		if wins.has(strategy):
 			share[strategy] = "%.1f" % (100.0 * float(wins[strategy]) / count)
-	print("summary: years=%d flow=%s leader=%s %.1f trend=%s lowpe=%s highpe=%s follow=%s income=%s bond=%s contenders=%d bull=%.3f splits=%.2f bankruptcies=%.2f squeezes=%.2f flagged=%.3f random/leader=%s" % [
+	print("summary: years=%d flow=%s leader=%s %.1f trend=%s lowpe=%s highpe=%s follow=%s income=%s bond=%s whisper=%s contenders=%d bull=%.3f splits=%.2f bankruptcies=%.2f squeezes=%.2f flagged=%.3f random/leader=%s" % [
 		years, flow, leader, top, share[&"TREND"], share[&"LOWPE"], share[&"HIGHPE"], share[&"FOLLOW"],
-		share[&"INCOME"], share[&"BOND"], contenders,
+		share[&"INCOME"], share[&"BOND"], share[&"WHISPER"], contenders,
 		bull_rate / count, splits / count, bankruptcies / count, squeezes / count, flagged / count,
 		random_vs_leader,
 	])

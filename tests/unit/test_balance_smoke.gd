@@ -202,6 +202,19 @@ func test_the_long_match_flow_clamp_scales_from_ten_years() -> void:
 	assert_almost_eq(levers.flow_limit_for(54), 0.05 * 45.0 / 89.0, 0.000001)
 
 
+func test_whisper_plays_only_when_named_and_holds_the_bond_before_any_whisper() -> void:
+	# D234: WHISPER is not one of the default ten, so the baseline keeps its players.
+	assert_false(BalanceMatch.ALL_STRATEGIES.has(&"WHISPER"))
+	assert_true(BalanceMatch.KNOWN_STRATEGIES.has(&"WHISPER"))
+	var one_year: BalanceMatch.Result = BalanceMatch.play(_library, 3, 1, [&"WHISPER"], BalanceMatch.FLOW_NONE)
+	# Year 1 has no whispers (D207), so it holds the bond and earns its coupon.
+	var bond_only: BalanceMatch.Result = BalanceMatch.play(_library, 3, 1, [&"BOND"], BalanceMatch.FLOW_NONE)
+	assert_eq(one_year.net_worth[&"WHISPER"], bond_only.net_worth[&"BOND"])
+	var played: BalanceMatch.Result = BalanceMatch.play(_library, 3, YEARS, [&"WHISPER", &"RANDOM"])
+	assert_true(played.net_worth.has(&"WHISPER"))
+	assert_gt(played.net_worth[&"WHISPER"], 0)
+
+
 func test_a_rebuilt_growth_row_still_sums_to_100() -> void:
 	for stay: int in [0, 26, 34, 42, 50, 58, 70, 100]:
 		var row: Array[int] = Levers.growth_row(stay)

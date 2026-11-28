@@ -175,7 +175,7 @@ The bond's median is 13,426 in every row.
 - **The real question is a play one**: does holding a payer *feel* worth it?
   Sheet line **f** of manual section AD.
 
-### Lever 2 — flattening long matches toward parity (design §1, §13.2, §14 q13)
+### Lever 2 — flattening long matches toward parity (design §1, §13.2, §14 q13) — **closed by D235: not flattened**
 
 - **What it is.** Any real per-year edge, reinvested, dominates a long enough
   match. §1 argues this is the mode working; q13 asks whether to flatten it
@@ -261,13 +261,56 @@ Tightening the clamp no longer helps P4 and makes FOLLOW worse (18.5 → 13%), s
 desk is less worth reading. Widening it to 7.5% makes LOWPE and TREND level at 30%.
 **Leave it at 5%** unless the squeeze changes.
 
+### Lever 5 — what reading the whispers is worth (design §8.4, D234)
+
+- **What it is.** At the end of each year from year 1, two whispers about next year
+  (a company or an industry, from a rated source), plus a squeeze or crash whisper
+  when one applies (D214). They move no price; a player who believes them can trade
+  on them.
+- **Where:** `WhisperRules.ODDS` (each source's chance of telling the truth),
+  `NewsSelector.WHISPERS_PER_YEAR` (2), `NewsSelector.SQUEEZE_WHISPER_SOURCE`
+  (Questionable).
+- **Value:** Rock Solid 85% true, Credible 60, Hit-or-miss 40, Questionable 30,
+  Gossip 20; two whispers a year.
+- **Sweep:** `--strategies=...,WHISPER` adds the WHISPER player (D234), which reads
+  the whispers and nothing else: what each tells, weighted by its source's odds, a
+  squeeze coming as a strong buy, the bond when nothing is worth buying. **No tool
+  argument changes the odds or the count yet**; that would need seams in
+  `NewsSelector`, the next tool work if the owner wants them swept.
+
+WHISPER is **not** one of the default ten, so the baseline in §1 is unchanged. With
+it as an eleventh player, published values:
+
+| Run | Seeds | WHISPER | WHISPER median | TREND | LOWPE | FOLLOW | Contenders | P3 |
+|---|---|---|---|---|---|---|---|---|
+| eleven strategies, 10 years | 4,000 | **38.2%** | 26,096 | 18.2 | 13.1 | 12.9 | 6 of 11 | 0.48 |
+| WHISPER, TREND, RANDOM, BOND only | 4,000 | 51.6% | 26,199 | 32.7 | — | — | 3 of 4 | 0.50 |
+| eleven, no squeeze | 1,000 | 30.5% | — | 17.4 | 16.2 | 12.6 | 7 of 11 | 0.60 |
+| eleven, no flow | 1,000 | 39.9% | — | 19.8 | 5.7 | 8.3 | 7 of 11 | 0.48 |
+| eleven, 25 years | 1,000 | 43.1% | — | 15.1 | 24.3 | 13.2 | 4 of 11 | 0.15 |
+
+**What it says.**
+
+- **Reading the whispers is the strongest edge in the game.** WHISPER wins 38% of
+  ten-year matches against ten other strategies, and its *median* is the highest of
+  all (26,096 against TREND's 21,898), so it is not luck from holding fewer stocks.
+  Counted as a strategy, P4 fails by 8.2 points.
+- **About eight of those points are the squeeze whisper.** With no squeeze WHISPER
+  falls to 30.5%. A "squeeze coming" whisper lets a reader buy before a jump of up to
+  150%, and the source's 30% odds do not stop that paying.
+- **Flow is not part of it** (39.9% with none).
+- **What it means for play:** a player who acts on every whisper should beat one who
+  reads the board. That may be what the owner wants, or too much. The levers are the
+  odds, the count, and the squeeze whisper's source. It also bears on shared and
+  personal whispers (design §14): a personal whisper would be a private edge of this
+  size.
+
 ### Other things the design leaves to S9 or to after first play
 
 These are not numbers to sweep but features to add or not, each waiting on play:
 
 | # | What | Where it is written | What would decide it |
 |---|---|---|---|
-| 5 | **Whisper source odds.** How often each source tells the truth | `WhisperRules.ODDS`, design §8.4 | Whether whispers feel worth reading (sheet line **k**). **The tool cannot measure it**: no strategy reads whispers, and they move no price. A WHISPER strategy in `tools/balance/balance_match.gd` would be the way to measure it |
 | 6 | **Market news amounts.** The shipped market news moves no price (D209). Lines with amounts would put event noise back into prices | `src/data/news/market.tres` | The owner's writing. Re-run section 1 when lines with amounts are added: the event noise was worth about two points to LOWPE before D209 |
 | 7 | **The VALUE cohort.** D170 named it the second lever after the clamp. With TREND leading it is no longer the problem | `src/data/traders/` | Only if LOWPE leads again |
 | — | **Dividend smoothing**: boards holding a dividend flat through a bad year | design §3.10a, "considered and left out" | Whether a dividend cut reads as too sudden in play |
@@ -275,6 +318,7 @@ These are not numbers to sweep but features to add or not, each waiting on play:
 | — | **A cheap/expensive marker** on the board | §14 q9 | Whether reading P/E proves too hard in play |
 | — | **A "flatten groups" toggle** on the Exchange | §14 q12 | Whether players ask for it |
 | — | **Pace**: four tabs in a party game | §12.2, §13.2 risk 2 | Manual section AD2, sheet line **i** |
+| — | **Shared and personal whispers** in multiplayer | §14, "Still open" | The owner's request of 2026-11-27; not scheduled |
 
 Key personnel, prices within the year and NPC thoughts are separate tasks (§14,
 "Still open") and are not part of this agenda.
@@ -283,25 +327,16 @@ Key personnel, prices within the year and NPC thoughts are separate tasks (§14,
 
 ## 3. Waiting for the owner
 
-Nothing in `src/` changes until the owner decides. Each item names what to decide
-and the evidence above.
+**Decided on 2026-11-27 ([D235](decisions.md)):** P4's half-point miss stands; the
+flag stays at 10%; the income slope stays at 1; long matches are not flattened (the
+longer the match, the more the best reader is rewarded). Levers 1 to 4 need nothing
+further. Nothing in `src/` changes until the owner decides.
 
-1. **P4 still fails, by 0.5 (lever 0, after D233).** Accept it, or shrink the
-   squeeze further: 1% a point holds by 1.9 (4,000 seeds), 2% a point measured 26.6%
-   (1,000 seeds; confirm over 4,000 if chosen), no squeeze holds by 3.5. A flag at
-   20% (lever 3) held by 1.0 at 5% a point; not re-measured at 4%.
-2. **The flag threshold (lever 3).** Keep 10% (flagged one year in four), or raise it
-   for a rarer, louder flag.
-3. **The income slope (lever 1).** Keep 1, or halve it: about two points of INCOME,
-   safe for P4.
-4. **Long matches (lever 2, q13).** Should a 25-year match reward the best reader
-   decisively? No lever measured gets one near parity.
-5. **Whispers and market news amounts (items 5, 6).** Whether a WHISPER strategy
-   should be added to the tool; re-measure when market news lines get amounts.
-6. **Play reports.** Section AD of manual-testing.md. Each one fills in the "what
-   would decide it" column above.
-
-The flow clamp (lever 4) needs no decision: it no longer helps P4.
+1. **Whispers (lever 5).** Reading them wins 38% of ten-year matches. Keep them that
+   strong, or weaken them: lower odds, one whisper a year instead of two, or a less
+   reliable squeeze whisper. Sweeping any of them needs tool levers first.
+2. **Play reports.** Section AD of manual-testing.md. Sheet line **k** is about
+   whispers.
 
 ## Rounds
 
@@ -310,3 +345,4 @@ The flow clamp (lever 4) needs no decision: it no longer helps P4.
 | 2026-11-23 | S9 opened on `5835de9`: baseline `LOWPE` 27.7% (identical to D172); four levers added to the tool | D232 (tool only) | superseded the same week |
 | 2026-11-27 | Rebased onto `29ab7a9` (market news, meme-stock squeeze, squeeze of no fixed length). Every figure re-measured; the first round's sweeps are void | — | `TREND` 31.1%, P4 fails |
 | 2026-11-27 | The squeeze from 5% to 4% a point. The sweeps in §2 were measured at 5% and are not re-run | D233 | §1: `TREND` 30.5%, P4 fails by 0.5 |
+| 2026-11-27 | The owner kept P4's miss, the flag, the income slope and long matches as they are. WHISPER added to the tool and measured (lever 5) | D234, D235 | §1, unchanged |

@@ -686,7 +686,8 @@ fails as shipped; it and every sweep since are in
 [stalkleheads-tuning.md](stalkleheads-tuning.md). S9 added four levers (D232), and
 the smoke test checks each at its published value reproduces the real matches, each
 moved moves the market, the retention rescale touches positive rolls only, and the
-long-match clamp scales from ten years.
+long-match clamp scales from ten years. WHISPER (D234) is checked to be outside the default set,
+to hold the bond in year 1, and to play a match.
 
 ### Scene tests
 

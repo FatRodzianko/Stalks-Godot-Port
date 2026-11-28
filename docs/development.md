@@ -562,7 +562,7 @@ Godot that what follows is for the script, not for the engine:
 | `--years=N` | Match length in years | 10 |
 | `--seeds=N` | How many matches to play | 400 |
 | `--first-seed=N` | The first seed; the rest follow on from it | 0 |
-| `--strategies=A,B,...` | Which strategies play, from `HOLD`, `LOWPE`, `HIGHPE`, `TREND`, `MOMENTUM`, `CONTRARIAN`, `INCOME`, `FOLLOW`, `RANDOM`, `BOND` | all ten |
+| `--strategies=A,B,...` | Which strategies play, from `HOLD`, `LOWPE`, `HIGHPE`, `TREND`, `MOMENTUM`, `CONTRARIAN`, `INCOME`, `FOLLOW`, `RANDOM`, `BOND`, and `WHISPER`, which reads only the whispers and plays only when named (D234) | the ten, without `WHISPER` |
 | `--flow=MODE` | What feeds the price's flow term. `all`: the NPC desk's trades and the players', as in the game. `desk`: the desk's only, so the players never move the market. `none`: nothing; the desk still trades and `FOLLOW` still copies it, but no price moves because of its trading | `all` |
 
 **Balance levers, for a sweep.** These change a published balance number for one run
