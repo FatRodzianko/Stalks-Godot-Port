@@ -103,6 +103,12 @@ class View:
 	var previous_profit: Dictionary[StringName, float] = {}
 	## The dividend per share each row paid in the latest year. 0 before year 1.
 	var dividend: Dictionary[StringName, int] = {}
+	## The sweep's levers; WHISPER reads the whisper ones.
+	var levers: Levers
+	## With a whisper lever set: the rounds the tool has worked out, by the
+	## year heard, and how often each line was drawn in them.
+	var whisper_rounds: Dictionary[int, WhisperRound] = {}
+	var whisper_counts: Dictionary[StringName, int] = {}
 
 	## Companies not bankrupt, in id order.
 	func living() -> Array[CompanyState]:
@@ -136,6 +142,7 @@ static func play(
 	view.state = EarningsMarket.new_game_state(library, settings)
 	if levers == null:
 		levers = Levers.new()
+	view.levers = levers
 	if levers.short_target != LeverDesk.SHORT_HIGHPE or levers.flag_at >= 0.0:
 		# The same traders at year 0, through the lever desk's two seams.
 		var desk: LeverDesk = LeverDesk.new()
@@ -329,7 +336,7 @@ static func _targets(
 ## is heard at its end (D207). It reads only what a player sees: the told
 ## outcome and the source, never the truth.
 static func _whisper_targets(market: View, alive: Array[CompanyState]) -> Array[StringName]:
-	var round: WhisperRound = NewsSelector.latest_whispers(market.state)
+	var round: WhisperRound = _latest_whispers(market)
 	var score: Dictionary[StringName, float] = {}
 	if round != null:
 		for line: WhisperRound.Line in round.lines:
@@ -353,6 +360,48 @@ static func _whisper_targets(market: View, alive: Array[CompanyState]) -> Array[
 	if scored.is_empty():
 		return [BOND_ID]
 	return _lowest(scored)
+
+
+## The round WHISPER hears now: the game's (`NewsSelector.latest_whispers`),
+## or, with a whisper lever set, one worked out here by the game's own
+## `select_whispers` with the overrides, in order, counting earlier rounds'
+## lines as `NewsSelector.whispers_for` does (D236). Lines already shown are
+## the year's news, its market news and these rounds, as the game counts them.
+static func _latest_whispers(market: View) -> WhisperRound:
+	var state: GameState = market.state
+	if market.levers == null or not market.levers.changes_whispers():
+		return NewsSelector.latest_whispers(state)
+	var year: int = state.year
+	if year < NewsSelector.FIRST_WHISPER_YEAR:
+		return null
+	if market.whisper_rounds.has(year):
+		return market.whisper_rounds[year]
+	var draws: KeptDraws = NewsSelector.draws_about(state, year + 1)
+	if draws == null:
+		return null
+	var shown: Dictionary[StringName, bool] = {}
+	for each: int in range(1, year):
+		var news: YearNews = NewsSelector.news_for(state, each)
+		if news != null:
+			for id: StringName in news.drawn:
+				shown[id] = true
+		var result: EarningsYearResult = MarketReadouts.result_for_year(state, each)
+		if result != null and result.market_news != null:
+			shown[result.market_news.id] = true
+		if market.whisper_rounds.has(each):
+			for id: StringName in market.whisper_rounds[each].drawn:
+				shown[id] = true
+	var count: int = NewsSelector.WHISPERS_PER_YEAR
+	if market.levers.whisper_count >= 0:
+		count = market.levers.whisper_count
+	var round: WhisperRound = NewsSelector.select_whispers(
+		state, year, draws, market.whisper_counts, shown,
+		count, market.levers.whisper_odds_table(), market.levers.squeeze_whispers,
+	)
+	market.whisper_rounds[year] = round
+	for id: StringName in round.drawn:
+		market.whisper_counts[id] = market.whisper_counts.get(id, 0) + 1
+	return round
 
 
 ## The PICKS ids with the lowest score, ties by id. Each entry is [score, id].

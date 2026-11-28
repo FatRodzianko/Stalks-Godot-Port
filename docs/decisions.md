@@ -8787,3 +8787,36 @@ Nothing in `src/` changed for this entry.
 **Rules out:** a long-match damping of the premium, or any other mechanism added only
 to bring long matches toward parity; retuning the squeeze for P4 alone.
 
+### D236 - Whisper levers for the balance tool, through trailing arguments
+**2026-11-27 · Accepted** (the owner asked for them, phase S9) · **extends** D234
+
+D234 found that reading the whispers wins 38% of ten-year matches. Three numbers set
+how strong they are, and the tool could not sweep any of them:
+
+- `--whispers=N`: ordinary whispers a round (`NewsSelector.WHISPERS_PER_YEAR`, 2);
+- `--whisper-odds=A,B,C,D,E`: each source's chance of telling the true band
+  (`WhisperRules.ODDS`, 85/60/40/30/20), each source's one-band-off chance kept;
+- `--no-squeeze-whisper`: no squeeze or crash whisper (D214).
+
+**The seam.** Whispers are chosen by static functions, and D150 rules out mutable
+statics. So `NewsSelector.select_whispers` gained three trailing arguments, the
+count, the odds table and whether a squeeze whisper is heard, and
+`WhisperRules.distort` one, the odds table, each defaulting to the game's constant.
+The game passes none of them and behaves exactly as before; the suite and the
+golden hash are unchanged.
+
+**How the tool uses it.** With a whisper lever set, `tools/balance/balance_match.gd`
+works out WHISPER's rounds itself, in order, through `select_whispers` with the
+overrides, counting earlier rounds' lines and the lines already shown as
+`NewsSelector.whispers_for` does. With every lever set to its published value this
+reproduces the game's rounds exactly, which `test_balance_smoke.gd` checks. Whispers
+move no price, so these levers change only what WHISPER hears.
+
+**Measured** (1,000 ten-year seeds, eleven players): published 39.7%; halved odds
+20.2%; one whisper a round with no squeeze whisper 20.2%; only the squeeze whisper
+18.5%; three a round 42.9%. Full table in stalkleheads-tuning.md, lever 5. Nothing
+changed in the game.
+
+**Rules out:** mutable statics for the whisper constants (D150); the tool keeping its
+own copy of the whisper selection.
+

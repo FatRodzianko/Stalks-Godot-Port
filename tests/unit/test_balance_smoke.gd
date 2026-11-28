@@ -215,6 +215,34 @@ func test_whisper_plays_only_when_named_and_holds_the_bond_before_any_whisper() 
 	assert_gt(played.net_worth[&"WHISPER"], 0)
 
 
+func test_the_whisper_levers_at_their_published_values_change_nothing() -> void:
+	# D236: the tool's own rounds, through the game's select_whispers with the
+	# published count, odds and squeeze whisper, are the game's rounds.
+	var levers: Levers = Levers.new()
+	levers.whisper_count = NewsSelector.WHISPERS_PER_YEAR
+	levers.whisper_odds = [85, 60, 40, 30, 20]
+	assert_eq(levers.whisper_odds_table(), WhisperRules.ODDS)
+	var players: Array[StringName] = [&"WHISPER", &"TREND", &"BOND"]
+	for match_seed: int in [2, 11]:
+		var real: BalanceMatch.Result = BalanceMatch.play(_library, match_seed, YEARS, players)
+		var forced: BalanceMatch.Result = BalanceMatch.play(
+			_library, match_seed, YEARS, players, BalanceMatch.FLOW_ALL, levers
+		)
+		assert_eq(forced.net_worth, real.net_worth, "seed %d" % match_seed)
+
+
+func test_a_whisper_lever_that_moves_changes_what_whisper_holds() -> void:
+	var players: Array[StringName] = [&"WHISPER", &"BOND"]
+	var silent: Levers = Levers.new()
+	silent.whisper_count = 0
+	silent.squeeze_whispers = false
+	var real: BalanceMatch.Result = BalanceMatch.play(_library, 5, YEARS, players, BalanceMatch.FLOW_NONE)
+	var none: BalanceMatch.Result = BalanceMatch.play(_library, 5, YEARS, players, BalanceMatch.FLOW_NONE, silent)
+	# With nothing to hear, WHISPER holds the bond every year.
+	assert_eq(none.net_worth[&"WHISPER"], none.net_worth[&"BOND"])
+	assert_ne(real.net_worth[&"WHISPER"], none.net_worth[&"WHISPER"])
+
+
 func test_a_rebuilt_growth_row_still_sums_to_100() -> void:
 	for stay: int in [0, 26, 34, 42, 50, 58, 70, 100]:
 		var row: Array[int] = Levers.growth_row(stay)

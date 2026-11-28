@@ -85,13 +85,15 @@ static func roll_source(rng: RandomNumberGenerator) -> Source:
 ## The outcome a whisper from `source` tells, when the truth is `truth`. One
 ## draw when it tells the truth, two otherwise. One band off goes either way
 ## evenly, or the only way there is at an end; two or more off picks evenly
-## among the bands that far away.
+## among the bands that far away. `odds` is `ODDS` in the game; only the
+## balance tool passes another table (decisions.md D236).
 static func distort(
 	truth: NewsBands.Surprise,
 	source: Source,
 	rng: RandomNumberGenerator,
+	odds_table: Dictionary[Source, Vector2i] = ODDS,
 ) -> NewsBands.Surprise:
-	var odds: Vector2i = ODDS[source]
+	var odds: Vector2i = odds_table[source]
 	var roll: int = rng.randi_range(1, 100)
 	if roll <= odds.x:
 		return truth

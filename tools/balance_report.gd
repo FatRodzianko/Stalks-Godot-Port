@@ -35,6 +35,11 @@ extends SceneTree
 ##                         at 99 years (§13.2); unscaled by default
 ##   --flag-at=N           short-interest flag threshold, percent of shares
 ##                         outstanding (published 10)
+##   --whispers=N          ordinary whispers a round (published 2); these three
+##                         change only what the WHISPER player hears (D236)
+##   --whisper-odds=A,B,C,D,E  each source's chance of the truth, Rock Solid to
+##                         Gossip (published 85,60,40,30,20)
+##   --no-squeeze-whisper  no squeeze or crash whisper is heard
 ##
 ## The year is the game's own, `EarningsYearResolver`, since S3 (through
 ## tools/balance/lever_year.gd, which only adds the levers), and so is the NPC
@@ -72,7 +77,10 @@ const USAGE: String = """Usage: <godot> --headless --script res://tools/balance_
   --retention-slope=F   income trade-off slope (published 1)
   --flow-limit=F        flow clamp, fraction of fair value (published 0.05)
   --flow-limit-99=F     flow clamp at 99 years, scaled from 10 years
-  --flag-at=N           short-interest flag threshold, percent (published 10)"""
+  --flag-at=N           short-interest flag threshold, percent (published 10)
+  --whispers=N          ordinary whispers a round, for WHISPER (published 2)
+  --whisper-odds=A,B,C,D,E  sources' truth chances (published 85,60,40,30,20)
+  --no-squeeze-whisper  no squeeze or crash whisper, for WHISPER"""
 
 
 func _init() -> void:
@@ -137,6 +145,24 @@ func _init() -> void:
 				if levers.flag_at <= 0.0:
 					_fail("--flag-at must be above 0.")
 					return
+			"--whispers":
+				levers.whisper_count = value.to_int()
+				if levers.whisper_count < 0:
+					_fail("--whispers must be 0 or more.")
+					return
+			"--whisper-odds":
+				var chances: PackedStringArray = value.split(",", false)
+				if chances.size() != WhisperRules.ALL_SOURCES.size():
+					_fail("--whisper-odds needs five numbers, Rock Solid to Gossip.")
+					return
+				levers.whisper_odds = []
+				for chance: String in chances:
+					if chance.to_int() < 0 or chance.to_int() > 100:
+						_fail("--whisper-odds must be 0 to 100 each.")
+						return
+					levers.whisper_odds.append(chance.to_int())
+			"--no-squeeze-whisper":
+				levers.squeeze_whispers = false
 			"--premium":
 				var values: PackedStringArray = value.split(",", false)
 				if values.size() != EarningsRegime.ALL.size():

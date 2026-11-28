@@ -272,11 +272,13 @@ desk is less worth reading. Widening it to 7.5% makes LOWPE and TREND level at 3
   (Questionable).
 - **Value:** Rock Solid 85% true, Credible 60, Hit-or-miss 40, Questionable 30,
   Gossip 20; two whispers a year.
-- **Sweep:** `--strategies=...,WHISPER` adds the WHISPER player (D234), which reads
+- **Sweeps:** `--strategies=...,WHISPER` adds the WHISPER player (D234), which reads
   the whispers and nothing else: what each tells, weighted by its source's odds, a
-  squeeze coming as a strong buy, the bond when nothing is worth buying. **No tool
-  argument changes the odds or the count yet**; that would need seams in
-  `NewsSelector`, the next tool work if the owner wants them swept.
+  squeeze coming as a strong buy, the bond when nothing is worth buying. Then
+  (D236) `--whispers=N` (ordinary whispers a round), `--whisper-odds=A,B,C,D,E`
+  (each source's chance of the truth, Rock Solid to Gossip) and
+  `--no-squeeze-whisper`. These change only what WHISPER hears: whispers move no
+  price.
 
 WHISPER is **not** one of the default ten, so the baseline in §1 is unchanged. With
 it as an eleventh player, published values:
@@ -300,10 +302,40 @@ it as an eleventh player, published values:
   150%, and the source's 30% odds do not stop that paying.
 - **Flow is not part of it** (39.9% with none).
 - **What it means for play:** a player who acts on every whisper should beat one who
-  reads the board. That may be what the owner wants, or too much. The levers are the
-  odds, the count, and the squeeze whisper's source. It also bears on shared and
-  personal whispers (design §14): a personal whisper would be a private edge of this
-  size.
+  reads the board. That may be what the owner wants, or too much. It also bears on
+  shared and personal whispers (design §14): a personal whisper would be a private
+  edge of this size.
+
+**The whisper sweep** (D236): ten years, 1,000 seeds, eleven players. Compare with
+the published row, measured on the same seeds.
+
+| Setting | WHISPER | WHISPER median | Leader | TREND | LOWPE | FOLLOW | Contenders | P3 |
+|---|---|---|---|---|---|---|---|---|
+| **published** (2 a round, 85/60/40/30/20, squeeze whisper on) | **39.7** | 27,375 | WHISPER | 18.0 | 12.2 | 13.0 | 6 | 0.46 |
+| 3 a round | 42.9 | 29,106 | WHISPER | 14.8 | 12.4 | 12.5 | 6 | 0.43 |
+| 1 a round | 30.9 | 23,129 | WHISPER | 19.3 | 14.4 | 13.6 | 7 | 0.54 |
+| no squeeze whisper | 31.9 | 21,991 | WHISPER | 19.7 | 13.6 | 13.7 | 7 | 0.58 |
+| odds 60/45/30/20/15 | 27.7 | 20,163 | WHISPER | 19.9 | 15.1 | 14.6 | 7 | 0.62 |
+| **odds halved** (43/30/20/15/10) | 20.2 | 17,250 | `TREND` 22.1 | 22.1 | 16.7 | 14.9 | 7 | 0.57 |
+| **1 a round, no squeeze whisper** | 20.2 | 17,880 | `TREND` 22.9 | 22.9 | 15.9 | 15.0 | 7 | 0.58 |
+| every source 20% | 20.1 | 16,535 | `TREND` 23.5 | 23.5 | 16.3 | 14.8 | 7 | 0.58 |
+| only the squeeze whisper (0 a round) | 18.5 | 19,044 | `TREND` 23.0 | 23.0 | 16.4 | 16.2 | 7 | 0.58 |
+| nothing heard (it holds the bond) | 2.0 | 13,426 | `TREND` 28.8 | 28.8 | 19.0 | 18.1 | 6 | 0.57 |
+
+**What the sweep says.**
+
+- **The squeeze whisper alone is worth a lot**: with no ordinary whisper at all,
+  WHISPER still wins 18.5%, buying whatever is flagged. That company is also shown
+  as FLAGGED on the DESK page, so this part of the edge is reading short interest,
+  which any player can do; the whisper only points at it.
+- **Each lever takes WHISPER from dominant to a contender.** Halving every source's
+  odds, or one whisper a round with no squeeze whisper, puts it at about 20%, just
+  behind TREND, with seven strategies in contention.
+- **Making every source 20% also gets it to 20%,** but then the source names mean
+  nothing, which is the point of §8.4's sources.
+- **A third whisper a round makes it stronger** (42.9%).
+- WHISPER's presence costs the other strategies; with nothing heard it holds the bond
+  and the table is close to the ten-strategy baseline.
 
 ### Other things the design leaves to S9 or to after first play
 
@@ -333,8 +365,10 @@ longer the match, the more the best reader is rewarded). Levers 1 to 4 need noth
 further. Nothing in `src/` changes until the owner decides.
 
 1. **Whispers (lever 5).** Reading them wins 38% of ten-year matches. Keep them that
-   strong, or weaken them: lower odds, one whisper a year instead of two, or a less
-   reliable squeeze whisper. Sweeping any of them needs tool levers first.
+   strong, or weaken them. Halving every source's odds, or one whisper a round with
+   no squeeze whisper, puts a whisper reader at about 20%, a contender just behind
+   TREND (1,000 seeds; confirm over 4,000 if chosen). Each would be a change to §8.4,
+   so it is the owner's call.
 2. **Play reports.** Section AD of manual-testing.md. Sheet line **k** is about
    whispers.
 
@@ -346,3 +380,4 @@ further. Nothing in `src/` changes until the owner decides.
 | 2026-11-27 | Rebased onto `29ab7a9` (market news, meme-stock squeeze, squeeze of no fixed length). Every figure re-measured; the first round's sweeps are void | — | `TREND` 31.1%, P4 fails |
 | 2026-11-27 | The squeeze from 5% to 4% a point. The sweeps in §2 were measured at 5% and are not re-run | D233 | §1: `TREND` 30.5%, P4 fails by 0.5 |
 | 2026-11-27 | The owner kept P4's miss, the flag, the income slope and long matches as they are. WHISPER added to the tool and measured (lever 5) | D234, D235 | §1, unchanged |
+| 2026-11-27 | Whisper levers added to the tool and swept (lever 5) | D236 (tool only) | §1, unchanged |

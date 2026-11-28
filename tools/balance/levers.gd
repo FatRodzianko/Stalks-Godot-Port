@@ -63,12 +63,46 @@ var flow_limit_at_99: float = -1.0
 ## -1 = the published 10 (`ShortInterestRules.FLAG_AT_PERCENT`).
 var flag_at: float = -1.0
 
+## Whisper levers (decisions.md D236). They change only what the WHISPER
+## player hears: whispers move no price, so every other player's market is
+## the same unless WHISPER's own trades feed flow.
+##
+## How many ordinary whispers a round. -1 = `NewsSelector.WHISPERS_PER_YEAR` (2).
+var whisper_count: int = -1
+
+## Each source's chance of telling the true band, in percent, Rock Solid to
+## Gossip. Empty = `WhisperRules.ODDS`. The one-band-away chance of each source
+## is kept, cut down if the two would pass 100.
+var whisper_odds: Array[int] = []
+
+## False: no squeeze or crash whisper is heard.
+var squeeze_whispers: bool = true
+
 var _transition: Dictionary[EarningsRegime.Value, Array] = {}
 
 
 ## True when the regime roll is overridden, so the stand-in must roll it here.
 func changes_regimes() -> bool:
 	return growth_stay >= 0 or ageing >= 0.0
+
+
+## True when any whisper lever is set, so the WHISPER player hears rounds the
+## tool works out itself rather than the game's.
+func changes_whispers() -> bool:
+	return whisper_count >= 0 or not whisper_odds.is_empty() or not squeeze_whispers
+
+
+## The odds table in use: `WhisperRules.ODDS`, or the override.
+func whisper_odds_table() -> Dictionary[WhisperRules.Source, Vector2i]:
+	if whisper_odds.is_empty():
+		return WhisperRules.ODDS
+	var table: Dictionary[WhisperRules.Source, Vector2i] = {}
+	for index: int in WhisperRules.ALL_SOURCES.size():
+		var source: WhisperRules.Source = WhisperRules.ALL_SOURCES[index]
+		var true_chance: int = clampi(whisper_odds[index], 0, 100)
+		var near: int = mini(WhisperRules.ODDS[source].y, 100 - true_chance)
+		table[source] = Vector2i(true_chance, near)
+	return table
 
 
 ## True when the growth roll is rescaled for the income trade-off.
@@ -102,6 +136,8 @@ func changes_anything() -> bool:
 	if changes_regimes() or not premium.is_empty() or not squeeze:
 		return true
 	if changes_retention() or flow_limit >= 0.0 or flow_limit_at_99 >= 0.0 or flag_at >= 0.0:
+		return true
+	if changes_whispers():
 		return true
 	return squeeze_chance >= 0 or squeeze_size >= 0 or short_target != &"highpe"
 
@@ -216,6 +252,12 @@ func describe() -> String:
 		parts.append("flow clamp %.3f at 99 years" % flow_limit_at_99)
 	if flag_at >= 0.0:
 		parts.append("flag at %.1f%%" % flag_at)
+	if whisper_count >= 0:
+		parts.append("%d whispers a round" % whisper_count)
+	if not whisper_odds.is_empty():
+		parts.append("whisper odds %s" % [whisper_odds])
+	if not squeeze_whispers:
+		parts.append("no squeeze whispers")
 	return ", ".join(parts)
 
 

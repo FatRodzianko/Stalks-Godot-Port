@@ -583,6 +583,9 @@ it is changed there as an ordinary code change (decisions.md D150).
 | `--flow-limit=F` | The flow clamp, as a fraction of fair value (design §3.10). 0 is the same as no flow reaching any price | 0.05 |
 | `--flow-limit-99=F` | Scales the flow clamp with match length: unchanged at 10 years or fewer, moving in a straight line to F at 99 years (design §13.2's first long-match lever) | no scaling |
 | `--flag-at=N` | The short-interest flag threshold, in percent of shares outstanding (design §5.3). A squeeze can only fire in a year when something is flagged | 10 |
+| `--whispers=N` | Ordinary whispers a round. This and the next two change only what the `WHISPER` player hears, since whispers move no price, so they mean nothing unless `WHISPER` plays (D236) | 2 |
+| `--whisper-odds=A,B,C,D,E` | Each source's chance of telling the true band, in percent, Rock Solid, Credible, Hit-or-miss, Questionable, Gossip. Each source's one-band-off chance is kept | `85,60,40,30,20` |
+| `--no-squeeze-whisper` | No squeeze or crash whisper is heard | heard |
 
 The output's `levers:` line says what was overridden, and its last line, starting
 `summary:`, has every figure a sweep compares on one line, for searching.
