@@ -8820,3 +8820,25 @@ changed in the game.
 **Rules out:** mutable statics for the whisper constants (D150); the tool keeping its
 own copy of the whisper selection.
 
+### D237 - A balance-tool lever for how often each whisper source is heard
+**2026-11-27 · Accepted** (the owner asked for it, phase S9) · **extends** D236
+
+Every whisper's source is picked evenly (`WhisperRules.roll_source`), so each of the
+five is heard one time in five. The owner asked whether the good sources could be
+heard less often instead of lowering their honesty, which would leave the names
+untrue (D236's caveat).
+
+**The seam.** `roll_source` gained a trailing `weights` argument, one per source,
+and `NewsSelector.select_whispers` passes one through. Empty, the default, is the
+game's even pick. Weighted, it is still one draw, so the rest of a round's stream is
+not shifted. `--whisper-sources=A,B,C,D,E` sets it, for WHISPER only. Equal weights
+reproduce the published run exactly.
+
+**Measured** (1,000 ten-year seeds, eleven players): evenly 39.7%; 10/15/25/25/25
+29.0%; 5/15/25/30/25 28.5%; 2/8/20/35/35 27.7%; no Rock Solid 28.1%; 0/0/20/40/40
+26.0%; 5/15/25/30/25 with no squeeze whisper 24.2%. WHISPER leads in every row; any
+weighting that makes the good sources rarer brings it under 30%. Full table in
+stalkleheads-tuning.md, lever 5. Nothing changed in the game.
+
+**Rules out:** a mutable static for the weights (D150).
+

@@ -78,6 +78,10 @@ var whisper_odds: Array[int] = []
 ## False: no squeeze or crash whisper is heard.
 var squeeze_whispers: bool = true
 
+## How often each source is picked, as weights, Rock Solid to Gossip (D237).
+## Empty = evenly, the game's rule.
+var whisper_sources: Array[int] = []
+
 var _transition: Dictionary[EarningsRegime.Value, Array] = {}
 
 
@@ -89,6 +93,8 @@ func changes_regimes() -> bool:
 ## True when any whisper lever is set, so the WHISPER player hears rounds the
 ## tool works out itself rather than the game's.
 func changes_whispers() -> bool:
+	if not whisper_sources.is_empty():
+		return true
 	return whisper_count >= 0 or not whisper_odds.is_empty() or not squeeze_whispers
 
 
@@ -258,6 +264,8 @@ func describe() -> String:
 		parts.append("whisper odds %s" % [whisper_odds])
 	if not squeeze_whispers:
 		parts.append("no squeeze whispers")
+	if not whisper_sources.is_empty():
+		parts.append("whisper sources %s" % [whisper_sources])
 	return ", ".join(parts)
 
 

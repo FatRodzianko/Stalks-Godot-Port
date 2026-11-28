@@ -526,9 +526,10 @@ static func draws_about(state: GameState, about_year: int) -> KeptDraws:
 ## subject if there is any. With no line for it, that whisper is not heard, and
 ## the rest go on.
 ##
-## The last three arguments are the game's own constants unless the balance
-## tool is sweeping them (decisions.md D236): how many ordinary whispers a
-## round, each source's odds, and whether a squeeze or crash whisper is heard.
+## The last four arguments are the game's own constants unless the balance
+## tool is sweeping them (decisions.md D236, D237): how many ordinary whispers
+## a round, each source's odds, whether a squeeze or crash whisper is heard,
+## and how often each source is picked (empty: evenly).
 static func select_whispers(
 	state: GameState,
 	year: int,
@@ -538,6 +539,7 @@ static func select_whispers(
 	per_year: int = WHISPERS_PER_YEAR,
 	odds: Dictionary[WhisperRules.Source, Vector2i] = WhisperRules.ODDS,
 	squeeze_whispers: bool = true,
+	source_weights: Array[int] = [],
 ) -> WhisperRound:
 	var round: WhisperRound = WhisperRound.new()
 	round.year = year
@@ -569,7 +571,7 @@ static func select_whispers(
 		subjects.remove_at(which)
 		kinds.remove_at(which)
 		var truth: NewsBands.Surprise = whisper_truth(state, year, draws, subject, kind)
-		var source: WhisperRules.Source = WhisperRules.roll_source(rng)
+		var source: WhisperRules.Source = WhisperRules.roll_source(rng, source_weights)
 		var said: NewsBands.Surprise = WhisperRules.distort(truth, source, rng, odds)
 		var own: Array[Resource] = []
 		var general: Array[Resource] = []

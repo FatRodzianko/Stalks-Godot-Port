@@ -397,6 +397,7 @@ static func _latest_whispers(market: View) -> WhisperRound:
 	var round: WhisperRound = NewsSelector.select_whispers(
 		state, year, draws, market.whisper_counts, shown,
 		count, market.levers.whisper_odds_table(), market.levers.squeeze_whispers,
+		market.levers.whisper_sources,
 	)
 	market.whisper_rounds[year] = round
 	for id: StringName in round.drawn:

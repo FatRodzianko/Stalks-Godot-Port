@@ -231,6 +231,29 @@ func test_the_whisper_levers_at_their_published_values_change_nothing() -> void:
 		assert_eq(forced.net_worth, real.net_worth, "seed %d" % match_seed)
 
 
+func test_weighted_sources_are_picked_by_weight_with_one_draw() -> void:
+	# D237. Only Rock Solid weighted: always Rock Solid.
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 7
+	for _i: int in 50:
+		assert_eq(WhisperRules.roll_source(rng, [1, 0, 0, 0, 0]), WhisperRules.Source.ROCK_SOLID)
+	# Weighted 1:3 between the first two, roughly that often.
+	var counts: Dictionary[WhisperRules.Source, int] = {}
+	for _i: int in 4000:
+		var source: WhisperRules.Source = WhisperRules.roll_source(rng, [1, 3, 0, 0, 0])
+		counts[source] = counts.get(source, 0) + 1
+	assert_eq(counts.size(), 2)
+	assert_almost_eq(float(counts[WhisperRules.Source.ROCK_SOLID]) / 4000.0, 0.25, 0.03)
+	# One draw either way, so the rest of a round's stream is not shifted.
+	var a: RandomNumberGenerator = RandomNumberGenerator.new()
+	var b: RandomNumberGenerator = RandomNumberGenerator.new()
+	a.seed = 3
+	b.seed = 3
+	WhisperRules.roll_source(a)
+	WhisperRules.roll_source(b, [5, 15, 25, 30, 25])
+	assert_eq(a.randi(), b.randi())
+
+
 func test_a_whisper_lever_that_moves_changes_what_whisper_holds() -> void:
 	var players: Array[StringName] = [&"WHISPER", &"BOND"]
 	var silent: Levers = Levers.new()

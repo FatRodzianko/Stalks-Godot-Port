@@ -77,9 +77,21 @@ static func industry_outcome(swing: int) -> NewsBands.Surprise:
 	return NewsSelector.surprise_band(float(swing), 0.0)
 
 
-## One of the five sources, evenly. One draw.
-static func roll_source(rng: RandomNumberGenerator) -> Source:
-	return ALL_SOURCES[rng.randi_range(0, ALL_SOURCES.size() - 1)]
+## One of the five sources, evenly. One draw. `weights`, one per source in
+## `ALL_SOURCES` order, picks by weight instead, still one draw; only the
+## balance tool passes them (decisions.md D237).
+static func roll_source(rng: RandomNumberGenerator, weights: Array[int] = []) -> Source:
+	if weights.is_empty():
+		return ALL_SOURCES[rng.randi_range(0, ALL_SOURCES.size() - 1)]
+	var total: int = 0
+	for weight: int in weights:
+		total += maxi(0, weight)
+	var roll: int = rng.randi_range(1, maxi(1, total))
+	for index: int in ALL_SOURCES.size():
+		roll -= maxi(0, weights[index])
+		if roll <= 0:
+			return ALL_SOURCES[index]
+	return ALL_SOURCES[-1]
 
 
 ## The outcome a whisper from `source` tells, when the truth is `truth`. One

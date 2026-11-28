@@ -689,7 +689,8 @@ moved moves the market, the retention rescale touches positive rolls only, and t
 long-match clamp scales from ten years. WHISPER (D234) is checked to be outside the default set,
 to hold the bond in year 1, and to play a match; its whisper levers (D236) set to
 the published values reproduce the game's rounds exactly, and with nothing to hear
-it holds the bond.
+it holds the bond; a weighted source roll (D237) follows its weights and takes one
+draw, as the even roll does.
 
 ### Scene tests
 

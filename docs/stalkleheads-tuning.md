@@ -276,9 +276,10 @@ desk is less worth reading. Widening it to 7.5% makes LOWPE and TREND level at 3
   the whispers and nothing else: what each tells, weighted by its source's odds, a
   squeeze coming as a strong buy, the bond when nothing is worth buying. Then
   (D236) `--whispers=N` (ordinary whispers a round), `--whisper-odds=A,B,C,D,E`
-  (each source's chance of the truth, Rock Solid to Gossip) and
-  `--no-squeeze-whisper`. These change only what WHISPER hears: whispers move no
-  price.
+  (each source's chance of the truth, Rock Solid to Gossip),
+  `--no-squeeze-whisper`, and (D237) `--whisper-sources=A,B,C,D,E` (how often each
+  source is heard, as weights; published: evenly). These change only what WHISPER
+  hears: whispers move no price.
 
 WHISPER is **not** one of the default ten, so the baseline in §1 is unchanged. With
 it as an eleventh player, published values:
@@ -336,6 +337,33 @@ the published row, measured on the same seeds.
 - **A third whisper a round makes it stronger** (42.9%).
 - WHISPER's presence costs the other strategies; with nothing heard it holds the bond
   and the table is close to the ten-strategy baseline.
+- **A caveat on lower odds:** WHISPER weighs each source by its *published* honesty,
+  so with lower odds it believes labels that are now wrong. A real player would learn
+  to trust them less. Lower odds would probably mean renaming the sources.
+
+**How often each source is heard** (D237): the same run with the source picked by
+weight instead of evenly. Weights are Rock Solid, Credible, Hit-or-miss,
+Questionable, Gossip; each source keeps its honesty.
+
+| Source weights | WHISPER | WHISPER median | TREND | LOWPE | FOLLOW | Contenders | P3 |
+|---|---|---|---|---|---|---|---|
+| **evenly (published)**; `1,1,1,1,1` gives the same | **39.7** | 27,375 | 18.0 | 12.2 | 13.0 | 6 | 0.46 |
+| 10, 15, 25, 25, 25 | 29.0 | 22,478 | 19.5 | 14.5 | 15.0 | 7 | 0.58 |
+| 5, 15, 25, 30, 25 | 28.5 | 21,254 | 19.5 | 15.1 | 14.9 | 7 | 0.60 |
+| 2, 8, 20, 35, 35 | 27.7 | 19,889 | 19.9 | 15.0 | 14.7 | 7 | 0.64 |
+| 0, 20, 25, 30, 25 (no Rock Solid) | 28.1 | 21,600 | 19.6 | 15.2 | 14.7 | 7 | 0.60 |
+| 0, 0, 20, 40, 40 | 26.0 | 19,191 | 20.5 | 15.8 | 14.5 | 7 | 0.66 |
+| 5, 15, 25, 30, 25, no squeeze whisper | 24.2 | 18,695 | 21.7 | 14.6 | 15.4 | 7 | 0.68 |
+
+- **Making good sources rarer takes WHISPER from about 40% to 26-29%**, under P4's
+  30% ceiling, and adds a seventh contender. WHISPER still leads in every row.
+- **The exact weights matter little.** Anything that makes Rock Solid and Credible
+  rarer lands at 28-29%; even with no Rock Solid at all it is 28.1%. Most of the gain
+  is from not hearing a good source every round, not from removing one.
+- **Unlike lower odds, the names stay true.** A Rock Solid whisper is still right 85%
+  of the time; it is just heard less, so WHISPER's trust in the labels is correct
+  here.
+- **With no squeeze whisper too**, 24.2%, close to TREND's 21.7%.
 
 ### Other things the design leaves to S9 or to after first play
 
@@ -365,10 +393,11 @@ longer the match, the more the best reader is rewarded). Levers 1 to 4 need noth
 further. Nothing in `src/` changes until the owner decides.
 
 1. **Whispers (lever 5).** Reading them wins 38% of ten-year matches. Keep them that
-   strong, or weaken them. Halving every source's odds, or one whisper a round with
-   no squeeze whisper, puts a whisper reader at about 20%, a contender just behind
-   TREND (1,000 seeds; confirm over 4,000 if chosen). Each would be a change to §8.4,
-   so it is the owner's call.
+   strong, or weaken them. Hearing good sources less often (for example weights
+   5/15/25/30/25) puts a whisper reader at about 28%, under the ceiling, with the
+   names still true. Halving every source's odds, or one whisper a round with no
+   squeeze whisper, puts it at about 20%. All 1,000 seeds; confirm over 4,000 if
+   chosen. Each would be a change to §8.4, so it is the owner's call.
 2. **Play reports.** Section AD of manual-testing.md. Sheet line **k** is about
    whispers.
 
@@ -381,3 +410,4 @@ further. Nothing in `src/` changes until the owner decides.
 | 2026-11-27 | The squeeze from 5% to 4% a point. The sweeps in §2 were measured at 5% and are not re-run | D233 | §1: `TREND` 30.5%, P4 fails by 0.5 |
 | 2026-11-27 | The owner kept P4's miss, the flag, the income slope and long matches as they are. WHISPER added to the tool and measured (lever 5) | D234, D235 | §1, unchanged |
 | 2026-11-27 | Whisper levers added to the tool and swept (lever 5) | D236 (tool only) | §1, unchanged |
+| 2026-11-27 | Source weights added to the tool and swept (lever 5) | D237 (tool only) | §1, unchanged |

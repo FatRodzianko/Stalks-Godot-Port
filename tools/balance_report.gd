@@ -40,6 +40,8 @@ extends SceneTree
 ##   --whisper-odds=A,B,C,D,E  each source's chance of the truth, Rock Solid to
 ##                         Gossip (published 85,60,40,30,20)
 ##   --no-squeeze-whisper  no squeeze or crash whisper is heard
+##   --whisper-sources=A,B,C,D,E  how often each source is picked, as weights,
+##                         Rock Solid to Gossip (published: evenly)
 ##
 ## The year is the game's own, `EarningsYearResolver`, since S3 (through
 ## tools/balance/lever_year.gd, which only adds the levers), and so is the NPC
@@ -80,7 +82,8 @@ const USAGE: String = """Usage: <godot> --headless --script res://tools/balance_
   --flag-at=N           short-interest flag threshold, percent (published 10)
   --whispers=N          ordinary whispers a round, for WHISPER (published 2)
   --whisper-odds=A,B,C,D,E  sources' truth chances (published 85,60,40,30,20)
-  --no-squeeze-whisper  no squeeze or crash whisper, for WHISPER"""
+  --no-squeeze-whisper  no squeeze or crash whisper, for WHISPER
+  --whisper-sources=A,B,C,D,E  source weights, for WHISPER (published: evenly)"""
 
 
 func _init() -> void:
@@ -163,6 +166,22 @@ func _init() -> void:
 					levers.whisper_odds.append(chance.to_int())
 			"--no-squeeze-whisper":
 				levers.squeeze_whispers = false
+			"--whisper-sources":
+				var weights: PackedStringArray = value.split(",", false)
+				if weights.size() != WhisperRules.ALL_SOURCES.size():
+					_fail("--whisper-sources needs five weights, Rock Solid to Gossip.")
+					return
+				levers.whisper_sources = []
+				var total: int = 0
+				for weight: String in weights:
+					if weight.to_int() < 0:
+						_fail("--whisper-sources weights must be 0 or more.")
+						return
+					levers.whisper_sources.append(weight.to_int())
+					total += weight.to_int()
+				if total <= 0:
+					_fail("--whisper-sources needs at least one weight above 0.")
+					return
 			"--premium":
 				var values: PackedStringArray = value.split(",", false)
 				if values.size() != EarningsRegime.ALL.size():
