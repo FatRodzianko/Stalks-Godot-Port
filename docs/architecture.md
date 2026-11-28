@@ -1341,6 +1341,7 @@ NewsBookEditor.load_books(news dir) -> books by path
    |- NewsIdMaker       the id of a new item, never a taken or retired one
    |- NewsBookRouter    which book a new item goes in
    |- add / set_field / link / unlink / delete -> save_changed, save_retired_ids
+   |- snapshot / restore   every book and item as it is, for undo (D230)
    |- NewsChainNames    src/data/news_chains.cfg: names only, never links
    `- NewsFieldChoices  what each dropdown lists, from ContentLibrary
 ```
@@ -1390,6 +1391,31 @@ positions Godot still hands it. The box pressed first is the one required,
 whichever dot it was: the canvas notes where each drag started and reports
 every drawn arrow as `arrow_drawn(from, to)`. A clicked arrow is selected, and
 Delete reports it as `arrow_delete_requested`.
+
+**Phase 4 (D230)** adds deleting, undo and the Inspector:
+
+```
+plugin.gd
+   |- NewsChart.record_edit = _record_edit -> EditorUndoRedoManager (global
+   |     history): do = apply_snapshot(after), undo = apply_snapshot(before)
+   `- add_inspector_plugin(editor/id_dropdown_inspector.gd)
+        `- a news item in the Inspector: dropdowns from NewsFieldChoices,
+              requires as ids with Remove and an add dropdown
+
+NewsChart
+   |- every edit: _snapshot() before, the edit, _record(name, before)
+   |     -> record_edit when the plugin set it, else NewsEditHistory (tests)
+   |- Delete (canvas boxes_delete_requested, or the panel's Delete news item)
+   |     -> delete_item: no arrows -> deleted; arrows -> NewsDeleteConfirm asks
+   `- Save also writes the retired ids when a delete changed them
+```
+
+A snapshot is a plain `Dictionary`: each book's lists (the item objects
+themselves), each item's stored fields, the retired ids, the chain names, and
+the boxes on the chart with their places. `NewsBookEditor.restore` sets the
+lists and fields back through `set`, which placeholders allow, so undo needs
+no inverse written for each kind of edit. The editor's own history holds the
+two snapshots of each edit as the arguments of its do and undo calls.
 
 ### The rules that hold it together
 

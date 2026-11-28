@@ -2,7 +2,8 @@ extends GutTest
 ## The News Flow Chart's core logic (docs/news-flow-chart.md, Phase 1): the
 ## ids it writes, the book each new item goes in, the chart worked out from
 ## `requires`, every edit it makes to the books, chain names, and what each
-## dropdown offers.
+## dropdown offers. Phase 4: snapshots for undo, the edit history, and the
+## requires list the Inspector offers.
 ##
 ## All of it runs headless on `NewsBook` objects. Nothing here touches
 ## src/data/news/: books are loaded fresh (not the shared cached copies) and
@@ -453,3 +454,89 @@ func test_requires_offers_every_other_item() -> void:
 	var choices: Array[StringName] = NewsFieldChoices.requires_choices(lines[1], _graph(lines))
 	assert_eq(choices.size(), lines.size() - 1)
 	assert_false(choices.has(&"b"), "not itself")
+
+
+func test_requires_for_the_inspector_leaves_out_ids_that_would_loop() -> void:
+	# b requires a, and d requires b: a requiring b or d would be a loop.
+	var lines: Array[Resource] = _example()
+	var choices: Array[StringName] = NewsFieldChoices.requires_choices_without_loops(lines[0], _graph(lines))
+	assert_false(choices.has(&"b"), "b already waits for a")
+	assert_false(choices.has(&"d"), "nor d, which waits for b")
+	assert_true(choices.has(&"f"), "an item in another chain is fine")
+	assert_false(choices.has(&"a"), "not itself")
+
+
+# ------------------------------------------------------------- Phase 4: undo
+
+
+func test_a_snapshot_restored_puts_a_deleted_item_back_as_the_same_object() -> void:
+	var lines: Array[Resource] = _example()
+	var book: NewsBook = NewsBook.new()
+	book.industry_reports.assign(lines)
+	var path: String = "%s/market.tres" % SCRATCH_DIR
+	var editor: NewsBookEditor = NewsBookEditor.new({path: book} as Dictionary[String, NewsBook])
+	var saved: Dictionary = editor.snapshot()
+	assert_eq(editor.delete(&"b"), "")
+	assert_null(editor.find(&"b"))
+	assert_eq(_requires(editor, &"d"), [] as Array[StringName], "the arrow from b went with it")
+	editor.restore(saved)
+	assert_same(editor.find(&"b"), lines[1], "the item itself, not a copy")
+	assert_eq(_requires(editor, &"d"), [&"b"] as Array[StringName], "its arrows are back")
+	assert_false(editor.retired_ids.has(&"b"), "and its id is not retired")
+	assert_true(editor.retired_ids_changed(), "the retired list is to be written again")
+	assert_eq(editor.changed_paths(), [path] as Array[String])
+
+
+func test_a_snapshot_restored_puts_fields_back_and_marks_the_book_changed() -> void:
+	var editor: NewsBookEditor = _editor()
+	var id: StringName = editor.content().all_lines()[0].get("id")
+	var path: String = editor.book_path_of(id)
+	editor.save_changed()
+	var saved: Dictionary = editor.snapshot()
+	var words_field: StringName = &"text"
+	if not words_field in editor.find(id):
+		words_field = &"headline"
+	var words: String = editor.find(id).get(words_field)
+	assert_eq(editor.set_field(id, words_field, "Changed"), "")
+	editor.save_changed()
+	assert_eq(editor.changed_paths(), [] as Array[String], "saved")
+	editor.restore(saved)
+	assert_eq(editor.find(id).get(words_field), words)
+	assert_eq(editor.changed_paths(), [path] as Array[String], "the saved file no longer matches")
+
+
+func test_retired_ids_count_as_changed_until_written() -> void:
+	var editor: NewsBookEditor = NewsBookEditor.new({} as Dictionary[String, NewsBook])
+	assert_false(editor.retired_ids_changed())
+	var lines: Array[Resource] = [_item("a")]
+	var book: NewsBook = NewsBook.new()
+	book.industry_reports.assign(lines)
+	editor = NewsBookEditor.new({"%s/market.tres" % SCRATCH_DIR: book} as Dictionary[String, NewsBook])
+	editor.delete(&"a")
+	assert_true(editor.retired_ids_changed())
+	assert_eq(editor.save_retired_ids("%s/retired.txt" % SCRATCH_DIR), "")
+	assert_false(editor.retired_ids_changed())
+
+
+func test_the_edit_history_undoes_and_redoes_in_order() -> void:
+	var history: NewsEditHistory = NewsEditHistory.new()
+	assert_eq(history.undo(), {}, "nothing to undo")
+	history.record("first", {&"n": 0}, {&"n": 1})
+	history.record("second", {&"n": 1}, {&"n": 2})
+	assert_eq(history.next_undo_name(), "second")
+	assert_eq(history.undo(), {&"n": 1})
+	assert_eq(history.undo(), {&"n": 0})
+	assert_false(history.can_undo())
+	assert_eq(history.redo(), {&"n": 1})
+	history.record("third", {&"n": 1}, {&"n": 3})
+	assert_false(history.can_redo(), "a new edit forgets what was undone")
+
+
+func test_edits_with_the_same_merge_key_are_undone_as_one() -> void:
+	var history: NewsEditHistory = NewsEditHistory.new()
+	history.record("type", {&"t": ""}, {&"t": "a"}, "x:text")
+	history.record("type", {&"t": "a"}, {&"t": "ab"}, "x:text")
+	history.record("other", {&"t": "ab"}, {&"t": "ab", &"m": 1}, "x:headline")
+	assert_eq(history.undo(), {&"t": "ab"})
+	assert_eq(history.undo(), {&"t": ""}, "both keystrokes at once")
+	assert_eq(history.redo(), {&"t": "ab"}, "redone to the last keystroke")

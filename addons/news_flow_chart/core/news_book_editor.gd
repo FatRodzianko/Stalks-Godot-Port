@@ -13,6 +13,12 @@ extends RefCounted
 ## Every method that can be refused returns a message saying why, or "" when
 ## it did what was asked. Nothing is ever overwritten: an id already in use, or
 ## retired, is never given to a new item.
+##
+## **Undo** (Phase 4, decisions.md D230) works by snapshots: `snapshot` records
+## every book's lists and every item's fields, and `restore` puts them back.
+## The same item objects go back, never copies, so a deleted item that is
+## restored is the one the editor's Inspector knew. Only `get` and `set` are
+## used, which work on the editor's placeholder items (D224).
 
 
 ## The books, by path.
@@ -22,6 +28,7 @@ var books: Dictionary[String, NewsBook] = {}
 var retired_ids: Array[StringName] = []
 
 var _changed: Dictionary[String, bool] = {}
+var _retired_changed: bool = false
 
 
 func _init(loaded_books: Dictionary[String, NewsBook], retired: Array[StringName] = []) -> void:
@@ -172,7 +179,61 @@ func delete(id: StringName) -> String:
 					_changed[other_path] = true
 	if not retired_ids.has(id):
 		retired_ids.append(id)
+		_retired_changed = true
 	return ""
+
+
+## Whether the retired ids have changed since they were last written.
+func retired_ids_changed() -> bool:
+	return _retired_changed
+
+
+## Everything an edit can change, to be handed back to `restore`: each book's
+## lists (the item objects themselves), each item's stored fields, and the
+## retired ids.
+func snapshot() -> Dictionary:
+	var lists: Dictionary = {}
+	var fields: Dictionary = {}
+	for path: String in books:
+		var book_lists: Dictionary = {}
+		for list_name: StringName in _list_names():
+			var list: Array = books[path].get(list_name)
+			book_lists[list_name] = list.duplicate()
+			for line: Resource in list:
+				fields[line] = _fields_of(line)
+		lists[path] = book_lists
+	return {&"lists": lists, &"fields": fields, &"retired": retired_ids.duplicate()}
+
+
+## Puts the books back as `saved` (from `snapshot`) recorded them. Every book
+## this changes counts as changed, to be saved again.
+func restore(saved: Dictionary) -> void:
+	var lists: Dictionary = saved[&"lists"]
+	var path_of: Dictionary = {}
+	for path: String in lists:
+		if not books.has(path):
+			continue
+		var book_lists: Dictionary = lists[path]
+		for list_name: StringName in book_lists:
+			var wanted: Array = book_lists[list_name]
+			for line: Resource in wanted:
+				path_of[line] = path
+			if books[path].get(list_name) != wanted:
+				books[path].set(list_name, wanted.duplicate())
+				_changed[path] = true
+	var fields: Dictionary = saved[&"fields"]
+	for line: Resource in fields:
+		var values: Dictionary = fields[line]
+		for field: StringName in values:
+			if line.get(field) != values[field]:
+				line.set(field, _copy(values[field]))
+				if path_of.has(line):
+					_changed[path_of[line]] = true
+	var retired: Array[StringName] = []
+	retired.assign(saved[&"retired"])
+	if retired != retired_ids:
+		retired_ids = retired
+		_retired_changed = true
 
 
 ## The paths of the books changed since the last save, sorted.
@@ -217,7 +278,23 @@ func save_retired_ids(path: String) -> String:
 		return "Could not write %s." % path
 	file.store_string(text)
 	file.close()
+	_retired_changed = false
 	return ""
+
+
+## The stored fields of `line`, by name, with lists copied.
+static func _fields_of(line: Resource) -> Dictionary:
+	var values: Dictionary = {}
+	for property: Dictionary in NewsItemSummary.stored_properties(line):
+		var field: StringName = property["name"]
+		values[field] = _copy(line.get(field))
+	return values
+
+
+static func _copy(value: Variant) -> Variant:
+	if value is Array:
+		return (value as Array).duplicate()
+	return value
 
 
 static func _find_in(book: NewsBook, id: StringName) -> Resource:

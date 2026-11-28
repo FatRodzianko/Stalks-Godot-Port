@@ -23,6 +23,18 @@ extends VBoxContainer
 ## placeholders (decisions.md D224), so nothing here calls a method on a news
 ## item. `@tool` because it runs inside the editor.
 ##
+## **Deleting an item** (Phase 4): select its box and press Delete, or click
+## **Delete news item** in the details panel. An item with arrows is deleted
+## only once `NewsDeleteConfirm` has asked and been answered.
+##
+## **Undo and redo** (Phase 4, decisions.md D230). Every edit (create, delete,
+## a field, an arrow drawn or removed, a chain renamed) is recorded as the
+## state before and after it (`_snapshot`), and undoing puts the state back
+## (`apply_snapshot`). Inside the editor the plugin sets `record_edit` so the
+## edits go into Godot's own history, and Ctrl+Z, Ctrl+Y and **Scene > Undo**
+## undo them. Elsewhere (the tests) they go into a `NewsEditHistory` of the
+## tab's own, driven by `undo` and `redo`.
+##
 ## `show_content` is what the tests drive, with books under `user://`.
 ## `reload_from_project` is what the plugin calls.
 
@@ -48,6 +60,11 @@ var retired_ids_path: String = ContentLibrary.RETIRED_NEWS_IDS_PATH
 ## news problems. The tests swap in one that runs nothing.
 var check_problems: Callable = NewsProblems.run_check
 
+## Where each edit is recorded, as `(action name, state before, state after,
+## merge key)`. The plugin points it at the editor's own history. When it is
+## not set, edits go into the tab's own `NewsEditHistory`.
+var record_edit: Callable = Callable()
+
 var _book_editor: NewsBookEditor = NewsBookEditor.new({} as Dictionary[String, NewsBook])
 var _graph: NewsGraph = NewsGraph.new()
 var _chain_names: NewsChainNames = NewsChainNames.new()
@@ -72,6 +89,7 @@ var _waiting_for_a_place: Array[StringName] = []
 var _problems: Array[String] = []
 var _name_problems: Array[String] = []
 var _message: String = ""
+var _history: NewsEditHistory = NewsEditHistory.new()
 
 @onready var _new_item_button: MenuButton = %NewItemButton
 @onready var _arrange_button: Button = %ArrangeButton
@@ -86,6 +104,7 @@ var _message: String = ""
 @onready var _create_menu: PopupMenu = %CreateMenu
 @onready var _details_panel: NewsDetailsPanel = %DetailsPanel
 @onready var _problems_label: Label = %ProblemsLabel
+@onready var _delete_confirm: NewsDeleteConfirm = %DeleteConfirm
 
 
 func _ready() -> void:
@@ -112,11 +131,14 @@ func _ready() -> void:
 	_chart.node_selected.connect(_on_chart_node_selected)
 	_chart.arrow_drawn.connect(_on_chart_arrow_drawn)
 	_chart.arrow_delete_requested.connect(_on_chart_arrow_delete_requested)
+	_chart.boxes_delete_requested.connect(_on_chart_boxes_delete_requested)
+	_delete_confirm.delete_confirmed.connect(_delete_now)
 	_details_panel.field_changed.connect(_on_details_panel_field_changed)
 	_details_panel.requirement_added.connect(_on_details_panel_requirement_added)
 	_details_panel.requirement_removed.connect(_on_details_panel_requirement_removed)
 	_details_panel.create_pressed.connect(create_draft)
 	_details_panel.cancel_pressed.connect(cancel_draft)
+	_details_panel.delete_pressed.connect(_on_details_panel_delete_pressed)
 	_show_problems()
 	_show_status()
 
@@ -155,6 +177,7 @@ func show_content(
 	_draft = null
 	_selected_id = &""
 	_message = ""
+	_history.clear()
 	_graph = _book_editor.graph()
 	_name_problems = _chain_names.follow(_graph)
 	_refresh_lists()
@@ -247,6 +270,7 @@ func create_draft() -> void:
 	if _draft == null:
 		return
 	var before: NewsGraph = _graph
+	var state_before: Dictionary = _snapshot()
 	var refusal: String = _book_editor.add(_draft, news_dir)
 	if not refusal.is_empty():
 		_set_message(refusal)
@@ -262,6 +286,7 @@ func create_draft() -> void:
 	_draft_has_place = false
 	_show_ids(ids, false, places)
 	_select_box(id)
+	_record("Create news item %s" % id, state_before)
 	_set_message("Created %s." % id)
 
 
@@ -277,6 +302,7 @@ func cancel_draft() -> void:
 ## is put on it, and the boxes arranged, so the new arrow can be seen.
 func link(from_id: StringName, to_id: StringName) -> void:
 	var before: NewsGraph = _graph
+	var state_before: Dictionary = _snapshot()
 	var refusal: String = _book_editor.link(from_id, to_id)
 	if not refusal.is_empty():
 		_set_message(refusal)
@@ -290,17 +316,83 @@ func link(from_id: StringName, to_id: StringName) -> void:
 		_show_ids(ids, true)
 		if not _selected_id.is_empty():
 			_select_box(_selected_id)
+	_record("Draw arrow %s to %s" % [from_id, to_id], state_before)
 	_set_message("")
 
 
 ## Removes the arrow from `from_id` to `to_id`. Every other arrow stays.
 func unlink(from_id: StringName, to_id: StringName) -> void:
 	var before: NewsGraph = _graph
+	var state_before: Dictionary = _snapshot()
 	var refusal: String = _book_editor.unlink(from_id, to_id)
 	if not refusal.is_empty():
 		_set_message(refusal)
 		return
 	_after_edit(before)
+	_record("Remove arrow %s to %s" % [from_id, to_id], state_before)
+	_set_message("")
+
+
+## Deletes the item `id`, its arrows and its id (retired, never given out
+## again). An item with arrows is deleted only after `NewsDeleteConfirm` has
+## asked, naming the items they join it to; one with none is deleted at once.
+func delete_item(id: StringName) -> void:
+	if not _graph.has(id):
+		return
+	var linked: Array[StringName] = _graph.requires_of(id) + _graph.followers_of(id)
+	if linked.is_empty():
+		_delete_now(id)
+		return
+	_delete_confirm.ask(id, linked)
+
+
+## Takes back the last edit, from the tab's own history. True when there was
+## one. Used outside the editor; inside it, Godot's own Ctrl+Z does this.
+func undo() -> bool:
+	var state: Dictionary = _history.undo()
+	if state.is_empty():
+		return false
+	apply_snapshot(state)
+	return true
+
+
+## Makes the last undone edit again. True when there was one.
+func redo() -> bool:
+	var state: Dictionary = _history.redo()
+	if state.is_empty():
+		return false
+	apply_snapshot(state)
+	return true
+
+
+## Puts the books, the chain names and the chart back as `state` (from
+## `_snapshot`) recorded them. What undo and redo call, in the editor through
+## Godot's own history. Boxes still on the chart keep their places; a box put
+## back, such as a deleted item's, goes where it was.
+func apply_snapshot(state: Dictionary) -> void:
+	_book_editor.restore(state[&"books"])
+	var names: Dictionary[StringName, String] = {}
+	names.assign(state[&"names"])
+	if names != _chain_names.names:
+		_chain_names.names = names
+		_names_changed = true
+	_draft = null
+	_graph = _book_editor.graph()
+	_name_problems = []
+	_refresh_lists()
+	var shown: Array[StringName] = []
+	for id: StringName in state[&"shown"]:
+		if _graph.has(id):
+			shown.append(id)
+	var places: Dictionary[StringName, Vector2] = {}
+	places.assign(state[&"places"])
+	_selected_id = state[&"selected"]
+	_show_ids(shown, false, places)
+	if not _selected_id.is_empty():
+		_select_chain_in_list(_selected_id)
+		_select_box(_selected_id)
+	_show_details()
+	_show_problems()
 	_set_message("")
 
 
@@ -313,10 +405,17 @@ func set_field(field: StringName, value: Variant) -> void:
 		return
 	if _selected_id.is_empty():
 		return
+	var state_before: Dictionary = _snapshot()
 	var refusal: String = _book_editor.set_field(_selected_id, field, value)
 	if not refusal.is_empty():
 		_set_message(refusal)
 		return
+	var action: String = "Change %s of %s" % [field, _selected_id]
+	if value is String or value is StringName:
+		# Typing: one undo takes back the whole of what was typed in a box.
+		_record(action, state_before, "%s:%s" % [_selected_id, field])
+	else:
+		_record(action, state_before)
 	if value is String:
 		# Typing: refresh the box's words only, so the text box keeps focus.
 		var box: NewsItemBox = box_for(_selected_id)
@@ -336,8 +435,10 @@ func rename_chain(new_name: String) -> void:
 		return
 	var members: Array[StringName] = []
 	members.assign(_chains[index])
+	var state_before: Dictionary = _snapshot()
 	_chain_names.rename(_graph, members, new_name)
 	_names_changed = true
+	_record("Rename chain to %s" % new_name, state_before)
 	_fill_chain_list()
 	_chain_list.select(index)
 	_chain_name_edit.text = _chain_names.name_for(_graph, members)
@@ -356,6 +457,12 @@ func save() -> Array[String]:
 			saved.append(chain_names_path)
 		else:
 			failures.append("Could not save %s (error %d)." % [chain_names_path, result])
+	if _book_editor.retired_ids_changed():
+		var refusal: String = _book_editor.save_retired_ids(retired_ids_path)
+		if refusal.is_empty():
+			saved.append(retired_ids_path)
+		else:
+			failures.append(refusal)
 	books_saved.emit(saved)
 	_problems = check_problems.call()
 	_show_problems()
@@ -367,7 +474,7 @@ func save() -> Array[String]:
 
 
 func has_unsaved_changes() -> bool:
-	return _names_changed or not _book_editor.changed_paths().is_empty()
+	return _names_changed or _book_editor.retired_ids_changed() or not _book_editor.changed_paths().is_empty()
 
 
 # ------------------------------------------------------- read by the tests
@@ -426,6 +533,50 @@ func edited_item() -> Resource:
 
 
 # ----------------------------------------------------------------- private
+
+
+## Deletes `id` without asking. What the confirmation's Delete does.
+func _delete_now(id: StringName) -> void:
+	var before: NewsGraph = _graph
+	var state_before: Dictionary = _snapshot()
+	var refusal: String = _book_editor.delete(id)
+	if not refusal.is_empty():
+		_set_message(refusal)
+		return
+	if _selected_id == id:
+		_selected_id = &""
+	_after_edit(before)
+	_record("Delete news item %s" % id, state_before)
+	_set_message("Deleted %s." % id)
+
+
+## Everything an edit can change, for undo: the books
+## (`NewsBookEditor.snapshot`), the chain names, and which boxes are on the
+## chart, where, and which is selected.
+func _snapshot() -> Dictionary:
+	var places: Dictionary[StringName, Vector2] = {}
+	for box: NewsItemBox in boxes():
+		# A box not yet given its place has none worth keeping; put back, it
+		# is placed where it covers nothing, as when it was first shown.
+		if not _waiting_for_a_place.has(box.item_id):
+			places[box.item_id] = box.position_offset
+	return {
+		&"books": _book_editor.snapshot(),
+		&"names": _chain_names.names.duplicate(),
+		&"shown": _shown.duplicate(),
+		&"places": places,
+		&"selected": _selected_id,
+	}
+
+
+## Records an edit just made, from `state_before` to now. Edits with the same
+## `merge_key`, one after another, are undone as one.
+func _record(action: String, state_before: Dictionary, merge_key: String = "") -> void:
+	var state_after: Dictionary = _snapshot()
+	if record_edit.is_valid():
+		record_edit.call(action, state_before, state_after, merge_key)
+	else:
+		_history.record(action, state_before, state_after, merge_key)
 
 
 ## After any change to the books: rebuild the graph, move chain names to
@@ -625,6 +776,8 @@ func _show_status() -> void:
 		unsaved.append(path.get_file())
 	if _names_changed:
 		unsaved.append(chain_names_path.get_file())
+	if _book_editor.retired_ids_changed():
+		unsaved.append(retired_ids_path.get_file())
 	if not unsaved.is_empty():
 		parts.append("Unsaved: %s" % ", ".join(unsaved))
 	_status_label.text = "   ".join(parts)
@@ -729,6 +882,20 @@ func _on_chart_arrow_delete_requested(from_box: StringName, to_box: StringName) 
 
 func _on_details_panel_field_changed(field: StringName, value: Variant) -> void:
 	set_field(field, value)
+
+
+func _on_details_panel_delete_pressed() -> void:
+	if not _selected_id.is_empty():
+		delete_item(_selected_id)
+
+
+## Delete with boxes selected. One at a time, so the question, when there is
+## one, is about a single item.
+func _on_chart_boxes_delete_requested(box_names: Array[StringName]) -> void:
+	if box_names.size() > 1:
+		_set_message("Select one box to delete its news item.")
+		return
+	delete_item(_id_of_box(box_names[0]))
 
 
 func _on_details_panel_requirement_added(id: StringName) -> void:

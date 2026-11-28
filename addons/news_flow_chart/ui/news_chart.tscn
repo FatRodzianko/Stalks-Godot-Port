@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://addons/news_flow_chart/ui/news_chart.gd" id="1_chart"]
 [ext_resource type="PackedScene" path="res://addons/news_flow_chart/ui/details_panel.tscn" id="2_details"]
 [ext_resource type="Script" path="res://addons/news_flow_chart/ui/news_chart_canvas.gd" id="3_canvas"]
+[ext_resource type="PackedScene" path="res://addons/news_flow_chart/ui/delete_confirm.tscn" id="4_confirm"]
 
 [node name="NewsChart" type="VBoxContainer"]
 anchors_preset = 15
@@ -111,4 +112,7 @@ size_flags_horizontal = 3
 autowrap_mode = 3
 
 [node name="CreateMenu" type="PopupMenu" parent="."]
+unique_name_in_owner = true
+
+[node name="DeleteConfirm" parent="." instance=ExtResource("4_confirm")]
 unique_name_in_owner = true

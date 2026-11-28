@@ -19,7 +19,10 @@ extends GraphEdit
 ## started on, and turns whatever Godot reports into `arrow_drawn`, from that box.
 ##
 ## **Removing one.** Click on an arrow to select it, then press Delete
-## (`arrow_delete_requested`).
+## (`arrow_delete_requested`). Delete with a box selected and no arrow asks for
+## the box's item to be deleted instead (`boxes_delete_requested`, Phase 4).
+## Clicking a box clears the selected arrow, so Delete never removes an arrow
+## chosen earlier when a box was the last thing clicked.
 ##
 ## `@tool` because it runs inside the editor.
 
@@ -29,6 +32,8 @@ extends GraphEdit
 signal arrow_drawn(from_box: StringName, to_box: StringName)
 ## Delete was pressed while the arrow from `from_box` to `to_box` was selected.
 signal arrow_delete_requested(from_box: StringName, to_box: StringName)
+## Delete was pressed with these boxes selected and no arrow selected.
+signal boxes_delete_requested(box_names: Array[StringName])
 
 ## The length and half-width of the head, before zoom.
 const HEAD_LENGTH: float = 14.0
@@ -71,6 +76,7 @@ func _ready() -> void:
 	connection_to_empty.connect(_on_connection_to_empty)
 	connection_from_empty.connect(_on_connection_from_empty)
 	delete_nodes_request.connect(_on_delete_nodes_request)
+	node_selected.connect(_on_node_selected)
 	gui_input.connect(_on_gui_input)
 
 
@@ -97,9 +103,7 @@ func selected_arrow() -> Array[StringName]:
 ## Selects the arrow nearest `at` (in the chart's own coordinates), or none if
 ## no arrow is that near. True when one was selected.
 func select_arrow_at(at: Vector2) -> bool:
-	_show_selected(0.0)
-	_selected_from = &""
-	_selected_to = &""
+	clear_selected_arrow()
 	var nearest: Dictionary = get_closest_connection_at_point(at, LINE_REACH)
 	if nearest.is_empty():
 		return false
@@ -298,15 +302,28 @@ func _on_connection_from_empty(to_node: StringName, _to_port: int, release_posit
 		_report_arrow(to_node, box.name)
 
 
-## Delete pressed. The boxes selected are left alone: deleting an item is
-## Phase 4's, with its own question.
-func _on_delete_nodes_request(_nodes: Array[StringName]) -> void:
+## Clears the selected arrow, if any.
+func clear_selected_arrow() -> void:
+	_show_selected(0.0)
+	_selected_from = &""
+	_selected_to = &""
+
+
+## Delete pressed: removes the selected arrow, or else asks for the selected
+## boxes' items to be deleted.
+func _on_delete_nodes_request(nodes: Array[StringName]) -> void:
 	var arrow: Array[StringName] = selected_arrow()
 	if arrow.is_empty():
+		if not nodes.is_empty():
+			boxes_delete_requested.emit(nodes)
 		return
 	_selected_from = &""
 	_selected_to = &""
 	arrow_delete_requested.emit(arrow[0], arrow[1])
+
+
+func _on_node_selected(_node: Node) -> void:
+	clear_selected_arrow()
 
 
 ## A left click on the chart itself, not on a box, selects the arrow under it,

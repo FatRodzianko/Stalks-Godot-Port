@@ -6,7 +6,8 @@ extends GutTest
 ## Phase 3: drawing and removing an arrow writes `requires`, a loop is refused,
 ## each kind is created with the right id in the right book, editing a field
 ## changes that field and nothing else, a chain can be renamed, and Save writes
-## the changed books.
+## the changed books. Phase 4: deleting an item, with its question exactly
+## when it has arrows, and undo and redo of every edit.
 ##
 ## The plugin that puts this screen in a tab at the top of the editor exists
 ## only inside the running editor, so it is tested by hand
@@ -19,6 +20,9 @@ const CHART_SCENE: String = "res://addons/news_flow_chart/ui/news_chart.tscn"
 const SCRATCH_DIR: String = "user://news_flow_chart_ui_test"
 
 var _checks_run: int = 0
+## GUT's own window size, put back after a test that needed room for a
+## dialog (`_room_for_a_dialog`); zero when nothing was changed.
+var _window_size: Vector2i = Vector2i.ZERO
 
 
 func before_each() -> void:
@@ -27,6 +31,9 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	if _window_size != Vector2i.ZERO:
+		get_tree().root.size = _window_size
+		_window_size = Vector2i.ZERO
 	for file_name: String in DirAccess.get_files_at(SCRATCH_DIR):
 		DirAccess.remove_absolute("%s/%s" % [SCRATCH_DIR, file_name])
 
@@ -903,3 +910,263 @@ func test_the_selected_arrow_is_drawn_in_its_own_color() -> void:
 	var canvas: NewsChartCanvas = chart.get_node("%Chart")
 	assert_eq(canvas.get_theme_color(&"activity"), NewsChartCanvas.SELECTED_COLOR)
 	assert_ne(NewsChartCanvas.SELECTED_COLOR, Color.WHITE, "not the arrows' own white")
+
+
+# ------------------------------------------------------- Phase 4: deleting
+
+
+func _confirm(chart: NewsChart) -> NewsDeleteConfirm:
+	return chart.get_node("%DeleteConfirm")
+
+
+## GUT's headless window is 64 pixels square, too small for the delete
+## question, and Godot reports a dialog that does not fit as an error. The
+## window is made larger for the test and put back after it.
+func _room_for_a_dialog() -> void:
+	_window_size = get_tree().root.size
+	get_tree().root.size = Vector2i(1600, 1000)
+
+
+func test_an_item_with_no_arrows_is_deleted_without_a_question() -> void:
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	chart.add_to_chart(&"h", Vector2(900, 0))
+	chart.delete_item(&"h")
+	assert_false(_confirm(chart).visible, "no question")
+	assert_null(editor.find(&"h"))
+	assert_null(chart.box_for(&"h"), "its box is gone")
+	assert_false(chart.news_item_labels().has("h"))
+	assert_true(editor.retired_ids.has(&"h"), "its id is retired")
+	assert_string_contains(chart.status_text(), "news_retired_ids.txt")
+
+
+func test_an_item_with_arrows_is_deleted_only_once_the_question_is_answered() -> void:
+	_room_for_a_dialog()
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	var confirm: NewsDeleteConfirm = _confirm(chart)
+	chart.delete_item(&"b")
+	assert_true(confirm.visible, "asked")
+	assert_eq(confirm.asked_id(), &"b")
+	for linked: String in ["a", "d", "e"]:
+		assert_string_contains(confirm.dialog_text, "\n%s" % linked, "names %s" % linked)
+	assert_not_null(editor.find(&"b"), "nothing deleted while asking")
+	confirm.confirmed.emit()
+	assert_null(editor.find(&"b"))
+	assert_eq(_requires(editor, &"d"), [] as Array[StringName], "the arrow to d is gone")
+	assert_eq(_requires(editor, &"e"), [&"no_such_item"] as Array[StringName], "e keeps its other requirement")
+	assert_eq(_requires(editor, &"c"), [&"a"] as Array[StringName], "other arrows are untouched")
+
+
+func test_cancelling_the_question_deletes_nothing() -> void:
+	_room_for_a_dialog()
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	chart.delete_item(&"b")
+	_confirm(chart).canceled.emit()
+	assert_not_null(editor.find(&"b"))
+	assert_eq(_confirm(chart).asked_id(), &"")
+	assert_false(chart.has_unsaved_changes())
+
+
+func test_delete_with_a_box_selected_deletes_its_item() -> void:
+	_room_for_a_dialog()
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	canvas.delete_nodes_request.emit([&"d"] as Array[StringName])
+	assert_true(_confirm(chart).visible, "d has an arrow, so it asks")
+	_confirm(chart).confirmed.emit()
+	assert_null(editor.find(&"d"))
+
+
+func test_delete_with_two_boxes_selected_deletes_neither_and_says_why() -> void:
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	canvas.delete_nodes_request.emit([&"c", &"d"] as Array[StringName])
+	assert_not_null(editor.find(&"c"))
+	assert_not_null(editor.find(&"d"))
+	assert_string_contains(chart.status_text(), "Select one box")
+
+
+func test_clicking_a_box_after_an_arrow_makes_delete_mean_the_box() -> void:
+	_room_for_a_dialog()
+	# Before Phase 4, a selected arrow stayed selected when a box was clicked,
+	# so Delete would have removed the arrow chosen earlier, not the box.
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	await wait_process_frames(2)
+	var canvas: NewsChartCanvas = chart.get_node("%Chart")
+	var a: NewsItemBox = chart.box_for(&"a")
+	var b: NewsItemBox = chart.box_for(&"b")
+	var from_port: Vector2 = (a.position_offset + a.get_output_port_position(0)) * canvas.zoom
+	var to_port: Vector2 = (b.position_offset + b.get_input_port_position(0)) * canvas.zoom
+	var line: PackedVector2Array = canvas._get_connection_line(from_port, to_port)
+	assert_true(canvas.select_arrow_at(line[(line.size() - 3) / 2] - canvas.scroll_offset))
+	canvas.node_selected.emit(chart.box_for(&"c"))
+	assert_eq(canvas.selected_arrow(), [] as Array[StringName], "the arrow is no longer selected")
+	canvas.delete_nodes_request.emit([&"c"] as Array[StringName])
+	_confirm(chart).confirmed.emit()
+	assert_null(editor.find(&"c"), "the box's item was deleted")
+	assert_eq(_requires(editor, &"b"), [&"a"] as Array[StringName], "the arrow is still there")
+
+
+func test_the_details_panel_has_a_delete_button_for_an_item_but_not_a_draft() -> void:
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	var details: NewsDetailsPanel = chart.get_node("%DetailsPanel")
+	chart.start_new_item(NewsKind.Value.INDUSTRY)
+	assert_false(details.is_delete_shown(), "a draft is cancelled, not deleted")
+	chart.choose_item(&"h")
+	assert_true(details.is_delete_shown())
+	(details.get_node("%DeleteButton") as Button).pressed.emit()
+	assert_null(editor.find(&"h"))
+	assert_eq(details.title_text(), NewsDetailsPanel.EMPTY_TITLE, "the panel is emptied")
+
+
+func test_save_writes_the_retired_ids() -> void:
+	var chart: NewsChart = _chart()
+	_show(chart, _example())
+	chart.delete_item(&"h")
+	assert_eq(chart.save(), [] as Array[String])
+	assert_eq(ContentLibrary.read_retired_news_ids(chart.retired_ids_path), [&"h"] as Array[StringName])
+	assert_false(chart.has_unsaved_changes())
+
+
+func test_the_question_names_the_item_and_every_linked_item() -> void:
+	_room_for_a_dialog()
+	var scene: PackedScene = load("res://addons/news_flow_chart/ui/delete_confirm.tscn") as PackedScene
+	var confirm: NewsDeleteConfirm = scene.instantiate() as NewsDeleteConfirm
+	add_child_autofree(confirm)
+	watch_signals(confirm)
+	confirm.ask(&"b", [&"a", &"d"] as Array[StringName])
+	assert_true(confirm.visible)
+	assert_string_contains(confirm.dialog_text, "Delete b?")
+	assert_string_contains(confirm.dialog_text, "a\nd")
+	assert_eq(confirm.ok_button_text, "Delete")
+	confirm.confirmed.emit()
+	assert_signal_emitted_with_parameters(confirm, "delete_confirmed", [&"b"])
+	confirm.confirmed.emit()
+	assert_signal_emit_count(confirm, "delete_confirmed", 1, "answered once, not again")
+
+
+# ------------------------------------------------------- Phase 4: undo and redo
+
+
+func test_undo_and_redo_a_created_item() -> void:
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	chart.start_new_item(NewsKind.Value.INDUSTRY)
+	chart.create_draft()
+	var id: StringName = chart.edited_item().get("id")
+	assert_not_null(editor.find(id))
+	assert_true(chart.undo())
+	assert_null(editor.find(id), "undone")
+	assert_null(chart.box_for(id))
+	assert_true(chart.redo())
+	assert_not_null(editor.find(id), "redone")
+	assert_not_null(chart.box_for(id))
+	assert_false(chart.redo(), "nothing more to redo")
+
+
+func test_undo_a_delete_puts_back_the_item_its_arrows_and_its_id() -> void:
+	_room_for_a_dialog()
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	await wait_process_frames(2)
+	var place: Vector2 = chart.box_for(&"b").position_offset
+	var b: Resource = editor.find(&"b")
+	chart.delete_item(&"b")
+	_confirm(chart).confirmed.emit()
+	assert_true(chart.undo())
+	assert_same(editor.find(&"b"), b, "the same item")
+	assert_eq(_requires(editor, &"d"), [&"b"] as Array[StringName])
+	assert_false(editor.retired_ids.has(&"b"), "its id is not retired")
+	assert_not_null(chart.box_for(&"b"), "its box is back")
+	assert_eq(chart.box_for(&"b").position_offset, place, "where it was")
+	assert_has(chart.arrows(), PackedStringArray(["b", "d"]))
+	assert_true(chart.redo())
+	assert_null(editor.find(&"b"), "deleted again, without asking again")
+	assert_true(editor.retired_ids.has(&"b"))
+
+
+func test_undo_and_redo_a_field_change() -> void:
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _one_market_item(chart)
+	var details: NewsDetailsPanel = chart.get_node("%DetailsPanel")
+	var mood: OptionButton = details.control_for(&"mood")
+	mood.select(1)
+	mood.item_selected.emit(1)
+	assert_eq(editor.find(&"mkt_bear_crash_9").get("mood"), NewsBands.Mood.BULL)
+	assert_true(chart.undo())
+	assert_eq(editor.find(&"mkt_bear_crash_9").get("mood"), NewsBands.Mood.BEAR)
+	var shown: OptionButton = details.control_for(&"mood")
+	assert_eq(shown.get_item_text(shown.selected), "Bear", "the panel shows it")
+	assert_true(chart.redo())
+	assert_eq(editor.find(&"mkt_bear_crash_9").get("mood"), NewsBands.Mood.BULL)
+
+
+func test_typing_in_one_box_is_undone_in_one_step() -> void:
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _one_market_item(chart)
+	for typed: String in ["S", "So", "Som"]:
+		chart.set_field(&"headline", typed)
+	assert_eq(editor.find(&"mkt_bear_crash_9").get("headline"), "Som")
+	assert_true(chart.undo())
+	assert_eq(editor.find(&"mkt_bear_crash_9").get("headline"), "Some words", "all of the typing")
+	assert_false(chart.undo(), "it was one edit")
+
+
+func test_undo_and_redo_an_arrow_drawn_and_one_removed() -> void:
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	chart.link(&"c", &"d")
+	chart.unlink(&"a", &"b")
+	assert_true(chart.undo())
+	assert_eq(_requires(editor, &"b"), [&"a"] as Array[StringName], "the removed arrow is back")
+	assert_has(chart.arrows(), PackedStringArray(["a", "b"]))
+	assert_true(chart.undo())
+	assert_eq(_requires(editor, &"d"), [&"b"] as Array[StringName], "the drawn arrow is gone")
+	assert_does_not_have(chart.arrows(), PackedStringArray(["c", "d"]))
+	assert_true(chart.redo())
+	assert_eq(_requires(editor, &"d"), [&"b", &"c"] as Array[StringName])
+
+
+func test_a_refused_arrow_is_not_an_edit_to_undo() -> void:
+	var chart: NewsChart = _chart()
+	_show(chart, _example())
+	chart.link(&"d", &"a")
+	assert_false(chart.undo(), "the loop was refused, so nothing happened")
+
+
+func test_undo_and_redo_a_chain_rename() -> void:
+	var chart: NewsChart = _chart()
+	_show(chart, _example())
+	chart.choose_chain(1)
+	chart.rename_chain("Oil crisis")
+	assert_true(chart.undo())
+	assert_eq(chart.chain_labels(), PackedStringArray(["a", "f"]))
+	assert_true(chart.redo())
+	assert_eq(chart.chain_labels(), PackedStringArray(["a", "Oil crisis"]))
+
+
+func test_in_the_editor_each_edit_is_handed_to_its_history() -> void:
+	# The plugin sets `record_edit` to put each edit into the editor's own
+	# history, which exists only in the running editor. This stands in for it.
+	var chart: NewsChart = _chart()
+	var editor: NewsBookEditor = _show(chart, _example())
+	var recorded: Array[Array] = []
+	chart.record_edit = _record_into.bind(recorded)
+	chart.link(&"c", &"d")
+	assert_eq(recorded.size(), 1)
+	assert_eq(recorded[0][0], "Draw arrow c to d")
+	assert_false(chart.undo(), "the tab's own history was not used")
+	chart.apply_snapshot(recorded[0][1])
+	assert_eq(_requires(editor, &"d"), [&"b"] as Array[StringName], "the state before puts it back")
+	chart.apply_snapshot(recorded[0][2])
+	assert_eq(_requires(editor, &"d"), [&"b", &"c"] as Array[StringName], "the state after makes it again")
+
+
+func _record_into(action: String, before: Dictionary, after: Dictionary, merge_key: String, into: Array[Array]) -> void:
+	into.append([action, before, after, merge_key])

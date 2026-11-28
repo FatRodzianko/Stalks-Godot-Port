@@ -120,6 +120,11 @@ written, but none of its methods run. Every news item, company, trader and stalk
 is one while the editor has it open, which is why the News Flow tab reads only
 fields and runs the validator in a separate process (decisions.md D224).
 
+**Snapshot (News Flow tab)** — everything an edit in the News Flow tab can
+change, recorded before and after the edit: the books' lists and every item's
+fields, the retired ids, the chain names, the boxes on the chart. Undo puts the
+one before back (decisions.md D230).
+
 **Root** — an item in a chain that requires nothing: where the chain starts. A
 chain is called by its first root's id unless it has been given a name.
 

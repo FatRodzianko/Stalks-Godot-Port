@@ -83,6 +83,19 @@ static func requires_choices(line: Resource, graph: NewsGraph) -> Array[StringNa
 	return ids
 
 
+## The ids `line` could be made to require without making a loop: every
+## other item that does not already wait for `line`, sorted. What the
+## Inspector's requires picker offers, since it has nowhere to say why an id
+## was refused.
+static func requires_choices_without_loops(line: Resource, graph: NewsGraph) -> Array[StringName]:
+	var own_id: StringName = line.get("id")
+	var ids: Array[StringName] = []
+	for id: StringName in requires_choices(line, graph):
+		if not graph.has(own_id) or not graph.would_loop(id, own_id):
+			ids.append(id)
+	return ids
+
+
 static func _add_companies(choices: Array[Choice], library: ContentLibrary) -> void:
 	for company: CompanyProfile in library.companies:
 		choices.append(Choice.new(company.id, _label(company.display_name, company.id)))

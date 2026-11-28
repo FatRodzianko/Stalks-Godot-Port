@@ -1,7 +1,7 @@
 # News Flow Chart — design and build plan
 
-**Status: agreed with the owner on 2026-11-27. Phases 1-3 built (D223,
-D224, D225); Phase 4 not started.** §6 records the owner's answers that shaped the design.
+**Status: agreed with the owner on 2026-11-27. Phases 1-4 built (D223,
+D224, D225, D230).** §6 records the owner's answers that shaped the design.
 
 The News Flow Chart is an editor tool for writing StalkleHeads news as connected
 chains. Take a market headline that leads to an industry headline, which in turn
@@ -313,6 +313,7 @@ addons/news_flow_chart/
     news_item_summary.gd      what a box and the details panel show (Phase 2)
     news_problems.gd          the Problems strip: runs the check, filters to news (Phase 2)
     news_layout.gd            Arrange, top to bottom as a tree; where a new box goes (D226, D227)
+    news_edit_history.gd      undo and redo outside the editor, in the tests (Phase 4, D230)
   check/
     write_news_problems.gd    the validator, run headless in a process of its own (Phase 2)
   ui/                         Control scenes, testable in GUT's scene tree
@@ -320,9 +321,9 @@ addons/news_flow_chart/
     news_chart_canvas.gd      the GraphEdit; dots top and bottom, arrows with heads, Delete
     news_item_box.tscn / .gd  one GraphNode (box)
     details_panel.tscn / .gd  every field of the selected item
-    delete_confirm.tscn / .gd
+    delete_confirm.tscn / .gd the question asked before deleting an item with arrows (Phase 4)
   editor/                     needs the running editor; manual tests only
-    id_dropdown_inspector.gd  EditorInspectorPlugin + EditorProperty
+    id_dropdown_inspector.gd  EditorInspectorPlugin + EditorProperty (Phase 4)
 ```
 
 The house rules carry over. Static typing is required. Signals are connected in
@@ -520,7 +521,34 @@ The plan as written:
   person building the phase, not as a manual step: a check of the books is
   what the Problems strip already shows.
 
-### Phase 4 — Delete, undo, dropdowns in the ordinary Inspector
+### Phase 4 — Delete, undo, dropdowns in the ordinary Inspector — **done 2026-11-27** (D230)
+
+**Delivered as planned**, with these details settled while building it:
+
+- **Delete:** select a box and press Delete, or click **Delete news item** in
+  the details panel. The question (`ui/delete_confirm.tscn`) names every item
+  the arrows join it to; an item with no arrows is deleted without one. One box
+  at a time. The retired ids are written on Save.
+- **Undo goes into the editor's own history** (`EditorUndoRedoManager`), so
+  Ctrl+Z, Ctrl+Y and **Scene > Undo** take back every edit made in the tab:
+  create, delete, a field, an arrow drawn or removed, a chain renamed. Each
+  edit is recorded as a snapshot of the state before and after it. Ctrl+Z in a
+  text box of the details panel undoes the typing in that box, as anywhere in
+  Godot; click an empty part of the chart first to undo the field as one edit.
+  Moving a box and Arrange are not edits. In the tests, where there is no
+  editor, a history of the tab's own (`core/news_edit_history.gd`) stands in.
+- **The Inspector** (`editor/id_dropdown_inspector.gd`) shows the company,
+  industry, subject and trader dropdowns and the requires picker for any news
+  item open in it. Its requires dropdown leaves out ids that would make a loop.
+- **Found while building it:** an arrow selected earlier stayed selected when a
+  box was clicked, so Delete would have removed it instead of the box. Clicking
+  a box now clears it.
+- 6 new core tests (`test_news_flow_chart.gd`, now 34) and 17 scene-tree tests
+  (`test_news_flow_chart_ui.gd`, now 66). Undo in the editor and the Inspector
+  dropdowns were also run once in a headless editor with a throwaway plugin.
+  [manual-testing.md](manual-testing.md) section AB checks both by hand.
+
+The plan as written:
 
 - Delete, with the confirmation shown when the item has arrows. It removes the
   item and its arrows, and retires the id.
@@ -547,7 +575,7 @@ The plan as written:
 | The chart inside the editor, on placeholder items (finding 6) | **No: manual** | GUT runs the game's scripts for real, so a method call on an item would pass there and fail in the editor. The UI reads items through their fields only; that it works on placeholders was checked once with a throwaway plugin in a headless editor run, and is checked by hand in section Z. |
 | The Problems check | **Yes** | A test runs the real headless check on the shipped books and expects no problems. |
 | Inspector dropdowns | **The list yes, the display no** | What each dropdown contains is a tested function; that the Inspector shows it is checked by hand. |
-| Undo and redo | **No: manual** | `EditorUndoRedoManager` belongs to the running editor. |
+| Undo and redo | **The snapshots yes, the editor's history no** | Every edit's snapshot, and undoing and redoing it, are tested through the tab's own history. `EditorUndoRedoManager`, and Ctrl+Z reaching it, belong to the running editor: section AB. |
 | Saving with `uid` lines kept | **No: manual** | Headless saving drops them (§1.1). So a real save is checked by hand, then with `git diff`. |
 
 The manual steps for each phase go into [manual-testing.md](manual-testing.md) as

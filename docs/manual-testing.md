@@ -3049,6 +3049,144 @@ open scenes before you start.**
 **Report:** any step that did not match, and anything awkward to do with the
 mouse - dragging an arrow onto a small dot is the part most likely to need work.
 
+### AB - The News Flow tab: delete, undo, and the dropdowns in the Inspector (decisions.md D230) — **not yet run**
+
+One machine, the **editor**. Needs a checkout that has
+`addons/news_flow_chart/editor/id_dropdown_inspector.gd`. This makes two
+throwaway items in the real books, undoes and redoes edits to them, deletes
+them, saves, and then puts the books back with git (steps 91-96). **Save any
+work in open scenes before you start.**
+
+"Click an empty part of the chart" means a spot on the chart with no box and
+no arrow under the mouse. Ctrl+Z only reaches the tab's edits when no text box
+has the keyboard; clicking the chart makes sure of that.
+
+**Make two items**
+
+1. Open the project in the Godot editor.
+2. Click **News Flow** at the top.
+3. Click **+ New news item**, then **Market news**.
+4. Set **Mood** to **Bear**.
+5. Set **Move** to **Crash**.
+6. Click in the **Headline** box and type `test one`.
+7. Click **Create**.
+8. Check a **Market news** box appears with the id `mkt_bear_crash_3`.
+9. Click **+ New news item**, then **Company news**.
+10. Leave **Company Id** at **(any)**.
+11. Set **Move** to **Crash**.
+12. Click in the **Text** box and type `test two`.
+13. Click **Create**.
+14. Check a second box appears, with an id starting `cnews_any_crash_`. Write the id down.
+
+**Undo and redo on the chart**
+
+15. Click an empty part of the chart.
+16. Press **Ctrl+Z**.
+17. Check the `test two` box is gone.
+18. Press **Ctrl+Y**.
+19. Check the `test two` box is back, with the id you wrote down.
+20. Press on the dot at the bottom middle of the **Market news** box, drag onto the `test two` box, and let go.
+21. Check an arrow runs from the market box down to `test two`.
+22. Click an empty part of the chart.
+23. Press **Ctrl+Z**.
+24. Check the arrow is gone.
+25. Press **Ctrl+Y**.
+26. Check the arrow is back.
+27. Click **Scene** in the menu bar at the top left, then **Undo**.
+28. Check the arrow is gone.
+29. Click **Scene**, then **Redo**.
+30. Check the arrow is back.
+
+**Undo a field, and Ctrl+Z inside a text box**
+
+31. Click the **Market news** box.
+32. Set **Mood** to **Bull**.
+33. Click an empty part of the chart.
+34. Press **Ctrl+Z**.
+35. Check **Mood** on the right reads **Bear** again.
+36. Click at the end of the **Headline** box, after `test one`.
+37. Type ` edited`, in one go.
+38. Check the box on the chart shows `test one edited`.
+39. Without clicking anywhere else, press **Ctrl+Z**.
+40. Check some or all of ` edited` is taken back in the **Headline** box, and the box on the chart shows the same words. This is the text box's own undo, as in any Godot text box.
+41. Click an empty part of the chart.
+42. Press **Ctrl+Z** once, and again until the **Headline** box reads `test one`. Stop as soon as it does. Typing without a pause is one edit, so this usually takes two presses: one for what step 39 put back, one for the typing.
+43. Check the box on the chart shows `test one`, and the arrow to `test two` is still there.
+
+**Undo a chain name**
+
+44. Click `mkt_bear_crash_3` under **Chains** on the left.
+45. Click the **Chain name** box in the toolbar, delete what is there, and type `Test chain`.
+46. Click **Rename chain**.
+47. Check **Chains** now reads **Test chain**.
+48. Click an empty part of the chart.
+49. Press **Ctrl+Z**.
+50. Check **Chains** reads `mkt_bear_crash_3` again.
+
+**Delete an item with an arrow**
+
+51. Click the `test two` box.
+52. Press **Delete**.
+53. Check a window titled **Delete news item** opens, asking to delete the id you wrote down and naming `mkt_bear_crash_3`.
+54. Click **Cancel**.
+55. Check the `test two` box and its arrow are still there.
+56. Click the `test two` box.
+57. Press **Delete**.
+58. Click **Delete** in the window.
+59. Check the `test two` box and its arrow are gone, and the toolbar reads **Deleted** with the id, and lists **news_retired_ids.txt** as unsaved.
+60. Click an empty part of the chart.
+61. Press **Ctrl+Z**.
+62. Check the `test two` box is back where it was, with its arrow from the market box.
+63. Press **Ctrl+Y**.
+64. Check the `test two` box is gone again, and no window asked first.
+
+**Delete an item with no arrows**
+
+65. Click the **Market news** box.
+66. Click **Delete news item** at the bottom of the right-hand side.
+67. Check the box is gone at once, with no window.
+68. Click an empty part of the chart.
+69. Press **Ctrl+Z**.
+70. Check the **Market news** box is back.
+
+**Save**
+
+71. Click **Save** in the tab's toolbar.
+72. Check the toolbar reads **Saved.** with nothing unsaved, and the bottom reads **Problems: none**.
+73. In PowerShell, in the project folder, run `git diff src/data/news_retired_ids.txt`.
+74. Check it adds one line: the id you wrote down.
+
+**The dropdowns in the Inspector**
+
+75. In the **FileSystem** panel at the bottom left, double-click **src**, then **data**, then **news**.
+76. Double-click **companies.tres**.
+77. In the **Inspector** on the right, click the button beside **Company News** (it reads **Array[CompanyNews]** and a size) to open the list.
+78. Click the first entry in the list, on the word **CompanyNews**, to open that news item.
+79. Check **Company Id** is a dropdown showing a company's name with its id in brackets.
+80. Click **Company Id**.
+81. Check the list starts with **(any)** and then names every company.
+82. Press **Escape** to close the list.
+83. Check **Requires** shows a dropdown reading **Add a requirement...**.
+84. Click **Add a requirement...** and pick any id.
+85. Check that id now appears above the dropdown with a **Remove** button.
+86. Press **Ctrl+Z**.
+87. Check the id is gone from **Requires**.
+88. Double-click **market.tres** in the FileSystem panel.
+89. In the Inspector, click the button beside **Market News**, then the first entry's **MarketNews**.
+90. Check **Target Company** is a dropdown starting with **(none)**, and **Target Industry** one too.
+
+**Put it back**
+
+91. Click **Scene**, then **Quit**.
+92. If it asks whether to save anything, click **Don't Save**. Nothing from this test should be kept.
+93. In PowerShell, in the project folder, run `git checkout -- src/data/news src/data/news_retired_ids.txt`.
+94. Run `Remove-Item src/data/news_chains.cfg -ErrorAction SilentlyContinue`.
+95. Run `git status --short src`.
+96. Check it prints nothing.
+
+**Report:** any step that did not match, and how Ctrl+Z inside a text box
+(step 40) felt next to Ctrl+Z on the chart.
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until

@@ -8535,3 +8535,97 @@ in code, not in a theme resource: the News Flow tab is an editor tool with no
 theme of its own, and the game's shared theme does not reach the editor.
 
 **Not changed:** the books, the game, the golden history hash.
+
+### D230 - The News Flow tab: delete, undo in the editor's own history, dropdowns in the Inspector (Phase 4)
+**2026-11-27 · Accepted**
+
+Phase 4 of [news-flow-chart.md](news-flow-chart.md) adds deleting a news item,
+undo and redo of every edit made in the tab, and the tab's dropdowns in Godot's
+ordinary Inspector.
+
+**Deleting an item.** Select its box and press Delete, or click **Delete news
+item** at the bottom of the details panel. It goes through
+`NewsBookEditor.delete` (D223): the item, every arrow to and from it, and its id
+retired.
+
+- **An item with arrows is deleted only after a question** that names every
+  item its arrows join it to (`ui/delete_confirm.tscn`, `NewsDeleteConfirm`), as
+  the owner asked in news-flow-chart.md §6. One with no arrows is deleted at
+  once: there is nothing to lose that undo cannot bring back.
+- **One box at a time.** Delete with two boxes selected deletes neither and
+  says so, so the question is always about one item.
+- **Clicking a box now clears a selected arrow.** Found while building this:
+  an arrow selected earlier stayed selected when a box was clicked, so Delete
+  would have removed that arrow instead of the box the person had just
+  clicked. A regression test covers it.
+- **The retired ids are written on Save**, with the books
+  (`src/data/news_retired_ids.txt`), and the status line lists the file as
+  unsaved until then. Before Phase 4 the tab never deleted, so it never wrote
+  the file.
+- **The question hides itself when answered.** Godot hides it when one of its
+  buttons is pressed; the tests answer it by emitting the signal instead, and
+  a dialog still open when the screen holding it was freed crashed the
+  headless test run.
+
+**Undo and redo go into the editor's own history** (`EditorUndoRedoManager`),
+not a history kept by the tab. A throwaway plugin in a headless editor run
+(`--headless -e`, events sent with `push_input`) showed it reaches the tab: an
+action recorded with the chart as its context goes into the editor's global
+history, and the editor's own Ctrl+Z and Ctrl+Y undo and redo it with the chart
+focused and with nothing focused. Ctrl+Shift+Z redoes too. So the tab's edits
+behave like every other edit in Godot: **Scene > Undo** and **Scene > Redo**
+reach them. A history of the tab's own would have
+needed its own Ctrl+Z handling, which the editor's would compete with, and the
+Scene menu would never see its edits. The owner's report that Ctrl+Z "did
+nothing on the chart" was the editor's Ctrl+Z finding nothing of the tab's to
+undo.
+
+- **Each edit is recorded as two snapshots**, the state before and after
+  (`NewsChart._snapshot`, `NewsBookEditor.snapshot`), and undoing applies the
+  one before (`NewsChart.apply_snapshot`). A snapshot holds every book's lists,
+  every item's stored fields, the retired ids, the chain names, and which boxes
+  are on the chart and where. One mechanism covers all six kinds of edit
+  (create, delete, a field, an arrow drawn, an arrow removed, a chain renamed)
+  instead of an inverse written for each. It puts back the item objects
+  themselves, never copies, so a deleted item that comes back is the one the
+  Inspector knew, and it uses only `get` and `set`, which placeholders allow
+  (D224). Copying 161 items' fields per edit is cheap.
+- **Ctrl+Z in a text box of the details panel undoes the typing in that box**,
+  as in any Godot text box: the box takes the key first. What it puts back
+  changes the item, which is itself a new edit. To undo a field as one edit,
+  click an empty part of the chart first, then press Ctrl+Z.
+- **Typing in one box is one edit**, recorded with `UndoRedo.MERGE_ENDS`. Godot
+  only merges an edit with the one before it when it comes within about 0.8
+  seconds, so typing with a long pause in it takes more than one Ctrl+Z. The
+  tab's own history in the tests (`NewsEditHistory`) merges regardless of time.
+- **Undoing after a Save leaves the book unsaved**, since the file no longer
+  matches. A book is marked unsaved whenever an undo changes it, even when it
+  ends up as it was on disk; saving it again writes the same thing.
+- **Not edits:** moving a box, Arrange, and anything typed into a draft before
+  **Create**. They are not undone.
+- **Outside the editor** (the tests) there is no `EditorUndoRedoManager`, so the
+  tab falls back on `NewsEditHistory`, driven by `NewsChart.undo` and `redo`.
+  The plugin sets `NewsChart.record_edit` to switch to the editor's history;
+  the tests check that every edit reaches whatever it is set to.
+
+**The dropdowns in the ordinary Inspector** (`editor/id_dropdown_inspector.gd`,
+§3.4). An `EditorInspectorPlugin` replaces a news item's company, industry,
+subject and trader fields with dropdowns from `NewsFieldChoices`, and its
+`requires` with the same list of ids and **Remove** buttons as the details
+panel. The Inspector records those changes in the editor's history itself.
+
+- **The Inspector's requires dropdown leaves out ids that would make a loop**
+  (`NewsFieldChoices.requires_choices_without_loops`). The tab offers every id
+  and refuses a loop with a message in its status line; the Inspector has
+  nowhere to put that message.
+- **A whisper's subject is worked out again whenever the Inspector refreshes**,
+  so changing **About** switches it between companies and industries.
+- It was checked in a headless editor run: a company news item open in the
+  Inspector showed the company dropdown, **(any)** first, and the requires
+  dropdown. How it looks is checked by hand (manual-testing.md section AB).
+
+**Not changed:** the game, the news rules, the golden history hash.
+
+**Rules out:** a history of the tab's own inside the editor; undo written as an
+inverse for each kind of edit; deleting several items under one question;
+`@export_enum` lists in the game's data scripts.
