@@ -146,6 +146,10 @@ func test_a_lever_set_to_its_published_value_changes_nothing() -> void:
 	levers.growth_stay = int(RegimeRules.TRANSITION[EarningsRegime.Value.GROWTH][0])
 	levers.ageing = RegimeRules.AGEING_POINTS
 	levers.premium = Levers.scaled_premium(1.0)
+	levers.retention_slope = 1.0
+	levers.flow_limit = PriceIdentity.FLOW_LIMIT_FRACTION
+	levers.flow_limit_at_99 = PriceIdentity.FLOW_LIMIT_FRACTION
+	levers.flag_at = ShortInterestRules.FLAG_AT_PERCENT
 	for match_seed: int in [0, 7, 19]:
 		var forced: BalanceMatch.Result = BalanceMatch.play(
 			_library, match_seed, YEARS, BalanceMatch.ALL_STRATEGIES, BalanceMatch.FLOW_ALL, levers
@@ -161,6 +165,41 @@ func test_a_lever_that_moves_does_move_the_market() -> void:
 		_library, 0, YEARS, BalanceMatch.ALL_STRATEGIES, BalanceMatch.FLOW_ALL, levers
 	)
 	assert_ne(moved.final_prices, _runs[0].final_prices)
+
+
+func test_the_s9_levers_each_move_the_market() -> void:
+	# D232: the income slope, the flow clamp and the flag threshold.
+	var slope: Levers = Levers.new()
+	slope.retention_slope = 0.5
+	var clamp: Levers = Levers.new()
+	clamp.flow_limit = 0.0
+	var flag: Levers = Levers.new()
+	flag.flag_at = 3.0
+	for levers: Levers in [slope, clamp, flag]:
+		var moved: BalanceMatch.Result = BalanceMatch.play(
+			_library, 0, YEARS, BalanceMatch.ALL_STRATEGIES, BalanceMatch.FLOW_ALL, levers
+		)
+		assert_ne(moved.final_prices, _runs[0].final_prices, levers.describe())
+
+
+func test_a_retention_slope_rescales_positive_growth_rolls_only() -> void:
+	var levers: Levers = Levers.new()
+	levers.retention_slope = 0.5
+	# Policy 80: published retention 0.55, half the slope 0.775.
+	assert_eq(levers.retained_roll(20, 80), roundi(20.0 * 0.775 / 0.55))
+	# Policy 0: published 1.35, half the slope 1.175.
+	assert_eq(levers.retained_roll(20, 0), roundi(20.0 * 1.175 / 1.35))
+	assert_eq(levers.retained_roll(20, 35), 20, "the neutral policy is unchanged")
+	assert_eq(levers.retained_roll(-10, 80), -10, "negative growth is never retained")
+	assert_eq(Levers.new().retained_roll(20, 80), 20, "unset changes nothing")
+
+
+func test_the_long_match_flow_clamp_scales_from_ten_years() -> void:
+	var levers: Levers = Levers.new()
+	levers.flow_limit_at_99 = 0.0
+	assert_eq(levers.flow_limit_for(10), PriceIdentity.FLOW_LIMIT_FRACTION)
+	assert_almost_eq(levers.flow_limit_for(99), 0.0, 0.000001)
+	assert_almost_eq(levers.flow_limit_for(54), 0.05 * 45.0 / 89.0, 0.000001)
 
 
 func test_a_rebuilt_growth_row_still_sums_to_100() -> void:

@@ -39,22 +39,25 @@ static func carry_after(previous_event_carry: float, event_delta: int) -> float:
 
 ## The flow clamp for a fair value. Taken from its magnitude, so the bound is
 ## never inverted for a company whose fair value has gone negative (D132).
-static func flow_limit(fair_value: float) -> float:
-	return absf(fair_value) * FLOW_LIMIT_FRACTION
+static func flow_limit(fair_value: float, limit_fraction: float = FLOW_LIMIT_FRACTION) -> float:
+	return absf(fair_value) * limit_fraction
 
 
 ## This year's flow from last year's and the net shares traded last year. NPC and
 ## player shares count identically: the caller sums them before passing them in.
+## `limit_fraction` is the clamp; only the balance tool passes anything but
+## the published `FLOW_LIMIT_FRACTION` (decisions.md D232).
 static func flow_after(
 	previous_flow: float,
 	net_shares_traded: int,
 	shares_outstanding: int,
 	fair_value: float,
+	limit_fraction: float = FLOW_LIMIT_FRACTION,
 ) -> float:
 	var pushed: float = previous_flow * FLOW_PERSISTENCE
 	if shares_outstanding > 0:
 		pushed += float(net_shares_traded) / float(shares_outstanding) * 100.0 * FLOW_GAIN
-	var limit: float = flow_limit(fair_value)
+	var limit: float = flow_limit(fair_value, limit_fraction)
 	return clampf(pushed, -limit, limit)
 
 

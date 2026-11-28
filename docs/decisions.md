@@ -8672,3 +8672,37 @@ call it a chain.
 **Rules out:** Delete removing an item from its book; joining an item's
 requirements to its followers when it is removed; deleting an item without a
 question.
+
+### D232 - Four more balance-tool levers for S9, and one seam for the flow clamp
+**2026-11-27 · Accepted** (phase S9) · **extends D150, D166, D168**
+
+S9's agenda ([stalkleheads-tuning.md](stalkleheads-tuning.md)) names the levers the
+design defers to it. Three of them had no tool argument, so they could not be swept:
+the slope of the income trade-off (design §3.10a), the flow clamp (§3.10), and the
+short-interest flag threshold (D165, D170). A fourth, scaling the clamp with match
+length, is §13.2's first long-match lever. All four now exist, in the tool only:
+
+- `--retention-slope=F`: retention becomes `1 + F * (35 - policy) / 100`. The tool
+  reaches it by rescaling the positive growth roll in `tools/balance/lever_year.gd`
+  so that the real retention factor gives the slope's growth. The roll is a whole
+  number, so a slope other than 1 is accurate to about half a point of growth per
+  company-year. At 1 the roll is untouched. Exact would need a seam in
+  `CompanyState.move_accounts`, which the sweep does not justify.
+- `--flag-at=N`: `tools/balance/lever_desk.gd` overrides `NpcDesk.flagged_companies`
+  with its own threshold, the same rule otherwise, including skipping a company
+  already in a squeeze (D213). A copy written before D213 missed that, and the
+  smoke test caught it.
+- `--flow-limit=F` and `--flow-limit-99=F`: **these needed a seam in `src/sim/`**,
+  because the clamp is applied inside `CompanyState.reprice` and nothing the tool
+  could override reaches it. The seam is the kind D166 added for the squeeze chance:
+  `EarningsYearResolver.flow_limit_fraction(state)`, which returns
+  `PriceIdentity.FLOW_LIMIT_FRACTION` and which nothing in the game overrides, passed
+  to `reprice` and on to `PriceIdentity.flow_after` as a trailing argument whose
+  default is the same constant. **No published number changed**; the suite and the
+  golden hash are unchanged.
+
+`test_balance_smoke.gd` checks each lever set to its published value reproduces the
+real matches exactly, and that each one moved does move the market.
+
+**Rules out:** a mutable static for any of these (D150); changing a published value
+without the owner's decision.

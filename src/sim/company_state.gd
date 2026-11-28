@@ -224,11 +224,14 @@ static func own_growth(roll: int, payout_policy_percent: int, match_years: int) 
 ## - `industry_performance`: this year's figure for its industry.
 ## - `this_year_event_delta`: the event aimed at this company this year, or 0.
 ## - `net_shares_traded`: last year's net buying, NPC and player alike.
+## - `flow_limit_fraction`: the flow clamp, the published one unless the balance
+##   tool is sweeping it (decisions.md D232).
 func reprice(
 	market_sentiment: float,
 	industry_performance: float,
 	this_year_event_delta: int,
 	net_shares_traded: int,
+	flow_limit_fraction: float = PriceIdentity.FLOW_LIMIT_FRACTION,
 ) -> void:
 	sentiment = ValuationRules.clamp_sentiment(market_sentiment)
 	industry_standing = IndustryState.standing_for(industry_performance)
@@ -243,7 +246,9 @@ func reprice(
 
 	event_delta = this_year_event_delta
 	event_carry = PriceIdentity.carry_after(event_carry, this_year_event_delta)
-	flow = PriceIdentity.flow_after(flow, net_shares_traded, shares_outstanding, fair_value)
+	flow = PriceIdentity.flow_after(
+		flow, net_shares_traded, shares_outstanding, fair_value, flow_limit_fraction
+	)
 	price = PriceIdentity.price_of(fair_value, event_carry, flow) + squeeze_premium
 	did_split = false
 

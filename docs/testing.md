@@ -680,7 +680,13 @@ measurement, with the desk, is decisions.md D167; the SHORT target that made P4 
 is D169. S5 re-ran it once players' trades reached flow in the game: LOWPE 27.7%,
 identical to D170 (D172). S8 re-ran it after next year's earnings began to be drawn a
 year early for the whispers (D205): identical to D172 in every figure, as expected,
-since the draws take the same place in the stream.
+since the draws take the same place in the stream. S9's baseline, on `main` at
+`29ab7a9` after market news and the meme-stock squeeze, is `TREND` 31.1%, so P4
+fails as shipped; it and every sweep since are in
+[stalkleheads-tuning.md](stalkleheads-tuning.md). S9 added four levers (D232), and
+the smoke test checks each at its published value reproduces the real matches, each
+moved moves the market, the retention rescale touches positive rolls only, and the
+long-match clamp scales from ten years.
 
 ### Scene tests
 

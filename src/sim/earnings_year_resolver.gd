@@ -298,7 +298,10 @@ func _settle_prices(state: GameState, result: EarningsYearResult, year: YearInPr
 	# 3 and 5. Valuation, then the price identity, once.
 	for company: CompanyState in alive:
 		var traded: int = result.net_shares_priced.get(company.id, 0)
-		company.reprice(market.sentiment, valuation_performance(market, company), hits.get(company.id, 0), traded)
+		company.reprice(
+			market.sentiment, valuation_performance(market, company), hits.get(company.id, 0), traded,
+			flow_limit_fraction(state)
+		)
 		if company.id == squeezed_id:
 			# The lift, plus whatever the rest of the year would have taken off:
 			# a squeezed price never falls in the year it is squeezed.
@@ -386,6 +389,13 @@ func squeeze_chance_percent(any_flagged: bool) -> int:
 ## game overrides it.
 func squeeze_spike(price: int, short_percent: float) -> int:
 	return ShortInterestRules.spike_for(price, short_percent)
+
+
+## The flow clamp, as a fraction of fair value, for this match (§3.10).
+## **A seam for the balance tool only**, which overrides it to sweep the clamp
+## (decisions.md D232); nothing in the game overrides it.
+func flow_limit_fraction(_state: GameState) -> float:
+	return PriceIdentity.FLOW_LIMIT_FRACTION
 
 
 ## The industry performance a company is valued on at step 3: its industry's.

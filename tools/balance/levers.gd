@@ -3,7 +3,7 @@ extends RefCounted
 ## defaults in `src/sim/`** (decisions.md D150). A sweep asks "what if this number
 ## were different?"; the owner decides afterwards whether to change the real one.
 ##
-## Three levers, each defaulting to "use the published value":
+## The levers below, each defaulting to "use the published value":
 ##
 ## - `premium`: the regime premium, turns of multiple per regime, in
 ##   `EarningsRegime.ALL` order. Empty = `RegimeRules.PREMIUM`.
@@ -44,6 +44,25 @@ var squeeze_size: int = -1
 ## D169) or `slowest` (S4's first rule, D164; tools/balance/lever_desk.gd, D168).
 var short_target: StringName = &"highpe"
 
+## The slope of the income trade-off (§3.10a): retention becomes
+## `1 + slope * (35 - policy) / 100`. -1 = the published slope, 1. Applied by
+## rescaling the positive growth roll in `lever_year.gd`, rounded to a whole
+## roll, so a setting other than 1 is accurate to about half a point of growth
+## (decisions.md D232).
+var retention_slope: float = -1.0
+
+## The flow clamp as a fraction of fair value (§3.10). -1 = the published 0.05.
+var flow_limit: float = -1.0
+
+## The flow clamp for matches longer than ten years, as a fraction of fair value:
+## the published clamp at ten years or fewer, scaled linearly from there to this
+## figure at 99 years (§13.2's first long-match lever). -1 = no scaling.
+var flow_limit_at_99: float = -1.0
+
+## The short-interest flag threshold, percent of shares outstanding (§5.3).
+## -1 = the published 10 (`ShortInterestRules.FLAG_AT_PERCENT`).
+var flag_at: float = -1.0
+
 var _transition: Dictionary[EarningsRegime.Value, Array] = {}
 
 
@@ -52,8 +71,37 @@ func changes_regimes() -> bool:
 	return growth_stay >= 0 or ageing >= 0.0
 
 
+## True when the growth roll is rescaled for the income trade-off.
+func changes_retention() -> bool:
+	return retention_slope >= 0.0 and retention_slope != 1.0
+
+
+## The flow clamp for a match of `years`, as a fraction of fair value.
+func flow_limit_for(years: int) -> float:
+	var base: float = PriceIdentity.FLOW_LIMIT_FRACTION
+	if flow_limit >= 0.0:
+		base = flow_limit
+	if flow_limit_at_99 < 0.0 or years <= 10:
+		return base
+	var along: float = float(mini(years, 99) - 10) / 89.0
+	return base + (flow_limit_at_99 - base) * along
+
+
+## The growth roll that gives, under the published retention, the growth this
+## slope would: `roll * retention(slope) / retention(1)`, rounded, positive
+## rolls only (retention applies to positive growth only).
+func retained_roll(roll: int, payout_policy_percent: int) -> int:
+	if not changes_retention() or roll <= 0:
+		return roll
+	var gap: float = float(DividendRules.NEUTRAL_POLICY_PERCENT - payout_policy_percent) / 100.0
+	var wanted: float = 1.0 + retention_slope * gap
+	return roundi(float(roll) * wanted / DividendRules.retention_factor(payout_policy_percent))
+
+
 func changes_anything() -> bool:
 	if changes_regimes() or not premium.is_empty() or not squeeze:
+		return true
+	if changes_retention() or flow_limit >= 0.0 or flow_limit_at_99 >= 0.0 or flag_at >= 0.0:
 		return true
 	return squeeze_chance >= 0 or squeeze_size >= 0 or short_target != &"highpe"
 
@@ -160,6 +208,14 @@ func describe() -> String:
 		parts.append("squeeze %d%% a point" % squeeze_size)
 	if short_target != &"highpe":
 		parts.append("SHORT target %s" % short_target)
+	if retention_slope >= 0.0:
+		parts.append("retention slope %.2f" % retention_slope)
+	if flow_limit >= 0.0:
+		parts.append("flow clamp %.3f" % flow_limit)
+	if flow_limit_at_99 >= 0.0:
+		parts.append("flow clamp %.3f at 99 years" % flow_limit_at_99)
+	if flag_at >= 0.0:
+		parts.append("flag at %.1f%%" % flag_at)
 	return ", ".join(parts)
 
 

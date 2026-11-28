@@ -27,6 +27,13 @@ extends SceneTree
 ##   --squeeze-size=N      squeeze price change (published +25, the template's)
 ##   --short-target=T      what the SHORT traders bet against: highpe (published)
 ##                         or slowest (decisions.md D168, D169)
+##   --retention-slope=F   slope of the income trade-off, §3.10a (published 1;
+##                         0.5 halves it, 0 removes it)
+##   --flow-limit=F        flow clamp, fraction of fair value (published 0.05)
+##   --flow-limit-99=F     scale the flow clamp from its ten-year value to F
+##                         at 99 years (§13.2); unscaled by default
+##   --flag-at=N           short-interest flag threshold, percent of shares
+##                         outstanding (published 10)
 ##
 ## The year is the game's own, `EarningsYearResolver`, since S3 (through
 ## tools/balance/lever_year.gd, which only adds the levers), and so is the NPC
@@ -59,7 +66,11 @@ const USAGE: String = """Usage: <godot> --headless --script res://tools/balance_
   --no-squeeze          no short squeeze can fire
   --squeeze-chance=N    squeeze chance in a flagged year, 0-100 (published 25)
   --squeeze-size=N      squeeze price change, 0 or more (published 25)
-  --short-target=T      highpe (published) or slowest"""
+  --short-target=T      highpe (published) or slowest
+  --retention-slope=F   income trade-off slope (published 1)
+  --flow-limit=F        flow clamp, fraction of fair value (published 0.05)
+  --flow-limit-99=F     flow clamp at 99 years, scaled from 10 years
+  --flag-at=N           short-interest flag threshold, percent (published 10)"""
 
 
 func _init() -> void:
@@ -103,6 +114,26 @@ func _init() -> void:
 				levers.short_target = StringName(value.to_lower())
 				if levers.short_target not in LeverDesk.SHORT_TARGETS:
 					_fail("--short-target must be highpe or slowest.")
+					return
+			"--retention-slope":
+				levers.retention_slope = value.to_float()
+				if levers.retention_slope < 0.0 or levers.retention_slope > 2.0:
+					_fail("--retention-slope must be 0 to 2.")
+					return
+			"--flow-limit":
+				levers.flow_limit = value.to_float()
+				if levers.flow_limit < 0.0:
+					_fail("--flow-limit must be 0 or more.")
+					return
+			"--flow-limit-99":
+				levers.flow_limit_at_99 = value.to_float()
+				if levers.flow_limit_at_99 < 0.0:
+					_fail("--flow-limit-99 must be 0 or more.")
+					return
+			"--flag-at":
+				levers.flag_at = value.to_float()
+				if levers.flag_at <= 0.0:
+					_fail("--flag-at must be above 0.")
 					return
 			"--premium":
 				var values: PackedStringArray = value.split(",", false)
@@ -271,13 +302,15 @@ func _print_report(
 
 	# One line with every figure a sweep compares, for grep.
 	var share: Dictionary[StringName, String] = {}
-	for strategy: StringName in [&"TREND", &"LOWPE", &"HIGHPE", &"FOLLOW"]:
+	for strategy: StringName in [&"TREND", &"LOWPE", &"HIGHPE", &"FOLLOW", &"INCOME", &"BOND"]:
 		share[strategy] = "-"
 		if wins.has(strategy):
 			share[strategy] = "%.1f" % (100.0 * float(wins[strategy]) / count)
-	print("summary: years=%d flow=%s leader=%s %.1f trend=%s lowpe=%s highpe=%s follow=%s contenders=%d bull=%.3f splits=%.2f bankruptcies=%.2f squeezes=%.2f random/leader=%s" % [
-		years, flow, leader, top, share[&"TREND"], share[&"LOWPE"], share[&"HIGHPE"], share[&"FOLLOW"], contenders,
-		bull_rate / count, splits / count, bankruptcies / count, squeezes / count, random_vs_leader,
+	print("summary: years=%d flow=%s leader=%s %.1f trend=%s lowpe=%s highpe=%s follow=%s income=%s bond=%s contenders=%d bull=%.3f splits=%.2f bankruptcies=%.2f squeezes=%.2f flagged=%.3f random/leader=%s" % [
+		years, flow, leader, top, share[&"TREND"], share[&"LOWPE"], share[&"HIGHPE"], share[&"FOLLOW"],
+		share[&"INCOME"], share[&"BOND"], contenders,
+		bull_rate / count, splits / count, bankruptcies / count, squeezes / count, flagged / count,
+		random_vs_leader,
 	])
 
 

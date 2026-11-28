@@ -14,6 +14,9 @@ extends EarningsYearResolver
 ## - **the industry performance a company is valued on**, when the premium lever
 ##   is set, shifted so the multiple comes out as if the premium table had the
 ##   override (`Levers.valuation_performance`);
+## - **the growth roll**, when the retention-slope lever is set, rescaled so
+##   the real retention factor gives the slope's growth (`Levers.retained_roll`);
+## - **the flow clamp**, through the resolver's `flow_limit_fraction` seam;
 ## - **the squeeze chance**, when that lever is set, still 0 in a year with
 ##   nothing flagged; and **the squeeze's size**, its lift per point of short
 ##   interest (D213). Its on/off switch is whether a template is passed.
@@ -43,14 +46,22 @@ func draw_company_earnings(
 	match_years: int,
 	rng: RandomNumberGenerator,
 ) -> Vector2i:
+	var drawn: Vector2i
 	if not levers.changes_regimes():
-		return super(market, company, match_years, rng)
-	var roll: int = rng.randi_range(1, 100)
-	var next: EarningsRegime.Value = levers.regime_for_roll(
-		company.regime, roll, company.profile.quality, company.years_in_regime
-	)
-	var band: Vector2i = RegimeRules.GROWTH_BAND[next]
-	return Vector2i(int(next), rng.randi_range(band.x, band.y))
+		drawn = super(market, company, match_years, rng)
+	else:
+		var roll: int = rng.randi_range(1, 100)
+		var next: EarningsRegime.Value = levers.regime_for_roll(
+			company.regime, roll, company.profile.quality, company.years_in_regime
+		)
+		var band: Vector2i = RegimeRules.GROWTH_BAND[next]
+		drawn = Vector2i(int(next), rng.randi_range(band.x, band.y))
+	drawn.y = levers.retained_roll(drawn.y, company.profile.payout_policy_percent)
+	return drawn
+
+
+func flow_limit_fraction(state: GameState) -> float:
+	return levers.flow_limit_for(state.settings.max_years)
 
 
 func squeeze_chance_percent(any_flagged: bool) -> int:

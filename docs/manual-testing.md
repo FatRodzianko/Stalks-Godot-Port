@@ -3289,6 +3289,106 @@ and no arrow under the mouse.
 **Report:** any step that did not match, and whether the two menu words read
 clearly.
 
+### AD - Playing StalkleHeads for balance (phase S9) — **open: run as often as wanted**
+
+**This section has no pass or fail.** It is how phase S9 of
+[stalkleheads-design.md](stalkleheads-design.md) gets what the balance tool cannot
+measure: whether reading the tabs feels like it pays, whether a match drags, and
+whether each lever in [stalkleheads-tuning.md](stalkleheads-tuning.md) reads well on
+screen. The tool plays strategies, not people. Every match played here is evidence
+for a decision in that file's agenda.
+
+**Run on a locally exported build of `main`.** No Steam invites and no friends list:
+AD2 joins through **JOIN GAME** or the DEV panel, and coming back to a match is
+**REJOIN GAME**.
+
+**The play sheet.** After every match, write these down and send them back. A
+number is worth more than an impression, but an impression is worth writing too.
+
+- **a.** The date, and the match: how many years, how many people.
+- **b.** The plan you played, in a few words ("bought the cheapest P/E", "copied
+  the richest desk trader", "held the big dividend payers", "no plan").
+- **c.** Your final net worth and your place.
+- **d.** The yardstick: everything in BERRY BONDS from year 1 ends a ten-year match
+  at **13,426** and a 25-year match at **20,893** (starting cash 10,000). Did you
+  beat it?
+- **e.** How many years an entry under **SHORT INTEREST** (on the side panel's
+  **DESK** page) ended **FLAGGED**, and how many short squeezes started (an entry
+  turning **SQUEEZED**).
+- **f.** Did a dividend payer (Springfield Nuclear Power, Teamsters Pension Fund,
+  Landlords United) ever feel worth holding? Yes, no, or never tried.
+- **g.** Any year a price moved and the Company tab's "why the price moved" did not
+  explain it to you. Which company, which year.
+- **h.** Any moment one column of the board seemed to decide everything.
+- **i.** The longest any one year took, roughly, and whether anyone was waiting.
+- **j.** If you held a squeezed company: did you sell before **Short squeeze
+  over**, and did the end feel readable or like luck?
+- **k.** Did a whisper ever change what you bought or sold? Was it right?
+- **l.** Anything else that felt wrong, too easy or too random.
+
+#### AD1. One player, ten years
+
+1. Open the folder holding the exported build in File Explorer.
+2. Double-click `StalksStalksStalks.exe`.
+3. Click **SINGLE PLAYER**.
+4. Set **Game** to **StalkleHeads**.
+5. Set **Years** to 10.
+6. Click **START**.
+7. Before trading, pick one plan for the whole match and write it down (sheet line **b**).
+8. Make this year's trades on **EXCHANGE**.
+9. Click **DESK** on the side panel, and find **SHORT INTEREST**.
+10. If any entry ends **FLAGGED**, add one to your count of flagged years (sheet line **e**).
+11. If an entry ends **SQUEEZED** for the first time, add one to your count of squeezes (sheet line **e**).
+12. Press **Ready for New Year**.
+13. Read the news.
+14. Click **Close** on the news.
+15. Click **COMPANY**.
+16. Click **>** until a company whose price moved a lot is shown.
+17. Read "why the price moved". If it does not explain the move to you, note the company and the year (sheet line **g**).
+18. Repeat steps 8-17 until the final standings show.
+19. Write down your final net worth (sheet line **c**).
+20. Compare it with 13,426 (sheet line **d**).
+21. Fill in the rest of the sheet.
+22. Close the game window.
+
+Play AD1 several times, each time with a different plan. The four plans worth
+comparing are the ones the tool measures: cheapest P/E, the earnings trend, copying
+the desk's richest trader (shown on the side panel's **DESK**), and the dividend
+payers.
+
+#### AD2. A group, ten years
+
+The same match with other people, mainly for sheet lines **h** and **i**. Two or
+more machines with their own Steam accounts, or one machine with several copies
+through the DEV panel (section P shows how).
+
+1. On the host, start the game.
+2. Set **Game** to **StalkleHeads**.
+3. Set **Years** to 10.
+4. Host an online game.
+5. On every other machine, start the game.
+6. Click **JOIN GAME**.
+7. Pick the host's game from the list.
+8. On the host, press **Start**.
+9. Note the time.
+10. Play the match. Do not tell anyone which plan to play.
+11. When the final standings show, note the time again.
+12. Ask each player which plan they played, and write it next to their place (sheet line **b**).
+13. Ask each player which tabs they used, and which they never opened.
+14. Ask whether anyone was bored, and in which part of the year (sheet line **i**).
+15. Fill in the rest of the sheet.
+
+#### AD3. A long match (optional)
+
+For the long-match question in [stalkleheads-tuning.md](stalkleheads-tuning.md)
+(lever 2): should a long match reward the best reader decisively, or stay close?
+
+1. Play AD1 again with **Years** set to 25.
+2. At year 10, write down your net worth and your place.
+3. At the end, write down your final net worth and your place.
+4. Write one line: did the last fifteen years feel decided, or still open?
+5. Compare your final net worth with 20,893 (sheet line **d**).
+
 ### Known gaps, so they are not surprises
 
 - **Everything below was found with locally exported builds until

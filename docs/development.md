@@ -579,6 +579,10 @@ it is changed there as an ordinary code change (decisions.md D150).
 | `--squeeze-chance=N` | The chance of a squeeze in a year when a company's short interest is flagged, in percent. Still 0 when nothing is flagged | 25 |
 | `--squeeze-size=N` | The squeeze's jump, in percent of the price for every point of short interest (capped at 150%) | 5 |
 | `--short-target=T` | What the NPC desk's SHORT traders bet against: `highpe` (the highest P/E, the published rule) or `slowest` (the company whose earnings grew slowest, S4's first rule). The squeeze lands on that company | `highpe` |
+| `--retention-slope=F` | The slope of the income trade-off (design §3.10a): retention is `1 + F * (35 - policy) / 100`. 0.5 halves it, 0 removes it, 0 to 2 allowed. Applied by rescaling the growth roll to a whole number, so a value other than 1 is accurate to about half a point of growth (D232) | 1 |
+| `--flow-limit=F` | The flow clamp, as a fraction of fair value (design §3.10). 0 is the same as no flow reaching any price | 0.05 |
+| `--flow-limit-99=F` | Scales the flow clamp with match length: unchanged at 10 years or fewer, moving in a straight line to F at 99 years (design §13.2's first long-match lever) | no scaling |
+| `--flag-at=N` | The short-interest flag threshold, in percent of shares outstanding (design §5.3). A squeeze can only fire in a year when something is flagged | 10 |
 
 The output's `levers:` line says what was overridden, and its last line, starting
 `summary:`, has every figure a sweep compares on one line, for searching.
