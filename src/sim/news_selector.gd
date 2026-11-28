@@ -529,7 +529,7 @@ static func draws_about(state: GameState, about_year: int) -> KeptDraws:
 ## The last four arguments are the game's own constants unless the balance
 ## tool is sweeping them (decisions.md D236, D237): how many ordinary whispers
 ## a round, each source's odds, whether a squeeze or crash whisper is heard,
-## and how often each source is picked (empty: evenly).
+## and how often each source is picked (`WhisperRules.SOURCE_WEIGHTS`).
 static func select_whispers(
 	state: GameState,
 	year: int,
@@ -539,7 +539,7 @@ static func select_whispers(
 	per_year: int = WHISPERS_PER_YEAR,
 	odds: Dictionary[WhisperRules.Source, Vector2i] = WhisperRules.ODDS,
 	squeeze_whispers: bool = true,
-	source_weights: Array[int] = [],
+	source_weights: Array[int] = WhisperRules.SOURCE_WEIGHTS,
 ) -> WhisperRound:
 	var round: WhisperRound = WhisperRound.new()
 	round.year = year

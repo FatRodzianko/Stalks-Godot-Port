@@ -360,7 +360,8 @@ decisions.md D199-D215):
   trading. Each one's **true outcome** is in the surprise bands: a company's own
   growth from its kept growth roll against what its current regime leads one to
   expect (so a regime change is a surprise), or an industry's kept swing.
-- **Each whisper has a source**, one of five, equally likely, shown beside it. The
+- **Each whisper has a source**, one of five, shown beside it: Rock Solid 15% of
+  the time, Credible 15%, Hit-or-miss 25%, Questionable 25%, Gossip 20% (D238). The
   source decides how far the outcome the whisper tells is from the truth:
 
   | Source | True band | One band off | Two or more off |

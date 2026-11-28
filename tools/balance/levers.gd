@@ -79,7 +79,7 @@ var whisper_odds: Array[int] = []
 var squeeze_whispers: bool = true
 
 ## How often each source is picked, as weights, Rock Solid to Gossip (D237).
-## Empty = evenly, the game's rule.
+## Empty = `WhisperRules.SOURCE_WEIGHTS`, the game's rule (D238).
 var whisper_sources: Array[int] = []
 
 var _transition: Dictionary[EarningsRegime.Value, Array] = {}
@@ -109,6 +109,13 @@ func whisper_odds_table() -> Dictionary[WhisperRules.Source, Vector2i]:
 		var near: int = mini(WhisperRules.ODDS[source].y, 100 - true_chance)
 		table[source] = Vector2i(true_chance, near)
 	return table
+
+
+## The source weights in use: `WhisperRules.SOURCE_WEIGHTS`, or the override.
+func whisper_source_weights() -> Array[int]:
+	if whisper_sources.is_empty():
+		return WhisperRules.SOURCE_WEIGHTS
+	return whisper_sources
 
 
 ## True when the growth roll is rescaled for the income trade-off.

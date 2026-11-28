@@ -8842,3 +8842,25 @@ stalkleheads-tuning.md, lever 5. Nothing changed in the game.
 
 **Rules out:** a mutable static for the weights (D150).
 
+### D238 - Whisper sources heard 15/15/25/25/20
+**2026-11-28 · Accepted** (the owner's choice, phase S9) · **changes** design §8.4, D205
+
+Each whisper's source was rolled evenly, so Rock Solid and Credible were two in
+five. They are now heard less often: Rock Solid 15%, Credible 15%, Hit-or-miss 25%,
+Questionable 25%, Gossip 20% (`WhisperRules.SOURCE_WEIGHTS`, the default of
+`roll_source` and of `select_whispers`' `source_weights`).
+
+**Why.** D234 found that reading the whispers alone wins 38% of ten-year matches.
+D237's sweep showed that hearing the good sources less often weakens that while
+every source keeps its honesty, so the names on screen stay true; lowering the odds
+would have made them untrue. The owner picked a smaller step than the sweep's
+29%-or-under rows, having said a perfect reader doing well is acceptable.
+
+**Measured** (4,000 ten-year seeds): WHISPER as an eleventh player 35.5%, from 38.2%
+evenly; median 24,375 from 26,096. The default ten are unchanged (`TREND` 30.5%),
+as are the suite's 1,563 tests and the golden hash: whispers move no price, and the
+weighted roll is still one draw from the news generator.
+
+**Rules out:** even source odds as the rule. `--whisper-sources=1,1,1,1,1` still
+measures them.
+

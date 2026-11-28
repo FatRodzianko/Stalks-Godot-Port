@@ -14,8 +14,9 @@ extends RefCounted
 ## the part of its performance nobody can see coming (`IndustryState`); the
 ## carried-over trend and the market's lean are already in plain view.
 ##
-## **The source.** Each whisper comes from one of five sources, equally likely.
-## The source decides how far the outcome the whisper tells is from the truth:
+## **The source.** Each whisper comes from one of five sources, picked by
+## `SOURCE_WEIGHTS`, so the good sources are heard less often than the poor
+## ones (decisions.md D238). The source decides how far the outcome the whisper tells is from the truth:
 ## the true band, a band next to it, or one two or more away.
 
 
@@ -48,6 +49,11 @@ const ODDS: Dictionary[Source, Vector2i] = {
 	Source.GOSSIP: Vector2i(20, 30),
 }
 
+## How often each source is heard, as weights in `ALL_SOURCES` order: Rock
+## Solid 15%, Credible 15%, Hit-or-miss 25%, Questionable 25%, Gossip 20%. The
+## owner's choice after the S9 sweep (decisions.md D238); before it, evenly.
+const SOURCE_WEIGHTS: Array[int] = [15, 15, 25, 25, 20]
+
 ## The five outcomes a whisper can tell, worst first. Their order is what "one
 ## band away" means.
 const OUTCOMES: Array[NewsBands.Surprise] = [
@@ -77,10 +83,10 @@ static func industry_outcome(swing: int) -> NewsBands.Surprise:
 	return NewsSelector.surprise_band(float(swing), 0.0)
 
 
-## One of the five sources, evenly. One draw. `weights`, one per source in
-## `ALL_SOURCES` order, picks by weight instead, still one draw; only the
-## balance tool passes them (decisions.md D237).
-static func roll_source(rng: RandomNumberGenerator, weights: Array[int] = []) -> Source:
+## One of the five sources, by `weights`, one per source in `ALL_SOURCES`
+## order. One draw. The game passes none, so `SOURCE_WEIGHTS`; only the balance
+## tool passes others (decisions.md D237). Empty picks evenly.
+static func roll_source(rng: RandomNumberGenerator, weights: Array[int] = SOURCE_WEIGHTS) -> Source:
 	if weights.is_empty():
 		return ALL_SOURCES[rng.randi_range(0, ALL_SOURCES.size() - 1)]
 	var total: int = 0

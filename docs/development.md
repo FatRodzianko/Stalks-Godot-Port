@@ -588,7 +588,7 @@ it is changed there as an ordinary code change (decisions.md D150).
 | `--whispers=N` | Ordinary whispers a round. This and the next two change only what the `WHISPER` player hears, since whispers move no price, so they mean nothing unless `WHISPER` plays (D236) | 2 |
 | `--whisper-odds=A,B,C,D,E` | Each source's chance of telling the true band, in percent, Rock Solid, Credible, Hit-or-miss, Questionable, Gossip. Each source's one-band-off chance is kept | `85,60,40,30,20` |
 | `--no-squeeze-whisper` | No squeeze or crash whisper is heard | heard |
-| `--whisper-sources=A,B,C,D,E` | How often each source is heard, as weights, in the same order. `5,15,25,30,25` makes Rock Solid one whisper in twenty. Each source keeps its honesty (D237) | evenly |
+| `--whisper-sources=A,B,C,D,E` | How often each source is heard, as weights, in the same order. `5,15,25,30,25` makes Rock Solid one whisper in twenty. Each source keeps its honesty (D237). `1,1,1,1,1` is the even pick the game had before D238 | `15,15,25,25,20` |
 
 The output's `levers:` line says what was overridden, and its last line, starting
 `summary:`, has every figure a sweep compares on one line, for searching.

@@ -41,7 +41,7 @@ extends SceneTree
 ##                         Gossip (published 85,60,40,30,20)
 ##   --no-squeeze-whisper  no squeeze or crash whisper is heard
 ##   --whisper-sources=A,B,C,D,E  how often each source is picked, as weights,
-##                         Rock Solid to Gossip (published: evenly)
+##                         Rock Solid to Gossip (published 15,15,25,25,20)
 ##
 ## The year is the game's own, `EarningsYearResolver`, since S3 (through
 ## tools/balance/lever_year.gd, which only adds the levers), and so is the NPC
@@ -83,7 +83,7 @@ const USAGE: String = """Usage: <godot> --headless --script res://tools/balance_
   --whispers=N          ordinary whispers a round, for WHISPER (published 2)
   --whisper-odds=A,B,C,D,E  sources' truth chances (published 85,60,40,30,20)
   --no-squeeze-whisper  no squeeze or crash whisper, for WHISPER
-  --whisper-sources=A,B,C,D,E  source weights, for WHISPER (published: evenly)"""
+  --whisper-sources=A,B,C,D,E  source weights, for WHISPER (published 15,15,25,25,20)"""
 
 
 func _init() -> void:

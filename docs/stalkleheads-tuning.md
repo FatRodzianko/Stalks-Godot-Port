@@ -269,24 +269,26 @@ desk is less worth reading. Widening it to 7.5% makes LOWPE and TREND level at 3
   on them.
 - **Where:** `WhisperRules.ODDS` (each source's chance of telling the truth),
   `NewsSelector.WHISPERS_PER_YEAR` (2), `NewsSelector.SQUEEZE_WHISPER_SOURCE`
-  (Questionable).
+  (Questionable), `WhisperRules.SOURCE_WEIGHTS` (how often each source is heard).
 - **Value:** Rock Solid 85% true, Credible 60, Hit-or-miss 40, Questionable 30,
-  Gossip 20; two whispers a year.
+  Gossip 20; two whispers a year; sources heard 15/15/25/25/20 (D238; evenly
+  before).
 - **Sweeps:** `--strategies=...,WHISPER` adds the WHISPER player (D234), which reads
   the whispers and nothing else: what each tells, weighted by its source's odds, a
   squeeze coming as a strong buy, the bond when nothing is worth buying. Then
   (D236) `--whispers=N` (ordinary whispers a round), `--whisper-odds=A,B,C,D,E`
   (each source's chance of the truth, Rock Solid to Gossip),
   `--no-squeeze-whisper`, and (D237) `--whisper-sources=A,B,C,D,E` (how often each
-  source is heard, as weights; published: evenly). These change only what WHISPER
+  source is heard, as weights; published 15,15,25,25,20 since D238). These change only what WHISPER
   hears: whispers move no price.
 
-WHISPER is **not** one of the default ten, so the baseline in §1 is unchanged. With
-it as an eleventh player, published values:
+WHISPER is **not** one of the default ten, so the baseline in §1 is unchanged (and
+D238 left it unchanged: whispers move no price). With it as an eleventh player:
 
 | Run | Seeds | WHISPER | WHISPER median | TREND | LOWPE | FOLLOW | Contenders | P3 |
 |---|---|---|---|---|---|---|---|---|
-| eleven strategies, 10 years | 4,000 | **38.2%** | 26,096 | 18.2 | 13.1 | 12.9 | 6 of 11 | 0.48 |
+| **eleven strategies, 10 years, sources 15/15/25/25/20 (D238)** | 4,000 | **35.5%** | 24,375 | 18.8 | 13.3 | 13.1 | 6 of 11 | 0.52 |
+| eleven strategies, 10 years, sources even (before D238) | 4,000 | 38.2% | 26,096 | 18.2 | 13.1 | 12.9 | 6 of 11 | 0.48 |
 | WHISPER, TREND, RANDOM, BOND only | 4,000 | 51.6% | 26,199 | 32.7 | — | — | 3 of 4 | 0.50 |
 | eleven, no squeeze | 1,000 | 30.5% | — | 17.4 | 16.2 | 12.6 | 7 of 11 | 0.60 |
 | eleven, no flow | 1,000 | 39.9% | — | 19.8 | 5.7 | 8.3 | 7 of 11 | 0.48 |
@@ -347,7 +349,9 @@ Questionable, Gossip; each source keeps its honesty.
 
 | Source weights | WHISPER | WHISPER median | TREND | LOWPE | FOLLOW | Contenders | P3 |
 |---|---|---|---|---|---|---|---|
-| **evenly (published)**; `1,1,1,1,1` gives the same | **39.7** | 27,375 | 18.0 | 12.2 | 13.0 | 6 | 0.46 |
+| evenly (published before D238); `1,1,1,1,1` gives the same | 39.7 | 27,375 | 18.0 | 12.2 | 13.0 | 6 | 0.46 |
+| 15, 20, 25, 25, 20 | 36.4 | 24,966 | 18.1 | 13.9 | 12.9 | 6 | 0.50 |
+| **15, 15, 25, 25, 20 (published since D238)** | **32.3** | 23,477 | 18.6 | 13.9 | 14.5 | 7 | 0.55 |
 | 10, 15, 25, 25, 25 | 29.0 | 22,478 | 19.5 | 14.5 | 15.0 | 7 | 0.58 |
 | 5, 15, 25, 30, 25 | 28.5 | 21,254 | 19.5 | 15.1 | 14.9 | 7 | 0.60 |
 | 2, 8, 20, 35, 35 | 27.7 | 19,889 | 19.9 | 15.0 | 14.7 | 7 | 0.64 |
@@ -364,6 +368,9 @@ Questionable, Gossip; each source keeps its honesty.
   of the time; it is just heard less, so WHISPER's trust in the labels is correct
   here.
 - **With no squeeze whisper too**, 24.2%, close to TREND's 21.7%.
+- **The owner chose 15/15/25/25/20 (D238)**, a smaller step. Over 4,000 seeds it
+  is 35.5%, against 38.2% evenly: 2.7 points, less than the 1,000-seed run's 7.4.
+  WHISPER still leads and is over the 30% ceiling.
 
 ### Other things the design leaves to S9 or to after first play
 
@@ -392,12 +399,10 @@ flag stays at 10%; the income slope stays at 1; long matches are not flattened (
 longer the match, the more the best reader is rewarded). Levers 1 to 4 need nothing
 further. Nothing in `src/` changes until the owner decides.
 
-1. **Whispers (lever 5).** Reading them wins 38% of ten-year matches. Keep them that
-   strong, or weaken them. Hearing good sources less often (for example weights
-   5/15/25/30/25) puts a whisper reader at about 28%, under the ceiling, with the
-   names still true. Halving every source's odds, or one whisper a round with no
-   squeeze whisper, puts it at about 20%. All 1,000 seeds; confirm over 4,000 if
-   chosen. Each would be a change to §8.4, so it is the owner's call.
+1. **Whispers (lever 5). Decided 2026-11-28 ([D238](decisions.md)):** sources
+   heard 15/15/25/25/20. Reading the whispers now wins 35.5% of ten-year matches
+   (4,000 seeds), from 38.2%. The owner has said a perfect whisper reader doing
+   well is acceptable; further steps are in lever 5's tables.
 2. **Play reports.** Section AD of manual-testing.md. Sheet line **k** is about
    whispers.
 
@@ -411,3 +416,4 @@ further. Nothing in `src/` changes until the owner decides.
 | 2026-11-27 | The owner kept P4's miss, the flag, the income slope and long matches as they are. WHISPER added to the tool and measured (lever 5) | D234, D235 | §1, unchanged |
 | 2026-11-27 | Whisper levers added to the tool and swept (lever 5) | D236 (tool only) | §1, unchanged |
 | 2026-11-27 | Source weights added to the tool and swept (lever 5) | D237 (tool only) | §1, unchanged |
+| 2026-11-28 | Whisper sources heard 15/15/25/25/20 instead of evenly | D238 | §1 unchanged (`TREND` 30.5%); WHISPER 35.5% |
