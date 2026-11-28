@@ -466,6 +466,21 @@ func test_requires_for_the_inspector_leaves_out_ids_that_would_loop() -> void:
 	assert_false(choices.has(&"a"), "not itself")
 
 
+func test_detach_cuts_every_arrow_and_joins_nothing_around_it() -> void:
+	var lines: Array[Resource] = _example()
+	var book: NewsBook = NewsBook.new()
+	book.industry_reports.assign(lines)
+	var editor: NewsBookEditor = NewsBookEditor.new({"%s/market.tres" % SCRATCH_DIR: book} as Dictionary[String, NewsBook])
+	assert_eq(editor.detach(&"b"), "")
+	assert_not_null(editor.find(&"b"), "still in its book")
+	assert_eq(_requires(editor, &"b"), [] as Array[StringName])
+	assert_eq(_requires(editor, &"d"), [] as Array[StringName], "d is not given a instead")
+	assert_eq(_requires(editor, &"e"), [&"no_such_item"] as Array[StringName], "not an item, so not an arrow")
+	assert_eq(_requires(editor, &"c"), [&"a"] as Array[StringName])
+	assert_false(editor.retired_ids.has(&"b"))
+	assert_ne(editor.detach(&"nothing"), "")
+
+
 # ------------------------------------------------------------- Phase 4: undo
 
 

@@ -8629,3 +8629,46 @@ panel. The Inspector records those changes in the editor's history itself.
 **Rules out:** a history of the tab's own inside the editor; undo written as an
 inverse for each kind of edit; deleting several items under one question;
 `@export_enum` lists in the game's data scripts.
+
+### D231 - The News Flow tab: Delete takes a box out of its tree; deleting the item is on its right-click menu
+**2026-11-27 · Accepted** (the owner's answers after manual section AB)
+
+Section AB passed. Afterwards the owner asked whether pressing Delete on a box
+deleted the item everywhere, and it did (D230): the item left its book, its
+arrows went, and its id was retired. The owner wants Delete to mean "no longer
+part of this chain", and deleting the item to be a deliberate choice. In the
+owner's words, the right-click menu offers **Delete resource** and **Remove
+from tree**.
+
+- **Right-click on a box opens its menu**: **Delete resource** and **Remove
+  from tree**. The box is selected as the menu opens, so it is clear which box
+  the menu is for. A right-click on empty chart still offers the new items
+  (D226). The box takes its own right-click (`NewsItemBox.menu_requested`), so
+  the two menus never both open; a real right-click was checked once in a
+  headless editor run.
+- **Delete resource** is what Delete did before: the item leaves its book, its
+  arrows go, its id is retired. **It always asks first**, arrows or none: it is
+  the one action that changes a book file's list of items.
+- **Remove from tree** cuts every arrow to and from the item
+  (`NewsBookEditor.detach`) and takes its box off the chart. The item stays in
+  its book, with its id, and stays in the news item list. **It asks first only
+  when the item has arrows**, naming the items they join it to, as deleting
+  did before. With no arrows there is nothing to lose but the box's place on
+  the chart, and Ctrl+Z puts that back.
+- **Nothing is joined around a removed item.** With A to B to C, removing B
+  leaves C requiring neither: the owner's answer. Joining A to C would add an
+  arrow nobody drew.
+- **The Delete key is Remove from tree**, with the same question.
+- **The details panel's Delete news item button is gone.** The right-click
+  menu is the only way to delete an item.
+- Both are edits like any other: Ctrl+Z undoes them, and redo does not ask
+  again.
+
+The "tree" in the menu's words is the chain on the chart; the rest of the docs
+call it a chain.
+
+**Not changed:** the game, the news rules, the golden history hash.
+
+**Rules out:** Delete removing an item from its book; joining an item's
+requirements to its followers when it is removed; deleting an item without a
+question.

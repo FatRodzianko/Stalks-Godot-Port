@@ -1405,8 +1405,11 @@ plugin.gd
 NewsChart
    |- every edit: _snapshot() before, the edit, _record(name, before)
    |     -> record_edit when the plugin set it, else NewsEditHistory (tests)
-   |- Delete (canvas boxes_delete_requested, or the panel's Delete news item)
-   |     -> delete_item: no arrows -> deleted; arrows -> NewsDeleteConfirm asks
+   |- right-click a box (NewsItemBox.menu_requested) -> its menu (D231):
+   |     Delete resource -> delete_item: NewsDeleteConfirm always asks
+   |     Remove from tree -> remove_from_tree: NewsBookEditor.detach and the
+   |        box off the chart; NewsDeleteConfirm asks when it has arrows
+   |- the Delete key (canvas boxes_delete_requested) -> remove_from_tree
    `- Save also writes the retired ids when a delete changed them
 ```
 

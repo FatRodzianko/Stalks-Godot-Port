@@ -3049,7 +3049,14 @@ open scenes before you start.**
 **Report:** any step that did not match, and anything awkward to do with the
 mouse - dragging an arrow onto a small dot is the part most likely to need work.
 
-### AB - The News Flow tab: delete, undo, and the dropdowns in the Inspector (decisions.md D230) — **not yet run**
+### AB - The News Flow tab: delete, undo, and the dropdowns in the Inspector (decisions.md D230) — **passed 2026-11-27**, on the first run
+
+Every step passed on the first run. Its one finding was a question, not a
+fault: Delete on a box deleted the item from its book, where the owner wanted
+it only taken out of the chain. D231 changed that, and section AC checks it.
+Steps 51-70 below describe the tool as it was then: since D231, Delete on a
+box is **Remove from tree**, deleting is on the box's right-click menu, and
+the **Delete news item** button is gone.
 
 One machine, the **editor**. Needs a checkout that has
 `addons/news_flow_chart/editor/id_dropdown_inspector.gd`. This makes two
@@ -3186,6 +3193,101 @@ has the keyboard; clicking the chart makes sure of that.
 
 **Report:** any step that did not match, and how Ctrl+Z inside a text box
 (step 40) felt next to Ctrl+Z on the chart.
+
+### AC - The News Flow tab: Delete removes a box from its tree, right-click to delete the item (decisions.md D231) — **not yet run**
+
+One machine, the **editor**. Needs a checkout whose
+`addons/news_flow_chart/ui/news_chart.gd` contains `remove_from_tree`. This
+makes three throwaway items in the real books, takes them out of their chain in
+each of the ways there are, and puts the books back with git (steps 62-66).
+**Save any work in open scenes before you start.**
+
+As in section AB, "click an empty part of the chart" means a spot with no box
+and no arrow under the mouse.
+
+**Make a chain of three**
+
+1. Open the project in the Godot editor.
+2. Click **News Flow** at the top.
+3. Click **+ New news item**, then **Market news**.
+4. Set **Mood** to **Bear**.
+5. Set **Move** to **Crash**.
+6. Click in the **Headline** box and type `test one`.
+7. Click **Create**.
+8. Click **+ New news item**, then **Company news**.
+9. Set **Move** to **Crash**.
+10. Click in the **Text** box and type `test two`.
+11. Click **Create**.
+12. Click **+ New news item**, then **Company news**.
+13. Set **Move** to **Down**.
+14. Click in the **Text** box and type `test three`.
+15. Click **Create**.
+16. Press on the dot at the bottom middle of the `test one` box, drag onto the `test two` box, and let go.
+17. Press on the bottom dot of the `test two` box, drag onto the `test three` box, and let go.
+18. Click **Arrange**.
+19. Check the three boxes run top to bottom, `test one`, `test two`, `test three`, joined by two arrows.
+20. Check the details panel on the right has no **Delete news item** button at the bottom.
+
+**Delete takes a box out of its tree**
+
+21. Click the `test two` box.
+22. Press **Delete**.
+23. Check a window titled **Remove from tree** opens, saying the item stays in its book and naming the ids of `test one` and `test three`.
+24. Click **Remove**.
+25. Check the `test two` box is gone, both arrows are gone, and `test one` and `test three` are still on the chart with no arrow between them.
+26. In the **News items** search box on the left, type `test two`.
+27. Check the `test two` item is still listed.
+28. Click an empty part of the chart.
+29. Press **Ctrl+Z**.
+30. Check the `test two` box is back with both its arrows.
+
+**The right-click menu**
+
+31. Right-click the `test three` box.
+32. Check a menu opens with **Delete resource** and **Remove from tree**, and the right-hand side now shows `test three`.
+33. Click **Remove from tree**.
+34. Check a window titled **Remove from tree** opens, naming the id of `test two`.
+35. Click **Cancel**.
+36. Check nothing changed: three boxes, two arrows.
+37. Right-click the `test three` box.
+38. Click **Delete resource**.
+39. Check a window titled **Delete resource** opens, asking to delete it from its book, naming the id of `test two`, and saying its id is retired.
+40. Click **Delete**.
+41. Check the `test three` box and its arrow are gone, and the toolbar lists **news_retired_ids.txt** as unsaved.
+42. Clear the **News items** search box and type `test three`.
+43. Check nothing is listed.
+
+**With no arrows**
+
+44. Right-click the `test two` box.
+45. Click **Remove from tree**.
+46. Check a window opens: it still has its arrow from `test one`.
+47. Click **Remove**.
+48. Clear the **News items** search box and type `test two`.
+49. Click `test two` in the list.
+50. Check its box is on the chart on its own, with no arrows.
+51. Click the `test two` box.
+52. Press **Delete**.
+53. Check its box is gone at once, with no window: it had no arrows.
+54. Right-click the `test one` box.
+55. Click **Delete resource**.
+56. Check a window titled **Delete resource** opens even though `test one` has no arrows now.
+57. Click **Delete**.
+58. Check the `test one` box is gone.
+59. Click an empty part of the chart.
+60. Press **Ctrl+Z**.
+61. Check the `test one` box is back.
+
+**Put it back**
+
+62. Click **Scene**, then **Quit**. If it asks whether to save the news, click **Don't Save**.
+63. In PowerShell, in the project folder, run `git checkout -- src/data/news src/data/news_retired_ids.txt`.
+64. Run `Remove-Item src/data/news_chains.cfg -ErrorAction SilentlyContinue`.
+65. Run `git status --short src`.
+66. Check it prints nothing.
+
+**Report:** any step that did not match, and whether the two menu words read
+clearly.
 
 ### Known gaps, so they are not surprises
 

@@ -525,8 +525,8 @@ The plan as written:
 
 **Delivered as planned**, with these details settled while building it:
 
-- **Delete:** select a box and press Delete, or click **Delete news item** in
-  the details panel. The question (`ui/delete_confirm.tscn`) names every item
+- **Delete** (as first built; D231 changed it, below): select a box and press
+  Delete, or click **Delete news item** in the details panel. The question (`ui/delete_confirm.tscn`) names every item
   the arrows join it to; an item with no arrows is deleted without one. One box
   at a time. The retired ids are written on Save.
 - **Undo goes into the editor's own history** (`EditorUndoRedoManager`), so
@@ -547,6 +547,15 @@ The plan as written:
   (`test_news_flow_chart_ui.gd`, now 66). Undo in the editor and the Inspector
   dropdowns were also run once in a headless editor with a throwaway plugin.
   [manual-testing.md](manual-testing.md) section AB checks both by hand.
+
+**After the manual run (D231):** section AB passed on 2026-11-27. Delete on a
+box then deleted the item from its book, which the owner did not want. Now a
+right-click on a box offers **Delete resource**, which deletes the item and
+always asks, and **Remove from tree**, which cuts the item's arrows and takes
+its box off the chart, leaving the item in its book, and asks only when it has
+arrows. The Delete key is **Remove from tree**. Nothing is joined around a
+removed item. The details panel's **Delete news item** button is gone. One
+more core test (35) and five more scene-tree tests (71). Section AC checks it.
 
 The plan as written:
 
@@ -595,3 +604,4 @@ numbered steps, one action per step.
 | Where the tool sits | A tab at the top of the editor. |
 | Editing | Every field of a news item can be edited inside the tool. |
 | Deleting an item with arrows | Ask first, naming the linked items. If confirmed, delete it and remove its arrows. Deleting an arrow never touches any other arrow. |
+| What Delete does to a box (after section AB) | Takes it out of its tree: its arrows are cut, it stays in its book, and nothing is joined around it. Asks first when it has arrows. Deleting the item from its book is the box's right-click **Delete resource**, which always asks (D231). |

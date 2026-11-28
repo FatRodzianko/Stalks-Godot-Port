@@ -14,8 +14,12 @@ extends GraphNode
 ##
 ## A reusable widget: it knows its item and nothing about the chart holding
 ## it. Its node name is the item's id, which is what `GraphEdit` arrows name.
-## `@tool` because it runs inside the editor, in the News Flow tab.
+## A right-click on it says so (`menu_requested`); the chart decides what to
+## offer. `@tool` because it runs inside the editor, in the News Flow tab.
 
+
+## The box was right-clicked, at `screen_position` on the screen.
+signal menu_requested(id: StringName, screen_position: Vector2)
 
 ## The one slot, on the id label, that every arrow joins.
 const LINK_SLOT: int = 0
@@ -39,6 +43,16 @@ func _draw() -> void:
 	var half: Vector2 = dot.get_size() / 2.0
 	draw_texture(dot, top_dot(size) - half, get_slot_color_left(LINK_SLOT))
 	draw_texture(dot, bottom_dot(size) - half, get_slot_color_right(LINK_SLOT))
+
+
+## A right-click asks for the box's menu. The box takes the click, so it does
+## not reach the chart, whose own right-click menu is for empty space.
+func _gui_input(event: InputEvent) -> void:
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_RIGHT:
+		return
+	accept_event()
+	menu_requested.emit(item_id, get_screen_transform() * click.position)
 
 
 ## Godot's side dots are not drawn: `_draw` draws the top and bottom ones.

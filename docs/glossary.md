@@ -125,6 +125,12 @@ change, recorded before and after the edit: the books' lists and every item's
 fields, the retired ids, the chain names, the boxes on the chart. Undo puts the
 one before back (decisions.md D230).
 
+**Remove from tree (News Flow tab)** — what the Delete key and a box's
+right-click menu do to keep a news item out of a chain: its arrows are cut and
+its box leaves the chart, but the item stays in its book. **Delete resource**,
+on the same menu, is what deletes the item (decisions.md D231). The "tree" is
+the chain on the chart.
+
 **Root** — an item in a chain that requires nothing: where the chain starts. A
 chain is called by its first root's id unless it has been given a name.
 

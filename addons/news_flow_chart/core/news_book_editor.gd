@@ -156,8 +156,24 @@ func unlink(from_id: StringName, to_id: StringName) -> String:
 	return ""
 
 
+## Removes every arrow to and from an item, taking it out of its chain. The
+## item stays in its book with its id. Nothing is joined around it: with A to
+## B to C, cutting B leaves C requiring neither (decisions.md D231). An id in
+## its `requires` that is not a news item in the books, such as a trader's own
+## chatter, is no arrow on the chart and stays.
+func detach(id: StringName) -> String:
+	if find(id) == null:
+		return "There is no news item %s." % id
+	var graph_now: NewsGraph = graph()
+	for required: StringName in graph_now.requires_of(id):
+		unlink(required, id)
+	for follower: StringName in graph_now.followers_of(id):
+		unlink(id, follower)
+	return ""
+
+
 ## Deletes an item, removes every arrow to and from it, and retires its id. The
-## tool asks first when it has arrows (`NewsGraph.arrow_count`); this does not.
+## tool always asks first (D231); this does not.
 func delete(id: StringName) -> String:
 	var path: String = book_path_of(id)
 	if path.is_empty():

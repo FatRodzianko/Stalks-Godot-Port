@@ -20,7 +20,7 @@ extends GraphEdit
 ##
 ## **Removing one.** Click on an arrow to select it, then press Delete
 ## (`arrow_delete_requested`). Delete with a box selected and no arrow asks for
-## the box's item to be deleted instead (`boxes_delete_requested`, Phase 4).
+## the box to be removed from its tree instead (`boxes_delete_requested`, D231).
 ## Clicking a box clears the selected arrow, so Delete never removes an arrow
 ## chosen earlier when a box was the last thing clicked.
 ##

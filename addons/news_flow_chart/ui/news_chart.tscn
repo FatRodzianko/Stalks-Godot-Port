@@ -116,3 +116,6 @@ unique_name_in_owner = true
 
 [node name="DeleteConfirm" parent="." instance=ExtResource("4_confirm")]
 unique_name_in_owner = true
+
+[node name="BoxMenu" type="PopupMenu" parent="."]
+unique_name_in_owner = true

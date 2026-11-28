@@ -23,9 +23,11 @@ extends VBoxContainer
 ## placeholders (decisions.md D224), so nothing here calls a method on a news
 ## item. `@tool` because it runs inside the editor.
 ##
-## **Deleting an item** (Phase 4): select its box and press Delete, or click
-## **Delete news item** in the details panel. An item with arrows is deleted
-## only once `NewsDeleteConfirm` has asked and been answered.
+## **Taking an item out** (D231). Right-click a box for **Delete resource**,
+## which deletes the item from its book and always asks first, and **Remove
+## from tree**, which cuts its arrows and takes its box off the chart, leaving
+## the item in its book, and asks first only when it has arrows. Delete with a
+## box selected is **Remove from tree**. Both ask in `NewsDeleteConfirm`.
 ##
 ## **Undo and redo** (Phase 4, decisions.md D230). Every edit (create, delete,
 ## a field, an arrow drawn or removed, a chain renamed) is recorded as the
@@ -42,6 +44,9 @@ extends VBoxContainer
 ## Books were saved, at these paths. The plugin tells the editor's file
 ## system about them.
 signal books_saved(paths: PackedStringArray)
+
+## The box menu's entries, by id.
+enum BoxAction { DELETE_RESOURCE, REMOVE_FROM_TREE }
 
 const BOX_SCENE: PackedScene = preload("res://addons/news_flow_chart/ui/news_item_box.tscn")
 
@@ -105,6 +110,7 @@ var _history: NewsEditHistory = NewsEditHistory.new()
 @onready var _details_panel: NewsDetailsPanel = %DetailsPanel
 @onready var _problems_label: Label = %ProblemsLabel
 @onready var _delete_confirm: NewsDeleteConfirm = %DeleteConfirm
+@onready var _box_menu: PopupMenu = %BoxMenu
 
 
 func _ready() -> void:
@@ -132,13 +138,15 @@ func _ready() -> void:
 	_chart.arrow_drawn.connect(_on_chart_arrow_drawn)
 	_chart.arrow_delete_requested.connect(_on_chart_arrow_delete_requested)
 	_chart.boxes_delete_requested.connect(_on_chart_boxes_delete_requested)
-	_delete_confirm.delete_confirmed.connect(_delete_now)
+	_delete_confirm.action_confirmed.connect(_on_delete_confirm_action_confirmed)
+	_box_menu.add_item(NewsDeleteConfirm.TITLES[NewsDeleteConfirm.Action.DELETE_RESOURCE], BoxAction.DELETE_RESOURCE)
+	_box_menu.add_item(NewsDeleteConfirm.TITLES[NewsDeleteConfirm.Action.REMOVE_FROM_TREE], BoxAction.REMOVE_FROM_TREE)
+	_box_menu.id_pressed.connect(_on_box_menu_id_pressed)
 	_details_panel.field_changed.connect(_on_details_panel_field_changed)
 	_details_panel.requirement_added.connect(_on_details_panel_requirement_added)
 	_details_panel.requirement_removed.connect(_on_details_panel_requirement_removed)
 	_details_panel.create_pressed.connect(create_draft)
 	_details_panel.cancel_pressed.connect(cancel_draft)
-	_details_panel.delete_pressed.connect(_on_details_panel_delete_pressed)
 	_show_problems()
 	_show_status()
 
@@ -333,17 +341,39 @@ func unlink(from_id: StringName, to_id: StringName) -> void:
 	_set_message("")
 
 
-## Deletes the item `id`, its arrows and its id (retired, never given out
-## again). An item with arrows is deleted only after `NewsDeleteConfirm` has
-## asked, naming the items they join it to; one with none is deleted at once.
+## **Delete resource**: deletes the item `id` from its book, with its arrows,
+## and retires its id (never given out again). Always asks first.
 func delete_item(id: StringName) -> void:
 	if not _graph.has(id):
 		return
-	var linked: Array[StringName] = _graph.requires_of(id) + _graph.followers_of(id)
-	if linked.is_empty():
-		_delete_now(id)
+	_delete_confirm.ask(id, _linked(id), NewsDeleteConfirm.Action.DELETE_RESOURCE)
+
+
+## **Remove from tree**: cuts every arrow to and from `id` and takes its box off
+## the chart. The item stays in its book. Asks first only when it has arrows.
+func remove_from_tree(id: StringName) -> void:
+	if not _graph.has(id):
 		return
-	_delete_confirm.ask(id, linked)
+	var linked: Array[StringName] = _linked(id)
+	if linked.is_empty():
+		_remove_from_tree_now(id)
+		return
+	_delete_confirm.ask(id, linked, NewsDeleteConfirm.Action.REMOVE_FROM_TREE)
+
+
+## Opens the box menu for `id` at `screen_position`, selecting its box. What a
+## right-click on a box does.
+func open_box_menu(id: StringName, screen_position: Vector2) -> void:
+	if not _graph.has(id):
+		return
+	_draft = null
+	_selected_id = id
+	_select_box(id)
+	_show_details()
+	_box_menu.set_meta(&"id", id)
+	_box_menu.position = Vector2i(screen_position)
+	_box_menu.reset_size()
+	_box_menu.popup()
 
 
 ## Takes back the last edit, from the tab's own history. True when there was
@@ -535,7 +565,29 @@ func edited_item() -> Resource:
 # ----------------------------------------------------------------- private
 
 
-## Deletes `id` without asking. What the confirmation's Delete does.
+## Takes `id` out of its tree without asking. What the question's Remove does.
+func _remove_from_tree_now(id: StringName) -> void:
+	var before: NewsGraph = _graph
+	var state_before: Dictionary = _snapshot()
+	var refusal: String = _book_editor.detach(id)
+	if not refusal.is_empty():
+		_set_message(refusal)
+		return
+	_shown.erase(id)
+	if _selected_id == id:
+		_selected_id = &""
+		_details_panel.clear()
+	_after_edit(before)
+	_record("Remove %s from tree" % id, state_before)
+	_set_message("Removed %s from the tree." % id)
+
+
+## The items the arrows of `id` join it to.
+func _linked(id: StringName) -> Array[StringName]:
+	return _graph.requires_of(id) + _graph.followers_of(id)
+
+
+## Deletes `id` without asking. What the question's Delete does.
 func _delete_now(id: StringName) -> void:
 	var before: NewsGraph = _graph
 	var state_before: Dictionary = _snapshot()
@@ -623,6 +675,7 @@ func _show_ids(
 		_chart.add_child(box)
 		box.show_item(_graph.line(id))
 		box.position_offset = places.get(id, Vector2.ZERO)
+		box.menu_requested.connect(open_box_menu)
 		if not places.has(id):
 			_waiting_for_a_place.append(id)
 	for id: StringName in _shown:
@@ -884,18 +937,28 @@ func _on_details_panel_field_changed(field: StringName, value: Variant) -> void:
 	set_field(field, value)
 
 
-func _on_details_panel_delete_pressed() -> void:
-	if not _selected_id.is_empty():
-		delete_item(_selected_id)
-
-
-## Delete with boxes selected. One at a time, so the question, when there is
-## one, is about a single item.
+## Delete with boxes selected: **Remove from tree**. One at a time, so the
+## question, when there is one, is about a single item.
 func _on_chart_boxes_delete_requested(box_names: Array[StringName]) -> void:
 	if box_names.size() > 1:
-		_set_message("Select one box to delete its news item.")
+		_set_message("Select one box to remove it from the tree.")
 		return
-	delete_item(_id_of_box(box_names[0]))
+	remove_from_tree(_id_of_box(box_names[0]))
+
+
+func _on_box_menu_id_pressed(action: int) -> void:
+	var id: StringName = _box_menu.get_meta(&"id", &"")
+	if action == BoxAction.DELETE_RESOURCE:
+		delete_item(id)
+	else:
+		remove_from_tree(id)
+
+
+func _on_delete_confirm_action_confirmed(id: StringName, action: NewsDeleteConfirm.Action) -> void:
+	if action == NewsDeleteConfirm.Action.DELETE_RESOURCE:
+		_delete_now(id)
+	else:
+		_remove_from_tree_now(id)
 
 
 func _on_details_panel_requirement_added(id: StringName) -> void:

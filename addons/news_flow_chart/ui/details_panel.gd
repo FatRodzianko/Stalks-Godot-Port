@@ -14,8 +14,7 @@ extends VBoxContainer
 ## what the person changed through its signals. It changes nothing itself; the
 ## chart decides what to do with each change. For a new item that does not
 ## exist yet (a *draft*) it shows **Create** and **Cancel** instead of the
-## requires list, and for an item that exists, **Delete news item**.
-## `@tool` because it runs inside the editor.
+## requires list. `@tool` because it runs inside the editor.
 
 
 ## A field was changed to `value`.
@@ -28,8 +27,6 @@ signal requirement_removed(id: StringName)
 signal create_pressed
 ## The person clicked **Cancel** on a draft.
 signal cancel_pressed
-## The person clicked **Delete news item**.
-signal delete_pressed
 
 const EMPTY_TITLE: String = "Details"
 const DRAFT_ID: String = "(given on Create)"
@@ -52,13 +49,11 @@ var _option_values: Dictionary[OptionButton, Array] = {}
 @onready var _draft_buttons: HBoxContainer = %DraftButtons
 @onready var _create_button: Button = %CreateButton
 @onready var _cancel_button: Button = %CancelButton
-@onready var _delete_button: Button = %DeleteButton
 
 
 func _ready() -> void:
 	_create_button.pressed.connect(_on_create_button_pressed)
 	_cancel_button.pressed.connect(_on_cancel_button_pressed)
-	_delete_button.pressed.connect(_on_delete_button_pressed)
 	clear()
 
 
@@ -77,7 +72,6 @@ func show_item(
 	if is_draft:
 		_title_label.text = "New %s" % _title_label.text.to_lower()
 	_draft_buttons.visible = is_draft
-	_delete_button.visible = not is_draft
 	for property: Dictionary in NewsItemSummary.stored_properties(line):
 		var field: StringName = property["name"]
 		if field == REQUIRES_FIELD and is_draft:
@@ -93,7 +87,6 @@ func clear() -> void:
 	_remove_fields()
 	_title_label.text = EMPTY_TITLE
 	_draft_buttons.visible = false
-	_delete_button.visible = false
 
 
 func title_text() -> String:
@@ -119,11 +112,6 @@ func shown_fields() -> Dictionary[String, String]:
 
 func is_draft_shown() -> bool:
 	return _draft_buttons.visible
-
-
-func is_delete_shown() -> bool:
-	return _delete_button.visible
-
 
 func _control_for(
 	line: Resource,
@@ -329,7 +317,3 @@ func _on_create_button_pressed() -> void:
 
 func _on_cancel_button_pressed() -> void:
 	cancel_pressed.emit()
-
-
-func _on_delete_button_pressed() -> void:
-	delete_pressed.emit()
