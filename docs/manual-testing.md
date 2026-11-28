@@ -3194,7 +3194,7 @@ has the keyboard; clicking the chart makes sure of that.
 **Report:** any step that did not match, and how Ctrl+Z inside a text box
 (step 40) felt next to Ctrl+Z on the chart.
 
-### AC - The News Flow tab: Delete removes a box from its tree, right-click to delete the item (decisions.md D231) — **not yet run**
+### AC - The News Flow tab: Delete removes a box from its tree, right-click to delete the item (decisions.md D231) — **passed 2026-11-27**, on the first run
 
 One machine, the **editor**. Needs a checkout whose
 `addons/news_flow_chart/ui/news_chart.gd` contains `remove_from_tree`. This

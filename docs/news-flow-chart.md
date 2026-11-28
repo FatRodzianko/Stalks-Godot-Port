@@ -555,7 +555,8 @@ always asks, and **Remove from tree**, which cuts the item's arrows and takes
 its box off the chart, leaving the item in its book, and asks only when it has
 arrows. The Delete key is **Remove from tree**. Nothing is joined around a
 removed item. The details panel's **Delete news item** button is gone. One
-more core test (35) and five more scene-tree tests (71). Section AC checks it.
+more core test (35) and five more scene-tree tests (71). Section AC checks it,
+and passed on its first run, 2026-11-27, which completes Phase 4.
 
 The plan as written:
 
