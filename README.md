@@ -48,9 +48,9 @@ with two Steam accounts.
 | | |
 |---|---|
 | Not done | Uploading the port to Steam. Two Phase 6 checks need that upload; see [publishing.md](docs/publishing.md) |
-| In progress | **StalkleHeads**, a second game mode in which prices come from a simulated market of earnings, industries and traders. Built (phases S0 to S8); balance tuning (S9) is open. See [stalkleheads-design.md](docs/stalkleheads-design.md) |
+| Also built | **StalkleHeads**, a second game mode in which prices come from a simulated market of earnings, industries and traders. Phases S0 to S9 are done, balance tuning included (closed 2026-11-28); play reports can still reopen a balance setting. See [stalkleheads-design.md](docs/stalkleheads-design.md) |
 | Also here | The **News Flow Chart**, a Godot editor tool for writing StalkleHeads news ([news-flow-chart.md](docs/news-flow-chart.md)) |
-| Tests | Over 1,400, all passing. Coverage and what is still untested: [testing.md](docs/testing.md) |
+| Tests | Over 1,500, all passing. Coverage and what is still untested: [testing.md](docs/testing.md) |
 
 ---
 

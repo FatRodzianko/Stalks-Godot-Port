@@ -3,7 +3,7 @@
 Everything written down about **Stalks Stalks Stalks**, a port of a Unity
 stock-trading game to Godot 4.7. The port is built and playable, alone or
 over Steam, but not yet uploaded to Steam. StalkleHeads, a second game mode,
-is in balance tuning.
+is built and tuned.
 
 These documents are written to stand alone. You do not need the original Unity
 project, access to anyone who worked on this, or an AI assistant to continue the
