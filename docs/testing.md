@@ -690,7 +690,10 @@ long-match clamp scales from ten years. WHISPER (D234) is checked to be outside 
 to hold the bond in year 1, and to play a match; its whisper levers (D236) set to
 the published values reproduce the game's rounds exactly, and with nothing to hear
 it holds the bond; a weighted source roll (D237) follows its weights and takes one
-draw, as the even roll does.
+draw, as the even roll does. S9 closed on 2026-11-28 with the whisper sources
+weighted (D238): 1,563 tests, all passing, and the golden hash unchanged through
+every S9 change. **Not covered by any test:** how the balance feels to people, which
+is section AD of manual-testing.md.
 
 ### Scene tests
 

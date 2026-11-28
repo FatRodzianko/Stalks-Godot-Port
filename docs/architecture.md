@@ -1109,7 +1109,15 @@ The game never overrides them.
 `ContentLibrary.short_squeeze`; without it no squeeze can fire, and both rolls are
 drawn anyway so the stream is the same (D165, D213). `MatchSetup.new_pipeline`
 passes it (S5, D171). There is no event pool in this mode since D209: the market
-news comes from `state.market.news`. `squeeze_spike` is a fifth balance seam.
+news comes from `state.market.news`. `squeeze_spike` is a fifth balance seam, and
+S9 added a sixth, `flow_limit_fraction` (D232).
+
+**Whisper levers are trailing arguments, not seams** (S9, D236, D237). Whispers are
+chosen by static functions, so the tool cannot override them. Instead
+`NewsSelector.select_whispers` takes the count, the odds table, whether a squeeze
+whisper is heard and the source weights, and `WhisperRules.distort` and
+`roll_source` the odds and the weights, each defaulting to the game's constant
+(`WhisperRules.ODDS`, `WhisperRules.SOURCE_WEIGHTS`). The game passes none of them.
 
 ### The NPC desk (phase S4)
 
@@ -1443,8 +1451,8 @@ strategy did (design §2.6, §12.1). It is a tool, not game code: everything is 
 | `tools/balance_report.gd` | The command-line entry point: reads arguments, runs the matches, prints the table |
 | `tools/balance/balance_match.gd` | One match: a real `GameState` from `EarningsMarket.new_game_state`, the ten strategies as real `PlayerState`s (FOLLOW copies the desk's richest trader since S4), their trading, the flow mode, net worth at the end |
 | `tools/balance/lever_year.gd` | `EarningsYearResolver` with the sweep's levers applied through its two seams (D161) |
-| `tools/balance/levers.gd` | Balance overrides for a sweep (premium, GROWTH stay chance, ageing; since S4 the squeeze on or off, its chance and its size, and the SHORT traders' target), applied without touching `src/sim/` (D150, D166, D168) |
-| `tools/balance/lever_desk.gd` | `NpcDesk` with the SHORT-target lever applied through its one seam, `choose_target`: the old slowest-grower rule, since the game's desk bets against the highest P/E (D168, D169) |
+| `tools/balance/levers.gd` | Balance overrides for a sweep (premium, GROWTH stay chance, ageing; since S4 the squeeze on or off, its chance and its size, and the SHORT traders' target; since S9 the income slope, the flow clamp and its long-match scale, the flag threshold, and the whisper count, odds, squeeze whisper and source weights), applied without touching `src/sim/` (D150, D166, D168, D232, D236, D237) |
+| `tools/balance/lever_desk.gd` | `NpcDesk` with the SHORT-target lever applied through its one seam, `choose_target`: the old slowest-grower rule, since the game's desk bets against the highest P/E (D168, D169); since S9 also the flag threshold, through `flagged_companies` (D232) |
 | `tests/unit/test_balance_smoke.gd` | 30 fixed-seed matches with loose bands, in the GUT suite |
 
 S2 drove the year with a stand-in, `tools/balance/stand_in_year.gd` (D144). S3 deleted

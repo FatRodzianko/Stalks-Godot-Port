@@ -1,13 +1,17 @@
 # StalkleHeads tuning — phase S9's working file
 
+**S9 was closed on 2026-11-28.** The owner's decisions are D233, D235 and D238;
+nothing here is waiting. The file stays as the reference for tuning the mode again:
+re-run §1 first, then the lever in question.
+
 Phase S9 of [stalkleheads-design.md](stalkleheads-design.md) is "Play it. Tune.
-Repeat." It has no end date. This file is where the loop lives:
+Repeat." This file is where the loop lives:
 
 1. **The baseline** — what the market measures as shipped, so any change can be
    compared with it.
 2. **The agenda** — every balance lever the design leaves open, its current value,
    what it measures, and the balance-tool argument that sweeps it.
-3. **Waiting for the owner** — the decisions only play, or the owner, can make.
+3. **Decided by the owner** — what was chosen, and what only play can still change.
 
 How to run the tool is in [development.md](development.md) ("Measure StalkleHeads
 balance"); what it can and cannot tell you is in [testing.md](testing.md). What to
@@ -397,19 +401,20 @@ Key personnel, prices within the year and NPC thoughts are separate tasks (§14,
 
 ---
 
-## 3. Waiting for the owner
+## 3. Decided by the owner
 
 **Decided on 2026-11-27 ([D235](decisions.md)):** P4's half-point miss stands; the
 flag stays at 10%; the income slope stays at 1; long matches are not flattened (the
 longer the match, the more the best reader is rewarded). Levers 1 to 4 need nothing
-further. Nothing in `src/` changes until the owner decides.
+further.
 
 1. **Whispers (lever 5). Decided 2026-11-28 ([D238](decisions.md)):** sources
    heard 15/15/25/25/20. Reading the whispers now wins 35.5% of ten-year matches
    (4,000 seeds), from 38.2%. The owner has said a perfect whisper reader doing
    well is acceptable; further steps are in lever 5's tables.
-2. **Play reports.** Section AD of manual-testing.md. Sheet line **k** is about
-   whispers.
+2. **Play reports.** Still open after S9: section AD of manual-testing.md. Sheet
+   line **k** is about whispers. A report that a lever reads badly on screen is a
+   reason to reopen it here.
 
 ## Rounds
 
@@ -422,3 +427,4 @@ further. Nothing in `src/` changes until the owner decides.
 | 2026-11-27 | Whisper levers added to the tool and swept (lever 5) | D236 (tool only) | §1, unchanged |
 | 2026-11-27 | Source weights added to the tool and swept (lever 5) | D237 (tool only) | §1, unchanged |
 | 2026-11-28 | Whisper sources heard 15/15/25/25/20 instead of evenly | D238 | §1 unchanged (`TREND` 30.5%); WHISPER 35.5% |
+| 2026-11-28 | Two last source weightings checked at 4,000 seeds, both within noise. **S9 closed** | — | as above |

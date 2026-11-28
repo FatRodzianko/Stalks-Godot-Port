@@ -224,7 +224,7 @@ stock rather than a better one (§3.10a).
 
 **Settlement** — `YearSettlement`, the back half of a year that both pipelines share: loans, net worth and standings, the game-end check, and closing the year (decisions.md D152).
 
-**Strategy (balance tool)** — a fixed rule a scripted player follows, such as `LOWPE` (hold the three cheapest by P/E) or `TREND` (hold the three whose earnings grew fastest). The list is in [stalkleheads-design.md](stalkleheads-design.md) §2.1.
+**Strategy (balance tool)** — a fixed rule a scripted player follows, such as `LOWPE` (hold the three cheapest by P/E) or `TREND` (hold the three whose earnings grew fastest). The list is in [stalkleheads-design.md](stalkleheads-design.md) §2.1. `WHISPER` (trade only on the whispers) is an eleventh, played only when named, since an extra player changes the market (decisions.md D234).
 
 **The desk (NPC desk)** — the twenty-four simulated traders of a StalkleHeads match. They are not players: not ranked, cannot win, never asked to ready up. They trade once a year after the year settles, and what they bought and sold becomes next year's flow. Code: `NpcDesk` (design §5, decisions.md D162).
 
@@ -328,7 +328,7 @@ and letter (*Transportation Company A*) with an obviously temporary ticker (`TRN
 
 **Whisper** — a rumor about a company or an industry, heard at the end of a year (from year 1; none in year 0) and about **the next year**: whether it will do much worse, worse, as expected, better or much better than everyone expects. Two a round, on the Market tab with their sources, and on the Company tab of a company they name or its industry. A whisper can be wrong, and how often depends on its **source** (decisions.md D205).
 
-**Source (of a whisper)** — who a whisper came from, which says how far to trust it: Rock Solid, Credible, Hit-or-miss, Questionable or Gossip. Rock Solid is right 85% of the time and never far out; Gossip is right 20% of the time. The table is in game-rules.md §5.1; the code is `WhisperRules`.
+**Source (of a whisper)** — who a whisper came from, which says how far to trust it: Rock Solid, Credible, Hit-or-miss, Questionable or Gossip. Rock Solid is right 85% of the time and never far out; Gossip is right 20% of the time. The good sources are heard less often: Rock Solid and Credible 15% each, Hit-or-miss and Questionable 25%, Gossip 20% (decisions.md D238). The table is in game-rules.md §5.1; the code is `WhisperRules`.
 
 **Whisper history** — every round of whispers so far, opened with VIEW HISTORY on the Market tab, each with what really came of it once its year has been played (decisions.md D206).
 

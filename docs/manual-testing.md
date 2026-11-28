@@ -3291,7 +3291,8 @@ clearly.
 
 ### AD - Playing StalkleHeads for balance (phase S9) — **open: run as often as wanted**
 
-**This section has no pass or fail.** It is how phase S9 of
+**This section has no pass or fail.** Phase S9 closed on 2026-11-28; this section
+stays, since play is what can reopen a lever. It is how phase S9 of
 [stalkleheads-design.md](stalkleheads-design.md) gets what the balance tool cannot
 measure: whether reading the tabs feels like it pays, whether a match drags, and
 whether each lever in [stalkleheads-tuning.md](stalkleheads-tuning.md) reads well on
