@@ -7932,7 +7932,7 @@ the real ones.
 for, D205; the outlook must be what anyone could work out).
 
 ### D213 - The short squeeze is a meme stock
-**2026-11-27 · Accepted** · **supersedes** D165's +25 event
+**2026-11-27 · Accepted** · **supersedes** D165's +25 event · **size amended by D233** (4% a point)
 
 As shipped in S4 the squeeze was a +25 special event. It is now modeled on a meme
 stock (the owner pointed at GameStop, January 2021):
@@ -8706,3 +8706,30 @@ real matches exactly, and that each one moved does move the market.
 
 **Rules out:** a mutable static for any of these (D150); changing a published value
 without the owner's decision.
+
+### D233 - The squeeze jumps 4% a point, not 5%
+**2026-11-27 · Accepted** (the owner, phase S9) · **amends** D213's size
+
+P4 failed as shipped after D220: `TREND` 31.1% over 4,000 ten-year seeds, the squeeze
+adding 4.6 points (stalkleheads-tuning.md, lever 0). The owner's rule: measure 4% a
+point over the same 4,000 seeds, and take it if its leader is lower than 5%'s;
+otherwise stay at 5%.
+
+| Squeeze | Seeds | Leader | LOWPE | FOLLOW | INCOME | Squeezes / match | P3 |
+|---|---|---|---|---|---|---|---|
+| 5% a point (D213) | 4,000 | `TREND` 31.1 | 19.9 | 16.6 | 10.4 | 0.63 | 0.57 |
+| **4% a point** | 4,000 | `TREND` **30.5** | 20.1 | 16.4 | 10.7 | 0.63 | 0.57 |
+
+Lower, so `ShortInterestRules.SPIKE_PERCENT_PER_POINT` is 4. A company flagged at 10%
+jumps 40% instead of 50%, at 20% 80% instead of 100%, and the 150% cap is reached
+at 37.5% short instead of 30%. Nothing else about the squeeze changes: no loss in its
+year, then hold or end each year, the whole lift off at the end (D220).
+
+**What it does not do: P4 still fails, by 0.5 points.** The 0.6-point gain is close to
+the sampling noise of one run (about ±0.7), though both runs use the same seeds, so
+the comparison is tighter than that. A size that passes P4 is 2% a point or less
+(1% a point: 28.1% over 4,000 seeds; 2%: 26.6% over 1,000). Whether to shrink it
+that far is still open (stalkleheads-tuning.md, section 3).
+
+**Rules out:** testing 3% a point for this decision; the owner's rule compared only 4%
+with 5%.

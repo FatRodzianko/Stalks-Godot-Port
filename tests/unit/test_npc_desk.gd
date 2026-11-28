@@ -511,11 +511,12 @@ func _squeezed_state(shares_short: int = 400) -> Array:
 
 
 func test_the_spike_scales_with_short_interest_and_is_capped() -> void:
-	assert_eq(ShortInterestRules.SPIKE_PERCENT_PER_POINT, 5.0)
+	assert_eq(ShortInterestRules.SPIKE_PERCENT_PER_POINT, 4.0, "D233")
 	assert_eq(ShortInterestRules.SPIKE_MAX_PERCENT, 150.0)
-	assert_eq(ShortInterestRules.spike_for(100, 10.0), 50, "10 points is 50% of the price")
-	assert_eq(ShortInterestRules.spike_for(100, 20.0), 100)
-	assert_eq(ShortInterestRules.spike_for(100, 30.0), 150, "the cap")
+	assert_eq(ShortInterestRules.spike_for(100, 10.0), 40, "10 points is 40% of the price")
+	assert_eq(ShortInterestRules.spike_for(100, 20.0), 80)
+	assert_eq(ShortInterestRules.spike_for(100, 30.0), 120)
+	assert_eq(ShortInterestRules.spike_for(100, 37.5), 150, "the cap")
 	assert_eq(ShortInterestRules.spike_for(100, 80.0), 150, "never past the cap")
 	assert_eq(ShortInterestRules.spike_for(0, 40.0), 0)
 

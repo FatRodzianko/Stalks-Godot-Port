@@ -38,44 +38,45 @@ market, measured on a different sample.
 
 ---
 
-## 1. The baseline (2026-11-27, `main` at `29ab7a9`)
+## 1. The baseline (2026-11-27, after D233)
 
 Published values, flow from the desk and the players, the squeeze on. Market news
-(D209), the meme-stock squeeze (D213) and the squeeze of no fixed length (D220) are
-all in.
+(D209), the meme-stock squeeze (D213), the squeeze of no fixed length (D220) and the
+squeeze at 4% a point (D233) are all in. The ten-year table is the D233 run; the
+comparison column and the long matches were measured at 5% a point, just before.
 
 ### Ten years, 4,000 seeds
 
 | Strategy | Median net | Mean net | Win share |
 |---|---|---|---|
-| HOLD | 11,014 | 11,477 | 0.1% |
-| LOWPE | 15,692 | 21,462 | 19.9% |
-| HIGHPE | 13,061 | 14,775 | 2.1% |
-| **TREND** | 22,345 | 25,936 | **31.1%** |
-| MOMENTUM | 15,510 | 17,514 | 6.0% |
-| CONTRARIAN | 6,415 | 8,700 | 1.5% |
-| INCOME | 15,014 | 17,095 | 10.4% |
-| FOLLOW | 10,946 | 21,924 | 16.6% |
-| RANDOM | 12,651 | 15,978 | 9.5% |
-| BOND | 13,426 | 13,426 | 2.9% |
+| HOLD | 10,991 | 11,462 | 0.1% |
+| LOWPE | 15,707 | 21,281 | 20.1% |
+| HIGHPE | 12,810 | 14,544 | 2.2% |
+| **TREND** | 22,059 | 25,518 | **30.5%** |
+| MOMENTUM | 15,399 | 17,383 | 6.1% |
+| CONTRARIAN | 6,372 | 8,713 | 1.5% |
+| INCOME | 15,028 | 17,105 | 10.7% |
+| FOLLOW | 10,924 | 21,378 | 16.4% |
+| RANDOM | 12,599 | 15,901 | 9.6% |
+| BOND | 13,426 | 13,426 | 2.7% |
 
-| Measure | Now | D170 / D172 (before market news) |
+| Measure | Now (4% a point) | D170 / D172 (before market news) |
 |---|---|---|
-| **P4: leading strategy** | **`TREND` 31.1%, fails by 1.1** | `LOWPE` 27.7%, held by 2.3 |
+| **P4: leading strategy** | **`TREND` 30.5%, fails by 0.5** (31.1% at 5% a point) | `LOWPE` 27.7%, held by 2.3 |
 | Strategies winning at least 4% | 6 of 10 | 6 |
-| P2: the best reader's median over RANDOM's | 22,345 / 12,651 = 1.77 | 1.64 |
+| P2: the best reader's median over RANDOM's | 22,059 / 12,599 = 1.75 | 1.64 |
 | P3: RANDOM's median over the leader's | 0.57 | 0.64 |
 | Bull-year rate | 55.6% | 55.5% |
 | Splits / bankruptcies per match | 1.69 / **0.14** | 1.64 / 0.59 |
 | Short squeezes per match | 0.63 | 1.16 |
-| Years with a company flagged | 25.2% | 47.8% |
+| Years with a company flagged | 25.6% | 47.8% |
 | Desk's richest trader at the end | GROWTH 32.7%, VALUE 27.9%, PANIC 15.2%, INCOME 13.1% | VALUE 36.4%, GROWTH 24.7% |
 | No squeeze (`--no-squeeze`) | `TREND` 26.5%, 7 contenders | `LOWPE` 29.4% |
 | No flow (`--flow=none`) | `TREND` 31.9%, `LOWPE` 10.5%, 8 contenders | `TREND` 25.3% |
-| Cost of the squeeze | **4.6 points**, all to TREND | it took 1.7 from LOWPE |
+| Cost of the squeeze | **4.0 points** (4.6 at 5% a point), all to TREND | it took 1.7 from LOWPE |
 | Cost of flow | **none** (31.1 with it, 31.9 without); it moves 9 points from TREND's rivals to LOWPE | 2.4 points |
 
-**P4 moved, and fails.** It matches the figure recorded after D220 (design
+**P4 moved, and fails.** At 5% a point it matches the figure recorded after D220 (design
 Appendix A, "After the squeeze of no fixed length"). Three things changed between D172
 and now, all in the owner's news and squeeze work, none in S9:
 
@@ -94,10 +95,11 @@ P1 (every point of every move has a cause) is `test_price_ledger.gd`, green.
 
 | Length | Leader | TREND | FOLLOW | Contenders | P3 | Bull rate | Splits | Bankruptcies | Squeezes | Flagged |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 10 (4,000 seeds) | `TREND` 31.1% | 31.1 | 16.6 | 6 | 0.57 | 55.6% | 1.69 | 0.14 | 0.63 | 25.2% |
-| 25 | `LOWPE` 38.0% | 31.9 | 21.6 | 4 | 0.25 | 61.3% | 3.98 | 0.67 | 1.75 | 27.9% |
-| 50 | `LOWPE` 59.3% | 19.0 | 20.7 | 3 | 0.02 | 64.2% | 6.10 | 0.97 | 3.19 | 24.7% |
-| 99 | `LOWPE` 76.2% | 10.2 | 13.4 | 3 | 0.00 | 65.1% | 11.34 | 3.25 | 4.87 | 19.3% |
+| 10 (4,000 seeds, 4% a point) | `TREND` 30.5% | 30.5 | 16.4 | 6 | 0.57 | 55.4% | 1.69 | 0.14 | 0.63 | 25.6% |
+| 25 (4% a point) | `LOWPE` 38.6% | 31.7 | 21.0 | 4 | 0.22 | 61.2% | 3.97 | 0.67 | 1.82 | 29.0% |
+| 25 (5% a point) | `LOWPE` 38.0% | 31.9 | 21.6 | 4 | 0.25 | 61.3% | 3.98 | 0.67 | 1.75 | 27.9% |
+| 50 (5% a point) | `LOWPE` 59.3% | 19.0 | 20.7 | 3 | 0.02 | 64.2% | 6.10 | 0.97 | 3.19 | 24.7% |
+| 99 (5% a point) | `LOWPE` 76.2% | 10.2 | 13.4 | 3 | 0.00 | 65.1% | 11.34 | 3.25 | 4.87 | 19.3% |
 
 **Long matches are flatter than they were** (D169: 50.8% at 25 years; this file's
 first round, before market news: 73.5% at 50 and 89.2% at 99). They are still far
@@ -120,13 +122,14 @@ checks the flag lever. Rows marked 4,000 are confirmations.
   price per point of short interest, at most 150%. It then holds or ends each year.
 - **Where:** `ShortInterestRules.SPIKE_PERCENT_PER_POINT` and
   `SQUEEZE_CHANCE_PERCENT` (`src/sim/short_interest_rules.gd`).
-- **Value:** 5% a point; a 25% chance in a flagged year.
+- **Value:** 4% a point since D233 (5% before); a 25% chance in a flagged year.
 - **Sweeps:** `--squeeze-size=N` (percent a point), `--squeeze-chance=N`,
   `--no-squeeze`.
 
 | Setting | Seeds | Leader | LOWPE | FOLLOW | Squeezes / match | Contenders | P3 | P4 |
 |---|---|---|---|---|---|---|---|---|
-| **5% a point, 25% (published)** | 4,000 | `TREND` 31.1 | 19.9 | 16.6 | 0.63 | 6 | 0.57 | **fails** |
+| 5% a point (D213) | 4,000 | `TREND` 31.1 | 19.9 | 16.6 | 0.63 | 6 | 0.57 | fails by 1.1 |
+| **4% a point (published since D233)** | 4,000 | `TREND` 30.5 | 20.1 | 16.4 | 0.63 | 6 | 0.57 | **fails by 0.5** |
 | 3% a point | 1,000 | `TREND` 29.4 | 19.7 | 17.1 | 0.65 | 6 | 0.58 | — |
 | 2% a point | 1,000 | `TREND` 26.6 | 20.6 | 17.7 | 0.66 | 6 | 0.59 | — |
 | 1% a point | 1,000 | `TREND` 26.1 | 21.6 | 16.6 | 0.69 | 6 | 0.61 | — |
@@ -136,9 +139,10 @@ checks the flag lever. Rows marked 4,000 are confirmations.
 | **no squeeze** | 4,000 | `TREND` 26.5 | 22.1 | 15.6 | 0 | 7 | 0.63 | **holds by 3.5** |
 
 **What it says.** The squeeze is the whole of P4's failure. Smaller or rarer, it
-passes. At 2% a point or less it costs about two points; at 3% it costs most of
-what 5% does. The size and shape are the owner's (D213), so this is a decision,
-not a tuning step.
+passes. At 2% a point or less it costs about two points; at 3% or 4% it costs most
+of what 5% does. **Decided (D233):** the owner's rule was to take 4% if it measured
+lower than 5% over the same 4,000 seeds. It did, by 0.6, so the squeeze is 4% a
+point. P4 still fails by 0.5.
 
 ### Lever 1 — the slope of the income trade-off (design §3.10a)
 
@@ -282,10 +286,10 @@ Key personnel, prices within the year and NPC thoughts are separate tasks (§14,
 Nothing in `src/` changes until the owner decides. Each item names what to decide
 and the evidence above.
 
-1. **P4 fails as shipped (lever 0).** Accept 31.1%, or shrink the squeeze: 1% a point
-   holds by 1.9 (4,000 seeds), 2% a point measured 26.6% (1,000 seeds; confirm over
-   4,000 if chosen), no squeeze holds by 3.5. A flag at 20% (lever 3) also holds, by
-   only 1.0.
+1. **P4 still fails, by 0.5 (lever 0, after D233).** Accept it, or shrink the
+   squeeze further: 1% a point holds by 1.9 (4,000 seeds), 2% a point measured 26.6%
+   (1,000 seeds; confirm over 4,000 if chosen), no squeeze holds by 3.5. A flag at
+   20% (lever 3) held by 1.0 at 5% a point; not re-measured at 4%.
 2. **The flag threshold (lever 3).** Keep 10% (flagged one year in four), or raise it
    for a rarer, louder flag.
 3. **The income slope (lever 1).** Keep 1, or halve it: about two points of INCOME,
@@ -304,4 +308,5 @@ The flow clamp (lever 4) needs no decision: it no longer helps P4.
 | Date | What changed | Decision | Baseline after |
 |---|---|---|---|
 | 2026-11-23 | S9 opened on `5835de9`: baseline `LOWPE` 27.7% (identical to D172); four levers added to the tool | D232 (tool only) | superseded the same week |
-| 2026-11-27 | Rebased onto `29ab7a9` (market news, meme-stock squeeze, squeeze of no fixed length). Every figure re-measured; the first round's sweeps are void | — | §1: `TREND` 31.1%, P4 fails |
+| 2026-11-27 | Rebased onto `29ab7a9` (market news, meme-stock squeeze, squeeze of no fixed length). Every figure re-measured; the first round's sweeps are void | — | `TREND` 31.1%, P4 fails |
+| 2026-11-27 | The squeeze from 5% to 4% a point. The sweeps in §2 were measured at 5% and are not re-run | D233 | §1: `TREND` 30.5%, P4 fails by 0.5 |

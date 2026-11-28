@@ -300,7 +300,7 @@ Each event carries: **target stalk name**, **flavour text**, **price change**.
   > the most shorted such company when it comes up 25 or less. With nothing flagged
   > it cannot happen. Players cannot sell short. The squeeze:
   >
-  > - lifts the price by **5% for every point of short interest, at most 150%**;
+  > - lifts the price by **4% for every point of short interest, at most 150%** (D233; 5% until then);
   > - and on top of that adds back anything the rest of the year took off, so the
   >   price **does not fall in the squeeze year**;
   > - then, **every later year, ends or holds** (D220). It ends - the whole lift

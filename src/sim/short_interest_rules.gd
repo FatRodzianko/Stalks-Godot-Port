@@ -44,7 +44,7 @@ const SQUEEZE_CHANCE_PERCENT: int = 25
 
 ## The squeeze's lift is this percent of the price per percentage point of
 ## short interest: 10% short lifts the price by half.
-const SPIKE_PERCENT_PER_POINT: float = 5.0
+const SPIKE_PERCENT_PER_POINT: float = 4.0
 
 ## ...up to this percent of the price.
 const SPIKE_MAX_PERCENT: float = 150.0

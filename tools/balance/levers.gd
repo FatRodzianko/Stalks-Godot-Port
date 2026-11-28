@@ -37,7 +37,7 @@ var squeeze: bool = true
 var squeeze_chance: int = -1
 
 ## The squeeze's lift, in percent of the price per point of short interest.
-## -1 = the rule's (`ShortInterestRules.SPIKE_PERCENT_PER_POINT`, 5; D213).
+## -1 = the rule's (`ShortInterestRules.SPIKE_PERCENT_PER_POINT`, 4; D213, D233).
 var squeeze_size: int = -1
 
 ## What the desk's SHORT traders bet against: `highpe` (the published rule,
